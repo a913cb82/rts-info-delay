@@ -305,6 +305,83 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
     expect(anim[0].dies).toBe(true);
     expect(anim[0].toX).toBe(200);
   });
+
+  it("full lifecycle: spawn → move → arrive across 3 turns", () => {
+    // Turn 1→2: viceroy spawns at (100,100), moves to (150,150)
+    let anim = buildArmyAnim(
+      [],
+      [{ id: 5, faction: 0, x: 150, y: 150 }],
+      [{ kind: "army_spawn", id: 5, faction: 0, x: 100, y: 100, is_viceroy: true }],
+    );
+    expect(anim[0].spawns).toBe(true);
+    expect(anim[0].fromX).toBe(100);
+    expect(anim[0].toX).toBe(150);
+    expect(anim[0].dies).toBe(false);
+
+    // Turn 2→3: viceroy moves from (150,150) to (200,200), arrives, town spawns
+    anim = buildArmyAnim(
+      [{ id: 5, faction: 0, x: 150, y: 150 }],
+      [],
+      [
+        { kind: "army_death", id: 5, x: 200, y: 200 },
+        { kind: "town_spawn", id: 10, faction: 0, x: 200, y: 200, population: 500, is_capital: true },
+      ],
+    );
+    expect(anim[0].dies).toBe(true);
+    expect(anim[0].fromX).toBe(150);
+    expect(anim[0].toX).toBe(200);
+
+    // Town grows in at arrival position
+    const townAnim = buildTownAnim(
+      [],
+      [{ id: 10, faction: 0, x: 200, y: 200, population: 500, is_capital: true }],
+      [{ kind: "town_spawn", id: 10, faction: 0, x: 200, y: 200, population: 500, is_capital: true }],
+    );
+    expect(townAnim[0].spawns).toBe(true);
+    expect(townAnim[0].toX).toBe(200);
+  });
+
+  it("instant arrival — spawn and found same turn", () => {
+    // Target = capital position → viceroy arrives immediately
+    const n: ArmyState[] = [];
+    const n1: ArmyState[] = []; // viceroy already gone
+    const events: GameEvent[] = [
+      { kind: "army_spawn", id: 5, faction: 0, x: 100, y: 100, is_viceroy: true },
+      { kind: "army_death", id: 5, x: 100, y: 100 },
+      { kind: "town_spawn", id: 10, faction: 0, x: 100, y: 100, population: 500, is_capital: true },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    // Viceroy spawns and dies at same position — no transit
+    expect(anim[0].spawns).toBe(true);
+    expect(anim[0].dies).toBe(true);
+    expect(anim[0].fromX).toBe(100);
+    expect(anim[0].toX).toBe(100);
+  });
+
+  it("viceroy and town overlap at arrival — army fades while town grows", () => {
+    // At the arrival position, army shrinks-fades and town grow-in happen simultaneously
+    const n: ArmyState[] = [{ id: 5, faction: 0, x: 180, y: 180 }];
+    const n1: ArmyState[] = [];
+    const events: GameEvent[] = [
+      { kind: "army_death", id: 5, x: 200, y: 200 },
+      { kind: "town_spawn", id: 10, faction: 0, x: 200, y: 200, population: 500, is_capital: true },
+    ];
+    const armyAnim = buildArmyAnim(n, n1, events);
+    const townAnim = buildTownAnim(
+      [],
+      [{ id: 10, faction: 0, x: 200, y: 200, population: 500, is_capital: true }],
+      [{ kind: "town_spawn", id: 10, faction: 0, x: 200, y: 200, population: 500, is_capital: true }],
+    );
+    // Army fades at (200,200)
+    expect(armyAnim[0].dies).toBe(true);
+    expect(armyAnim[0].toX).toBe(200);
+    // Town grows in at same (200,200)
+    expect(townAnim[0].spawns).toBe(true);
+    expect(townAnim[0].toX).toBe(200);
+    // Same position — overlapping animations
+    expect(armyAnim[0].toX).toBe(townAnim[0].toX);
+    expect(armyAnim[0].toY).toBe(townAnim[0].toY);
+  });
 });
 
 describe("buildArmyAnim — stacked armies (V5)", () => {

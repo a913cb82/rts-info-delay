@@ -122,6 +122,28 @@ export function buildArmyAnim(
     }
   }
 
+  // Armies that spawn and die in the same turn (instant arrival, e.g. viceroy)
+  // Not in N or N1, but appear in both spawn and death events
+  for (const [id, spawnPos] of spawnMap) {
+    if (mapN.has(id) || mapN1.has(id)) continue; // already handled
+    const deathPos = deathMap.get(id);
+    if (!deathPos) continue; // spawn only, no death — shouldn't happen here
+    result.push({
+      id,
+      faction: 0, // faction not available from events alone; use 0 as default
+      fromX: spawnPos.x,
+      fromY: spawnPos.y,
+      toX: deathPos.x,
+      toY: deathPos.y,
+      dies: true,
+      deathX: deathPos.x,
+      deathY: deathPos.y,
+      spawns: true,
+      spawnX: spawnPos.x,
+      spawnY: spawnPos.y,
+    });
+  }
+
   return result;
 }
 
