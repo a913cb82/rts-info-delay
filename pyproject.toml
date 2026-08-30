@@ -1,0 +1,19 @@
+[project]
+name = "rl-game-min"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [".venv", "__pycache__", "viewer"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ty.src]
+exclude = [".venv", "__pycache__", "viewer", ".git"]

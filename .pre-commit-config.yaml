@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty
+        entry: ty check --force-exclude --exclude '.venv/**' --exclude 'viewer/**' --exclude '__pycache__/**'
+        language: system
+        types: [python]
+        pass_filenames: true
+        exclude: ^viewer/
+  - repo: local
+    hooks:
+      - id: pytest-fast
+        name: pytest (fast)
+        entry: python -m pytest -k "not slow" -q
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
