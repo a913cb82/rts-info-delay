@@ -31,6 +31,14 @@ class BotProcess:
         self.alive = True
         self.cmd = cmd
         try:
+            import os
+            env = os.environ.copy()
+            # Ensure src is on PYTHONPATH for bots (they import engine/bots)
+            src_path = str(Path(__file__).resolve().parents[1])
+            if "PYTHONPATH" in env:
+                env["PYTHONPATH"] = src_path + os.pathsep + env["PYTHONPATH"]
+            else:
+                env["PYTHONPATH"] = src_path
             self.proc = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
@@ -38,6 +46,7 @@ class BotProcess:
                 stderr=subprocess.PIPE,
                 text=True,
                 bufsize=1,
+                env=env,
             )
         except Exception:
             # Failed to start

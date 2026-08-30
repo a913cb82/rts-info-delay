@@ -7,10 +7,10 @@ export class Transform {
   offsetX: number = 0;
   offsetY: number = 0;
 
-  /** Apply pan drag. */
+  /** Apply pan drag — content follows cursor (grab-and-drag). */
   pan(dx: number, dy: number): void {
-    this.offsetX += dx;
-    this.offsetY += dy;
+    this.offsetX -= dx;
+    this.offsetY -= dy;
   }
 
   /** Apply zoom at screen point — keeps point under cursor fixed. */

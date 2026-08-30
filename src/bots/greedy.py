@@ -4,7 +4,10 @@ from __future__ import annotations
 import json, math, sys
 from engine.config import GameConfig
 from engine.world import World
-from .common import _busy, _world, _enemies, _enemy_towns, _forecast_pos, _can_train
+try:
+    from .common import _busy, _world, _enemies, _enemy_towns, _forecast_pos, _can_train
+except ImportError:
+    from bots.common import _busy, _world, _enemies, _enemy_towns, _forecast_pos, _can_train
 
 
 def decide_orders(world: World, faction: int, config: GameConfig) -> list[str]:

@@ -2,7 +2,8 @@
 
 export interface Config {
   type: "config";
-  map: [number, number];
+  map: string;
+  map_size: [number, number];
   info_speed: number;
   army_speed: number;
   army_cost: number;
@@ -54,53 +55,10 @@ export type EventKind =
   | "army_death"
   | "battle";
 
-export interface ArmySpawnEvent {
-  kind: "army_spawn";
-  id: number;
-  faction: number;
-  x: number;
-  y: number;
-  is_viceroy: boolean;
+export interface GameEvent {
+  kind: EventKind;
+  [key: string]: unknown;
 }
-
-export interface TownSpawnEvent {
-  kind: "town_spawn";
-  id: number;
-  faction: number;
-  x: number;
-  y: number;
-  population: number;
-  is_capital: boolean;
-}
-
-export interface ArmyMoveEvent {
-  kind: "army_move";
-  id: number;
-  x: number;
-  y: number;
-}
-
-export interface ArmyDeathEvent {
-  kind: "army_death";
-  id: number;
-  x: number;
-  y: number;
-}
-
-export interface BattleEvent {
-  kind: "battle";
-  x: number;
-  y: number;
-  combatants: { id: number; faction: number }[];
-  killed: number[];
-}
-
-export type GameEvent =
-  | ArmySpawnEvent
-  | TownSpawnEvent
-  | ArmyMoveEvent
-  | ArmyDeathEvent
-  | BattleEvent;
 
 export type GameRecord = Config | TurnRecord;
 
@@ -109,20 +67,12 @@ export type GameRecord = Config | TurnRecord;
 export interface AnimArmy {
   id: number;
   faction: number;
-  /** Position at start of interpolation (turn N). */
   fromX: number;
   fromY: number;
-  /** Position at end of interpolation (turn N+1). */
   toX: number;
   toY: number;
-  /** If this army dies this turn, lerp to death pos then fade. */
   dies: boolean;
-  deathX: number;
-  deathY: number;
-  /** If freshly spawned this turn, grow-in at source. */
   spawns: boolean;
-  spawnX: number;
-  spawnY: number;
 }
 
 export interface AnimTown {

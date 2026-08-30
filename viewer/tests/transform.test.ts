@@ -25,11 +25,12 @@ describe("worldToScreen / screenToWorld", () => {
     expect(wy).toBeCloseTo(456);
   });
 
-  it("pan shifts world coords", () => {
+  it("pan shifts world coords (grab-and-drag)", () => {
+    // Drag right → content follows cursor → world origin moves right on screen
     t.pan(100, 50);
     const [sx, sy] = t.worldToScreen(0, 0);
-    expect(sx).toBe(-100);
-    expect(sy).toBe(-50);
+    expect(sx).toBe(100);
+    expect(sy).toBe(50);
   });
 
   it("zoom 2x at center doubles distances", () => {
