@@ -177,6 +177,95 @@ describe("buildArmyAnim — blocked move→death (V12d)", () => {
   });
 });
 
+describe("buildArmyAnim — two armies fight and die", () => {
+  it("two armies at different positions both die — each lerps to its death pos", () => {
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 10, y: 0 },
+    ];
+    const n1: ArmyState[] = []; // both dead
+    const events: GameEvent[] = [
+      { kind: "army_death", id: 1, x: 5, y: 0 },
+      { kind: "army_death", id: 2, x: 5, y: 0 },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    expect(anim).toHaveLength(2);
+    const a1 = anim.find((a) => a.id === 1)!;
+    const a2 = anim.find((a) => a.id === 2)!;
+    // A lerps from (0,0) to (5,0)
+    expect(a1.fromX).toBe(0);
+    expect(a1.toX).toBe(5);
+    expect(a1.dies).toBe(true);
+    // B lerps from (10,0) to (5,0)
+    expect(a2.fromX).toBe(10);
+    expect(a2.toX).toBe(5);
+    expect(a2.dies).toBe(true);
+  });
+
+  it("two armies die in battle event — each lerps to battle position", () => {
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 10, y: 0 },
+    ];
+    const n1: ArmyState[] = [];
+    const events: GameEvent[] = [
+      { kind: "battle", x: 5, y: 0, combatants: [{ id: 1, faction: 0 }, { id: 2, faction: 1 }], killed: [1, 2] },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    expect(anim).toHaveLength(2);
+    const a1 = anim.find((a) => a.id === 1)!;
+    const a2 = anim.find((a) => a.id === 2)!;
+    // Both lerps to battle position (5,0)
+    expect(a1.toX).toBe(5);
+    expect(a1.dies).toBe(true);
+    expect(a2.toX).toBe(5);
+    expect(a2.dies).toBe(true);
+  });
+
+  it("moving armies with targets die — uses death event pos, not target", () => {
+    // A was heading to (100,0), B was heading to (-100,0)
+    // Both blocked at (25,0) and died there
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 50, y: 0 },
+    ];
+    const n1: ArmyState[] = [];
+    const events: GameEvent[] = [
+      { kind: "battle", x: 25, y: 0, combatants: [{ id: 1, faction: 0 }, { id: 2, faction: 1 }], killed: [1, 2] },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    const a1 = anim.find((a) => a.id === 1)!;
+    const a2 = anim.find((a) => a.id === 2)!;
+    // Death pos from battle event, not from N+1 world (absent)
+    expect(a1.toX).toBe(25);
+    expect(a2.toX).toBe(25);
+    // Lerp midpoints
+    expect(lerp(a1.fromX, a1.toX, 0.5)).toBe(12.5);
+    expect(lerp(a2.fromX, a2.toX, 0.5)).toBe(37.5);
+  });
+
+  it("one survives, one dies — survivor stays, dead fades at death pos", () => {
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 10, y: 0 },
+    ];
+    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 5, y: 0 }]; // A survived, moved
+    const events: GameEvent[] = [
+      { kind: "army_death", id: 2, x: 5, y: 0 }, // B died at midpoint
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    expect(anim).toHaveLength(2);
+    const alive = anim.find((a) => a.id === 1)!;
+    const dead = anim.find((a) => a.id === 2)!;
+    // A lerps from (0,0) to (5,0) — survived and moved
+    expect(alive.dies).toBe(false);
+    expect(alive.toX).toBe(5);
+    // B lerps from (10,0) to (5,0) — died at same pos
+    expect(dead.dies).toBe(true);
+    expect(dead.toX).toBe(5);
+  });
+});
+
 describe("buildArmyAnim — spawn (V13)", () => {
   it("spawned army grows in at source", () => {
     const n: ArmyState[] = [];
