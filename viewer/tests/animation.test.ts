@@ -341,6 +341,33 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
     expect(townAnim[0].toX).toBe(200);
   });
 
+  it("viceroy moves and builds capital in same turn", () => {
+    // Viceroy at (100,100) moves 25 km to (125,100) and founds town there
+    const n: ArmyState[] = [{ id: 5, faction: 0, x: 100, y: 100 }];
+    const n1: ArmyState[] = []; // viceroy gone
+    const events: GameEvent[] = [
+      { kind: "army_death", id: 5, x: 125, y: 100 },
+      { kind: "town_spawn", id: 10, faction: 0, x: 125, y: 100, population: 500, is_capital: true },
+    ];
+    const armyAnim = buildArmyAnim(n, n1, events);
+    const townAnim = buildTownAnim(
+      [],
+      [{ id: 10, faction: 0, x: 125, y: 100, population: 500, is_capital: true }],
+      [{ kind: "town_spawn", id: 10, faction: 0, x: 125, y: 100, population: 500, is_capital: true }],
+    );
+    // Viceroy lerps 25 km to arrival position
+    expect(armyAnim[0].fromX).toBe(100);
+    expect(armyAnim[0].toX).toBe(125);
+    expect(armyAnim[0].dies).toBe(true);
+    // At midpoint viceroy is at 112.5
+    expect(lerp(armyAnim[0].fromX, armyAnim[0].toX, 0.5)).toBe(112.5);
+    // Town grows in at same arrival position
+    expect(townAnim[0].spawns).toBe(true);
+    expect(townAnim[0].toX).toBe(125);
+    // Same position — army fades while town grows
+    expect(armyAnim[0].toX).toBe(townAnim[0].toX);
+  });
+
   it("instant arrival — spawn and found same turn", () => {
     // Target = capital position → viceroy arrives immediately
     const n: ArmyState[] = [];
