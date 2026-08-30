@@ -1,48 +1,79 @@
-/** View transform — pan/zoom between world coords and screen pixels. */
+/** View transform — pan/zoom between world coords and screen pixels.
+ *
+ *  Convention (matches rl_game viewer):
+ *    worldToScreen(wx) = wx * scale + tx
+ *    screenToWorld(sx) = (sx - tx) / scale
+ *
+ *  Positive tx shifts world right on screen.
+ *  Grab-and-drag: dragging right increases tx → world moves right.
+ */
 
-export class Transform {
-  /** World → screen scale (pixels per km). */
-  scale: number = 1;
-  /** Screen-space pan offset (pixels). */
-  offsetX: number = 0;
-  offsetY: number = 0;
+export type PanZoom = { scale: number; tx: number; ty: number };
 
-  /** Apply pan drag — content follows cursor (grab-and-drag). */
-  pan(dx: number, dy: number): void {
-    this.offsetX -= dx;
-    this.offsetY -= dy;
+export function fitTransform(
+  containerW: number,
+  containerH: number,
+  mapSize: number,
+  padding = 0,
+): PanZoom {
+  const availW = Math.max(1, containerW - padding * 2);
+  const availH = Math.max(1, containerH - padding * 2);
+  const scale = Math.min(availW / mapSize, availH / mapSize);
+  const tx = (containerW - mapSize * scale) / 2;
+  const ty = (containerH - mapSize * scale) / 2;
+  return { scale, tx, ty };
+}
+
+export function worldToScreen(x: number, y: number, t: PanZoom): [number, number] {
+  return [x * t.scale + t.tx, y * t.scale + t.ty];
+}
+
+export function screenToWorld(sx: number, sy: number, t: PanZoom): [number, number] {
+  return [(sx - t.tx) / t.scale, (sy - t.ty) / t.scale];
+}
+
+export function clampScale(s: number, fitScale: number): number {
+  return Math.min(8 * fitScale, Math.max(fitScale, s));
+}
+
+export function clampPan(
+  t: PanZoom,
+  containerW: number,
+  containerH: number,
+  mapSize: number,
+  fitScale: number,
+): PanZoom {
+  const visW = mapSize * t.scale;
+  const visH = mapSize * t.scale;
+  const minVisible = 0.3;
+  const maxTx = containerW - visW * minVisible;
+  const minTx = -visW * (1 - minVisible);
+  const maxTy = containerH - visH * minVisible;
+  const minTy = -visH * (1 - minVisible);
+  let nt = { ...t };
+  if (t.scale <= fitScale + 1e-6) {
+    nt.tx = (containerW - visW) / 2;
+    nt.ty = (containerH - visH) / 2;
+  } else {
+    nt.tx = Math.max(minTx, Math.min(maxTx, t.tx));
+    nt.ty = Math.max(minTy, Math.min(maxTy, t.ty));
   }
+  return nt;
+}
 
-  /** Apply zoom at screen point — keeps point under cursor fixed. */
-  zoom(factor: number, screenX: number, screenY: number): void {
-    const [wx, wy] = this.screenToWorld(screenX, screenY);
-    this.scale *= factor;
-    // new offset so that world point under cursor maps to same screen point
-    this.offsetX = wx * this.scale - screenX;
-    this.offsetY = wy * this.scale - screenY;
-  }
-
-  /** World coords → screen coords. */
-  worldToScreen(wx: number, wy: number): [number, number] {
-    return [wx * this.scale - this.offsetX, wy * this.scale - this.offsetY];
-  }
-
-  /** Screen coords → world coords. */
-  screenToWorld(sx: number, sy: number): [number, number] {
-    return [(sx + this.offsetX) / this.scale, (sy + this.offsetY) / this.scale];
-  }
-
-  /** Fit the entire map into the viewport, centred. */
-  fitToView(
-    mapWidth: number,
-    mapHeight: number,
-    canvasWidth: number,
-    canvasHeight: number,
-  ): void {
-    this.scale = Math.min(canvasWidth / mapWidth, canvasHeight / mapHeight);
-    // centre map: world centre (mapW/2,mapH/2) → screen centre (canvasW/2,canvasH/2)
-    // offset = worldCentre*scale - screenCentre
-    this.offsetX = (mapWidth * this.scale) / 2 - canvasWidth / 2;
-    this.offsetY = (mapHeight * this.scale) / 2 - canvasHeight / 2;
-  }
+export function zoomAtCursor(
+  t: PanZoom,
+  cursorX: number,
+  cursorY: number,
+  factor: number,
+  fitScale: number,
+  containerW: number,
+  containerH: number,
+  mapSize: number,
+): PanZoom {
+  const ns = clampScale(t.scale * factor, fitScale);
+  const ratio = ns / t.scale;
+  const ntx = cursorX - (cursorX - t.tx) * ratio;
+  const nty = cursorY - (cursorY - t.ty) * ratio;
+  return clampPan({ scale: ns, tx: ntx, ty: nty }, containerW, containerH, mapSize, fitScale);
 }

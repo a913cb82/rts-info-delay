@@ -7,7 +7,8 @@
 
 import "./styles.css";
 import type { Config, TurnRecord, GameRecord, AnimArmy, AnimTown, AnimBattle } from "./types.js";
-import { Transform } from "./transform.js";
+import { fitTransform, clampPan, zoomAtCursor, screenToWorld } from "./transform.js";
+import type { PanZoom } from "./transform.js";
 import { factionColor } from "./color.js";
 import { parseJSONL, separateConfigTurns } from "./loader.js";
 import { buildArmyAnim, buildTownAnim, lerp as animLerp, easeInOut } from "./animation.js";
@@ -21,7 +22,7 @@ let factionCount = 0;
 let turn = 0; // logical turn
 let playing = false;
 let speed = 1;
-let panZoom: { scale: number; tx: number; ty: number } = { scale: 1, tx: 0, ty: 0 };
+let panZoom: PanZoom = { scale: 1, tx: 0, ty: 0 };
 let fitScale = 1;
 
 // animation state
@@ -54,55 +55,7 @@ let eventStripEl!: HTMLDivElement;
 let mapWrap!: HTMLDivElement;
 let scrimEl!: HTMLDivElement;
 
-/* ── Transform helpers (match rl_game) ── */
 
-function fitTransformFor(w: number, h: number, th: number): { scale: number; tx: number; ty: number } {
-  const scale = Math.min(w / th, h / th);
-  return {
-    scale,
-    tx: (w - th * scale) / 2,
-    ty: (h - th * scale) / 2,
-  };
-}
-
-function clampPan(
-  pz: { scale: number; tx: number; ty: number },
-  w: number,
-  h: number,
-  th: number,
-  minScale: number,
-): { scale: number; tx: number; ty: number } {
-  const scale = Math.max(pz.scale, minScale);
-  // clamp so map doesn't go too far off-screen
-  const maxTx = w * 0.7;
-  const maxTy = h * 0.7;
-  const tx = Math.max(-maxTx, Math.min(maxTx, pz.tx));
-  const ty = Math.max(-maxTy, Math.min(maxTy, pz.ty));
-  return { scale, tx, ty };
-}
-
-function screenToWorld(
-  sx: number,
-  sy: number,
-  pz: { scale: number; tx: number; ty: number },
-): [number, number] {
-  return [(sx - pz.tx) / pz.scale, (sy - pz.ty) / pz.scale];
-}
-
-function zoomAtCursor(
-  pz: { scale: number; tx: number; ty: number },
-  cx: number,
-  cy: number,
-  factor: number,
-  minScale: number,
-  w: number,
-  h: number,
-  th: number,
-): { scale: number; tx: number; ty: number } {
-  const [wx, wy] = screenToWorld(cx, cy, pz);
-  const scale = Math.max(pz.scale * factor, minScale);
-  return clampPan({ scale, tx: wx * scale - cx, ty: wy * scale - cy }, w, h, th, minScale);
-}
 
 /* ── Helpers ── */
 
@@ -295,7 +248,9 @@ function drawArmy(
   const sz = 7;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
-  const alpha = dies ? 1 - animProgress : spawns ? animProgress : 1;
+  // Use animProgress for both spawn and death — buildArmyAnim sets from/to
+  // so the position already encodes direction (forward: from→death, backward: death→from)
+  const alpha = (dies || spawns) ? animProgress : 1;
   if (alpha < 1) g.setAttribute("opacity", String(alpha));
 
   const pg = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
@@ -516,7 +471,7 @@ function fitView(): void {
   const rect = mapWrap?.getBoundingClientRect();
   if (!rect) return;
   const th = Math.max(mapSize[0], mapSize[1]);
-  panZoom = fitTransformFor(rect.width, rect.height, th);
+  panZoom = fitTransform(rect.width, rect.height, th);
   fitScale = panZoom.scale;
 }
 
