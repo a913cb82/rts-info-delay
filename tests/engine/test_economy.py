@@ -174,6 +174,17 @@ class TestCrowding:
         net_small = self._net_for(a, [b_small])
         assert net_big < net_small
 
+    def test_village_crowded_more_by_city_than_equal(self) -> None:
+        """Asymmetry: village near city is hit harder (proportionally) than village near equal-pop town."""
+        village = _town(0, 0, 500, tid=0)
+        city = _town(5, 0, 50_000, tid=1)
+        equal = _town(5, 0, 500, tid=2)
+        net_near_city = self._net_for(village, [city])
+        net_near_equal = self._net_for(village, [equal])
+        # City's asymmetry factor > 1 (crowds harder), equal's = 1
+        # So village near city grows less (or shrinks more) than village near equal
+        assert net_near_city < net_near_equal
+
     def test_asymmetry_log_scale(self) -> None:
         """E17: 100× population only slightly worse than 2× at same dist."""
         a = _town(0, 0, 500, tid=0)
