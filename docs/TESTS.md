@@ -348,3 +348,110 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | Z3 | Crowding can kill town over many turns | 5 towns clustered at 5 km, 100 turns | at least one dies (net negative sustained) |
 | Z4 | Viewer replays record exactly | run game → load in viewer | entity counts per turn match world arrays |
 | Z5 | Bot sees delayed world, acts on stale data | bot greedy based on its ledger view | orders arrive late, may target dead entities (dead letters) |
+
+## 22. Medium-level component tests
+
+> Each test creates a world, runs `step()` or a system function end-to-end, and checks the result. Faster than integration tests (Z), but exercise full systems not individual formulas. All tests below use default `GameConfig` unless noted.
+
+### Entities (N)
+
+| # | Test | Input | Expected |
+|---|---|---|---|
+| N6 | 10 armies spawned have unique ids | spawn 10 armies via world.allocate_id | all 10 ids distinct |
+| N7 | Town survives 10 step() calls | town pop 2000, no neighbours, run step() 10 times | town still present, same id, pop > 2000 |
+| N8 | Army removed after BUILD | army at (100,100), apply_build | army no longer in world.armies |
+| N9 | Town removed when pop hits 0 | town pop 500, set pop=0 directly, run economy | town removed from world.towns |
+
+### Economy — full step interaction (E)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| E35 | Isolated town grows over 10 steps | town pop 500 at (500,500), no other entities, run step() 10 times | pop > 500 (growing) |
+| E36 | Two close towns crowd each other | A at (0,0) pop 1000, B at (5,0) pop 1000, run step() 10 times | both pops lower than if isolated (crowding reduces growth) |
+| E37 | Town dies mid-game | town pop 600, set pop=499, run economy step | town absent from world.towns |
+| E38 | BUILD then growth | army builds new town (pop 500), run 10 more steps | new town grows, pop > 500 |
+| E39 | TRAIN then recovery | town pop 3000, TRAIN (pop→2000), run 10 steps | pop recovers above 2000 (growth > train cost per turn) |
+| E40 | Standing TRAIN repeats | town pop 5000, standing TRAIN order, run 3 economy steps | 3 armies spawned, town pop reduced by 3000 |
+| E41 | BUILD on existing town extends life | town pop 600 (near death), army builds on it (pop→1100), run 10 steps | town survives, pop > 1100 |
+| E42 | Crowding + growth equilibrium | 3 towns at 8 km apart all pop 500, run 100 steps | pops converge toward similar values (crowding balances) |
+
+### Movement — full step interaction (M)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| M18 | Army marches 200 km over 4 turns | army at (0,0) target (200,0), speed 50, run step() 4 times | army at (200,0) after 4 steps |
+| M19 | Army blocked then resumes | army A at (0,0)→(200,0), enemy B at (100,5), B removed after turn 1 (dies), A continues turn 2 | A stops at ~(100,0) turn 1, then moves toward (200,0) turn 2 |
+| M20 | Movement before combat in step | army A at (0,0)→(50,0), enemy B at (60,0), run step() once | A moves to (50,0), combat checks (50,0) vs (60,0), both within radius → both die |
+| M21 | Army clamps at map edge | army at (50,50) target (−100,−100), run step() | army at (0,0) (clamped) |
+| M22 | Fresh spawn doesn't block movement | army A at (0,0)→(200,0), new army B spawned at (100,5) this turn, run step() | A reaches (200,0) (B is immune) |
+| M23 | Two armies head-on both stop | A at (0,0)→(100,0), B at (100,0)→(0,0), run step() | both at ~(50,0) |
+| M24 | Army moves then fights same turn | A at (0,0)→(10,0), B at (15,0) stationary, run step() | A moves to (10,0), combat at (10,0) vs (15,0), both die |
+
+### Combat — full step interaction (C)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| C10 | 2v1 over 2 turns | A1 at (0,0), A2 at (5,0) faction 0; B at (100,0) faction 1 target (0,0); run step() 2 times | B marches toward A, stops at ~(50,0), then combat: B dies, A1 and A2 survive |
+| C11 | Dead armies removed from world | 1v1 within radius, run step() | world.armies has 0 entries |
+| C12 | Multiple simultaneous battles | A1 at (0,0) vs B1 at (5,0); A2 at (500,0) vs B2 at (505,0); run step() | both pairs resolve independently, all 4 die |
+| C13 | Fresh spawns don't fight | TRAIN spawns army adjacent to enemy, run step() same turn | spawned army not in combat check |
+| C14 | Score reflects combat deaths | 2 armies (score 2000), combat kills both, run step() | score 0 |
+
+### Turn resolution — full step() ordering (T)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| T8 | step() returns events from all phases | world with army, town, standing orders, run step() | events list contains movement + combat + economy events (not empty) |
+| T9 | Dead armies removed before economy | army at (0,0) vs enemy at (5,0), town at (200,200) pop 2000; run step() | economy runs on world without dead army |
+| T10 | Economy after combat | army on top of town (army dies), town pop grows same turn | town survives, army gone |
+| T11 | Knowledge after economy | town spawns army via TRAIN, run step() | army_spawn event in ledger after economy phase |
+| T12 | Fresh spawns immune to combat | TRAIN spawns army next to enemy, run step() | spawned army survives its first turn |
+| T13 | Multiple systems in one step | army builds town + another army marches + combat elsewhere | all three effects visible in world after step |
+| T14 | step() with no orders | world with armies and towns, no commands, run step() | armies don't move (no target), economy runs, no errors |
+
+### Ledger — full step interaction (G)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| G6 | Ledger accumulates over 10 steps | world with 2 towns, run step() 10 times | ledger.events has entries from multiple turns |
+| G7 | Events visible after correct delay | event at (0,0), faction capital at (50,0), info_speed 150 | event visible at turn t+1 (dist 50, 50/150 = 0.33 turns) |
+| G8 | Old events evicted after window | run 20 steps, check ledger size | ledger doesn't grow unboundedly |
+| G9 | Events sorted by time | log events from turns 1,3,2 (out of order), iterate | ledger.events sorted by turn number |
+
+### Score — full game interaction (S)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| S4 | Score grows as towns grow | 1 town pop 500, no armies, run 50 steps | score at turn 50 > score at turn 0 |
+| S5 | BUILD costs score | army (1000 score) builds town (500 score) | score drops by 500 |
+| S6 | TRAIN is score-neutral | town pop 2000 (2000 score), TRAIN → pop 1000 + army 1000 | score unchanged |
+| S7 | Multi-faction score tracked separately | 2 factions with different towns | each faction's score = own towns pop + own armies × cost |
+
+### Commands — full step interaction (O)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| O14 | MOVE_TO then step() moves army | army at (0,0), MOVE_TO target (100,0), run step() | army at (50,0) after 1 step |
+| O15 | BUILD then step() creates town | army at (100,100), BUILD, run step() | new town at (100,100), army gone |
+| O16 | TRAIN then step() spawns army | town pop 2000, TRAIN, run step() | new army at town pos, town pop 1000 |
+| O17 | Multiple commands in one step | MOVE_TO + TRAIN + BUILD, run step() | all three effects applied |
+| O18 | Invalid commands ignored | army at (0,0), BUILD at (100,100) (too far), run step() | no town created, army survives |
+| O19 | Standing orders persist | MOVE_TO once, run step() 5 times | army continues moving each step |
+
+### Info delay — full step interaction (I)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| I6 | Event visible after 1 turn if close | event at (0,0), capital at (10,0), info_speed 150, run step() | event visible in next step's turn message |
+| I7 | Event delayed 2 turns if far | event at (0,0), capital at (300,0), info_speed 150, run step() | event not visible until turn+2 |
+| I8 | Capital blind during MOVE_CAPITAL | MOVE_CAPITAL in flight, events logged | events not delivered until arrival |
+| I9 | Ledger window holds events | run 15 turns, max map diagonal ~1414, info_speed 150 | events from turn 1 still in ledger at turn 10 |
+
+### Order lag — full step interaction (L)
+
+| # | Test | Input | Expected |
+|---|---|---|
+| L6 | Messenger delivers next turn if close | order from (0,0) to army at (10,0), info_speed 150 | delivered in 1 turn |
+| L7 | Messenger takes 2 turns if far | order from (0,0) to army at (200,0), info_speed 150 | delivered in 2 turns |
+| L8 | Dead letter on army death | order to army, army dies in combat before delivery | order discarded, no crash |
+| L9 | Standing order persists across steps | MOVE_TO once, run 3 steps | army continues moving all 3 steps |
