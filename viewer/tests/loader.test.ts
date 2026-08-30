@@ -5,15 +5,14 @@
 
 import { describe, it, expect } from "vitest";
 import type { Config, TurnRecord, GameRecord } from "../src/types";
+import { parseJSONL as parseJSONLImpl, separateConfigTurns as separateConfigTurnsImpl } from "../src/loader";
 
 /**
  * Parse a JSONL string into a GameRecord array.
  * Should be extracted into loader.ts.
  */
 function parseJSONL(text: string): GameRecord[] {
-  // TODO: implement in loader.ts
-  void text;
-  return [];
+  return parseJSONLImpl(text);
 }
 
 /**
@@ -23,9 +22,7 @@ function separateConfigTurns(records: GameRecord[]): {
   config: Config | null;
   turns: TurnRecord[];
 } {
-  // TODO: implement in loader.ts
-  void records;
-  return { config: null, turns: [] };
+  return separateConfigTurnsImpl(records);
 }
 
 describe("parseJSONL", () => {

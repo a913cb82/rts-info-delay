@@ -1,0 +1,207 @@
+import type {
+  ArmyState,
+  TownState,
+  GameEvent,
+  AnimArmy,
+  AnimTown,
+} from "./types.js";
+
+/** Linear interpolation */
+export function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+/** Ease-in-out for turn slider (quadratic). */
+export function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+/**
+ * Build animation state for armies between turn N and N+1.
+ * - Survivors lerp from N pos to N+1 pos
+ * - Dead armies lerp to death position from army_death or battle event
+ * - Spawned armies grow in at spawn source (army_spawn event)
+ * - Viceroy spawns at capital then moves toward target
+ */
+export function buildArmyAnim(
+  armiesN: ArmyState[],
+  armiesN1: ArmyState[],
+  events: GameEvent[],
+): AnimArmy[] {
+  const mapN = new Map<number, ArmyState>();
+  for (const a of armiesN) mapN.set(a.id, a);
+  const mapN1 = new Map<number, ArmyState>();
+  for (const a of armiesN1) mapN1.set(a.id, a);
+
+  // Index death positions: army_death + battle killed
+  const deathMap = new Map<number, { x: number; y: number }>();
+  for (const e of events) {
+    if (e.kind === "army_death") {
+      deathMap.set(e.id, { x: e.x, y: e.y });
+    } else if (e.kind === "battle") {
+      for (const kid of e.killed) {
+        // battle position is death position
+        if (!deathMap.has(kid)) {
+          deathMap.set(kid, { x: e.x, y: e.y });
+        }
+      }
+    }
+  }
+
+  // Index spawn positions
+  const spawnMap = new Map<number, { x: number; y: number }>();
+  for (const e of events) {
+    if (e.kind === "army_spawn") {
+      spawnMap.set(e.id, { x: e.x, y: e.y });
+    }
+  }
+
+  const result: AnimArmy[] = [];
+
+  // Armies that existed in N (survivors or dead)
+  for (const [id, aN] of mapN) {
+    const aN1 = mapN1.get(id);
+    if (aN1) {
+      // survivor — lerp from N to N1
+      result.push({
+        id,
+        faction: aN.faction,
+        fromX: aN.x,
+        fromY: aN.y,
+        toX: aN1.x,
+        toY: aN1.y,
+        dies: false,
+        deathX: aN1.x,
+        deathY: aN1.y,
+        spawns: false,
+        spawnX: aN.x,
+        spawnY: aN.y,
+      });
+    } else {
+      // died — lerp to death position
+      const death = deathMap.get(id);
+      const toX = death ? death.x : aN.x;
+      const toY = death ? death.y : aN.y;
+      result.push({
+        id,
+        faction: aN.faction,
+        fromX: aN.x,
+        fromY: aN.y,
+        toX,
+        toY,
+        dies: true,
+        deathX: toX,
+        deathY: toY,
+        spawns: false,
+        spawnX: aN.x,
+        spawnY: aN.y,
+      });
+    }
+  }
+
+  // Armies that are new in N1 (spawned)
+  for (const [id, aN1] of mapN1) {
+    if (!mapN.has(id)) {
+      const spawn = spawnMap.get(id);
+      const spawnX = spawn ? spawn.x : aN1.x;
+      const spawnY = spawn ? spawn.y : aN1.y;
+      result.push({
+        id,
+        faction: aN1.faction,
+        fromX: spawnX,
+        fromY: spawnY,
+        toX: aN1.x,
+        toY: aN1.y,
+        dies: false,
+        deathX: aN1.x,
+        deathY: aN1.y,
+        spawns: true,
+        spawnX,
+        spawnY,
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Build animation state for towns between turn N and N+1.
+ */
+export function buildTownAnim(
+  townsN: TownState[],
+  townsN1: TownState[],
+  events: GameEvent[],
+): AnimTown[] {
+  const mapN = new Map<number, TownState>();
+  for (const t of townsN) mapN.set(t.id, t);
+  const mapN1 = new Map<number, TownState>();
+  for (const t of townsN1) mapN1.set(t.id, t);
+
+  // Index town spawn positions (for new towns)
+  const spawnMap = new Map<number, { x: number; y: number }>();
+  for (const e of events) {
+    if (e.kind === "town_spawn") {
+      spawnMap.set(e.id, { x: e.x, y: e.y });
+    }
+  }
+
+  const result: AnimTown[] = [];
+
+  for (const [id, tN] of mapN) {
+    const tN1 = mapN1.get(id);
+    if (tN1) {
+      result.push({
+        id,
+        faction: tN.faction,
+        fromX: tN.x,
+        fromY: tN.y,
+        toX: tN1.x,
+        toY: tN1.y,
+        fromPop: tN.population,
+        toPop: tN1.population,
+        isCapital: tN1.is_capital,
+        dies: false,
+        spawns: false,
+      });
+    } else {
+      // died
+      result.push({
+        id,
+        faction: tN.faction,
+        fromX: tN.x,
+        fromY: tN.y,
+        toX: tN.x,
+        toY: tN.y,
+        fromPop: tN.population,
+        toPop: 0,
+        isCapital: tN.is_capital,
+        dies: true,
+        spawns: false,
+      });
+    }
+  }
+
+  for (const [id, tN1] of mapN1) {
+    if (!mapN.has(id)) {
+      const spawn = spawnMap.get(id);
+      const fromX = spawn ? spawn.x : tN1.x;
+      const fromY = spawn ? spawn.y : tN1.y;
+      result.push({
+        id,
+        faction: tN1.faction,
+        fromX,
+        fromY,
+        toX: tN1.x,
+        toY: tN1.y,
+        fromPop: 0,
+        toPop: tN1.population,
+        isCapital: tN1.is_capital,
+        dies: false,
+        spawns: true,
+      });
+    }
+  }
+
+  return result;
+}

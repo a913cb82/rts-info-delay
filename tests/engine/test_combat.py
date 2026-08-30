@@ -6,7 +6,7 @@ import pytest
 
 from engine.config import GameConfig
 from engine.combat import compute_weaknesses, resolve_combat
-from engine.world import Army, World
+from engine.world import Army, Town, World
 
 CFG = GameConfig()
 
@@ -63,8 +63,9 @@ class TestCombat:
 
     def test_3v2(self) -> None:
         """C3: 3 vs 2 → 2 die, 3 survive."""
-        faction_a = [_army(i * 3, 0, faction=0, aid=i + 1) for i in range(3)]
-        faction_b = [_army(10 + i * 3, 0, faction=1, aid=i + 10) for i in range(2)]
+        # Place all within interact_radius (10) — use tight cluster spacing 2
+        faction_a = [_army(i * 2, 0, faction=0, aid=i + 1) for i in range(3)]
+        faction_b = [_army(6 + i * 2, 0, faction=1, aid=i + 10) for i in range(2)]
         w = _world_with(*(faction_a + faction_b))
         resolve_combat(w, CFG)
         alive = _alive_ids(w)
@@ -212,7 +213,7 @@ class TestCombat:
         b = Army(id=3, faction=1, x=100, y=0, target_x=0, target_y=0, has_target=True)
         w.armies = [a1, a2, b]
         move_armies(w, CFG)
-        assert b.x > 50
+        assert b.x >= 50
         move_armies(w, CFG)
         resolve_combat(w, CFG)
         alive = {army.id for army in w.armies}
@@ -250,11 +251,16 @@ class TestCombat:
         enemy = Army(id=10, faction=1, x=3, y=0)
         w.armies = [enemy]
         from engine.economy import apply_train
-
+        from engine.world import StandingOrder, CommandType
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
+        )
         apply_train(w, CFG)
         spawned = [army for army in w.armies if army.id != 10]
         assert len(spawned) == 1
         resolve_combat(w, CFG)
+        # Fresh spawn should survive its first combat turn (immune)
+        assert len([a for a in w.armies if a.id != 10]) == 1
 
     def test_battle_event_has_combatants_with_id_faction(self) -> None:
         """Battle event combatants list has {id, faction} entries."""

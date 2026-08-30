@@ -13,30 +13,36 @@ export class Transform {
     this.offsetY += dy;
   }
 
-  /** Apply zoom at screen point. */
+  /** Apply zoom at screen point — keeps point under cursor fixed. */
   zoom(factor: number, screenX: number, screenY: number): void {
-    // TODO: zoom toward (screenX, screenY)
+    const [wx, wy] = this.screenToWorld(screenX, screenY);
+    this.scale *= factor;
+    // new offset so that world point under cursor maps to same screen point
+    this.offsetX = wx * this.scale - screenX;
+    this.offsetY = wy * this.scale - screenY;
   }
 
   /** World coords → screen coords. */
   worldToScreen(wx: number, wy: number): [number, number] {
-    // TODO
-    return [0, 0];
+    return [wx * this.scale - this.offsetX, wy * this.scale - this.offsetY];
   }
 
   /** Screen coords → world coords. */
   screenToWorld(sx: number, sy: number): [number, number] {
-    // TODO
-    return [0, 0];
+    return [(sx + this.offsetX) / this.scale, (sy + this.offsetY) / this.scale];
   }
 
-  /** Fit the entire map into the viewport. */
+  /** Fit the entire map into the viewport, centred. */
   fitToView(
     mapWidth: number,
     mapHeight: number,
     canvasWidth: number,
     canvasHeight: number,
   ): void {
-    // TODO
+    this.scale = Math.min(canvasWidth / mapWidth, canvasHeight / mapHeight);
+    // centre map: world centre (mapW/2,mapH/2) → screen centre (canvasW/2,canvasH/2)
+    // offset = worldCentre*scale - screenCentre
+    this.offsetX = (mapWidth * this.scale) / 2 - canvasWidth / 2;
+    this.offsetY = (mapHeight * this.scale) / 2 - canvasHeight / 2;
   }
 }

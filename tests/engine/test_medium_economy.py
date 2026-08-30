@@ -51,6 +51,9 @@ class TestEconomyMedium:
         w = _make_world()
         a = Army(id=w.allocate_id(), faction=0, x=100, y=100)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 100])
+        )
         apply_build(w, CFG)
         # Find the new town
         new_towns = [t for t in w.towns if t.x == 100 and t.y == 100]
@@ -65,6 +68,9 @@ class TestEconomyMedium:
         """E39: TRAIN then recovery."""
         t = Town(id=1, faction=0, x=500, y=500, population=3000)
         w = _make_world(t)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
+        )
         apply_train(w, CFG)
         assert t.population == 2000
         for _ in range(10):
@@ -89,6 +95,9 @@ class TestEconomyMedium:
         w = _make_world(t)
         a = Army(id=w.allocate_id(), faction=0, x=100, y=100)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 100])
+        )
         apply_build(w, CFG)
         assert t.population == 1100
         for _ in range(10):

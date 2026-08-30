@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, asdict
 from typing import Any
 
 
@@ -35,13 +35,18 @@ class GameConfig:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> GameConfig:
         """Create config from bot-protocol JSON object, ignoring unknown keys."""
-        ...
+        cfg = cls()
+        valid = {f.name for f in fields(cls)}
+        for k, v in d.items():
+            if k in valid:
+                setattr(cfg, k, v)
+        return cfg
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise for bot protocol and game record."""
-        ...
+        return {f.name: getattr(self, f.name) for f in fields(self)}
 
     @property
     def death_threshold(self) -> float:
         """Town dies below this population (army_cost × build_efficiency)."""
-        ...
+        return self.army_cost * self.build_efficiency

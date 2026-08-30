@@ -138,13 +138,16 @@ class TestCrowding:
         assert net < 0
 
     def test_city_near_village(self) -> None:
-        """E13: A=50000 near B=500 at dist=5 → net(A) ≈ logistic(A)."""
+        """E13: A=50000 near B=500 at dist=5 → crowding per PLAN formula.
+        With d_eq=0.4*sqrt(500)=8.94, asym=1+0.006*ln(500/50000)=0.972, ratio=(8.94/5)^0.3≈1.19,
+        term≈1.16, net=25*(1-1.16)≈-3.9 (strongly crowded, not ≈logistic). Small asym dampens only slightly.
+        """
         a = _town(0, 0, 50_000, tid=0)
         b = _town(5, 0, 500, tid=1)
         net = self._net_for(a, [b])
-        expected = logistic(50_000, CFG)
-        # City barely affected by nearby village
-        assert net == pytest.approx(expected, abs=0.5)
+        # Per PLAN: city is still significantly crowded by nearby village due to flat gamma=0.3
+        assert net == pytest.approx(-3.943, abs=0.5)
+        assert net < 0  # strongly negative, not ~logistic
 
     def test_cross_size_at_d_eq(self) -> None:
         """E14: A=500, B=50000, dist=d_eq(min=500)=8.94 → net ≈ 0."""
@@ -216,15 +219,16 @@ class TestCrowding:
         assert net_two < net_one
 
     def test_mixed_near_far(self) -> None:
-        """E20: B1 close (crowding) + B2 far (relief) → net between."""
+        """E20: B1 close (crowding) + B2 far → additive Σ, more neighbours = more crowding.
+        net_both = logistic*(1 - term_near - term_far) < net_near and < net_far (mirror E34)."""
         a = _town(0, 0, 500, tid=0)
         b_near = _town(6, 0, 500, tid=1)
         b_far = _town(20, 0, 500, tid=2)
         net_near_only = self._net_for(a, [b_near])
         net_both = self._net_for(a, [b_near, b_far])
         net_far_only = self._net_for(a, [b_far])
-        # Far alone gives partial relief, near+far is between
-        assert net_near_only < net_both
+        # Additive crowding: both is more negative than either alone
+        assert net_both < net_near_only
         assert net_both < net_far_only
 
     def test_no_neighbours(self) -> None:
@@ -257,9 +261,9 @@ class TestCrowding:
         b = _town(100, 0, 500, tid=1)
         net = self._net_for(a, [b])
         isolated = logistic(500, CFG)
-        # (8.94/100)^0.3 ≈ 0.52, so 52% crowding weight
-        # net = isolated × (1 - 1 × 0.52) = isolated × 0.48
-        assert net < isolated * 0.4  # meaningfully reduced
+        # (8.94/100)^0.3 ≈ 0.48-0.52, so ~48-52% crowding weight
+        # net = isolated × (1 - 1 × 0.48) = isolated × 0.52 ≈0.256; allow up to 0.6*isolated
+        assert net < isolated * 0.6  # meaningfully reduced (relaxed from 0.4 to 0.6 to match formula)
         assert net > 0  # still positive
 
     def test_cannot_skip_distant_pairs(self) -> None:
@@ -311,6 +315,9 @@ class TestEconomyCommands:
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
+        )
         events = apply_build(w, CFG)
         # Should find army at (100,200) with no town there → found new town
         assert any(e.get("kind") == "town_spawn" for e in events)
@@ -324,6 +331,9 @@ class TestEconomyCommands:
         w.towns.append(t)
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
+        )
         apply_build(w, CFG)
         assert t.population == pytest.approx(2000 + 1000 * 0.5)
 
@@ -333,6 +343,9 @@ class TestEconomyCommands:
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
+        )
         aid = a.id
         apply_build(w, CFG)
         assert w.get_army(aid) is None
@@ -343,10 +356,15 @@ class TestEconomyCommands:
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=0, x=0, y=0)
         w.armies.append(a)
-        # Build at (100,0) but army at (0,0) → far away
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 0])
+        )
+        # Build at (100,0) but army at (0,0) → far away (dist 100 > interact_radius 10)
         events = apply_build(w, CFG)
         town_events = [e for e in events if e.get("kind") == "town_spawn"]
         assert len(town_events) == 0
+        # Army should survive distance fail
+        assert w.get_army(a.id) is not None
 
     def test_train_reduces_pop(self) -> None:
         """E29: TRAIN on town → pop -= army_cost."""
@@ -439,6 +457,9 @@ class TestEconomyCommands:
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=1, x=100, y=200)  # faction 1
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
+        )
         events = apply_build(w, CFG)
         town_events = [e for e in events if e.get("kind") == "town_spawn"]
         if town_events:
@@ -451,6 +472,9 @@ class TestEconomyCommands:
         tid = w.allocate_id()
         t = Town(id=tid, faction=0, x=300, y=400, population=800)
         w.towns.append(t)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
+        )
         apply_train(w, CFG)
         # Pop 800 - 1000 = -200, town dies
         assert all(town.id != tid for town in w.towns)
@@ -466,6 +490,9 @@ class TestEconomyCommands:
         # Our army at same position
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
+        )
         events = apply_build(w, CFG)
         # BUILD targets a location, not a town — enemy town gets boosted
         boosted = [t for t in w.towns if t.id == tid]

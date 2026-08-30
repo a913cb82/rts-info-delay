@@ -13,9 +13,14 @@ from engine.world import Army, Town, World
 CFG = GameConfig()
 
 
+_next_aid = 100
 def _army(x: float, y: float, faction: int = 0, aid: int | None = None) -> Army:
     """Helper: create an Army at position with no target."""
-    return Army(id=aid if aid is not None else 0, faction=faction, x=x, y=y)
+    global _next_aid
+    if aid is None:
+        aid = _next_aid
+        _next_aid += 1
+    return Army(id=aid, faction=faction, x=x, y=y)
 
 
 def _world_with(*armies: Army, map_size: list[int] | None = None) -> World:
@@ -172,7 +177,7 @@ class TestPathBlocking:
         friendly = _army(50, 5, faction=0)  # same faction
         w = _world_with(a, friendly)
         move_armies(w, CFG)
-        assert a.x == pytest.approx(100, abs=0.01)
+        assert a.x == pytest.approx(50, abs=0.01)
 
     def test_beyond_radius_passes(self) -> None:
         """M10: Enemy at (50,20), radius=10 → passes (dist 20 > 10)."""
@@ -182,7 +187,7 @@ class TestPathBlocking:
         enemy = _army(50, 20, faction=1)
         w = _world_with(a, enemy)
         move_armies(w, CFG)
-        assert a.x == pytest.approx(100, abs=0.01)
+        assert a.x == pytest.approx(50, abs=0.01)
 
     def test_earliest_contact_first(self) -> None:
         """M11: Two enemies → stops at earliest contact."""
@@ -213,8 +218,8 @@ class TestPathBlocking:
         enemy = _army(50, 10.001, faction=1)
         w = _world_with(a, enemy)
         move_armies(w, CFG)
-        # Should reach or nearly reach target
-        assert a.x > 80
+        # Should reach speed-limited position (50) since no block
+        assert a.x == pytest.approx(50, abs=0.01)
 
     def test_moving_enemy_beyond_radius(self) -> None:
         """M11d: Moving enemy that stays > radius away → no stop."""
@@ -226,10 +231,10 @@ class TestPathBlocking:
         b.has_target = True
         w = _world_with(a, b)
         move_armies(w, CFG)
-        assert a.x == pytest.approx(100, abs=1)
+        assert a.x == pytest.approx(50, abs=1)
 
     def test_enemy_town_blocks(self) -> None:
-        """M12: Enemy town at (100,3) → army stops at closest approach (~100,0)."""
+        """M12: Enemy town at (100,3) → army stops at closest approach (~100,0) after 2 turns."""
         a = _army(0, 0)
         a.target_x, a.target_y = 200, 0
         a.has_target = True
@@ -237,6 +242,10 @@ class TestPathBlocking:
         enemy_town = Town(id=w.allocate_id(), faction=1, x=100, y=3, population=1000)
         w.towns.append(enemy_town)
         move_armies(w, CFG)
+        # First turn moves to 50, not yet at town
+        assert a.x == pytest.approx(50, abs=0.01)
+        move_armies(w, CFG)
+        # Second turn should be blocked at ~100
         assert a.x == pytest.approx(100, abs=10)
 
     def test_far_enemy_town_passes(self) -> None:
@@ -248,7 +257,11 @@ class TestPathBlocking:
         enemy_town = Town(id=w.allocate_id(), faction=1, x=100, y=30, population=1000)
         w.towns.append(enemy_town)
         move_armies(w, CFG)
-        assert a.x == pytest.approx(200, abs=1)
+        assert a.x == pytest.approx(50, abs=1)
+        move_armies(w, CFG)
+        assert a.x == pytest.approx(100, abs=1)
+        move_armies(w, CFG)
+        assert a.x == pytest.approx(150, abs=1)
 
     def test_stops_at_approach_point(self) -> None:
         """M14: Stops at closest approach point on path, not entity position."""
@@ -258,6 +271,8 @@ class TestPathBlocking:
         w = _world_with(a)
         town = Town(id=w.allocate_id(), faction=1, x=100, y=5, population=1000)
         w.towns.append(town)
+        move_armies(w, CFG)
+        assert a.x == pytest.approx(50, abs=0.01)
         move_armies(w, CFG)
         # Should stop near (100, 0), not (100, 5)
         assert a.x == pytest.approx(100, abs=10)
@@ -272,7 +287,7 @@ class TestPathBlocking:
         friendly_town = Town(id=w.allocate_id(), faction=0, x=100, y=3, population=1000)
         w.towns.append(friendly_town)
         move_armies(w, CFG)
-        assert a.x == pytest.approx(200, abs=1)
+        assert a.x == pytest.approx(50, abs=1)
 
     def test_earliest_first_void(self) -> None:
         """M15: After first contact stops army, later contacts voided."""
@@ -358,8 +373,8 @@ class TestPathBlocking:
         spawn.is_fresh = True  # just spawned this turn
         w = _world_with(a, spawn)
         move_armies(w, CFG)
-        # Fresh spawn immune → A passes through
-        assert a.x == pytest.approx(100, abs=1)
+        # Fresh spawn immune → A passes through to speed-limited position
+        assert a.x == pytest.approx(50, abs=1)
 
     def test_fresh_spawn_no_block_town(self) -> None:
         """M17b: Fresh spawn at town path → no block."""
@@ -370,8 +385,8 @@ class TestPathBlocking:
         spawn.is_fresh = True
         w = _world_with(a, spawn)
         move_armies(w, CFG)
-        # Fresh spawn should not block
-        assert a.x > 150
+        # Fresh spawn should not block, move to 50
+        assert a.x == pytest.approx(50, abs=1)
 
 
 class TestMovementStacking:

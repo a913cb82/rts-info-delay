@@ -30,7 +30,10 @@ class TestMovementMedium:
         b = Army(id=2, faction=1, x=100, y=5)
         w = _make_world(a, b)
         move_armies(w, CFG)
-        # A should stop near (100, 0)
+        # First turn moves to 50, not yet at blocker
+        assert a.x == 50
+        move_armies(w, CFG)
+        # Second turn should be blocked near (100, 0)
         assert abs(a.x - 100) < 15
         # Remove enemy
         w.armies = [army for army in w.armies if army.id != 2]
@@ -59,13 +62,16 @@ class TestMovementMedium:
         assert a.x >= 0 and a.y >= 0
 
     def test_M22_fresh_spawn_doesnt_block(self) -> None:
-        """M22: Fresh spawn doesn't block movement."""
+        """M22: Fresh spawn doesn't block movement (immune this turn only)."""
         a = Army(id=1, faction=0, x=0, y=0, target_x=200, target_y=0, has_target=True, is_fresh=False)
         b = Army(id=2, faction=1, x=100, y=5, is_fresh=True)
         w = _make_world(a, b)
         move_armies(w, CFG)
-        # A should reach target (B is immune)
-        assert a.x == 200
+        # First turn: B is fresh -> no block, A moves to 50
+        assert a.x == 50
+        move_armies(w, CFG)
+        # Second turn: B is now non-fresh -> blocks at 100
+        assert abs(a.x - 100) < 1
 
     def test_M23_head_on_both_stop(self) -> None:
         """M23: Two armies head-on both stop."""

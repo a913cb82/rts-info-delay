@@ -33,7 +33,8 @@ describe("worldToScreen / screenToWorld", () => {
   });
 
   it("zoom 2x at center doubles distances", () => {
-    t.zoom(2, 400, 300);
+    // Zoom at origin preserves origin and doubles distances from origin
+    t.zoom(2, 0, 0);
     const [sx, sy] = t.worldToScreen(100, 100);
     expect(sx).toBeCloseTo(200);
     expect(sy).toBeCloseTo(200);

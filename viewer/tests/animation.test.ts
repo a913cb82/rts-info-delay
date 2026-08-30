@@ -7,24 +7,28 @@
 
 import { describe, it, expect } from "vitest";
 import type {
-  AnimArmy,
-  AnimTown,
   AnimBattle,
   ArmyState,
   TownState,
   GameEvent,
 } from "../src/types";
+import {
+  lerp as lerpImpl,
+  easeInOut as easeInOutImpl,
+  buildArmyAnim as buildArmyAnimImpl,
+  buildTownAnim as buildTownAnimImpl,
+} from "../src/animation";
 
 /* ── Helpers: these become the animation.ts API ── */
 
-/** Linear interpolation */
+/** Linear interpolation — delegates to animation.ts */
 function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
+  return lerpImpl(a, b, t);
 }
 
-/** Ease-in-out for turn slider */
+/** Ease-in-out for turn slider — delegates to animation.ts */
 function easeInOut(t: number): number {
-  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  return easeInOutImpl(t);
 }
 
 /**
@@ -35,13 +39,8 @@ function buildArmyAnim(
   armiesN: ArmyState[],
   armiesN1: ArmyState[],
   events: GameEvent[],
-): AnimArmy[] {
-  // TODO: implement in animation.ts
-  // For now, return stub — tests will fail
-  void armiesN;
-  void armiesN1;
-  void events;
-  return [];
+) {
+  return buildArmyAnimImpl(armiesN, armiesN1, events);
 }
 
 /**
@@ -51,11 +50,8 @@ function buildTownAnim(
   townsN: TownState[],
   townsN1: TownState[],
   events: GameEvent[],
-): AnimTown[] {
-  void townsN;
-  void townsN1;
-  void events;
-  return [];
+) {
+  return buildTownAnimImpl(townsN, townsN1, events);
 }
 
 /* ── Tests ── */

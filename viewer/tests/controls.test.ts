@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { advanceTurn as advanceTurnImpl, seekTo as seekToImpl } from "../src/controls";
 
 /* ── Turn slider (V8) ── */
 
@@ -15,15 +16,11 @@ interface TurnState {
 }
 
 function advanceTurn(state: TurnState, dtMs: number): TurnState {
-  // TODO: implement in controls.ts
-  void dtMs;
-  return state;
+  return advanceTurnImpl(state, dtMs);
 }
 
 function seekTo(state: TurnState, turn: number): TurnState {
-  // TODO: implement in controls.ts
-  void turn;
-  return state;
+  return seekToImpl(state, turn);
 }
 
 describe("turn slider", () => {

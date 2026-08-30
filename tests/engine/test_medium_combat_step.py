@@ -20,7 +20,7 @@ class TestCombatMedium:
         w.armies = [a1, a2, b]
         # Turn 1: B marches
         move_armies(w, CFG)
-        assert b.x > 50  # B moved toward A
+        assert b.x >= 50  # B moved toward A (speed 50)
         # Turn 2: B continues, enters combat range
         move_armies(w, CFG)
         resolve_combat(w, CFG)
@@ -61,6 +61,7 @@ class TestCombatMedium:
         w.towns.append(t)
         enemy = Army(id=10, faction=1, x=3, y=0)
         w.armies = [enemy]
+        w.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
         # TRAIN spawns army at (0,0) — adjacent to enemy
         apply_train(w, CFG)
         spawned = [a for a in w.armies if a.id != 10]

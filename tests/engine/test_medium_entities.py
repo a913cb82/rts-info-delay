@@ -1,7 +1,7 @@
 """Section 22 medium-level tests — entities N6-N9."""
 
 from engine.config import GameConfig
-from engine.world import World, Town, Army
+from engine.world import World, Town, Army, StandingOrder, CommandType
 from engine.economy import apply_growth, apply_train, apply_build, check_town_death
 
 CFG = GameConfig()
@@ -37,6 +37,9 @@ class TestEntitiesMedium:
         aid = w.allocate_id()
         a = Army(id=aid, faction=0, x=100, y=100)
         w.armies.append(a)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=aid, target_type="army", args=[100, 100])
+        )
         apply_build(w, CFG)
         assert all(army.id != aid for army in w.armies)
 

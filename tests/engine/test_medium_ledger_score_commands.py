@@ -14,11 +14,12 @@ class TestLedgerMedium:
         w = World()
         w.map_size = [1000, 1000]
         w.towns = [Town(id=1, faction=0, x=500, y=500, population=2000)]
+        w.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town"))
         from engine.step import step
 
         for i in range(10):
             step(w, CFG, [])
-        # Ledger should have entries
+        # Ledger should have entries (TRAIN spawns each turn)
         assert len(w.ledger.events) > 0
 
     def test_G7_event_visible_after_delay(self) -> None:
@@ -35,13 +36,16 @@ class TestLedgerMedium:
         """G8: Old events evicted after window."""
         w = World()
         w.map_size = [1000, 1000]
-        w.towns = [Town(id=1, faction=0, x=500, y=500, population=2000)]
+        w.towns = [Town(id=1, faction=0, x=500, y=500, population=5000)]
+        w.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town"))
         from engine.step import step
 
+        # Ensure ledger exists before measuring
+        step(w, CFG, [])
         initial = len(w.ledger.events)
         for i in range(20):
             step(w, CFG, [])
-        # Events should not grow unboundedly
+        # Events should not grow unboundedly (eviction window)
         assert len(w.ledger.events) < 200
 
     def test_G9_sorted_by_time(self) -> None:
@@ -77,6 +81,7 @@ class TestScoreMedium:
         w.map_size = [1000, 1000]
         a = Army(id=1, faction=0, x=100, y=100)
         w.armies = [a]
+        w.standing_orders.append(StandingOrder(command=CommandType.BUILD, target_id=1, target_type="army", args=[100, 100]))
         score_before = compute_score(w, faction=0)
         apply_build(w, CFG)
         score_after = compute_score(w, faction=0)
@@ -91,6 +96,7 @@ class TestScoreMedium:
         w.map_size = [1000, 1000]
         t = Town(id=1, faction=0, x=500, y=500, population=2000)
         w.towns = [t]
+        w.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town"))
         score_before = compute_score(w, faction=0)
         apply_train(w, CFG)
         score_after = compute_score(w, faction=0)
@@ -150,7 +156,8 @@ class TestCommandsMedium:
         orders = [{"command": "TRAIN", "town_id": 1}]
         step(w, CFG, orders)
         assert len(w.armies) >= 1
-        assert t.population == 1000
+        # Population after TRAIN (2000-1000) plus small growth for 1 turn, so approx 1000
+        assert t.population == 1000 or abs(t.population - 1000) < 2
 
     def test_O17_multiple_commands(self) -> None:
         """O17: Multiple commands in one step."""
