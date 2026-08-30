@@ -624,6 +624,23 @@ class TestDistanceCheckTiming:
         assert w.armies[0].target_x == 100
         assert w.armies[0].x == 100
 
+    def test_MOVE_then_BUILD_same_pos_second_ignored_after_move(self) -> None:
+        """MOVE then 1 turn later BUILD at same (10,10): BUILD ignored as army moved."""
+        cap = _town(0, 0, 5000, faction=0, tid=10, cap=True)
+        w = _world_with(armies=[_army(10, 10, 0, 1)], towns=[cap])
+        ledger = Ledger(CFG.info_speed, 1414)
+        # Turn 1: MOVE_TO from (10,10) to (500,10) — accepted, army moves to (60,10)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_TO 1 10 10 500 10"]})
+        assert w.armies[0].target_x == 500
+        assert w.armies[0].x == 60
+        # Turn 2: BUILD at same (10,10) with same army_id — army now at (60,10), from is stale
+        step(w, CFG, ledger, turn=2, orders={0: ["BUILD 1 10 10"]})
+        # BUILD ignored (dist 50 > radius 10), no town, army survives and continues moving
+        assert len(w.towns) == 1  # only the capital
+        assert len(w.armies) == 1
+        assert w.armies[0].id == 1
+        assert w.armies[0].x == 110  # moved again toward (500,10)
+
 
 class TestMoveCapitalEvents:
     """MOVE_CAPITAL event verification — is_viceroy, town_spawn, consumption."""
