@@ -168,13 +168,13 @@ def step(
     movement_events = _phase_movement(world, config)
 
     # After movement, check viceroy arrival (part of movement/economy)
-    viceroy_events = _handle_viceroy_arrival(world, config)
+    viceroy_events = _handle_viceroy_arrival(world, config, ledger=normalized_ledger, turn=normalized_turn)
 
     # Phase 4: Combat
     combat_events = _phase_combat(world, config)
 
     # Phase 5: Economy
-    economy_events = _phase_economy(world, config)
+    economy_events = _phase_economy(world, config, ledger=normalized_ledger, turn=normalized_turn)
 
     # Combine all events
     all_events: list[dict] = []
@@ -623,7 +623,7 @@ def _phase_movement(world: World, config: GameConfig) -> list[dict]:
     return move_armies(world, config)
 
 
-def _handle_viceroy_arrival(world: World, config: GameConfig) -> list[dict]:
+def _handle_viceroy_arrival(world: World, config: GameConfig, ledger=None, turn: int = 0) -> list[dict]:
     """Check viceroy arrival and found town."""
     events: list[dict] = []
     # Find viceroy armies that have reached target
@@ -654,6 +654,12 @@ def _handle_viceroy_arrival(world: World, config: GameConfig) -> list[dict]:
         new_town_obj = Town(id=nid, faction=viceroy.faction, x=tx, y=ty, population=config.army_cost * config.build_efficiency, is_capital=True)
         world.towns.append(new_town_obj)
         events.append({"kind": "town_spawn", "id": new_town_obj.id, "faction": new_town_obj.faction, "x": new_town_obj.x, "y": new_town_obj.y, "population": new_town_obj.population, "is_capital": True})
+        # Record new capital time for ledger filtering: only events with turn >= this are visible from new capital
+        if ledger is not None and hasattr(ledger, "set_capital_since"):
+            try:
+                ledger.set_capital_since(viceroy.faction, turn)
+            except Exception:
+                pass
         # Remove viceroy army (consumed)
         viceroy_id = viceroy.id
         vx, vy = viceroy.x, viceroy.y
@@ -685,7 +691,7 @@ def _phase_combat(world: World, config: GameConfig) -> list[dict]:
     return resolve_combat(world, config)
 
 
-def _phase_economy(world: World, config: GameConfig) -> list[dict]:
+def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0) -> list[dict]:
     """Apply growth, execute standing TRAIN/BUILD, check town death."""
     from engine.economy import apply_growth, apply_train, apply_build, check_town_death
     events: list[dict] = []
@@ -823,6 +829,12 @@ def _phase_economy(world: World, config: GameConfig) -> list[dict]:
         new_town = Town(id=new_id, faction=faction, x=tx, y=ty, population=config.army_cost * config.build_efficiency, is_capital=True)
         world.towns.append(new_town)
         events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction, "x": new_town.x, "y": new_town.y, "population": new_town.population, "is_capital": True})
+        # Record new capital time for ledger filtering
+        if ledger is not None and hasattr(ledger, "set_capital_since"):
+            try:
+                ledger.set_capital_since(faction, turn)
+            except Exception:
+                pass
         # Remove viceroy immediately (consumed)
         world.remove_army(viceroy.id)
         events.append({"kind": "army_death", "id": viceroy.id, "x": viceroy.x, "y": viceroy.y})

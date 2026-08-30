@@ -801,3 +801,71 @@ class TestMoveCapitalEdgeCases:
         cap_spawns = [e for e in events if e.get("kind") == "town_spawn" and e.get("is_capital")]
         assert len(cap_spawns) == 1
         assert cap_spawns[0]["x"] == 200 and cap_spawns[0]["y"] == 200
+
+
+class TestMoveCapitalLedger:
+    """Event visibility after MOVE_CAPITAL — only events from new capital time onwards."""
+
+    def test_events_before_new_capital_not_visible_from_new_capital(self) -> None:
+        """Old events (t < new_capital_time) never become visible from new capital."""
+        # Old capital at (0,0), new capital will be at (500,0) established at turn 5
+        cap = _town(0, 0, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[cap])
+        ledger = Ledger(CFG.info_speed, 1414)
+        # Event at old capital position at t=1 (near old capital)
+        from engine.ledger import Event, EventKind
+        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
+        # MOVE_CAPITAL at turn 5 to (500,0) — arrives same turn (dist 0 for this test, target same as start for instant)
+        # Use instant arrival: target same as capital, so new capital at (500,0) at turn 5
+        # To make it 500 away, we need a real move: use target (500,0) distance 500, speed 50 → 10 turns, but for test we use instant via same pos trick
+        # Simpler: directly set capital_since to 5 to simulate new capital at turn 5
+        # Instead, do a real MOVE_CAPITAL via step and then check visibility
+        # Log an event at t=6 near new capital (should be visible) and check filtering
+        ledger.log(Event(turn=6, x=500, y=0, kind=EventKind.BATTLE, payload={}))
+        # Simulate new capital established at turn 5
+        ledger.set_capital_since(faction=0, turn=5)
+        # Old event at t=1 should NOT be visible from new capital at (500,0) even though dist allows it (1+500/150=4.33 <=10)
+        visible_old = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=10)
+        # Only the t=6 event should be visible, not t=1
+        assert len(visible_old) == 1
+        assert visible_old[0].turn == 6
+
+    def test_new_events_visible_from_new_capital(self) -> None:
+        """Events with t >= new_capital_time are visible from new capital based on distance."""
+        from engine.ledger import Event, EventKind
+        ledger = Ledger(CFG.info_speed, 1414)
+        # New capital at (500,0) since turn 5
+        ledger.set_capital_since(faction=0, turn=5)
+        ledger.log(Event(turn=5, x=500, y=0, kind=EventKind.BATTLE, payload={"id": 1}))
+        ledger.log(Event(turn=6, x=500, y=0, kind=EventKind.BATTLE, payload={"id": 2}))
+        # Both at distance 0 from new capital, should be visible at now=6
+        visible = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=6)
+        assert len(visible) == 2
+        # Event at t=4 (before new capital) should not be visible even if close
+        ledger2 = Ledger(CFG.info_speed, 1414)
+        ledger2.set_capital_since(faction=0, turn=5)
+        ledger2.log(Event(turn=4, x=500, y=0, kind=EventKind.BATTLE, payload={}))
+        visible2 = ledger2.visible_events(faction=0, capital_x=500, capital_y=0, now=10)
+        assert len(visible2) == 0
+
+    def test_step_MOVE_CAPITAL_resets_ledger_since(self) -> None:
+        """Full step: after MOVE_CAPITAL arrival, ledger filters old events."""
+        cap = _town(0, 0, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[cap])
+        ledger = Ledger(CFG.info_speed, 1414)
+        # Event at old capital before move
+        from engine.ledger import Event, EventKind
+        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
+        # MOVE_CAPITAL instantly to (100,0) at turn 2
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town", args=[100.0, 100.0])
+        )
+        step(w, CFG, ledger, turn=2, orders={})
+        # After move, old event at t=1 should not be visible from new capital at (100,0)
+        visible = ledger.visible_events(faction=0, capital_x=100, capital_y=0, now=10)
+        # The old t=1 event is < capital_since (2), so filtered
+        assert all(e.turn >= 2 for e in visible)
+        # A new event at t=3 near new capital should be visible
+        ledger.log(Event(turn=3, x=100, y=0, kind=EventKind.BATTLE, payload={}))
+        visible2 = ledger.visible_events(faction=0, capital_x=100, capital_y=0, now=10)
+        assert any(e.turn == 3 for e in visible2)

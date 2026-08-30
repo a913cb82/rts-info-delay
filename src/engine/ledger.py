@@ -94,6 +94,9 @@ class Ledger:
         self.eviction_ptr = 0
         # window in turns = max_dist / info_speed
         self._window = self.map_diagonal / self.info_speed if self.info_speed != 0 else 10.0
+        # Per-faction capital establishment time: only events with turn >= capital_since[faction] are visible
+        # Default 0 means all events from game start are visible
+        self.capital_since: dict[int, int] = {}
 
     def log(self, event: Event) -> None:
         """Append an event."""
@@ -161,10 +164,15 @@ class Ledger:
             pass
         if is_in_flight:
             return []
+        # Only events from capital establishment time onwards are visible
+        since = self.capital_since.get(faction, 0)
         result: list[Event] = []
         for ev in self.events:
             # Support both turn and t attributes
             t = getattr(ev, "turn", getattr(ev, "t", 0))
+            # Filter: only events with turn >= capital establishment time
+            if t < since:
+                continue
             # compute distance
             dist = math.hypot(ev.x - capital_x, ev.y - capital_y)
             # visibility time
@@ -205,6 +213,14 @@ class Ledger:
                 self.eviction_ptr += 1
             else:
                 break
+
+    def set_capital_since(self, faction: int, turn: int) -> None:
+        """Set the turn when faction's current capital was established.
+        
+        Only events with turn >= this value will be visible to the faction.
+        Called when MOVE_CAPITAL completes.
+        """
+        self.capital_since[faction] = int(turn)
 
     def _visibility_delay(self, event: Event, capital_x: float, capital_y: float) -> float:
         """Turn at which event becomes visible: event.t + dist / info_speed."""
