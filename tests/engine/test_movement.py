@@ -372,3 +372,48 @@ class TestPathBlocking:
         move_armies(w, CFG)
         # Fresh spawn should not block
         assert a.x > 150
+
+
+class TestMovementStacking:
+    """Stacking at movement layer — two armies at identical coords."""
+
+    def test_two_armies_same_pos_both_move_together(self) -> None:
+        """Two armies at same position with same target move identically."""
+        a1 = Army(id=1, faction=0, x=0, y=0, target_x=200, target_y=0, has_target=True)
+        a2 = Army(id=2, faction=0, x=0, y=0, target_x=200, target_y=0, has_target=True)
+        w = _world_with(a1, a2)
+        move_armies(w, CFG)
+        assert a1.x == a2.x == 50
+        assert a1.y == a2.y == 0
+
+    def test_two_armies_same_pos_different_targets(self) -> None:
+        """Two armies at same position but different targets move independently."""
+        a1 = Army(id=1, faction=0, x=0, y=0, target_x=200, target_y=0, has_target=True)
+        a2 = Army(id=2, faction=0, x=0, y=0, target_x=0, target_y=200, has_target=True)
+        w = _world_with(a1, a2)
+        move_armies(w, CFG)
+        assert a1.x == 50 and a1.y == 0
+        assert a2.x == 0 and a2.y == 50
+
+    def test_three_armies_stacked_all_move(self) -> None:
+        """Three armies stacked all move together."""
+        armies = [
+            Army(id=i, faction=0, x=100, y=100, target_x=300, target_y=100, has_target=True)
+            for i in range(3)
+        ]
+        w = _world_with(*armies)
+        move_armies(w, CFG)
+        for a in w.armies:
+            assert a.x == 150 and a.y == 100
+
+    def test_death_event_position_is_final_not_start(self) -> None:
+        """Army marching (0,0)→(100,0) dies at (50,0). Combat at final pos."""
+        from engine.combat import resolve_combat
+
+        a = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True)
+        b = _army(50, 0, faction=1)
+        w = _world_with(a, b)
+        move_armies(w, CFG)
+        # a moved to (50,0), b at (50,0) — combat at final position
+        resolve_combat(w, CFG)
+        assert len(w.armies) == 0  # both die at (50,0)

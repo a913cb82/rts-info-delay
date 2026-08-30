@@ -17,7 +17,7 @@ from engine.economy import (
     equilibrium_distance,
     logistic,
 )
-from engine.world import Army, Town, World
+from engine.world import Army, StandingOrder, CommandType, Town, World
 
 CFG = GameConfig()  # default config for all economy tests
 
@@ -474,3 +474,49 @@ class TestEconomyCommands:
             pass  # implementation decides whether enemy town is boosted
         # Army is consumed regardless
         assert all(army.id != a.id for army in w.armies)
+
+
+class TestStandingOrderCleanup:
+    """Standing order cleanup on entity death."""
+
+    def test_TRAIN_order_removed_when_town_dies(self) -> None:
+        """Town dies → standing TRAIN order removed."""
+        w = World()
+        w.map_size = [1000, 1000]
+        t = Town(id=1, faction=0, x=500, y=500, population=1)
+        w.towns.append(t)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
+        )
+        assert len(w.standing_orders) == 1
+        check_town_death(w, CFG)
+        assert len(w.standing_orders) == 0
+
+    def test_BUILD_order_removed_when_army_dies(self) -> None:
+        """Army dies → standing BUILD order removed."""
+        from engine.combat import resolve_combat
+
+        w = World()
+        w.map_size = [1000, 1000]
+        a = Army(id=1, faction=0, x=0, y=0)
+        enemy = Army(id=2, faction=1, x=3, y=0)
+        w.armies = [a, enemy]
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=1, target_type="army",
+                           args=[0.0, 0.0])
+        )
+        resolve_combat(w, CFG)
+        assert len(w.armies) == 0
+        assert all(so.target_id != 1 for so in w.standing_orders)
+
+    def test_move_orders_removed_when_army_dies(self) -> None:
+        """Army dies → its move orders (has_target) cleared."""
+        from engine.combat import resolve_combat
+
+        w = World()
+        w.map_size = [1000, 1000]
+        a = Army(id=1, faction=0, x=0, y=0, target_x=500, target_y=0, has_target=True)
+        enemy = Army(id=2, faction=1, x=3, y=0)
+        w.armies = [a, enemy]
+        resolve_combat(w, CFG)
+        assert len(w.armies) == 0

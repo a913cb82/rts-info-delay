@@ -558,3 +558,184 @@ class TestCommands:
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_TO 2 50 50 100 100"]})
         # Both TRAIN and MOVE_TO processed
         assert len(w.armies) >= 2  # original + trained
+
+
+class TestDistanceCheckTiming:
+    """Distance check: order arrives after army moved away from from_x, from_y."""
+
+    def test_MOVE_TO_order_ignored_if_army_moved_away(self) -> None:
+        """Army marching, order from=(0,0) but army now at (50,0) → rejected."""
+        w = _world_with(armies=[_army(0, 0, 0, 1)])
+        w.armies[0].target_x = 200
+        w.armies[0].target_y = 0
+        w.armies[0].has_target = True
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={
+            0: ["MOVE_TO 1 0 0 300 300"]
+        })
+        a = w.armies[0]
+        # Army should still be heading to (200,0), not (300,300)
+        assert a.target_x == 200 and a.target_y == 0
+
+    def test_BUILD_order_ignored_if_army_moved_away(self) -> None:
+        """Army marching, BUILD from=(10,10) but army at (60,10) → rejected."""
+        w = _world_with(armies=[_army(10, 10, 0, 1)])
+        w.armies[0].target_x = 500
+        w.armies[0].target_y = 10
+        w.armies[0].has_target = True
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={
+            0: ["BUILD 1 10 10"]
+        })
+        # Army moved to (60,10), far from (10,10)
+        assert len(w.towns) == 0
+
+    def test_BUILD_order_accepted_if_army_still_nearby(self) -> None:
+        """Stationary army, BUILD from=(0,0) matches → accepted."""
+        w = _world_with(armies=[_army(0, 0, 0, 1)])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={
+            0: ["BUILD 1 0 0"]
+        })
+        assert len(w.towns) == 1
+
+    def test_MOVE_TO_order_accepted_if_army_still_nearby(self) -> None:
+        """Stationary army, MOVE_TO from=(100,100) matches → accepted."""
+        w = _world_with(armies=[_army(100, 100, 0, 1)])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={
+            0: ["MOVE_TO 1 100 100 500 500"]
+        })
+        a = w.armies[0]
+        assert a.target_x == 500 and a.target_y == 500
+
+
+class TestMoveCapitalEvents:
+    """MOVE_CAPITAL event verification — is_viceroy, town_spawn, consumption."""
+
+    def test_MOVE_CAPITAL_emits_army_spawn_with_is_viceroy(self) -> None:
+        """MOVE_CAPITAL emits army_spawn with is_viceroy: true."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[200.0, 200.0])
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        viceroy_spawns = [e for e in events
+                          if e.get("kind") == "army_spawn" and e.get("is_viceroy") is True]
+        assert len(viceroy_spawns) == 1
+        assert viceroy_spawns[0]["x"] == 100
+        assert viceroy_spawns[0]["y"] == 100
+
+    def test_MOVE_CAPITAL_arrival_emits_town_spawn_is_capital(self) -> None:
+        """Viceroy arrival emits town_spawn with is_capital: true."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[100.0, 100.0])  # same pos → instant
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        cap_spawns = [e for e in events
+                      if e.get("kind") == "town_spawn" and e.get("is_capital") is True]
+        assert len(cap_spawns) == 1
+        assert cap_spawns[0]["x"] == 100
+        assert cap_spawns[0]["y"] == 100
+
+    def test_viceroy_consumed_on_arrival(self) -> None:
+        """Viceroy army removed from world on arrival."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[100.0, 100.0])
+        )
+        step(w, CFG, ledger, turn=1, orders={})
+        viceroy = [a for a in w.armies if a.is_viceroy]
+        assert len(viceroy) == 0
+
+
+class TestViceroyFieldInEvents:
+    """is_viceroy field in army_spawn events."""
+
+    def test_TRAIN_spawn_has_is_viceroy_false(self) -> None:
+        """army_spawn from TRAIN has is_viceroy: false."""
+        t = _town(500, 500, 2000, faction=0, tid=1)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        spawns = [e for e in events if e.get("kind") == "army_spawn"]
+        assert len(spawns) == 1
+        assert spawns[0].get("is_viceroy") is False
+
+    def test_MOVE_CAPITAL_spawn_has_is_viceroy_true(self) -> None:
+        """army_spawn from MOVE_CAPITAL has is_viceroy: true."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[500.0, 500.0])
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        spawns = [e for e in events if e.get("kind") == "army_spawn"]
+        assert len(spawns) == 1
+        assert spawns[0].get("is_viceroy") is True
+
+
+class TestMoveCapitalEdgeCases:
+    """MOVE_CAPITAL edge cases."""
+
+    def test_same_position_as_current_capital(self) -> None:
+        """MOVE_CAPITAL to same position → completes immediately."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[100.0, 100.0])
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        cap_spawns = [e for e in events if e.get("kind") == "town_spawn" and e.get("is_capital")]
+        assert len(cap_spawns) == 1
+        assert cap_spawns[0]["x"] == 100
+        assert cap_spawns[0]["y"] == 100
+        assert t.is_capital is False
+
+    def test_no_capital_exists(self) -> None:
+        """MOVE_CAPITAL when faction has no capital → ignored."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=False)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[500.0, 500.0])
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        viceroy_spawns = [e for e in events if e.get("is_viceroy") is True]
+        assert len(viceroy_spawns) == 0
+
+    def test_multiple_MOVE_CAPITAL_queued(self) -> None:
+        """Two MOVE_CAPITAL orders → only first should execute."""
+        t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[200.0, 200.0])
+        )
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
+                           args=[300.0, 300.0])
+        )
+        events = step(w, CFG, ledger, turn=1, orders={})
+        cap_spawns = [e for e in events if e.get("kind") == "town_spawn" and e.get("is_capital")]
+        assert len(cap_spawns) == 1
+        assert cap_spawns[0]["x"] == 200 and cap_spawns[0]["y"] == 200

@@ -238,32 +238,4 @@ class TestBotProtocol:
         orders = ["MOVE_TO 1 0 0 100 100"]
         parse_orders(orders)  # should not crash
         # Ownership check happens in apply_orders_to_world
-
-
-class TestScore:
-    """Score computation used by runner."""
-
-    def test_formula(self) -> None:
-        """S1: score = sum(town_pop) + army_cost × num_armies."""
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns = [
-            Town(id=0, faction=0, x=0, y=0, population=1000),
-            Town(id=1, faction=0, x=10, y=0, population=2000),
-            Town(id=2, faction=0, x=20, y=0, population=500),
-        ]
-        w.armies = [
-            Army(id=10, faction=0, x=0, y=0),
-            Army(id=11, faction=0, x=0, y=0),
-        ]
-        result = score(w, CFG)
-        assert result[0] == 3500 + 2 * 1000  # = 5500
-
-    def test_only_alive_counted(self) -> None:
-        """S2: Dead entities not counted."""
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns = [Town(id=0, faction=0, x=0, y=0, population=1000)]
-        w.armies = []
-        result = score(w, CFG)
-        assert result[0] == 1000
+# Score tests moved to tests/engine/test_score.py

@@ -114,3 +114,23 @@ class TestScore:
         result = score(w, CFG)
         assert result[0] == 2000  # 1000 + 1000
         assert result[1] == 3000  # 2000 + 1000
+
+    def test_score_covers_all_factions(self) -> None:
+        """Score works for each faction independently, including absent factions."""
+        w = _world_with(
+            towns=[
+                Town(id=1, faction=0, x=100, y=100, population=1000),
+                Town(id=2, faction=1, x=900, y=900, population=2000),
+            ],
+            armies=[Army(id=3, faction=2, x=500, y=500)],
+        )
+        s0 = score(w, CFG)
+        assert s0[0] == 1000
+        assert s0[1] == 2000
+        assert s0.get(2, 0) == 1000  # army only
+
+    def test_score_empty_world(self) -> None:
+        """Score of empty world is 0 for all factions."""
+        w = _world_with()
+        result = score(w, CFG)
+        assert result.get(0, 0) == 0
