@@ -609,6 +609,21 @@ class TestDistanceCheckTiming:
         a = w.armies[0]
         assert a.target_x == 500 and a.target_y == 500
 
+    def test_two_MOVE_TO_same_from_second_ignored_after_move(self) -> None:
+        """Two MOVE_TO from same (0,0): first moves army, second is stale and ignored."""
+        cap = _town(0, 0, 5000, faction=0, tid=10, cap=True)
+        w = _world_with(armies=[_army(0, 0, 0, 1)], towns=[cap])
+        ledger = Ledger(CFG.info_speed, 1414)
+        # Turn 1: MOVE_TO from (0,0) to (100,0) — accepted, army moves to (50,0)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_TO 1 0 0 100 0"]})
+        assert w.armies[0].target_x == 100
+        assert w.armies[0].x == 50
+        # Turn 2: MOVE_TO from same (0,0) to (200,0) — army now at (50,0), from is stale
+        step(w, CFG, ledger, turn=2, orders={0: ["MOVE_TO 1 0 0 200 0"]})
+        # Second order ignored (dist 50 > radius 10), army continues to first target
+        assert w.armies[0].target_x == 100
+        assert w.armies[0].x == 100
+
 
 class TestMoveCapitalEvents:
     """MOVE_CAPITAL event verification — is_viceroy, town_spawn, consumption."""
