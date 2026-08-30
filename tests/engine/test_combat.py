@@ -190,3 +190,13 @@ class TestCombat:
         resolve_combat(w, CFG)
         # They're close → mutual death
         assert len(w.armies) == 0
+
+    def test_chain_3_in_line(self) -> None:
+        """C8: Three armies in a line, all within radius of neighbors."""
+        a = _army(0, 0, faction=0, aid=1)
+        b = _army(5, 0, faction=1, aid=2)
+        c = _army(10, 0, faction=2, aid=3)
+        w = _world_with(a, b, c)
+        resolve_combat(w, CFG)
+        # All within interact_radius=10 of each other → all die
+        assert len(w.armies) == 0

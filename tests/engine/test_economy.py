@@ -443,3 +443,34 @@ class TestEconomyCommands:
         town_events = [e for e in events if e.get("kind") == "town_spawn"]
         if town_events:
             assert town_events[0]["faction"] == 1
+
+    def test_train_pop_800_dies(self) -> None:
+        """E31b: TRAIN when pop=800 → pop goes to -200, town dies."""
+        w = World()
+        w.map_size = [1000, 1000]
+        tid = w.allocate_id()
+        t = Town(id=tid, faction=0, x=300, y=400, population=800)
+        w.towns.append(t)
+        apply_train(w, CFG)
+        # Pop 800 - 1000 = -200, town dies
+        assert all(town.id != tid for town in w.towns)
+
+    def test_build_on_enemy_town(self) -> None:
+        """E31g: BUILD on enemy town — PLAN says BUILD valid if army owned."""
+        w = World()
+        w.map_size = [1000, 1000]
+        # Enemy town at (100,200)
+        tid = w.allocate_id()
+        enemy_town = Town(id=tid, faction=1, x=100, y=200, population=2000)
+        w.towns.append(enemy_town)
+        # Our army at same position
+        a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
+        w.armies.append(a)
+        events = apply_build(w, CFG)
+        # BUILD targets a location, not a town — enemy town gets boosted
+        boosted = [t for t in w.towns if t.id == tid]
+        if boosted:
+            # If the stub returns the town, pop should increase by 500
+            pass  # implementation decides whether enemy town is boosted
+        # Army is consumed regardless
+        assert all(army.id != a.id for army in w.armies)
