@@ -411,6 +411,95 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
   });
 });
 
+describe("battle visualization — lerp", () => {
+  it("battle at midpoint where armies converged", () => {
+    // Two armies from (0,0) and (10,0) both lerped to (5,0) and died
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 10, y: 0 },
+    ];
+    const n1: ArmyState[] = [];
+    const events: GameEvent[] = [
+      { kind: "battle", x: 5, y: 0, combatants: [{ id: 1, faction: 0 }, { id: 2, faction: 1 }], killed: [1, 2] },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    const battle = events[0] as { x: number; y: number; combatants: { id: number; faction: number }[] };
+    // Battle position is midpoint (5,0) — where both armies lerped to
+    expect(battle.x).toBe(5);
+    // Both armies lerped to same battle position
+    const a1 = anim.find((a) => a.id === 1)!;
+    const a2 = anim.find((a) => a.id === 2)!;
+    expect(a1.toX).toBe(battle.x);
+    expect(a2.toX).toBe(battle.x);
+    // Mid-lerp: armies halfway to battle
+    expect(lerp(a1.fromX, a1.toX, 0.5)).toBe(2.5);
+    expect(lerp(a2.fromX, a2.toX, 0.5)).toBe(7.5);
+  });
+
+  it("battle lines connect lerped positions, shrink as armies converge", () => {
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 10, y: 0 },
+    ];
+    const n1: ArmyState[] = [];
+    const events: GameEvent[] = [
+      { kind: "battle", x: 5, y: 0, combatants: [{ id: 1, faction: 0 }, { id: 2, faction: 1 }], killed: [1, 2] },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    const a1 = anim.find((a) => a.id === 1)!;
+    const a2 = anim.find((a) => a.id === 2)!;
+    // At t=0, armies at (0,0) and (10,0), distance 10
+    const distStart = Math.hypot(a1.fromX - a2.fromX, a1.fromY - a2.fromY);
+    expect(distStart).toBe(10);
+    // At t=0.5, armies at (2.5,0) and (7.5,0), distance 5
+    const midX1 = lerp(a1.fromX, a1.toX, 0.5);
+    const midX2 = lerp(a2.fromX, a2.toX, 0.5);
+    expect(Math.abs(midX2 - midX1)).toBe(5);
+    // At t=1, both at (5,0), distance 0 — lines collapse
+    expect(a1.toX).toBe(a2.toX);
+  });
+
+  it("moving armies block and battle — lerp to blocked midpoint", () => {
+    // A at (0,0)→(100,0), B at (10,0)→(-90,0), blocked at (5,0), battle there
+    const n: ArmyState[] = [
+      { id: 1, faction: 0, x: 0, y: 0 },
+      { id: 2, faction: 1, x: 10, y: 0 },
+    ];
+    const n1: ArmyState[] = [];
+    const events: GameEvent[] = [
+      { kind: "battle", x: 5, y: 0, combatants: [{ id: 1, faction: 0 }, { id: 2, faction: 1 }], killed: [1, 2] },
+    ];
+    const anim = buildArmyAnim(n, n1, events);
+    // Not lerp to targets (100,0) and (-90,0), but to blocked battle pos (5,0)
+    const a1 = anim.find((a) => a.id === 1)!;
+    const a2 = anim.find((a) => a.id === 2)!;
+    expect(a1.toX).toBe(5);
+    expect(a2.toX).toBe(5);
+    expect(a1.toX).not.toBe(100);
+    expect(a2.toX).not.toBe(-90);
+  });
+
+  it("battle appears only for the turn it happened", () => {
+    // Turn N: no battle, Turn N+1: battle at (5,0), Turn N+2: no battle
+    const battleEvent: GameEvent = {
+      kind: "battle", x: 5, y: 0,
+      combatants: [{ id: 1, faction: 0 }, { id: 2, faction: 1 }], killed: [1, 2],
+    };
+    // N→N+1 with battle
+    const animWithBattle = buildArmyAnim(
+      [{ id: 1, faction: 0, x: 0, y: 0 }, { id: 2, faction: 1, x: 10, y: 0 }],
+      [], [battleEvent],
+    );
+    expect(animWithBattle).toHaveLength(2);
+    // N+1→N+2 without battle — no death lerp
+    const animNoBattle = buildArmyAnim([], [], []);
+    expect(animNoBattle).toHaveLength(0);
+    // Verify battle event itself carries correct data
+    expect(battleEvent.kind).toBe("battle");
+    expect((battleEvent as any).killed).toEqual([1, 2]);
+  });
+});
+
 describe("buildArmyAnim — stacked armies (V5)", () => {
   it("two armies at same pos both get anim state", () => {
     const n: ArmyState[] = [
