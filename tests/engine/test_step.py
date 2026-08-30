@@ -641,6 +641,20 @@ class TestDistanceCheckTiming:
         assert w.armies[0].id == 1
         assert w.armies[0].x == 110  # moved again toward (500,10)
 
+    def test_MOVE_TO_ignored_if_different_friendly_at_from(self) -> None:
+        """MOVE_TO to army_id,x,y ignored even if different friendly army is at x,y."""
+        # Army 1 at (0,0), Army 2 at (50,50), both faction 0
+        w = _world_with(armies=[_army(0, 0, 0, 1), _army(50, 50, 0, 2)])
+        ledger = Ledger(CFG.info_speed, 1414)
+        # Order claims army 1 is at (50,50) — where army 2 actually is
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_TO 1 50 50 100 100"]})
+        a1 = w.get_army(1)
+        # Must be ignored: check is per army_id, not per position
+        assert not a1.has_target
+        # Army 2 should be unaffected (order was for army 1)
+        a2 = w.get_army(2)
+        assert not a2.has_target
+
 
 class TestMoveCapitalEvents:
     """MOVE_CAPITAL event verification — is_viceroy, town_spawn, consumption."""
