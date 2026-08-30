@@ -23,3 +23,27 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+  - repo: local
+    hooks:
+      - id: tsc
+        name: tsc (viewer)
+        entry: bash -c 'cd viewer && npx tsc --noEmit'
+        language: system
+        files: '^viewer/src/.*\.tsx?$'
+        pass_filenames: false
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (viewer)
+        entry: bash -c 'cd viewer && npx eslint src/'
+        language: system
+        files: '^viewer/src/.*\.tsx?$'
+        pass_filenames: false
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (viewer)
+        entry: bash -c 'cd viewer && npx prettier --check src/'
+        language: system
+        files: '^viewer/src/.*\.(tsx?|css)$'
+        pass_filenames: false
