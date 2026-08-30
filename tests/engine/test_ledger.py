@@ -1,4 +1,4 @@
-"""Tests for the ledger — event logging, visibility, eviction."""
+"""Tests for engine/ledger — already moved from tests/test_ledger.py."""
 
 from __future__ import annotations
 

@@ -16,4 +16,5 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [tool.ty.src]
+root = "src"
 exclude = [".venv", "__pycache__", "viewer", ".git"]

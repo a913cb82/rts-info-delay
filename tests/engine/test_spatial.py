@@ -1,4 +1,4 @@
-"""Tests for the spatial hash grid."""
+"""Tests for engine/spatial — already moved from tests/test_spatial.py."""
 
 from __future__ import annotations
 

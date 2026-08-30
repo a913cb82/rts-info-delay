@@ -25,6 +25,15 @@ repos:
         stages: [pre-push]
   - repo: local
     hooks:
+      - id: vitest
+        name: vitest (viewer)
+        entry: bash -c 'cd viewer && npx vitest run'
+        language: system
+        files: '^viewer/(src|tests)/.*\.tsx?$'
+        pass_filenames: false
+        stages: [pre-push]
+  - repo: local
+    hooks:
       - id: tsc
         name: tsc (viewer)
         entry: bash -c 'cd viewer && npx tsc --noEmit'
