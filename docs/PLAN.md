@@ -214,59 +214,15 @@ TypeScript + Vite, single-page app. Canvas background + SVG entities.
 ```
 rl_game_min/
 ├── pyproject.toml
-├── README.md
-├── AGENTS.md
-├── docs/
-│   ├── PLAN.md
-│   └── ...
 ├── src/
-│   ├── engine/
-│   │   ├── __init__.py
-│   │   ├── config.py
-│   │   ├── world.py
-│   │   ├── spatial.py
-│   │   ├── ledger.py
-│   │   ├── combat.py
-│   │   ├── economy.py
-│   │   ├── movement.py
-│   │   ├── step.py
-│   │   └── record.py
-│   ├── runner/
-│   │   ├── __init__.py
-│   │   └── main.py
-│   └── bots/
-│       ├── __init__.py
-│       ├── random.py
-│       ├── greedy.py
-│       └── stub.py
+│   ├── engine/   (config, world, spatial, ledger, combat, economy, movement, step, record)
+│   ├── runner/   (main)
+│   └── bots/     (random, greedy, stub)
 ├── tests/
-│   ├── engine/
-│   │   ├── test_config.py
-│   │   ├── test_world.py
-│   │   ├── test_economy.py
-│   │   ├── test_movement.py
-│   │   ├── test_combat.py
-│   │   ├── test_ledger.py
-│   │   ├── test_spatial.py
-│   │   ├── test_step.py
-│   │   └── test_record.py
-│   ├── runner/
-│   │   └── test_main.py
-│   ├── test_score.py
-│   └── test_integration.py
+│   ├── engine/   (test_config, test_world, test_economy, test_movement, test_combat, test_ledger, test_spatial, test_step, test_record)
+│   ├── runner/   (test_main)
+│   └── test_score.py, test_integration.py
 └── viewer/
-    ├── package.json
-    ├── vite.config.ts
-    ├── tsconfig.json
-    ├── index.html
-    ├── src/
-    │   ├── main.ts
-    │   ├── types.ts
-    │   ├── transform.ts
-    │   ├── color.ts
-    │   └── styles.css
-    └── tests/
-        ├── transform.test.ts
-        ├── color.test.ts
-        └── types.test.ts
+    ├── src/      (main, types, transform, color, styles)
+    └── tests/    (transform, color, types)
 ```
