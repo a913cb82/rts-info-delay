@@ -151,9 +151,25 @@ class TestPathBlocking:
         b.has_target = True
         w = _world_with(a, b)
         move_armies(w, CFG)
-        # A blocked near x=25, B blocked near x=25 (closest approach at midpoint)
+        # Both stop at closest approach (midpoint)
         assert a.x < 30  # A stopped early
         assert b.x > 20  # B stopped before reaching A
+
+    def test_angled_crossing_both_moving(self) -> None:
+        """M8c: Two armies moving at an angle → both stop if paths cross within radius."""
+        # A moves right, B moves up-left. Paths cross at an angle.
+        # Closest approach ~7.6 km (within 10 km radius) → both blocked.
+        a = _army(0, 0)
+        a.target_x, a.target_y = 100, 0
+        a.has_target = True
+        b = _army(15, 5, faction=1)
+        b.target_x, b.target_y = 0, 20  # B moves up-left
+        b.has_target = True
+        w = _world_with(a, b)
+        move_armies(w, CFG)
+        # Both armies stopped before reaching their targets
+        assert a.x < 30  # A stopped (would reach 50 without block)
+        assert b.y < 20  # B stopped (would reach ~18 without block)
 
     def test_asymmetric_approach(self) -> None:
         """M8b: A passes near stationary B → A stops. B has no target → stays put."""
