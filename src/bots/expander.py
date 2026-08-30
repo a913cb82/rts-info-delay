@@ -1,51 +1,55 @@
-"""Greedy — simplest useful bot: TRAIN if safe, else chase nearest enemy with forecast."""
+"""Expander — colonizer, not fighter. Pure function, deterministic."""
 
 from __future__ import annotations
+
 import json, math, sys
 from engine.config import GameConfig
 from engine.world import World
-from .common import _busy, _world, _enemies, _enemy_towns, _forecast_pos, _can_train
+from .common import _busy, _hash, _own, _site, _world, _enemies, _can_train
 
 
 def decide_orders(world: World, faction: int, config: GameConfig) -> list[str]:
     view = {
         "faction": faction,
         "armies": [{"id": a.id, "faction": a.faction, "x": a.x, "y": a.y, "has_target": a.has_target, "target_x": a.target_x, "target_y": a.target_y} for a in world.armies],
-        "towns": [{"id": t.id, "faction": t.faction, "x": t.x, "y": t.y, "population": t.population} for t in world.towns],
+        "towns": [{"id": t.id, "faction": t.faction, "x": t.x, "y": t.y, "population": t.population, "is_capital": t.is_capital} for t in world.towns],
         "turn": getattr(world, "_turn", 0),
     }
     f = _world(view)
     out: list[str] = []
     busy = _busy(f)
     own_towns = [t for t in f["towns"] if t["faction"] == faction]
+    # Expander is conservative about peak: don't TRAIN towns in 35k-65k
     for t in own_towns:
         if t["id"] in busy:
             continue
         wt = next((x for x in world.towns if x.id == t["id"]), None)
         pop = wt.population if wt else t["population"]
-        if _can_train(pop, config, conservative=False):
+        if _can_train(pop, config, conservative=True):
             out.append(f"TRAIN {t['id']}")
 
-    enemy_towns = [t for t in f["towns"] if t["faction"] != faction]
-    forecast_enemies = []
-    for e in [a for a in f["armies"] if a["faction"] != faction]:
-        fx, fy = _forecast_pos(e, 1.0, config)
-        forecast_enemies.append({**e, "fx": fx, "fy": fy})
+    cap = next((t for t in own_towns if t.get("is_capital")), None) or ({"x": config.map_size[0]/2, "y": config.map_size[1]/2})
+    enemies = [a for a in f["armies"] if a["faction"] != faction]
 
     for p in [a for a in f["armies"] if a["faction"] == faction]:
         if p["id"] in busy:
             continue
-        if p.get("is_viceroy") and p.get("has_target"):
+        h = _hash(f.get("turn", 0), p["id"], 3)
+        d = 120 + (h % 4) * 40  # 120,160,200,240 — tuned for crowding: >100 keeps villages out of 10km, <300 keeps cities within info_speed
+        x, y = _site(f.get("turn", 0), p["id"], config, own_towns, salt=3, rmin=d, rmax=d+40, around=cap)
+        # Skip BUILD if an enemy army is within info_speed of the site — don't front-line
+        if any(math.hypot(e["x"] - x, e["y"] - y) < config.info_speed for e in enemies):
+            # Tour a low-pop own town instead (heal by visiting)
+            low = [t for t in own_towns if (next((w for w in world.towns if w.id == t["id"]), None) or t).get("population", 0) < 2000 and not t.get("is_capital")]
+            # Simplified: just pick smallest pop town
+            candidates = [t for t in own_towns if not t.get("is_capital")]
+            if candidates:
+                # find actual World town for pop check
+                candidates = sorted(candidates, key=lambda t: next((w.population for w in world.towns if w.id == t["id"]), 1e9))
+                tt = candidates[0]
+                out.append(f"MOVE_TO {p['id']} {p['x']:.1f} {p['y']:.1f} {tt['x']:.1f} {tt['y']:.1f}")
             continue
-        if enemy_towns:
-            nearest = min(enemy_towns, key=lambda t: math.hypot(t["x"]-p["x"], t["y"]-p["y"]))
-            out.append(f"MOVE_TO {p['id']} {p['x']:.1f} {p['y']:.1f} {nearest['x']:.1f} {nearest['y']:.1f}")
-        elif forecast_enemies:
-            e = min(forecast_enemies, key=lambda e: math.hypot(e["fx"]-p["x"], e["fy"]-p["y"]))
-            out.append(f"MOVE_TO {p['id']} {p['x']:.1f} {p['y']:.1f} {e['fx']:.1f} {e['fy']:.1f}")
-        else:
-            # No known enemies — stay
-            pass
+        out.append(f"BUILD {p['id']} {x:.1f} {y:.1f}")
     return out
 
 
@@ -113,7 +117,13 @@ def main():
                 a=world.get_army(ev.get("id"))
                 if a: a.x,a.y=ev.get("x",a.x),ev.get("y",a.y)
             elif k=="army_death": world.remove_army(ev.get("id"))
+            elif k=="battle": pass
             elif k=="town_death": world.remove_town(ev.get("id"))
+            # also handle Town population updates via world events? keep as is
+            if k=="town_spawn" or k=="town_death":
+                # ensure capital tracking
+                pass
+        # Apply town population from world.towns if events include it? we keep world as is
         orders=decide_orders(world,faction,cfg)
         for o in orders: sys.stdout.write(o+"\n")
         sys.stdout.write("go\n"); sys.stdout.flush()
