@@ -300,6 +300,22 @@ class TestOrderLag:
         x_after_2 = w.armies[0].x
         assert x_after_2 > x_after_1
 
+    def test_TRAIN_then_TRAIN_second_ignored_after_pop_depleted(self) -> None:
+        """TRAIN with 1110 pop: first TRAIN spawns (pop→110) and town dies, second TRAIN is dead letter."""
+        # Capital close to town (10 km) so messenger delivered same turn, but not at same pos to avoid extreme crowding
+        cap = _town(0, 0, 5000, faction=0, tid=10, cap=True)
+        t = _town(10, 0, 1110, faction=0, tid=1)
+        w = _world_with(towns=[cap, t])
+        ledger = Ledger(CFG.info_speed, 1414)
+        # Turn 1: TRAIN 1 — pop 1110 → 110, spawns 1 army, town dies (110 < 500)
+        step(w, CFG, ledger, turn=1, orders={0: ["TRAIN 1"]})
+        assert len(w.armies) == 1
+        assert w.get_town(1) is None  # died
+        # Turn 2: TRAIN 1 again — town is dead, should be ignored (dead letter)
+        step(w, CFG, ledger, turn=2, orders={0: ["TRAIN 1"]})
+        assert len(w.armies) == 1  # no new army
+        assert w.get_town(1) is None
+
     def test_train_standing_repeats(self) -> None:
         """L5b: TRAIN standing order spawns each economy step."""
         t = _town(100, 100, 10000, faction=0, tid=1)
