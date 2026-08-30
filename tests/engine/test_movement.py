@@ -434,6 +434,36 @@ class TestMovementStacking:
         for a in w.armies:
             assert a.x == 150 and a.y == 100
 
+    def test_blocked_armies_fight_head_on(self) -> None:
+        """Two armies move toward each other, block at midpoint, then combat."""
+        from engine.combat import resolve_combat
+
+        a = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True)
+        b = Army(id=2, faction=1, x=10, y=0, target_x=-90, target_y=0, has_target=True)
+        w = _world_with(a, b)
+        move_armies(w, CFG)
+        # Both blocked at ~(5,0) — closest approach 0 km
+        assert a.x == pytest.approx(5, abs=1)
+        assert b.x == pytest.approx(5, abs=1)
+        # Distance ≤ radius → combat kills both
+        resolve_combat(w, CFG)
+        assert len(w.armies) == 0
+
+    def test_blocked_armies_fight_angled(self) -> None:
+        """Two armies moving at an angle, block mid-trajectory, then combat."""
+        from engine.combat import resolve_combat
+
+        a = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True)
+        b = Army(id=2, faction=1, x=10, y=3, target_x=10, target_y=20, has_target=True)
+        w = _world_with(a, b)
+        move_armies(w, CFG)
+        # Both blocked — closest approach ~6 km (within radius)
+        dist = math.hypot(a.x - b.x, a.y - b.y)
+        assert dist < 10  # within combat radius
+        # 1v1 mutual → both die
+        resolve_combat(w, CFG)
+        assert len(w.armies) == 0
+
     def test_death_event_position_is_final_not_start(self) -> None:
         """Army marching (0,0)→(100,0) dies at (50,0). Combat at final pos."""
         from engine.combat import resolve_combat
