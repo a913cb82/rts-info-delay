@@ -152,8 +152,6 @@ function loadRecord(records: GameRecord[]): void {
 function draw(): void {
   if (!config || !ctx) return;
   const th = Math.max(mapSize[0], mapSize[1]);
-  const dpr = window.devicePixelRatio || 1;
-
   // clear canvas
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -161,12 +159,12 @@ function draw(): void {
   ctx.fillStyle = "#faf8f3";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // draw grid in world space
+  // draw grid in world space (no DPR — canvas uses CSS pixel dims)
   ctx.setTransform(
-    panZoom.scale * dpr, 0, 0,
-    panZoom.scale * dpr,
-    panZoom.tx * dpr,
-    panZoom.ty * dpr,
+    panZoom.scale, 0, 0,
+    panZoom.scale,
+    panZoom.tx,
+    panZoom.ty,
   );
   ctx.strokeStyle = "rgba(0,0,0,0.08)";
   ctx.lineWidth = 1 / panZoom.scale;
@@ -705,14 +703,11 @@ function boot(): void {
 }
 
 function resizeCanvas(): void {
-  const dpr = window.devicePixelRatio || 1;
   const rect = mapWrap.getBoundingClientRect();
   const w = Math.round(rect.width);
   const h = Math.round(rect.height);
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
-  canvas.style.width = w + "px";
-  canvas.style.height = h + "px";
+  canvas.width = w;
+  canvas.height = h;
   svg.setAttribute("width", String(w));
   svg.setAttribute("height", String(h));
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
