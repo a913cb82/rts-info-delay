@@ -29,39 +29,7 @@ def _hash(turn: int, i: int, salt: int = 0) -> int:
     return h & 0x7FFFFFFF
 
 
-# ── View helpers ──
 
-def _own(view, kind: str):
-    own = view.get("own_" + kind)
-    if own is not None:
-        return own
-    if view.get("dead"):
-        return []
-    fid = view.get("faction", 0)
-    return [p for p in view.get(kind, []) if p.get("faction") == fid]
-
-
-def _busy(view) -> set:
-    b = {o["entity"] for o in view.get("orders", [])}
-    for p in view.get("own_armies", []):
-        if p.get("order_kind", 0):
-            b.add(p["id"])
-    return b
-
-
-def _world(view):
-    fc = view.get("forecast")
-    return view if fc is None else fc
-
-
-def _enemies(view):
-    fid = view.get("faction", 0)
-    return [a for a in view.get("armies", []) if a.get("faction") != fid]
-
-
-def _enemy_towns(view):
-    fid = view.get("faction", 0)
-    return [t for t in view.get("towns", []) if t.get("faction") != fid]
 
 
 def _site(turn, i, cfg, own_towns, salt=0, rmin=80.0, rmax=250.0, around=None):
@@ -133,6 +101,7 @@ class TownInfo:
     prev_population: float = 0.0  # population at start of last turn
     spent_on_train: float = 0.0   # total pop spent on TRAIN this turn
     inferred_growth: float = 0.0  # inferred growth this turn (delta + spent)
+    train_pending: bool = False   # TRAIN order sent but not yet delivered
 
     @property
     def net_change(self) -> float:
@@ -201,10 +170,11 @@ class BotState:
         """Update world state from events. Call at start of each turn before deciding orders."""
         self.turn = turn
 
-        # Snapshot previous populations for growth inference
-        prev_pops = {tid: t.population for tid, t in self.towns.items()}
+        # 1. Snapshot current pop as prev BEFORE events change it
+        for t in self.towns.values():
+            t.prev_population = t.population
 
-        # Apply events to internal world (same as bot main loops)
+        # 2. Apply events to internal world
         for ev in events:
             kind = ev.get("kind")
             if kind == "army_spawn":
@@ -241,29 +211,26 @@ class BotState:
 
         self.world._turn = turn
 
-        # Rebuild TownInfo and ArmyInfo from world
+        # 3. Rebuild TownInfo — update population from world (prev was set before events)
         new_towns: dict[int, TownInfo] = {}
         for t in self.world.towns:
             existing = self.towns.get(t.id)
             if existing:
-                # Update existing — keep tracking fields
                 existing.x = t.x
                 existing.y = t.y
                 existing.faction = t.faction
                 existing.is_capital = t.is_capital
-                existing.prev_population = existing.population
-                existing.population = t.population
-                existing.spent_on_train = 0.0
-                existing.inferred_growth = 0.0
+                existing.population = t.population  # post-event pop
                 new_towns[t.id] = existing
             else:
-                # New town
+                # New town — prev = current (no prior data)
                 info = TownInfo(
                     id=t.id, faction=t.faction, x=t.x, y=t.y,
                     population=t.population, is_capital=t.is_capital,
                     prev_population=t.population,
                 )
                 new_towns[t.id] = info
+        # Remove towns that died (not in world anymore)
         self.towns = new_towns
 
         # Rebuild armies
@@ -276,32 +243,34 @@ class BotState:
             )
         self.armies = new_armies
 
+        # 4. Infer growth NOW (prev pop was set before events, pop is now post-events)
+        self._infer_growth()
+
+        # 5. Reset spent_on_train for next turn
+        for t in self.towns.values():
+            t.spent_on_train = 0.0
+
     def record_train(self, town_id: int):
-        """Record that we sent a TRAIN order for this town. Call when issuing TRAIN."""
+        """Record that we sent a TRAIN order for this town."""
         t = self.towns.get(town_id)
         if t:
             t.spent_on_train += self.config.army_cost if self.config else 1000
+            t.train_pending = True
 
-    def infer_growth(self):
-        """After orders are sent, infer growth from population deltas.
+    def _infer_growth(self):
+        """Infer growth from population delta and training spend.
 
-        Call after the turn runs and update() is called again with new events.
-        But since we don't have the post-step pop yet at order time, we estimate:
-        growth ≈ prev_pop * growth_rate * (1 - prev_pop/pop_cap) * crowding_net
-        We can't compute crowding_net without full world, so we just track the raw delta
-        and let _can_train use it for next-turn decisions.
-
-        Actually, the key insight is simpler: we know what we spent on TRAIN.
-        If pop decreased by more than we spent, growth was insufficient.
-        If pop increased despite spending, growth was strong.
+        Also clears train_pending when the order has been delivered (pop dropped).
         """
         for t in self.towns.values():
             if t.faction != self.faction:
                 continue
             delta = t.population - t.prev_population
-            # delta = growth - spent_on_train
-            # So growth = delta + spent_on_train
+            # delta = growth - spent_on_train (spent from last turn)
             t.inferred_growth = max(0, delta + t.spent_on_train)
+            # If pop dropped, the pending TRAIN was delivered — clear it
+            if t.train_pending and delta < 0:
+                t.train_pending = False
 
     def own_towns(self) -> list[TownInfo]:
         """Return this faction's towns."""
@@ -312,23 +281,35 @@ class BotState:
         return [a for a in self.armies.values() if a.faction == self.faction]
 
     def can_train_safely(self, town_id: int, conservative: bool = False) -> bool:
-        """Can we safely TRAIN from this town without killing it?
+        """Can we safely TRAIN from this town?
 
-        Uses inferred growth to predict whether the town can sustain training.
+        Simple rules:
+        - Pop must be above safety threshold (2000, well above death at 500)
+        - Don't over-train: pop must be above peak window if conservative
+        - Don't train if we already spent this turn
         """
         t = self.towns.get(town_id)
         if not t or t.faction != self.faction:
             return False
 
-        # Basic survival check
-        if not _can_train(t.population, self.config, conservative):
+        # Already spent this turn — one TRAIN per town per turn
+        if t.spent_on_train > 0:
             return False
 
-        # If we have growth data, check if pop can sustain training
-        if t.prev_population > 0 and t.spent_on_train > 0:
-            # We already spent this turn; check if remaining pop is safe
-            remaining = t.population - t.spent_on_train
-            if remaining < self.config.army_cost + TRAIN_SURVIVE:
+        # Don't train if a TRAIN order is pending (sent but not delivered yet)
+        if t.train_pending:
+            return False
+
+        # Safety threshold: must have enough pop to survive training
+        # Death at 500, army_cost 1000, so need > 2000 to train once safely
+        if t.population < 2000:
+            return False
+
+        # Conservative: skip peak window and require higher pop
+        if conservative:
+            if t.population < 3000:
+                return False
+            if PEAK_LOW <= t.population <= PEAK_HIGH:
                 return False
 
         return True
@@ -340,34 +321,7 @@ class BotState:
             return 0.0
         return t.inferred_growth
 
-    def to_view(self) -> dict:
-        """Build a view dict compatible with existing decide_orders functions."""
-        return {
-            "faction": self.faction,
-            "turn": self.turn,
-            "armies": [
-                {
-                    "id": a.id, "faction": a.faction,
-                    "x": a.x, "y": a.y,
-                    "has_target": a.has_target,
-                    "target_x": a.target_x, "target_y": a.target_y,
-                    "is_viceroy": a.is_viceroy,
-                }
-                for a in self.armies.values()
-            ],
-            "towns": [
-                {
-                    "id": t.id, "faction": t.faction,
-                    "x": t.x, "y": t.y,
-                    "population": t.population,
-                    "is_capital": t.is_capital,
-                    "prev_population": t.prev_population,
-                    "inferred_growth": t.inferred_growth,
-                    "spent_on_train": t.spent_on_train,
-                }
-                for t in self.towns.values()
-            ],
-        }
+
 
 
 # ── Shared subprocess protocol ──
