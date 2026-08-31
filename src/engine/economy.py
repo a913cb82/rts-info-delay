@@ -15,12 +15,76 @@ def logistic(population: float, config: GameConfig) -> float:
 
 
 _crowding_cache: dict = {"id": None, "xs": None, "ys": None, "pops": None, "ids": None}
+_hash_cache: dict = {}  # id(all_towns) -> SpatialHash for positions
 
 
 def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float:
     log = logistic(town.population, config)
     if not all_towns or len(all_towns) <= 1:
         return log
+    # Use spatial hash to find neighbours within info_speed instead of scanning all
+    try:
+        from engine.spatial import SpatialHash
+        cid = id(all_towns)
+        # cache hash per town list (positions static per map, only pop changes)
+        sh = _hash_cache.get(cid)
+        # check if cached hash is still valid (same town ids and positions)
+        if sh is not None:
+            # quick check: same length and first/last id
+            try:
+                if len(sh.positions) != len(all_towns) or sh.positions[0][0] != all_towns[0].x or sh.positions[-1][0] != all_towns[-1].x:
+                    sh = None
+            except Exception:
+                sh = None
+        if sh is None:
+            sh = SpatialHash.__new__(SpatialHash)
+            sh.config = config
+            sh.cell_size = float(config.info_speed)
+            try:
+                mx, my = config.map_size[0], config.map_size[1]
+            except Exception:
+                mx, my = 1000, 1000
+            sh.width = int(math.ceil(mx / sh.cell_size)) if sh.cell_size != 0 else 1
+            sh.height = int(math.ceil(my / sh.cell_size)) if sh.cell_size != 0 else 1
+            sh.cells = {}
+            pos = np.array([[t.x, t.y] for t in all_towns], dtype=float)
+            sh.positions = pos
+            for idx2, (x2, y2) in enumerate(pos):
+                key = (int(math.floor(x2 / sh.cell_size)), int(math.floor(y2 / sh.cell_size)))
+                sh.cells.setdefault(key, []).append(idx2)
+            _hash_cache[cid] = sh
+            # prune cache
+            if len(_hash_cache) > 20:
+                _hash_cache.clear()
+                _hash_cache[cid] = sh
+        # query neighbours
+        neigh = sh.query_radius(float(town.x), float(town.y), float(config.info_speed + 1e-9))
+        # filter self
+        neigh = [i for i in neigh if all_towns[i].id != town.id]
+        if not neigh:
+            return log
+        # Build arrays for neighbours only
+        pops_f = np.array([all_towns[i].population for i in neigh], dtype=float)
+        xs_f = np.array([all_towns[i].x for i in neigh], dtype=float)
+        ys_f = np.array([all_towns[i].y for i in neigh], dtype=float)
+        dx = town.x - xs_f
+        dy = town.y - ys_f
+        dists = np.hypot(dx, dy)
+        # dists already <= info_speed by query, but keep epsilon
+        dists = np.where(dists < 1e-9, 1e-6, dists)
+        mins = np.minimum(pops_f, town.population)
+        mins = np.maximum(mins, 0.0)
+        d_eqs = config.equilibrium_spacing * np.sqrt(mins)
+        asy = np.ones_like(dists)
+        valid = (pops_f > 0) & (town.population > 0)
+        if np.any(valid):
+            ratio_log = np.log(pops_f[valid] / town.population)
+            asy[valid] = 1.0 + config.crowding_asymmetry * ratio_log
+        ratios = (d_eqs / dists) ** config.crowding_decay
+        total = float(np.sum(asy * ratios))
+        return log * (1.0 - total)
+    except Exception:
+        pass
     global _crowding_cache
     cid = id(all_towns)
     xs = ys = pops = ids = None
