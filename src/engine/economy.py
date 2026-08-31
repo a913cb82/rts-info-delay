@@ -199,6 +199,9 @@ def apply_train(world: World, config: GameConfig) -> list[dict]:
             was_capital = town.is_capital
             world.remove_town(tid)
             events.append({"kind": "town_death", "id": tid, "x": tx, "y": ty, "faction": tf, "is_capital": was_capital})
+        # TRAIN is one-shot: remove standing order after execution
+        if so in world.standing_orders:
+            world.standing_orders.remove(so)
     return events
 
 

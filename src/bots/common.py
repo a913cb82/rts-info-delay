@@ -101,7 +101,8 @@ class TownInfo:
     prev_population: float = 0.0  # population at start of last turn
     spent_on_train: float = 0.0   # total pop spent on TRAIN this turn
     inferred_growth: float = 0.0  # inferred growth this turn (delta + spent)
-    train_pending: bool = False   # TRAIN order sent but not yet delivered
+    _trained_this_turn: bool = False  # a TRAIN was delivered this turn
+    _ever_trained: bool = False       # a TRAIN was ever delivered to this town
 
     @property
     def net_change(self) -> float:
@@ -143,6 +144,7 @@ class BotState:
         self.turn: int = 0
         self.towns: dict[int, TownInfo] = {}  # id -> TownInfo
         self.armies: dict[int, ArmyInfo] = {}  # id -> ArmyInfo
+        self._pending_trains: dict[int, int] = {}  # town_id -> delivery_turn
 
     def init(self, config: GameConfig, faction: int):
         """Called once at startup."""
@@ -169,6 +171,10 @@ class BotState:
     def update(self, turn: int, events: list[dict]):
         """Update world state from events. Call at start of each turn before deciding orders."""
         self.turn = turn
+
+        # 0. Clear per-turn flags
+        for t in self.towns.values():
+            t._trained_this_turn = False
 
         # 1. Snapshot current pop as prev BEFORE events change it
         for t in self.towns.values():
@@ -243,7 +249,8 @@ class BotState:
             )
         self.armies = new_armies
 
-        # 4. Infer growth NOW (prev pop was set before events, pop is now post-events)
+        # 4. Check TRAIN deliveries and infer growth
+        self._check_deliveries()
         self._infer_growth()
 
         # 5. Reset spent_on_train for next turn
@@ -255,22 +262,35 @@ class BotState:
         t = self.towns.get(town_id)
         if t:
             t.spent_on_train += self.config.army_cost if self.config else 1000
-            t.train_pending = True
+            # Calculate exact delivery turn (same-turn for distance 0)
+            cap = self.world.faction_capital(self.faction)
+            if cap:
+                dist = math.hypot(cap.x - t.x, cap.y - t.y)
+                delivery_turn = self.turn + int(math.ceil(dist / self.config.info_speed))
+            else:
+                delivery_turn = self.turn
+            self._pending_trains[town_id] = delivery_turn
+
+    def _check_deliveries(self):
+        """Check pending TRAIN deliveries and set _trained_this_turn."""
+        delivered = []
+        for town_id, delivery_turn in self._pending_trains.items():
+            if self.turn >= delivery_turn:
+                delivered.append(town_id)
+        for town_id in delivered:
+            del self._pending_trains[town_id]
+            t = self.towns.get(town_id)
+            if t:
+                t._trained_this_turn = True
+                t._ever_trained = True
 
     def _infer_growth(self):
-        """Infer growth from population delta and training spend.
-
-        Also clears train_pending when the order has been delivered (pop dropped).
-        """
+        """Infer growth from population delta and training spend."""
         for t in self.towns.values():
             if t.faction != self.faction:
                 continue
             delta = t.population - t.prev_population
-            # delta = growth - spent_on_train (spent from last turn)
             t.inferred_growth = max(0, delta + t.spent_on_train)
-            # If pop dropped, the pending TRAIN was delivered — clear it
-            if t.train_pending and delta < 0:
-                t.train_pending = False
 
     def own_towns(self) -> list[TownInfo]:
         """Return this faction's towns."""
@@ -292,20 +312,25 @@ class BotState:
         if not t or t.faction != self.faction:
             return False
 
-        # Already spent this turn — one TRAIN per town per turn
+        # Already spent or a TRAIN was delivered this turn
         if t.spent_on_train > 0:
             return False
-
-        # Don't train if a TRAIN order is pending (sent but not delivered yet)
-        if t.train_pending:
+        if t._trained_this_turn:
             return False
 
-        # Safety threshold: must have enough pop to survive training
-        # Death at 500, army_cost 1000, so need > 2000 to train once safely
+        # Don't stack: if a TRAIN is already pending for this town
+        if town_id in self._pending_trains:
+            return False
+
+        # One TRAIN per town per game — bot can't see pop changes from events
+        # so must be conservative. TRAIN costs 1000, growth at 5k is ~5/week.
+        if t._ever_trained:
+            return False
+
+        # Must have enough pop to survive training
         if t.population < 2000:
             return False
 
-        # Conservative: skip peak window and require higher pop
         if conservative:
             if t.population < 3000:
                 return False

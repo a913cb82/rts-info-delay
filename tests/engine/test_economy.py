@@ -428,7 +428,7 @@ class TestEconomyCommands:
         assert len(spawn_events) == 0
 
     def test_train_standing_order(self) -> None:
-        """E31c: TRAIN standing order spawns one army per economy step."""
+        """E31c: TRAIN standing order spawns one army, then is consumed (one-shot)."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -442,8 +442,9 @@ class TestEconomyCommands:
         # Run 3 economy steps
         for _ in range(3):
             apply_train(w, CFG)
-        # Should have spawned 3 armies
-        assert len(w.armies) == 3
+        # TRAIN is one-shot: only 1 army spawned, standing order consumed
+        assert len(w.armies) == 1
+        assert len(w.standing_orders) == 0
 
     def test_train_ownership_check(self) -> None:
         """E31e: TRAIN on enemy town → ignored."""

@@ -77,8 +77,8 @@ class TestEconomyMedium:
             apply_growth(w, CFG)
         assert t.population > 2000
 
-    def test_E40_standing_train_repeats(self) -> None:
-        """E40: Standing TRAIN repeats."""
+    def test_E40_standing_train_one_shot(self) -> None:
+        """E40: Standing TRAIN is one-shot (consumed after execution)."""
         t = Town(id=1, faction=0, x=500, y=500, population=5000)
         w = _make_world(t)
         w.standing_orders.append(
@@ -86,8 +86,10 @@ class TestEconomyMedium:
         )
         for _ in range(3):
             apply_train(w, CFG)
-        assert len(w.armies) == 3
-        assert t.population == 2000
+        # TRAIN is one-shot: only 1 army spawned
+        assert len(w.armies) == 1
+        assert t.population == 4000
+        assert len(w.standing_orders) == 0
 
     def test_E41_build_extends_life(self) -> None:
         """E41: BUILD on existing town extends life."""

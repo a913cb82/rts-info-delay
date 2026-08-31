@@ -316,8 +316,8 @@ class TestOrderLag:
         assert len(w.armies) == 1  # no new army
         assert w.get_town(1) is None
 
-    def test_train_standing_repeats(self) -> None:
-        """L5b: TRAIN standing order spawns each economy step."""
+    def test_train_standing_one_shot(self) -> None:
+        """L5b: TRAIN standing order is one-shot (consumed after execution)."""
         t = _town(100, 100, 10000, faction=0, tid=1)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
@@ -326,8 +326,9 @@ class TestOrderLag:
         )
         for turn in range(1, 4):
             step(w, CFG, ledger, turn=turn, orders={})
-        # 3 turns → 3 armies spawned
-        assert len(w.armies) == 3
+        # TRAIN is one-shot: only 1 army spawned
+        assert len(w.armies) == 1
+        assert len(w.standing_orders) == 0
 
     def test_messenger_pursuit(self) -> None:
         """L5c: Messenger targets current entity position."""
