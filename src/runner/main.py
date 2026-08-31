@@ -290,6 +290,15 @@ def run_game(
                 # Check if faction has viceroy in flight -> blind
                 is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
             visible_events = ledger.visible_events(faction=faction, capital_x=cap_x, capital_y=cap_y, now=float(turn), is_in_flight=is_in_flight)
+            # When MOVE_CAPITAL completes (new capital spawned), send ALL events
+            # so bot can fully rebuild BotState from new capital's perspective
+            move_cap_complete = any(
+                hasattr(ev, 'payload') and isinstance(ev.payload, dict)
+                and ev.kind.value == "town_spawn" and ev.payload.get("is_capital")
+                for ev in visible_events
+            )
+            if move_cap_complete:
+                visible_events = ledger.turn_events(turn)
             # Convert to dict list for bot
             bot_events: list[dict] = []
             for ev in visible_events:

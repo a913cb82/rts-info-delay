@@ -181,6 +181,18 @@ class Ledger:
                 result.append(ev)
         return result
 
+    def turn_events(self, turn: float) -> list[Event]:
+        """Return all events for a specific turn (no distance filtering).
+
+        Used when MOVE_CAPITAL completes so bot can fully rebuild state.
+        """
+        result: list[Event] = []
+        for ev in self.events:
+            t = getattr(ev, "turn", getattr(ev, "t", 0))
+            if abs(t - turn) < 1e-9:
+                result.append(ev)
+        return result
+
     # Alias for medium tests that call ledger.visible(...)
     def visible(self, *args, faction: int = 0, capital_x: float = 0, capital_y: float = 0, info_speed: float | None = None, now: float = 0, **kw) -> list[Event]:
         # Handle flexible positional args: ledger.visible(0, faction=0, ...) where first arg is duplicate faction
