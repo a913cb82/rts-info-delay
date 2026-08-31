@@ -37,12 +37,12 @@ export function buildArmyAnim(
   const deathMap = new Map<number, { x: number; y: number }>();
   for (const e of events) {
     if (e.kind === "army_death") {
-      deathMap.set(e.id, { x: e.x, y: e.y });
+      deathMap.set((e as any).id, { x: (e as any).x, y: (e as any).y });
     } else if (e.kind === "battle") {
-      for (const kid of e.killed) {
+      for (const kid of (e as any).killed) {
         // battle position is death position
-        if (!deathMap.has(kid)) {
-          deathMap.set(kid, { x: e.x, y: e.y });
+        if (!deathMap.has(kid as number)) {
+          deathMap.set(kid as number, { x: (e as any).x, y: (e as any).y });
         }
       }
     }
@@ -52,7 +52,7 @@ export function buildArmyAnim(
   const spawnMap = new Map<number, { x: number; y: number }>();
   for (const e of events) {
     if (e.kind === "army_spawn") {
-      spawnMap.set(e.id, { x: e.x, y: e.y });
+      spawnMap.set((e as any).id, { x: (e as any).x, y: (e as any).y });
     }
   }
 
@@ -99,26 +99,51 @@ export function buildArmyAnim(
     }
   }
 
-  // Armies that are new in N1 (spawned)
+  // Armies that are new in N1 (spawned) — also handles backward deaths
+  // (army died going forward, so when scrubbing backward it appears to spawn).
+  // If this "spawned" army has a death event in the combined events, it died
+  // forward at deathPos; backward it should fade in at deathPos and move to
+  // its alive position (mirrors rl_game's dyingArmyReverse).
   for (const [id, aN1] of mapN1) {
     if (!mapN.has(id)) {
-      const spawn = spawnMap.get(id);
-      const spawnX = spawn ? spawn.x : aN1.x;
-      const spawnY = spawn ? spawn.y : aN1.y;
-      result.push({
-        id,
-        faction: aN1.faction,
-        fromX: spawnX,
-        fromY: spawnY,
-        toX: aN1.x,
-        toY: aN1.y,
-        dies: false,
-        deathX: aN1.x,
-        deathY: aN1.y,
-        spawns: true,
-        spawnX,
-        spawnY,
-      });
+      const death = deathMap.get(id);
+      if (death) {
+        // Backward death: army was alive in N1 (earlier frame) and died at deathPos
+        // going forward. Going backward, it fades in at deathPos and moves to alive pos.
+        result.push({
+          id,
+          faction: aN1.faction,
+          fromX: death.x,
+          fromY: death.y,
+          toX: aN1.x,
+          toY: aN1.y,
+          dies: false,
+          deathX: death.x,
+          deathY: death.y,
+          spawns: true,
+          spawnX: death.x,
+          spawnY: death.y,
+          isReverse: true,
+        });
+      } else {
+        const spawn = spawnMap.get(id);
+        const spawnX = spawn ? spawn.x : aN1.x;
+        const spawnY = spawn ? spawn.y : aN1.y;
+        result.push({
+          id,
+          faction: aN1.faction,
+          fromX: spawnX,
+          fromY: spawnY,
+          toX: aN1.x,
+          toY: aN1.y,
+          dies: false,
+          deathX: aN1.x,
+          deathY: aN1.y,
+          spawns: true,
+          spawnX,
+          spawnY,
+        });
+      }
     }
   }
 
@@ -164,7 +189,7 @@ export function buildTownAnim(
   const spawnMap = new Map<number, { x: number; y: number }>();
   for (const e of events) {
     if (e.kind === "town_spawn") {
-      spawnMap.set(e.id, { x: e.x, y: e.y });
+      spawnMap.set((e as any).id, { x: (e as any).x, y: (e as any).y });
     }
   }
 

@@ -7,11 +7,11 @@
 
 import "./styles.css";
 import type { Config, TurnRecord, GameRecord, AnimArmy, AnimTown, AnimBattle } from "./types.js";
-import { fitTransform, clampPan, zoomAtCursor, screenToWorld } from "./transform.js";
+import { fitTransform, clampPan, zoomAtCursor } from "./transform.js";
 import type { PanZoom } from "./transform.js";
 import { factionColor } from "./color.js";
 import { parseJSONL, separateConfigTurns } from "./loader.js";
-import { buildArmyAnim, buildTownAnim, lerp as animLerp, easeInOut } from "./animation.js";
+import { buildArmyAnim, buildTownAnim } from "./animation.js";
 import { townRadius } from "./render-entities.js";
 
 /* ── State ── */
@@ -53,7 +53,6 @@ let factionSelectEl!: HTMLSelectElement;
 let infoEl!: HTMLDivElement;
 let eventStripEl!: HTMLDivElement;
 let mapWrap!: HTMLDivElement;
-let scrimEl!: HTMLDivElement;
 
 
 
@@ -105,21 +104,24 @@ function loadRecord(records: GameRecord[]): void {
 function draw(): void {
   if (!config || !ctx) return;
   const th = Math.max(mapSize[0], mapSize[1]);
-  // clear canvas
+  // clear canvas — outside map is #f7f5ef, map itself is #c8e6c9 (matches rl_game)
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#faf8f3";
+  ctx.fillStyle = "#e8f5e9";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // draw grid in world space (no DPR — canvas uses CSS pixel dims)
+  // map background
+  ctx.fillStyle = "#c8e6c9";
   ctx.setTransform(
     panZoom.scale, 0, 0,
     panZoom.scale,
     panZoom.tx,
     panZoom.ty,
   );
-  ctx.strokeStyle = "rgba(0,0,0,0.08)";
+  ctx.fillRect(0, 0, mapSize[0], mapSize[1]);
+
+  // draw grid in world space (no DPR — canvas uses CSS pixel dims)
+  ctx.strokeStyle = "rgba(46, 125, 50, 0.18)";
   ctx.lineWidth = 1 / panZoom.scale;
   const step = Math.max(50, Math.pow(10, Math.floor(Math.log10(th / 8))));
   for (let x = 0; x <= th; x += step) {
@@ -135,7 +137,7 @@ function draw(): void {
     ctx.stroke();
   }
   // map border
-  ctx.strokeStyle = "rgba(0,0,0,0.2)";
+  ctx.strokeStyle = "rgba(46, 125, 50, 0.35)";
   ctx.lineWidth = 2 / panZoom.scale;
   ctx.strokeRect(0, 0, mapSize[0], mapSize[1]);
   ctx.restore();
@@ -149,20 +151,22 @@ function draw(): void {
 
   const { towns, armies, battles } = getAnimState();
 
-  // towns
+  // towns — use animProgress directly (already eased in animateLoop)
+  const eased = animProgress >= 1 ? 1 : animProgress;
   for (const t of towns) {
-    const x = lerp(t.fromX, t.toX, animProgress >= 1 ? 1 : easeInOut(animProgress));
-    const y = lerp(t.fromY, t.toY, animProgress >= 1 ? 1 : easeInOut(animProgress));
-    const pop = lerp(t.fromPop, t.toPop, animProgress >= 1 ? 1 : easeInOut(animProgress));
-    drawTown(x, y, pop, t.faction, t.isCapital, t.spawns, t.dies);
+    const x = lerp(t.fromX, t.toX, eased);
+    const y = lerp(t.fromY, t.toY, eased);
+    const pop = lerp(t.fromPop, t.toPop, eased);
+    // towns fade simply (no staged)
+    const alpha = t.dies ? 1 - eased : t.spawns ? eased : 1;
+    drawTown(x, y, pop, t.faction, t.isCapital, alpha);
   }
 
-  // armies
+  // armies — staged: forward dies move 0-0.7 then fade 0.7-1, backward reverse fades in 0-0.3 then moves
   for (const a of armies) {
-    const t = animProgress >= 1 ? 1 : easeInOut(animProgress);
-    const x = lerp(a.fromX, a.toX, t);
-    const y = lerp(a.fromY, a.toY, t);
-    drawArmy(x, y, a.faction, a.spawns, a.dies);
+    const p = animProgress >= 1 ? 1 : animProgress;
+    const { x, y, alpha } = stagedArmyPos(a, p);
+    drawArmy(x, y, a.faction, alpha);
   }
 
   // battles
@@ -180,18 +184,49 @@ function getAnimState(): { towns: AnimTown[]; armies: AnimArmy[]; battles: AnimB
     return {
       towns: buildTownAnim(cur.world.towns, cur.world.towns, cur.events),
       armies: buildArmyAnim(cur.world.armies, cur.world.armies, cur.events),
-      battles: cur.events.filter((e) => e.kind === "battle") as unknown as AnimBattle[],
+      battles: [],
     };
   }
+  // Combined events for death position lookups (buildArmyAnim needs both)
   const cur = frameAt(animFromTurn);
   const nxt = frameAt(animToTurn);
+  const combinedEvents = [...cur.events, ...nxt.events] as unknown as import("./types.js").GameEvent[];
+  // Battles only from the destination turn's events:
+  // forward T→T+1: battle is in nxt.events (it happened during that transition)
+  // backward T+1→T: battle is in cur.events (cur=frameAt(T+1), which is where it happened)
+  const isForward = animFromTurn < animToTurn;
+  const battleEvents = isForward ? nxt.events : cur.events;
   return {
-    towns: buildTownAnim(cur.world.towns, nxt.world.towns, nxt.events),
-    armies: buildArmyAnim(cur.world.armies, nxt.world.armies, nxt.events),
-    battles: nxt.events
-      .filter((e) => e.kind === "battle")
+    towns: buildTownAnim(cur.world.towns, nxt.world.towns, combinedEvents),
+    armies: buildArmyAnim(cur.world.armies, nxt.world.armies, combinedEvents),
+    battles: battleEvents
+      .filter((e) => (e as any).kind === "battle")
       .map((e) => e as unknown as AnimBattle),
   };
+}
+
+// ── Staged animation helpers (mirrors rl_game dyingArmy / dyingArmyReverse) ──
+// Forward: move 0–0.7, fade 0.7–1  (army marches to battle site then fades)
+// Backward (reverse): fade in 0–0.3 at death site, move 0.3–1 to alive pos
+function stagedArmyPos(a: AnimArmy, progress: number): { x: number; y: number; alpha: number } {
+  if (a.dies) {
+    // Forward death
+    const mt = Math.min(1, progress / 0.7);
+    const alpha = progress < 0.7 ? 1 : 1 - (progress - 0.7) / 0.3;
+    return { x: lerp(a.fromX, a.toX, mt), y: lerp(a.fromY, a.toY, mt), alpha };
+  }
+  if ((a as any).isReverse) {
+    // Backward death: army fades in at death site, then marches to alive pos
+    const mt = Math.max(0, (progress - 0.3) / 0.7);
+    const alpha = Math.min(1, progress / 0.3);
+    return { x: lerp(a.fromX, a.toX, mt), y: lerp(a.fromY, a.toY, mt), alpha };
+  }
+  if (a.spawns) {
+    // True spawn (not reverse death)
+    return { x: lerp(a.fromX, a.toX, progress), y: lerp(a.fromY, a.toY, progress), alpha: progress };
+  }
+  // Survivor
+  return { x: lerp(a.fromX, a.toX, progress), y: lerp(a.fromY, a.toY, progress), alpha: 1 };
 }
 
 function drawTown(
@@ -200,20 +235,18 @@ function drawTown(
   pop: number,
   faction: number,
   isCapital: boolean,
-  spawns: boolean,
-  dies: boolean,
+  alpha: number,
 ): void {
   const r = townRadius(pop, config?.population_cap ?? 100_000);
   const col = factionColor(faction, factionCount);
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
-  if (dies) g.setAttribute("opacity", String(1 - animProgress));
-  if (spawns) g.setAttribute("opacity", String(animProgress));
+  if (alpha < 1) g.setAttribute("opacity", String(alpha));
 
   const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
   c.setAttribute("cx", String(x));
   c.setAttribute("cy", String(y));
-  c.setAttribute("r", String(spawns ? r * animProgress : dies ? r * (1 - animProgress) : r));
+  c.setAttribute("r", String(r * (alpha < 1 && alpha > 0 ? 0.2 + 0.8 * alpha : 1)));
   c.setAttribute("fill", col);
   c.setAttribute("stroke", isCapital ? "#111" : "white");
   c.setAttribute("stroke-width", isCapital ? "1.6" : "1");
@@ -241,16 +274,12 @@ function drawArmy(
   x: number,
   y: number,
   faction: number,
-  spawns: boolean,
-  dies: boolean,
+  alpha: number,
 ): void {
   const col = factionColor(faction, factionCount);
   const sz = 7;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
-  // Use animProgress for both spawn and death — buildArmyAnim sets from/to
-  // so the position already encodes direction (forward: from→death, backward: death→from)
-  const alpha = (dies || spawns) ? animProgress : 1;
   if (alpha < 1) g.setAttribute("opacity", String(alpha));
 
   const pg = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
@@ -278,12 +307,12 @@ function drawBattle(
 ): void {
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
-  for (const [dx, dy] of [[-6, -6, 6, 6], [6, -6, -6, 6]]) {
+  for (const [x1, y1, x2, y2] of [[-6, -6, 6, 6], [6, -6, -6, 6]] as const) {
     const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    l.setAttribute("x1", String(x + dx[0]));
-    l.setAttribute("y1", String(y + dx[1]));
-    l.setAttribute("x2", String(x + dx[2]));
-    l.setAttribute("y2", String(y + dx[3]));
+    l.setAttribute("x1", String(x + x1));
+    l.setAttribute("y1", String(y + y1));
+    l.setAttribute("x2", String(x + x2));
+    l.setAttribute("y2", String(y + y2));
     l.setAttribute("stroke", "red");
     l.setAttribute("stroke-width", "2");
     g.appendChild(l);
@@ -360,7 +389,7 @@ function updateChrome(): void {
   eventStripEl.innerHTML = "";
   const maxT = Math.max(1, turns.length - 1);
   for (let i = 0; i < turns.length; i++) {
-    const evts = turns[i].events;
+    const evts = turns[i]!.events;
     const hasBattle = evts.some((e) => e.kind === "battle");
     const hasDeath = evts.some((e) => e.kind === "army_death" || e.kind === "town_death");
     const hasSpawn = evts.some((e) => e.kind === "army_spawn" || e.kind === "town_spawn");
@@ -619,7 +648,6 @@ function boot(): void {
   infoEl = document.getElementById("info") as HTMLDivElement;
   eventStripEl = document.getElementById("event-strip") as HTMLDivElement;
   mapWrap = document.getElementById("map-wrap") as HTMLDivElement;
-  scrimEl = document.getElementById("scrim") as HTMLDivElement;
 
   document.getElementById("btn-fit")!.addEventListener("click", () => {
     fitView();

@@ -49,6 +49,7 @@ export interface TurnRecord {
 /* ── Events ── */
 
 export type EventKind =
+  | "town_death"
   | "army_spawn"
   | "town_spawn"
   | "army_move"
@@ -72,7 +73,13 @@ export interface AnimArmy {
   toX: number;
   toY: number;
   dies: boolean;
+  deathX: number;
+  deathY: number;
   spawns: boolean;
+  spawnX: number;
+  spawnY: number;
+  /** True if this is a backward death (died forward, appears backward). */
+  isReverse?: boolean;
 }
 
 export interface AnimTown {
