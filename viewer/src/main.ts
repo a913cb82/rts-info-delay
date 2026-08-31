@@ -401,6 +401,12 @@ function drawGraph(): void {
   gctx.beginPath(); gctx.moveTo(cx, pad.t); gctx.lineTo(cx, ch - pad.b); gctx.stroke();
   gctx.setLineDash([]);
 
+  // turn label inside graph (top-right)
+  gctx.fillStyle = "#333";
+  gctx.font = "bold 12px system-ui, sans-serif";
+  gctx.textAlign = "right";
+  gctx.fillText(`Turn ${turn} / ${maxT}`, cw - pad.r - 4, pad.t + 12);
+
   gctx.restore();
 }
 
@@ -411,6 +417,7 @@ function updateChrome(): void {
   const maxTurn = Math.max(0, turns.length - 1);
   turnLabelEl.textContent = `Turn ${turn} / ${maxTurn}`;
   playBtn.classList.toggle("playing", playing);
+  playBtn.textContent = playing ? "⏹" : "▶";
   playBtn.title = playing ? "Pause (Space)" : "Play (Space)";
 }
 
@@ -474,10 +481,12 @@ function fitView(): void {
 function setupInteractions(): void {
   // coordinate tooltip on map hover
   mapWrap.addEventListener("mousemove", (e) => {
+    // entity tooltips (town/army/battle) take priority
+    const target = e.target as Element;
+    if (target.closest && target.closest(".entity")) return;
     const rect = mapWrap.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
-    // convert screen to world using inverse of SVG transform
     const wx = (sx - panZoom.tx) / panZoom.scale;
     const wy = (sy - panZoom.ty) / panZoom.scale;
     if (wx >= 0 && wy >= 0 && wx <= mapSize[0] && wy <= mapSize[1]) {
@@ -561,10 +570,7 @@ function boot(): void {
   const app = document.getElementById("app")!;
   app.innerHTML = `
     <header>
-      <span class="turn-label" id="turn-label">Turn —</span>
-      <label style="margin-left:auto;display:flex;gap:0.4rem;align-items:center;">
-        <input type="file" id="file-input" accept=".jsonl" style="font-size:0.8rem;" />
-      </label>
+      <span class="turn-label" id="turn-label"></span>
     </header>
     <div class="score-bar" id="score-bar"></div>
     <div class="timeline-wrap">
@@ -613,13 +619,7 @@ function boot(): void {
   document.getElementById("btn-end")!.addEventListener("click", () => goToTurn(turns.length - 1));
   speedSel.addEventListener("change", () => { speed = parseFloat(speedSel.value); });
 
-  const fileInput = document.getElementById("file-input") as HTMLInputElement;
-  fileInput.addEventListener("change", async () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    loadRecord(parseJSONL(text));
-  });
+
 
   // add tooltip div to body
   const tt = document.createElement("div");
