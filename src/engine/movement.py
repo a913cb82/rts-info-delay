@@ -259,7 +259,7 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
         # Clamp
         nx, ny = world.clamp_position(nx, ny)
         if abs(nx - ax) > 1e-9 or abs(ny - ay) > 1e-9:
-            events.append({"kind": "army_move", "id": army.id, "x": nx, "y": ny})
+            events.append({"kind": "army_move", "id": army.id, "x": nx, "y": ny, "has_target": army.has_target, "target_x": army.target_x, "target_y": army.target_y})
         army.x = nx
         army.y = ny
 

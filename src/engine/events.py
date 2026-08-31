@@ -69,6 +69,12 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
             if a:
                 a.x = ev.get("x", a.x)
                 a.y = ev.get("y", a.y)
+                if "has_target" in ev:
+                    a.has_target = bool(ev.get("has_target"))
+                if "target_x" in ev:
+                    a.target_x = ev.get("target_x", a.target_x)
+                if "target_y" in ev:
+                    a.target_y = ev.get("target_y", a.target_y)
 
         elif kind == "army_death":
             world.remove_army(ev.get("id"))
