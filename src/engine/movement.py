@@ -158,42 +158,65 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
             a.is_fresh = False
         return []
 
-    # Build contacts list: for each moving army vs each potential blocker
-    contacts: list[tuple[float, int, int, str, float]] = []  # t_star, moving_idx, blocker_idx_or_town_idx, type, min_dist
-
-    # Pre-collect town blockers
-    town_list = list(world.towns)  # list of Town objects
+    contacts: list[tuple[float, int, int, str, float]] = []
+    town_list = list(world.towns)
+    # --- spatial cull: build hashes for start positions (cell 50) ---
+    use_hash = False
+    sh_army = None
+    sh_town = None
+    try:
+        from engine.spatial import SpatialHash
+        # army hash
+        sh_army = SpatialHash.__new__(SpatialHash)
+        sh_army.config = config
+        sh_army.cell_size = 60.0  # > army_speed + radius
+        try: mx, my = config.map_size[0], config.map_size[1]
+        except: mx, my = 1000, 1000
+        sh_army.width = int(math.ceil(mx / sh_army.cell_size)) if sh_army.cell_size else 1
+        sh_army.height = int(math.ceil(my / sh_army.cell_size)) if sh_army.cell_size else 1
+        sh_army.cells = {}
+        pos_a = np.array([[start_x[i], start_y[i]] for i in range(n)], dtype=np.float64) if n else np.zeros((0,2))
+        sh_army.positions = pos_a
+        for idx, (x, y) in enumerate(pos_a):
+            key = (int(math.floor(x / sh_army.cell_size)), int(math.floor(y / sh_army.cell_size)))
+            sh_army.cells.setdefault(key, []).append(idx)
+        # town hash (static, build once)
+        sh_town = SpatialHash.__new__(SpatialHash)
+        sh_town.config = config
+        sh_town.cell_size = 60.0
+        sh_town.width = sh_army.width; sh_town.height = sh_army.height
+        sh_town.cells = {}
+        if town_list:
+            pos_t = np.array([[t.x, t.y] for t in town_list], dtype=np.float64)
+            sh_town.positions = pos_t
+            for idx, (x, y) in enumerate(pos_t):
+                key = (int(math.floor(x / sh_town.cell_size)), int(math.floor(y / sh_town.cell_size)))
+                sh_town.cells.setdefault(key, []).append(idx)
+        else:
+            sh_town.positions = np.zeros((0,2))
+        use_hash = True
+    except Exception:
+        use_hash = False
 
     for mi in moving_indices:
-        # If moving army itself is fresh, it is immune from being blocked? Spec says fresh spawns immune (skip as blocker) but also they shouldn't be blocked? We'll treat fresh moving armies as not blockable.
-        if is_fresh[mi]:
-            continue
-        ax = start_x[mi]
-        ay = start_y[mi]
-        vx = vel_x[mi]
-        vy = vel_y[mi]
-        m_faction = factions[mi]
-
-        # Check vs army blockers
-        for bi in range(n):
-            if bi == mi:
-                continue
-            if is_fresh[bi]:
-                continue  # fresh blocker immune
-            if factions[bi] == m_faction:
-                continue
-            bx = start_x[bi]
-            by = start_y[bi]
-            wx = vel_x[bi]
-            wy = vel_y[bi]
-            t_star, min_dist = _closest_approach(ax, ay, vx, vy, bx, by, wx, wy)
+        if is_fresh[mi]: continue
+        ax = start_x[mi]; ay = start_y[mi]; vx = vel_x[mi]; vy = vel_y[mi]; m_faction = factions[mi]
+        # candidates via hash (110 for armies (both moving), 60 for towns)
+        cand_armies = range(n) if not use_hash else sh_army.query_radius(float(ax), float(ay), 110.0)
+        for bi in cand_armies:
+            if bi == mi: continue
+            if is_fresh[bi]: continue
+            if factions[bi] == m_faction: continue
+            bx = start_x[bi]; by = start_y[bi]; wx = vel_x[bi]; wy = vel_y[bi]
+            # early bbox reject before hypot
+            # if both far in x or y beyond radius+travel, skip quickly (optional)
+            t_star, min_dist = _closest_approach_numba(ax, ay, vx, vy, bx, by, wx, wy) if 'numba' in str(type(_closest_approach_numba)) else _closest_approach(ax, ay, vx, vy, bx, by, wx, wy)
             if min_dist <= radius + 1e-9:
                 contacts.append((t_star, mi, bi, "army", min_dist))
-
-        # Check vs town blockers
-        for ti, town in enumerate(town_list):
-            if town.faction == m_faction:
-                continue
+        cand_towns = range(len(town_list)) if not use_hash else sh_town.query_radius(float(ax), float(ay), 60.0)
+        for ti in cand_towns:
+            town = town_list[ti]
+            if town.faction == m_faction: continue
             tx, ty = town.x, town.y
             t_star, min_dist = _closest_approach(ax, ay, vx, vy, tx, ty, 0.0, 0.0)
             if min_dist <= radius + 1e-9:

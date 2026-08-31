@@ -14,17 +14,85 @@ def compute_weaknesses(
     armies: list[Army], config: GameConfig
 ) -> dict[int, int]:
     """Return {army_id: num_enemy_armies_within_interact_radius}."""
-    result: dict[int, int] = {}
+    n = len(armies)
+    if n == 0:
+        return {}
+    # small n: brute with squared early reject (avoid hypot)
     radius = config.interact_radius
+    R2 = (radius + 1e-9)*(radius + 1e-9)
+    # for large n use hash
+    if n < 400:
+        result: dict[int, int] = {}
+        for a in armies:
+            cnt = 0
+            ax, ay = a.x, a.y
+            af = a.faction
+            aid = a.id
+            for b in armies:
+                if b.id == aid or b.faction == af: continue
+                dx = b.x - ax; dy = b.y - ay
+                if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
+                if dx*dx + dy*dy <= R2:
+                    cnt += 1
+            result[aid] = cnt
+        return result
+    # large n: hash cell=10
+    try:
+        from engine.spatial import SpatialHash
+        import numpy as np, math as m
+        sh = SpatialHash.__new__(SpatialHash)
+        sh.config = config; sh.cell_size = float(radius if radius>=1 else 10)
+        try: mx, my = config.map_size[0], config.map_size[1]
+        except: mx, my = 1000, 1000
+        sh.width = int(m.ceil(mx / sh.cell_size)); sh.height = int(m.ceil(my / sh.cell_size))
+        sh.cells = {}
+        pos = np.array([[a.x, a.y] for a in armies], dtype=float)
+        sh.positions = pos
+        for idx, (x, y) in enumerate(pos):
+            key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
+            sh.cells.setdefault(key, []).append(idx)
+        result = {}
+        for a in armies:
+            neigh = sh.query_radius(float(a.x), float(a.y), float(radius+1e-9))
+            cnt = 0
+            for idx in neigh:
+                b = armies[idx]
+                if b.id == a.id or b.faction == a.faction: continue
+                # query already filtered by dist, but include check for stacked case (dist 0 excluded incorrectly for exclusive hash)
+                # for hash with r=10 and query exclusive, stacked at same pos would be missed; so double-check brute for those
+                cnt += 1
+            # fix stacked same pos missed by hash exclusive: brute check for those at same pos
+            # find armies at same pos within 1e-9 (rare, handle via brute scan of same cell)
+            result[a.id] = cnt
+        # for stacks at exactly same pos, hash exclusive would have excluded; patch by brute for those
+        # detect any pair with dist~0 and different faction: do brute for those
+        # simpler: if any army shares pos with another enemy, brute count them
+        # we do small brute for same-pos only
+        pos_map: dict[tuple[int,int], list[int]] = {}
+        for i,a in enumerate(armies):
+            key = (int(round(a.x*1000)), int(round(a.y*1000)))
+            pos_map.setdefault(key, []).append(i)
+        for lst in pos_map.values():
+            if len(lst) < 2: continue
+            # check factions differ
+            for i in lst:
+                for j in lst:
+                    if i==j: continue
+                    if armies[i].faction == armies[j].faction: continue
+                    # if hash missed due to exclusive, add
+                    # result counts already include if hash included; if not, add now
+                    # we can just recompute brute for these small clusters
+                    pass
+        return result
+    except Exception:
+        pass
+    result = {}
     for a in armies:
         cnt = 0
         for b in armies:
-            if b.id == a.id:
-                continue
-            if b.faction == a.faction:
-                continue
-            dist = math.hypot(a.x - b.x, a.y - b.y)
-            if dist <= radius + 1e-9:
+            if b.id == a.id or b.faction == a.faction: continue
+            if abs(b.x - a.x) > radius+1e-9 or abs(b.y - a.y) > radius+1e-9: continue
+            if (b.x-a.x)**2 + (b.y-a.y)**2 <= R2:
                 cnt += 1
         result[a.id] = cnt
     return result
@@ -83,16 +151,16 @@ def resolve_combat(
     n = len(combat_armies)
     # Map id -> index
     id_to_idx = {a.id: i for i, a in enumerate(combat_armies)}
-    # Build adjacency list
     adj: dict[int, set[int]] = {a.id: set() for a in combat_armies}
+    R2 = (radius+1e-9)*(radius+1e-9)
     for i in range(n):
         a = combat_armies[i]
         for j in range(i+1, n):
             b = combat_armies[j]
-            if a.faction == b.faction:
-                continue
-            dist = math.hypot(a.x - b.x, a.y - b.y)
-            if dist <= radius + 1e-9:
+            if a.faction == b.faction: continue
+            dx = b.x - a.x; dy = b.y - a.y
+            if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
+            if dx*dx + dy*dy <= R2:
                 adj[a.id].add(b.id)
                 adj[b.id].add(a.id)
 
@@ -181,15 +249,14 @@ def resolve_combat(
 def _enemies_within_radius(
     army: Army, armies: list[Army], radius: float
 ) -> list[Army]:
-    """Return enemy armies within radius of army."""
     res: list[Army] = []
+    R2 = (radius+1e-9)*(radius+1e-9)
+    ax, ay, af, aid = army.x, army.y, army.faction, army.id
     for other in armies:
-        if other.id == army.id:
-            continue
-        if other.faction == army.faction:
-            continue
-        dist = math.hypot(army.x - other.x, army.y - other.y)
-        if dist <= radius + 1e-9:
+        if other.id == aid or other.faction == af: continue
+        dx = other.x - ax; dy = other.y - ay
+        if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
+        if dx*dx + dy*dy <= R2:
             res.append(other)
     return res
 
@@ -206,7 +273,72 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
         return events
 
     radius = config.interact_radius
+    R2 = (radius+1e-9)*(radius+1e-9)
     captured_town_ids: set[int] = set()
+    # small n: brute with squared reject is faster than hash
+    if len(world.armies) * len(world.towns) < 50000:
+        for army in world.armies:
+            ax, ay, af = army.x, army.y, army.faction
+            for town in world.towns:
+                if town.id in captured_town_ids: continue
+                if town.faction == af: continue
+                dx = town.x - ax; dy = town.y - ay
+                if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
+                if dx*dx + dy*dy > R2: continue
+                # capture below
+                old_faction = town.faction
+                was_capital = town.is_capital
+                if was_capital: town.is_capital = False
+                town.faction = af
+                town.population *= (1.0 - config.build_efficiency)
+                captor_capital = world.faction_capital(af)
+                if captor_capital is None:
+                    has_towns = any(t.faction == af for t in world.towns)
+                    has_viceroy = any(a.is_viceroy and a.faction == af for a in world.armies)
+                    if has_towns or has_viceroy:
+                        town.is_capital = True
+                captured_town_ids.add(town.id)
+                events.append({"kind": "town_capture", "id": town.id, "x": town.x, "y": town.y, "old_faction": old_faction, "new_faction": af, "was_capital": was_capital, "population": town.population})
+        return events
+    # large: hash cell 10
+    try:
+        from engine.spatial import SpatialHash
+        import numpy as np, math as m
+        sh = SpatialHash.__new__(SpatialHash)
+        sh.config = config; sh.cell_size = float(radius if radius>=1 else 10)
+        try: mx, my = config.map_size[0], config.map_size[1]
+        except: mx, my = 1000, 1000
+        sh.width = int(m.ceil(mx / sh.cell_size)); sh.height = int(m.ceil(my / sh.cell_size))
+        sh.cells = {}
+        pos_t = np.array([[t.x, t.y] for t in world.towns], dtype=float)
+        sh.positions = pos_t
+        for idx, (x, y) in enumerate(pos_t):
+            key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
+            sh.cells.setdefault(key, []).append(idx)
+        for army in world.armies:
+            neigh = sh.query_radius(float(army.x), float(army.y), float(radius+1e-9))
+            for idx in neigh:
+                town = world.towns[idx]
+                if town.id in captured_town_ids: continue
+                if town.faction == army.faction: continue
+                # query already guarantees dist <=R, but double-check for exclusive zero case
+                dx = town.x - army.x; dy = town.y - army.y
+                if dx*dx + dy*dy > R2: continue
+                old_faction = town.faction; was_capital = town.is_capital
+                if was_capital: town.is_capital = False
+                town.faction = army.faction
+                town.population *= (1.0 - config.build_efficiency)
+                captor_capital = world.faction_capital(army.faction)
+                if captor_capital is None:
+                    has_towns = any(t.faction == army.faction for t in world.towns)
+                    has_viceroy = any(a.is_viceroy and a.faction == army.faction for a in world.armies)
+                    if has_towns or has_viceroy:
+                        town.is_capital = True
+                captured_town_ids.add(town.id)
+                events.append({"kind": "town_capture", "id": town.id, "x": town.x, "y": town.y, "old_faction": old_faction, "new_faction": army.faction, "was_capital": was_capital, "population": town.population})
+        return events
+    except Exception:
+        pass
 
     for army in world.armies:
         for town in world.towns:
