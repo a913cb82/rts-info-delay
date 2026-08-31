@@ -50,14 +50,30 @@ header {
 
 /* ── Score bar ── */
 
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+}
+
+.bar-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 .score-bar {
   display: flex;
+  flex: 1;
   height: 18px;
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid var(--border);
-  flex-shrink: 0;
-  margin-top: 0.4rem;
 }
 
 .score-bar .seg {

@@ -55,6 +55,7 @@ let graphCanvas!: HTMLCanvasElement;
 let graphCtx!: CanvasRenderingContext2D;
 let scoreBarEl!: HTMLDivElement;
 let armyBarEl!: HTMLDivElement;
+let settleBarEl!: HTMLDivElement;
 let mapWrap!: HTMLDivElement;
 
 /* ── Helpers ── */
@@ -79,6 +80,10 @@ function computeScore(world: { towns: { faction: number; population: number }[];
 
 function computeArmies(world: { armies: { faction: number }[] }, faction: number): number {
   return world.armies.filter((a) => a.faction === faction).length;
+}
+
+function computeSettlements(world: { towns: { faction: number }[] }, faction: number): number {
+  return world.towns.filter((t) => t.faction === faction).length;
 }
 
 function buildScoreCache(): void {
@@ -180,6 +185,7 @@ function draw(): void {
   updateChrome();
   drawGraph();
   drawScoreBar();
+  drawSettlementsBar();
   drawArmyBar();
 }
 
@@ -375,6 +381,25 @@ function drawScoreBar(): void {
     seg.textContent = `${Math.round(score)}`;
     seg.title = `Faction ${faction}: ${Math.round(score)}`;
     scoreBarEl.appendChild(seg);
+  }
+}
+
+function drawSettlementsBar(): void {
+  if (!settleBarEl || turns.length === 0) return;
+  const cur = frameAt(turn);
+  const facs = getFactions();
+  const counts = facs.map((f) => ({ faction: f, count: computeSettlements(cur.world, f) }));
+  const total = counts.reduce((s, x) => s + x.count, 0) || 1;
+  settleBarEl.innerHTML = "";
+  for (const { faction, count } of counts) {
+    const pct = (count / total) * 100;
+    const seg = document.createElement("div");
+    seg.className = "seg";
+    seg.style.width = `${pct}%`;
+    seg.style.background = factionColor(faction, factionCount);
+    seg.textContent = `${count}`;
+    seg.title = `Faction ${faction}: ${count} settlements`;
+    settleBarEl.appendChild(seg);
   }
 }
 
@@ -672,8 +697,9 @@ function boot(): void {
     <header>
       <span class="turn-label" id="turn-label"></span>
     </header>
-    <div class="score-bar" id="score-bar"></div>
-    <div class="score-bar" id="army-bar"></div>
+    <div class="bar-row"><span class="bar-label">Score</span><div class="score-bar" id="score-bar"></div></div>
+    <div class="bar-row"><span class="bar-label">Towns</span><div class="score-bar" id="settle-bar"></div></div>
+    <div class="bar-row"><span class="bar-label">Armies</span><div class="score-bar" id="army-bar"></div></div>
     <div class="timeline-wrap">
       <div class="graph-container">
         <canvas id="graph-canvas"></canvas>
@@ -711,6 +737,7 @@ function boot(): void {
   graphCanvas = document.getElementById("graph-canvas") as HTMLCanvasElement;
   graphCtx = graphCanvas.getContext("2d")!;
   scoreBarEl = document.getElementById("score-bar") as HTMLDivElement;
+  settleBarEl = document.getElementById("settle-bar") as HTMLDivElement;
   armyBarEl = document.getElementById("army-bar") as HTMLDivElement;
   mapWrap = document.getElementById("map-wrap") as HTMLDivElement;
 
