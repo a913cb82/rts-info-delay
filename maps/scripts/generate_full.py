@@ -135,13 +135,14 @@ def generate_map():
 
 
 def rebalance(settlements, centers):
-    for _ in range(80):
+    for _ in range(200):
         pops = [sum(p for _, _, p, f in settlements if f == fi) for fi in range(N_FACTIONS)]
         target = sum(pops) / N_FACTIONS
         hi = max(range(N_FACTIONS), key=lambda i: pops[i])
         lo = min(range(N_FACTIONS), key=lambda i: pops[i])
-        if pops[hi] < target * 1.05:
+        if pops[hi] < target * 1.02:
             break
+        # find best border settlement to move: closest to lo center, not capital
         best = None; best_d = float("inf")
         for i, (x, y, p, f) in enumerate(settlements):
             if f != hi or p >= 40000:
