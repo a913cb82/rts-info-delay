@@ -149,7 +149,10 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
             net = crowding_net(t, snapshot, config)
             nets.append(net)
     for t, net in zip(snapshot, nets):
+        old_pop = t.population
         t.population += net
+        if abs(net) > 1e-9:
+            events.append({"kind": "pop_change", "id": t.id, "population": t.population})
     dead: list[Town] = []
     for t in list(world.towns):
         if t.population < config.death_threshold - 1e-9:

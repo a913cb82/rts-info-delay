@@ -771,6 +771,11 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         t.population += nets[t.id]
     # Check deaths for grown towns (skip those already handled)
     growth_events = []
+    # Emit pop_change events
+    for t in snapshot:
+        if t.id not in skip_growth_ids and abs(nets[t.id]) > 1e-9:
+            growth_events.append({"kind": "pop_change", "id": t.id, "population": t.population})
+    # Check deaths for grown towns (skip those already handled)
     dead = [t for t in list(world.towns) if t.population < config.death_threshold - 1e-9 and t.id not in skip_growth_ids]
     # Also need to check skip towns for death after no growth? They might still be below threshold due to previous deduction
     for t in list(world.towns):
@@ -881,6 +886,9 @@ def _phase_knowledge(
     """Log events to ledger, evict old entries."""
     for ev in events:
         kind_str = ev.get("kind", "battle")
+        # pop_change is a direct state update, not a ledger event
+        if kind_str == "pop_change":
+            continue
         # Map kind string to EventKind
         try:
             ek = EventKind(kind_str)

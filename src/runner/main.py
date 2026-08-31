@@ -272,6 +272,7 @@ def run_game(
         write_config_line(config, record_path)
 
     # Game loop
+    events: list[dict] = []
     for turn in range(1, config.max_turns + 1):
         orders_dict: dict[int, list[str]] = {}
         for faction, bp in bot_processes.items():
@@ -308,10 +309,14 @@ def run_game(
                     "y": ev.y,
                     "turn": ev.turn,
                 }
-                # payload may contain id, faction, etc.
                 if isinstance(ev.payload, dict):
                     d.update(ev.payload)
                 bot_events.append(d)
+            # Append pop_change events from previous step (not in ledger)
+            if events:
+                for ev in events:
+                    if isinstance(ev, dict) and ev.get("kind") == "pop_change":
+                        bot_events.append(ev)
             # Send turn and get orders
             faction_orders = bp.send_turn(turn=turn, events=bot_events)
             orders_dict[faction] = faction_orders

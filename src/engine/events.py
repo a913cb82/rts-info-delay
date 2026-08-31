@@ -75,3 +75,8 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
 
         elif kind == "town_death":
             world.remove_town(ev.get("id"))
+
+        elif kind == "pop_change":
+            t = world.get_town(ev.get("id"))
+            if t:
+                t.population = ev.get("population", t.population)
