@@ -28,8 +28,8 @@ class GameConfig:
     build_efficiency: float = 0.5
 
     # Crowding
-    equilibrium_spacing: float = 0.3
-    crowding_decay: float = 0.4
+    equilibrium_spacing: float = 0.1
+    crowding_decay: float = 0.8
     crowding_asymmetry: float = 0.01
 
     @classmethod
