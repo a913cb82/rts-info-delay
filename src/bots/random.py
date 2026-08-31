@@ -11,21 +11,14 @@ from .common import (
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
-    """Pure function: (world, faction, config) → list[order_strings]."""
     faction = state.faction
     out: list[str] = []
-    busy: set[int] = set()
     own_t = state.own_towns()
     own_a = state.own_armies()
 
-    # TRAIN: if pop > 2000 or small and safe
+    # TRAIN: random towns
     for t in own_t:
-        if t.id in busy:
-            continue
-        # Don't train if we already spent here this turn
-            continue
         if can_train_safely(t, conservative=False):
-            # Extra gate: skip peak window 50% of time
             h = _hash(state.turn, t.id, 7)
             if PEAK_LOW <= t.population <= PEAK_HIGH and h % 2 == 0:
                 continue
@@ -33,24 +26,27 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # BUILD / wander
     for p in own_a:
-        if p.id in busy:
-            continue
         if p.is_viceroy and p.has_target:
             continue
         h = _hash(state.turn, p.id, 3)
-        # 20% build if idle and safe site
         if h % 5 == 0 and own_t:
             cap = state.world.faction_capital(faction)
             if cap:
-                sx, sy = _site(state.turn, p.id, config, [{"x": t.x, "y": t.y, "population": t.population} for t in own_t], salt=11, rmin=100, rmax=350, around={"x": cap.x, "y": cap.y})
-                out.append(f"BUILD {p.id} {sx:.1f} {sy:.1f}")
-                busy.add(p.id)
-                continue
-        # wander toward random own town
+                sx, sy = _site(state.turn, p.id, config,
+                               [{"x": t.x, "y": t.y, "population": t.population} for t in own_t],
+                               salt=11, rmin=100, rmax=350, around={"x": cap.x, "y": cap.y})
+                dist = math.hypot(p.x - sx, p.y - sy)
+                if dist < config.interact_radius + 5:
+                    out.append(f"BUILD {p.id} {sx:.1f} {sy:.1f}")
+                    continue
+                else:
+                    out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {sx:.1f} {sy:.1f}")
+                    continue
         if own_t:
             ht = _hash(state.turn, p.id, 5) % len(own_t)
             t = own_t[ht]
             out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {t.x:.1f} {t.y:.1f}")
+
     return out
 
 

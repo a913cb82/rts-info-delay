@@ -1,4 +1,4 @@
-"""Aggressive — chases nearest enemy town/army, with forecast and TRAIN gate."""
+"""Aggressive — chases nearest enemy, TRAINs greedily."""
 
 from __future__ import annotations
 
@@ -16,42 +16,28 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     own_t = state.own_towns()
     own_a = state.own_armies()
-    enemies = [{"x": a.x, "y": a.y, "has_target": a.has_target, "target_x": a.target_x, "target_y": a.target_y}
-               for a in state.world.armies if a.faction != faction]
 
-    # TRAIN
+    # TRAIN: every town that can afford it
     for t in own_t:
-            continue
         if can_train_safely(t, conservative=False):
             out.append(f"TRAIN {t.id}")
 
-    # Guard capital with one army
-    cap = state.world.faction_capital(faction)
-    guarded = False
-    if cap:
-        for p in own_a:
-            if p.is_viceroy and p.has_target:
-                continue
-            dist = math.hypot(p.x - cap.x, p.y - cap.y)
-            if dist < 100 and not guarded:
-                guarded = True
-                continue  # stay put
+    # Chase: nearest enemy town, or forecast enemy army position
+    enemy_towns = [{"x": t.x, "y": t.y} for t in state.world.towns if t.faction != faction]
+    enemy_armies = [{"x": a.x, "y": a.y, "has_target": a.has_target,
+                     "target_x": a.target_x, "target_y": a.target_y}
+                    for a in state.world.armies if a.faction != faction]
 
-    # Chase: nearest enemy town or forecast enemy army
     for p in own_a:
         if p.is_viceroy and p.has_target:
             continue
-        e_towns = [{"x": t.x, "y": t.y} for t in state.towns.values() if t.faction != faction]
-        if e_towns:
-            nearest = min(e_towns, key=lambda t: math.hypot(t["x"] - p.x, t["y"] - p.y))
+        if enemy_towns:
+            nearest = min(enemy_towns, key=lambda t: math.hypot(t["x"] - p.x, t["y"] - p.y))
             out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest['x']:.1f} {nearest['y']:.1f}")
-        elif enemies:
-            # Chase forecast position
-            forecast_enemies = []
-            for e in enemies:
-                fx, fy = _forecast_pos(e, 1.0, config)
-                forecast_enemies.append({"fx": fx, "fy": fy})
-            e = min(forecast_enemies, key=lambda e: math.hypot(e["fx"] - p.x, e["fy"] - p.y))
+        elif enemy_armies:
+            forecast = [{"fx": _forecast_pos(e, 1.0, config)[0],
+                         "fy": _forecast_pos(e, 1.0, config)[1]} for e in enemy_armies]
+            e = min(forecast, key=lambda e: math.hypot(e["fx"] - p.x, e["fy"] - p.y))
             out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {e['fx']:.1f} {e['fy']:.1f}")
 
     return out

@@ -708,6 +708,9 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
     from engine.economy import apply_growth, apply_train, apply_build, check_town_death
     events: list[dict] = []
 
+    # Snapshot pops at start for net pop_change at end
+    pop_start = {t.id: t.population for t in world.towns}
+
     # Growth - skip towns that are BUILD targets or MOVE_CAPITAL capitals this turn (to match test expectations of no growth when building/moving capital)
     # Collect towns to skip growth for
     skip_growth_ids: set[int] = set()
@@ -771,10 +774,6 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         t.population += nets[t.id]
     # Check deaths for grown towns (skip those already handled)
     growth_events = []
-    # Emit pop_change events
-    for t in snapshot:
-        if t.id not in skip_growth_ids and abs(nets[t.id]) > 1e-9:
-            growth_events.append({"kind": "pop_change", "id": t.id, "population": t.population})
     # Check deaths for grown towns (skip those already handled)
     dead = [t for t in list(world.towns) if t.population < config.death_threshold - 1e-9 and t.id not in skip_growth_ids]
     # Also need to check skip towns for death after no growth? They might still be below threshold due to previous deduction
@@ -876,6 +875,12 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
     from engine.economy import check_town_death as ctd
     # This will remove any remaining dead towns and clean standing orders
     ctd(world, config)
+
+    # Emit net pop_change events (end of economy phase)
+    for t in world.towns:
+        prev = pop_start.get(t.id, t.population)
+        if abs(t.population - prev) > 1e-9:
+            events.append({"kind": "pop_change", "id": t.id, "population": t.population})
 
     return events
 
