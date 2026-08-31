@@ -23,9 +23,9 @@ class TestConfig:
         assert cfg.population_cap == 100_000.0
         assert cfg.population_growth == 0.001
         assert cfg.build_efficiency == 0.5
-        assert cfg.equilibrium_spacing == 0.4
-        assert cfg.crowding_decay == 0.3
-        assert cfg.crowding_asymmetry == 0.006
+        assert cfg.equilibrium_spacing == 0.3
+        assert cfg.crowding_decay == 0.4
+        assert cfg.crowding_asymmetry == 0.01
 
     def test_config_overrides(self) -> None:
         """X2: from_dict overrides specified fields, keeps defaults."""
@@ -38,9 +38,9 @@ class TestConfig:
         assert cfg.population_cap == 100_000.0
         assert cfg.population_growth == 0.001
         assert cfg.build_efficiency == 0.5
-        assert cfg.equilibrium_spacing == 0.4
-        assert cfg.crowding_decay == 0.3
-        assert cfg.crowding_asymmetry == 0.006
+        assert cfg.equilibrium_spacing == 0.3
+        assert cfg.crowding_decay == 0.4
+        assert cfg.crowding_asymmetry == 0.01
         assert cfg.map_size == [1000, 1000]
         assert cfg.max_turns == 500
         assert cfg.turn_time_ms == 1000

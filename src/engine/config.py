@@ -28,9 +28,9 @@ class GameConfig:
     build_efficiency: float = 0.5
 
     # Crowding
-    equilibrium_spacing: float = 0.4
-    crowding_decay: float = 0.3
-    crowding_asymmetry: float = 0.006
+    equilibrium_spacing: float = 0.3
+    crowding_decay: float = 0.4
+    crowding_asymmetry: float = 0.01
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> GameConfig:
