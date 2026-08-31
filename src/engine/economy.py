@@ -242,22 +242,45 @@ def _get_dist_matrix(all_towns: list[Town]):
     if cached is not None:
         D, xs, ys, ids, cached_n = cached
         if cached_n == n and ids[0] == all_towns[0].id and ids[-1] == all_towns[-1].id:
-            # quick check first/last x
             if xs[0] == all_towns[0].x and ys[0] == all_towns[0].y and xs[-1] == all_towns[-1].x:
                 return D, xs, ys
     xs = np.array([t.x for t in all_towns], dtype=np.float64)
     ys = np.array([t.y for t in all_towns], dtype=np.float64)
     ids = np.array([t.id for t in all_towns], dtype=np.int64)
-    # compute D = hypot
     dx = xs[:, None] - xs[None, :]
     dy = ys[:, None] - ys[None, :]
     D = np.sqrt(dx*dx + dy*dy)
     _dist_cache[cid] = (D, xs, ys, ids, n)
     if len(_dist_cache) > 20:
-        # prune oldest
         oldest = next(iter(_dist_cache))
         del _dist_cache[oldest]
     return D, xs, ys
+
+try:
+    import numba
+    @numba.njit
+    def _batch_numba_inner(D_, pops_, logs_, R_, eq_sp, decay, asym, out_):
+        n_ = pops_.shape[0]
+        for i in range(n_):
+            total = 0.0
+            pi = pops_[i]
+            for j in range(n_):
+                if i == j: continue
+                d = D_[i, j]
+                if d > R_: continue
+                if d < 1e-9: d = 1e-6
+                pj = pops_[j]
+                m = pi if pi < pj else pj
+                if m < 0: m = 0
+                d_eq = eq_sp * math.sqrt(m) if m > 0 else 0.0
+                a = 1.0
+                if pi > 0 and pj > 0:
+                    a = 1.0 + asym * math.log(pj / pi)
+                ratio = (d_eq / d) ** decay if d_eq > 0 else 0.0
+                total += a * ratio
+            out_[i] = logs_[i] * (1.0 - total)
+except Exception:
+    _batch_numba_inner = None  # type: ignore
 
 
 def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float]:
@@ -277,36 +300,13 @@ def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float
     # logistic vector
     logs = config.population_growth * pops * (1.0 - pops / config.population_cap)
     R = config.info_speed + 1e-9
-    # For each i, compute crowding sum over j != i with D[i,j] <= R
     nets = np.empty(n, dtype=np.float64)
-    # Use numba if available for inner loop, else numpy per-row
-    try:
-        import numba
-        @numba.njit
-        def _batch_numba(D_, pops_, logs_, R_, eq_sp, decay, asym, out):
-            n_ = pops_.shape[0]
-            for i in range(n_):
-                total = 0.0
-                pi = pops_[i]
-                for j in range(n_):
-                    if i == j: continue
-                    d = D_[i, j]
-                    if d > R_: continue
-                    if d < 1e-9: d = 1e-6
-                    pj = pops_[j]
-                    m = pi if pi < pj else pj
-                    if m < 0: m = 0
-                    d_eq = eq_sp * math.sqrt(m) if m > 0 else 0.0
-                    a = 1.0
-                    if pi > 0 and pj > 0:
-                        a = 1.0 + asym * math.log(pj / pi)
-                    ratio = (d_eq / d) ** decay if d_eq > 0 else 0.0
-                    total += a * ratio
-                out[i] = logs_[i] * (1.0 - total)
-        _batch_numba(D, pops, logs, R, config.equilibrium_spacing, config.crowding_decay, config.crowding_asymmetry, nets)
-        return nets.tolist()
-    except Exception:
-        pass
+    if _batch_numba_inner is not None:
+        try:
+            _batch_numba_inner(D, pops, logs, R, config.equilibrium_spacing, config.crowding_decay, config.crowding_asymmetry, nets)
+            return nets.tolist()
+        except Exception:
+            pass
     # fallback numpy per-row vectorized
     for i in range(n):
         pi = pops[i]
