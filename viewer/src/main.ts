@@ -47,7 +47,7 @@ let svg!: SVGSVGElement;
 let worldG!: SVGGElement;
 let tooltip!: HTMLDivElement;
 let turnLabelEl!: HTMLSpanElement;
-let sliderEl!: HTMLInputElement;
+
 let playBtn!: HTMLButtonElement;
 let speedSel!: HTMLSelectElement;
 let graphCanvas!: HTMLCanvasElement;
@@ -410,9 +410,6 @@ function updateChrome(): void {
   if (!turnLabelEl) return;
   const maxTurn = Math.max(0, turns.length - 1);
   turnLabelEl.textContent = `Turn ${turn} / ${maxTurn}`;
-  sliderEl.min = "0";
-  sliderEl.max = String(maxTurn);
-  sliderEl.value = String(turn);
   playBtn.classList.toggle("playing", playing);
   playBtn.title = playing ? "Pause (Space)" : "Play (Space)";
 }
@@ -533,23 +530,29 @@ function setupInteractions(): void {
     else if (e.key === " ") { e.preventDefault(); togglePlay(); }
   });
 
-  // controls
-  sliderEl.addEventListener("input", () => {
-    const target = parseInt(sliderEl.value, 10);
-    goToTurn(target, Math.abs(target - turn) <= 1);
-    playing = false; lastPlay = 0;
-  });
-
-  // graph click to seek
-  graphCanvas.addEventListener("click", (e) => {
+  // graph drag to seek
+  let graphDragging = false;
+  function graphTurnAt(e: MouseEvent): number {
     const rect = graphCanvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const pad = { l: 40, r: 10 };
     const plotW = rect.width - pad.l - pad.r;
     const maxT = Math.max(1, turns.length - 1);
-    const t = Math.round(((mx - pad.l) / plotW) * maxT);
-    goToTurn(Math.max(0, Math.min(maxT, t)));
+    return Math.max(0, Math.min(maxT, Math.round(((mx - pad.l) / plotW) * maxT)));
+  }
+  graphCanvas.addEventListener("pointerdown", (e) => {
+    graphDragging = true;
+    playing = false; lastPlay = 0;
+    const t = graphTurnAt(e as unknown as MouseEvent);
+    goToTurn(t, false);
   });
+  graphCanvas.addEventListener("pointermove", (e) => {
+    if (!graphDragging) return;
+    const t = graphTurnAt(e as unknown as MouseEvent);
+    goToTurn(t, false);
+  });
+  graphCanvas.addEventListener("pointerup", () => graphDragging = false);
+  graphCanvas.addEventListener("pointerleave", () => graphDragging = false);
 }
 
 /* ── Boot ── */
@@ -579,7 +582,6 @@ function boot(): void {
       <button id="btn-play" title="Play/Pause (Space)" aria-pressed="false">▶</button>
       <button id="btn-next" title="Next turn (→)">⏭</button>
       <button id="btn-end" title="Last turn (End)">⏭⏭</button>
-      <input type="range" id="slider" min="0" max="100" value="0" style="flex:1;" />
       <select id="speed" title="Playback speed">
         <option value="0.5">0.5×</option>
         <option value="1" selected>1×</option>
@@ -596,7 +598,7 @@ function boot(): void {
   worldG = document.getElementById("world-g") as unknown as SVGGElement;
   tooltip = document.getElementById("tooltip") as HTMLDivElement;
   turnLabelEl = document.getElementById("turn-label") as HTMLSpanElement;
-  sliderEl = document.getElementById("slider") as HTMLInputElement;
+
   playBtn = document.getElementById("btn-play") as HTMLButtonElement;
   speedSel = document.getElementById("speed") as HTMLSelectElement;
   graphCanvas = document.getElementById("graph-canvas") as HTMLCanvasElement;

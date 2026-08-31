@@ -89,6 +89,9 @@ header {
   border-radius: var(--radius);
   overflow: hidden;
   background: white;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
 }
 
 .graph-container canvas {
