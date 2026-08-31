@@ -85,14 +85,18 @@ export interface AnimArmy {
 
 export interface AnimTown {
   id: number;
-  faction: number;
+  faction: number; // = toFaction (backwards compat)
+  fromFaction: number;
+  toFaction: number;
   fromX: number;
   fromY: number;
   toX: number;
   toY: number;
   fromPop: number;
   toPop: number;
-  isCapital: boolean;
+  isCapital: boolean; // = toIsCapital
+  fromIsCapital: boolean;
+  toIsCapital: boolean;
   dies: boolean;
   spawns: boolean;
 }

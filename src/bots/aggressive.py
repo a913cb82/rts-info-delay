@@ -20,7 +20,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # TRAIN
     for t in own_t:
-        if t.spent_on_train > 0:
             continue
         if can_train_safely(t, conservative=False):
             out.append(f"TRAIN {t.id}")

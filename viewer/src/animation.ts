@@ -200,7 +200,9 @@ export function buildTownAnim(
     if (tN1) {
       result.push({
         id,
-        faction: tN.faction,
+        faction: tN1.faction,
+        fromFaction: tN.faction,
+        toFaction: tN1.faction,
         fromX: tN.x,
         fromY: tN.y,
         toX: tN1.x,
@@ -208,6 +210,8 @@ export function buildTownAnim(
         fromPop: tN.population,
         toPop: tN1.population,
         isCapital: tN1.is_capital,
+        fromIsCapital: tN.is_capital,
+        toIsCapital: tN1.is_capital,
         dies: false,
         spawns: false,
       });
@@ -216,6 +220,8 @@ export function buildTownAnim(
       result.push({
         id,
         faction: tN.faction,
+        fromFaction: tN.faction,
+        toFaction: tN.faction,
         fromX: tN.x,
         fromY: tN.y,
         toX: tN.x,
@@ -223,6 +229,8 @@ export function buildTownAnim(
         fromPop: tN.population,
         toPop: 0,
         isCapital: tN.is_capital,
+        fromIsCapital: tN.is_capital,
+        toIsCapital: false,
         dies: true,
         spawns: false,
       });
@@ -237,6 +245,8 @@ export function buildTownAnim(
       result.push({
         id,
         faction: tN1.faction,
+        fromFaction: tN1.faction,
+        toFaction: tN1.faction,
         fromX,
         fromY,
         toX: tN1.x,
@@ -244,6 +254,8 @@ export function buildTownAnim(
         fromPop: 0,
         toPop: tN1.population,
         isCapital: tN1.is_capital,
+        fromIsCapital: false,
+        toIsCapital: tN1.is_capital,
         dies: false,
         spawns: true,
       });

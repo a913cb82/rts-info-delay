@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from engine.config import GameConfig
 from .common import (
-    _hash, _site, _can_train, BotState, bot_main,
-    TRAIN_SURVIVE, PEAK_LOW, PEAK_HIGH,
+    _hash, _site, can_train_safely, BotState, bot_main,
+    PEAK_LOW, PEAK_HIGH,
 )
 
 
@@ -23,7 +23,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if t.id in busy:
             continue
         # Don't train if we already spent here this turn
-        if t.spent_on_train > 0:
             continue
         if can_train_safely(t, conservative=False):
             # Extra gate: skip peak window 50% of time

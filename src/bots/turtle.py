@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from engine.config import GameConfig
 from .common import (
-    _site, _can_train,
+    _site, can_train_safely,
     BotState, bot_main,
 )
 
@@ -24,7 +24,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # TRAIN: very conservative, all calm, pop >= 3000
     for t in own_t:
-        if t.spent_on_train > 0:
             continue
         if t.population < 3000:
             continue

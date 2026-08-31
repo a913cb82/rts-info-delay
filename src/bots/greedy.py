@@ -16,7 +16,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # TRAIN in all own towns
     for t in state.own_towns():
         if can_train_safely(t, conservative=False):
-            if t.spent_on_train == 0:
                 out.append(f"TRAIN {t.id}")
 
     # Armies: chase nearest enemy town or enemy army

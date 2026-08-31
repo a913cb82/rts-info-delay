@@ -38,6 +38,7 @@ const mapSize: [number, number] = [1000, 1000];
 
 // score graph cache
 let scoreCache: { perFaction: Map<number, number[]>; maxScore: number } | null = null;
+let armyCache: { perFaction: Map<number, number[]>; maxArmies: number } | null = null;
 
 /* ── DOM ── */
 
@@ -53,6 +54,7 @@ let speedSel!: HTMLSelectElement;
 let graphCanvas!: HTMLCanvasElement;
 let graphCtx!: CanvasRenderingContext2D;
 let scoreBarEl!: HTMLDivElement;
+let armyBarEl!: HTMLDivElement;
 let mapWrap!: HTMLDivElement;
 
 /* ── Helpers ── */
@@ -75,20 +77,32 @@ function computeScore(world: { towns: { faction: number; population: number }[];
   return pop + armies * (config?.army_cost ?? 1000);
 }
 
+function computeArmies(world: { armies: { faction: number }[] }, faction: number): number {
+  return world.armies.filter((a) => a.faction === faction).length;
+}
+
 function buildScoreCache(): void {
   const facs = getFactions();
   const perFaction = new Map<number, number[]>();
+  const armyPerFaction = new Map<number, number[]>();
   let maxScore = 1;
+  let maxArmies = 1;
   for (const f of facs) {
     const arr: number[] = [];
+    const aArr: number[] = [];
     for (let i = 0; i < turns.length; i++) {
       const s = computeScore(turns[i]!.world, f);
       arr.push(s);
       maxScore = Math.max(maxScore, s);
+      const ac = computeArmies(turns[i]!.world, f);
+      aArr.push(ac);
+      maxArmies = Math.max(maxArmies, ac);
     }
     perFaction.set(f, arr);
+    armyPerFaction.set(f, aArr);
   }
   scoreCache = { perFaction, maxScore };
+  armyCache = { perFaction: armyPerFaction, maxArmies };
 }
 
 /* ── Load ── */
@@ -152,8 +166,7 @@ function draw(): void {
     const x = lerp(t.fromX, t.toX, eased);
     const y = lerp(t.fromY, t.toY, eased);
     const pop = lerp(t.fromPop, t.toPop, eased);
-    const alpha = t.dies ? 1 - eased : t.spawns ? eased : 1;
-    drawTown(x, y, pop, t.faction, t.isCapital, alpha);
+    drawTown(t, eased, x, y, pop);
   }
 
   for (const a of armies) {
@@ -167,6 +180,7 @@ function draw(): void {
   updateChrome();
   drawGraph();
   drawScoreBar();
+  drawArmyBar();
 }
 
 function getAnimState(): { towns: AnimTown[]; armies: AnimArmy[]; battles: AnimBattle[] } {
@@ -210,28 +224,95 @@ function stagedArmyPos(a: AnimArmy, progress: number): { x: number; y: number; a
 
 /* ── Entity drawing ── */
 
-function drawTown(x: number, y: number, pop: number, faction: number, isCapital: boolean, alpha: number): void {
+function drawTown(t: AnimTown, eased: number, x: number, y: number, pop: number): void {
+  const isCapture = t.fromFaction !== t.toFaction;
+  const capChange = t.fromIsCapital !== t.toIsCapital;
+  // Dies/spawns use alpha fade, captures use cross-fade (always visible)
+  let alpha = 1;
+  if (t.dies) alpha = 1 - eased;
+  else if (t.spawns) alpha = eased;
+
   const r = townRadius(pop, config?.population_cap ?? 100_000);
-  const col = factionColor(faction, factionCount);
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
   if (alpha < 1) g.setAttribute("opacity", String(alpha));
-  const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  c.setAttribute("cx", String(x));
-  c.setAttribute("cy", String(y));
-  c.setAttribute("r", String(r * (alpha < 1 && alpha > 0 ? 0.2 + 0.8 * alpha : 1)));
-  c.setAttribute("fill", col);
-  c.setAttribute("stroke", isCapital ? "#111" : "white");
-  c.setAttribute("stroke-width", isCapital ? "1.6" : "1");
-  g.appendChild(c);
-  if (isCapital) {
-    const pin = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    pin.setAttribute("cx", String(x)); pin.setAttribute("cy", String(y));
-    pin.setAttribute("r", "2.6"); pin.setAttribute("fill", "white");
-    pin.setAttribute("stroke", "#111"); pin.setAttribute("stroke-width", "0.6");
-    g.appendChild(pin);
+
+  // For captures, cross-fade faction colors during lerp
+  if (isCapture && !t.dies && !t.spawns) {
+    const fromCol = factionColor(t.fromFaction, factionCount);
+    const toCol = factionColor(t.toFaction, factionCount);
+    const curR = r;
+    // From faction circle fading out
+    const cFrom = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    cFrom.setAttribute("cx", String(x));
+    cFrom.setAttribute("cy", String(y));
+    cFrom.setAttribute("r", String(curR));
+    cFrom.setAttribute("fill", fromCol);
+    cFrom.setAttribute("stroke", t.fromIsCapital ? "#111" : "white");
+    cFrom.setAttribute("stroke-width", t.fromIsCapital ? "1.6" : "1");
+    cFrom.setAttribute("opacity", String(1 - eased));
+    g.appendChild(cFrom);
+    // To faction circle fading in
+    const cTo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    cTo.setAttribute("cx", String(x));
+    cTo.setAttribute("cy", String(y));
+    cTo.setAttribute("r", String(curR));
+    cTo.setAttribute("fill", toCol);
+    cTo.setAttribute("stroke", t.toIsCapital ? "#111" : "white");
+    cTo.setAttribute("stroke-width", t.toIsCapital ? "1.6" : "1");
+    cTo.setAttribute("opacity", String(eased));
+    g.appendChild(cTo);
+    // Capital marker cross-fade if needed
+    if (capChange) {
+      if (t.fromIsCapital) {
+        const pinFrom = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        pinFrom.setAttribute("cx", String(x)); pinFrom.setAttribute("cy", String(y));
+        pinFrom.setAttribute("r", "2.6"); pinFrom.setAttribute("fill", "white");
+        pinFrom.setAttribute("stroke", "#111"); pinFrom.setAttribute("stroke-width", "0.6");
+        pinFrom.setAttribute("opacity", String(1 - eased));
+        g.appendChild(pinFrom);
+      }
+      if (t.toIsCapital) {
+        const pinTo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        pinTo.setAttribute("cx", String(x)); pinTo.setAttribute("cy", String(y));
+        pinTo.setAttribute("r", "2.6"); pinTo.setAttribute("fill", "white");
+        pinTo.setAttribute("stroke", "#111"); pinTo.setAttribute("stroke-width", "0.6");
+        pinTo.setAttribute("opacity", String(eased));
+        g.appendChild(pinTo);
+      }
+    } else if (t.toIsCapital) {
+      // No cap change but is capital — show pin (or cross-fade handled above)
+      const pin = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      pin.setAttribute("cx", String(x)); pin.setAttribute("cy", String(y));
+      pin.setAttribute("r", "2.6"); pin.setAttribute("fill", "white");
+      pin.setAttribute("stroke", "#111"); pin.setAttribute("stroke-width", "0.6");
+      g.appendChild(pin);
+    }
+  } else {
+    // Normal dies/spawns or non-capture survivor
+    const faction = t.toFaction;
+    const isCap = t.toIsCapital;
+    const col = factionColor(faction, factionCount);
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", String(x));
+    c.setAttribute("cy", String(y));
+    c.setAttribute("r", String(r * (alpha < 1 && alpha > 0 ? 0.2 + 0.8 * alpha : 1)));
+    c.setAttribute("fill", col);
+    c.setAttribute("stroke", isCap ? "#111" : "white");
+    c.setAttribute("stroke-width", isCap ? "1.6" : "1");
+    g.appendChild(c);
+    if (isCap) {
+      const pin = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      pin.setAttribute("cx", String(x)); pin.setAttribute("cy", String(y));
+      pin.setAttribute("r", "2.6"); pin.setAttribute("fill", "white");
+      pin.setAttribute("stroke", "#111"); pin.setAttribute("stroke-width", "0.6");
+      if (t.dies || t.spawns) pin.setAttribute("opacity", String(alpha));
+      g.appendChild(pin);
+    }
   }
-  g.addEventListener("mouseenter", (e) => showTooltip(e, `Town\nFaction ${faction}${isCapital ? " ★" : ""}\nPop ${Math.round(pop)}\n(${x.toFixed(0)}, ${y.toFixed(0)})`));
+
+  const displayFaction = isCapture ? `${t.fromFaction}→${t.toFaction}` : String(t.toFaction);
+  g.addEventListener("mouseenter", (e) => showTooltip(e, `Town\nFaction ${displayFaction}${t.toIsCapital ? " ★" : ""}\nPop ${Math.round(pop)}\n(${x.toFixed(0)}, ${y.toFixed(0)})`));
   g.addEventListener("mouseleave", hideTooltip);
   worldG.appendChild(g);
 }
@@ -294,6 +375,25 @@ function drawScoreBar(): void {
     seg.textContent = `${Math.round(score)}`;
     seg.title = `Faction ${faction}: ${Math.round(score)}`;
     scoreBarEl.appendChild(seg);
+  }
+}
+
+function drawArmyBar(): void {
+  if (!armyBarEl || !armyCache || turns.length === 0) return;
+  const cur = frameAt(turn);
+  const facs = getFactions();
+  const counts = facs.map((f) => ({ faction: f, count: computeArmies(cur.world, f) }));
+  const total = counts.reduce((s, x) => s + x.count, 0) || 1;
+  armyBarEl.innerHTML = "";
+  for (const { faction, count } of counts) {
+    const pct = (count / total) * 100;
+    const seg = document.createElement("div");
+    seg.className = "seg";
+    seg.style.width = `${pct}%`;
+    seg.style.background = factionColor(faction, factionCount);
+    seg.textContent = `${count}`;
+    seg.title = `Faction ${faction}: ${count} armies`;
+    armyBarEl.appendChild(seg);
   }
 }
 
@@ -573,6 +673,7 @@ function boot(): void {
       <span class="turn-label" id="turn-label"></span>
     </header>
     <div class="score-bar" id="score-bar"></div>
+    <div class="score-bar" id="army-bar"></div>
     <div class="timeline-wrap">
       <div class="graph-container">
         <canvas id="graph-canvas"></canvas>
@@ -610,6 +711,7 @@ function boot(): void {
   graphCanvas = document.getElementById("graph-canvas") as HTMLCanvasElement;
   graphCtx = graphCanvas.getContext("2d")!;
   scoreBarEl = document.getElementById("score-bar") as HTMLDivElement;
+  armyBarEl = document.getElementById("army-bar") as HTMLDivElement;
   mapWrap = document.getElementById("map-wrap") as HTMLDivElement;
 
   document.getElementById("btn-start")!.addEventListener("click", () => goToTurn(0));
