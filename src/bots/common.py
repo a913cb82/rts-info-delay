@@ -194,6 +194,17 @@ class BotState:
                     )
                     a.is_viceroy = ev.get("is_viceroy", False)
                     self.world.armies.append(a)
+                # TRAIN spawn — reduce matching town pop by army_cost
+                if not ev.get("is_viceroy", False):
+                    ex, ey = ev.get("x", 0), ev.get("y", 0)
+                    cost = self.config.army_cost if self.config else 1000
+                    for tw in self.world.towns:
+                        if abs(tw.x - ex) < 1 and abs(tw.y - ey) < 1:
+                            tw.population -= cost
+                            ti = self.towns.get(tw.id)
+                            if ti:
+                                ti.population = tw.population
+                            break
             elif kind == "town_spawn":
                 if not self.world.get_town(ev.get("id")):
                     t = Town(
@@ -205,6 +216,19 @@ class BotState:
                         is_capital=ev.get("is_capital", False),
                     )
                     self.world.towns.append(t)
+            elif kind == "town_capture":
+                t = self.world.get_town(ev.get("id"))
+                if t:
+                    t.faction = ev.get("new_faction", t.faction)
+                    t.population = ev.get("population", t.population)
+                    if ev.get("was_capital"):
+                        t.is_capital = False
+                    # If captor has no capital, this becomes it
+                    new_faction = ev.get("new_faction")
+                    if new_faction is not None:
+                        has_cap = any(tx.is_capital and tx.faction == new_faction for tx in self.world.towns)
+                        if not has_cap:
+                            t.is_capital = True
             elif kind == "army_move":
                 a = self.world.get_army(ev.get("id"))
                 if a:
@@ -309,6 +333,11 @@ class BotState:
         - Don't train if we already spent this turn
         """
         t = self.towns.get(town_id)
+        # DEBUG instrumentation for faction 3 43->44
+        if self.faction==3 and 43<=self.turn<=44:
+            import os
+            with open("/tmp/bot3_debug.log","a") as f:
+                f.write(f"T{self.turn} can_train check town {town_id} pop {t.population if t else 'None'} prev {t.prev_population if t else 'None'} spent {t.spent_on_train if t else 'None'} trained {getattr(t,'_trained_this_turn',False) if t else 'None'} pending {self._pending_trains} can_before={False}\n")
         if not t or t.faction != self.faction:
             return False
 
@@ -323,10 +352,8 @@ class BotState:
             return False
 
         # Cooldown: don't re-train too soon after last training
-        # Per-town offset breaks symmetry so factions don't all train same turn
-        cooldown = 10 + (town_id % 5)
         turns_since = self.turn - t._last_trained_turn
-        if t._last_trained_turn > 0 and turns_since < cooldown:
+        if t._last_trained_turn > 0 and turns_since < 10:
             return False
 
         # Must have enough pop to survive training
