@@ -323,10 +323,10 @@ class BotState:
             return False
 
         # Cooldown: don't re-train too soon after last training
-        # At 5k pop, growth is ~5/week — need ~200 turns to recover 1000 pop
-        # Use 10-turn cooldown as reasonable minimum
+        # Per-town offset breaks symmetry so factions don't all train same turn
+        cooldown = 10 + (town_id % 5)
         turns_since = self.turn - t._last_trained_turn
-        if t._last_trained_turn > 0 and turns_since < 10:
+        if t._last_trained_turn > 0 and turns_since < cooldown:
             return False
 
         # Must have enough pop to survive training
