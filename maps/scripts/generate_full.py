@@ -215,19 +215,21 @@ def render_png(data, density, filename="maps/full_preview.png"):
     colors = [(220,60,60),(60,120,220),(60,180,60),(220,160,40),(180,60,180)]
     for x, y, ini, fi, pct in data:
         r = 6 if ini >= 40000 else 4 if ini >= 5000 else 3 if ini >= 1000 else 2
-        inten = min(1.0, abs(pct) / 3.0)
-        if pct > 0.05:
-            col = (int(80+140*inten), int(180+40*inten), 80)
-        elif pct < -0.05:
-            col = (int(200*inten), int(80+60*(1-inten)), int(80+60*(1-inten)))
-        else:
-            col = (100, 170, 100)
+        col = colors[fi % len(colors)]
         draw.ellipse([x-r, y-r, x+r, y+r], fill=col, outline=(0, 0, 0))
         if ini >= 3000:
             draw.text((x+r+2, y-6), f"{pct:+.1f}%", fill=(0,0,0), font=font)
 
     for fi, (cx, cy) in enumerate(faction_centers()):
         draw.text((cx-4, cy-4), str(fi), fill=(0,0,0), font=font)
+
+    # Legend
+    y0 = MAP_SIZE - 18
+    for fi in range(N_FACTIONS):
+        tp = sum(d[2] for d in data if d[3] == fi)
+        x0 = 10 + fi * 200
+        draw.rectangle([x0, y0, x0+10, y0+10], fill=colors[fi], outline=(0,0,0))
+        draw.text((x0+14, y0-1), f"F{fi}: {tp:,} pop", fill=(0,0,0), font=font)
 
     img.save(filename)
     print(f"PNG  {filename}")
