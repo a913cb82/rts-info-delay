@@ -208,19 +208,7 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
     radius = config.interact_radius
     captured_town_ids: set[int] = set()
 
-    # Only idle armies (no target, no BUILD order) can capture
-    build_army_ids = {
-        so.target_id for so in world.standing_orders
-        if so.command.name == "BUILD" and so.target_type == "army"
-    }
-
     for army in world.armies:
-        if army.is_fresh:
-            continue  # fresh spawns don't capture
-        if army.has_target:
-            continue  # moving armies don't capture
-        if army.id in build_army_ids:
-            continue  # armies executing BUILD don't capture
         for town in world.towns:
             if town.id in captured_town_ids:
                 continue  # already captured this turn
@@ -245,10 +233,14 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
             # Reduce population by build_efficiency
             town.population *= (1.0 - config.build_efficiency)
 
-            # If captor has no capital, make this the new capital
+            # If captor has no capital AND has a viceroy or town alive, make this the new capital
+            # If captor is completely dead (no towns, no viceroy), don't revive them
             captor_capital = world.faction_capital(army.faction)
             if captor_capital is None:
-                town.is_capital = True
+                has_towns = any(t.faction == army.faction for t in world.towns)
+                has_viceroy = any(a.is_viceroy and a.faction == army.faction for a in world.armies)
+                if has_towns or has_viceroy:
+                    town.is_capital = True
 
             captured_town_ids.add(town.id)
             events.append({

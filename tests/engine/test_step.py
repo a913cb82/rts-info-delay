@@ -432,14 +432,14 @@ class TestCommands:
         assert t.population == pytest.approx(2500)
 
     def test_build_on_enemy_town(self) -> None:
-        """O5b: BUILD at enemy town position → boosts enemy town."""
+        """O5b: BUILD at enemy town position → army captures it first."""
         t = _town(50, 50, 2000, faction=1, tid=1)
         w = _world_with(armies=[_army(50, 50, 0, 2)], towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["BUILD 2 50 50"]})
-        # Depending on spec: either boost or reject
-        # PLAN says BUILD valid at location, not ownership check on town
-        assert t.population >= 2000  # either boosted or unchanged
+        # Army within interact_radius captures town (pop reduced by 50%)
+        assert t.faction == 0  # captured
+        assert t.population < 2000  # reduced by build_efficiency
 
     def test_build_distance_fail(self) -> None:
         """O6: BUILD where army not within interact_radius → no town."""
