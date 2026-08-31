@@ -33,7 +33,12 @@
   `army_move` and `army_spawn` events so `BotState` matches engine.
 - `can_train_safely(town, conservative)`: survive threshold
   non-conservative pop ≥ 1600, conservative pop ≥ 2600 and outside
-  35k–65k peak window, and pop ≤ 90k.
+  35k–65k peak window, and pop ≤ 90k. `can_train_here` adds
+  distance-aware extra 400 per turn of stale info and pending-TRAIN guard.
+- Growth tracking: `BotState` stores `_prev_pop` and `_growth` per town
+  from net pop_change; `overcrowded_clusters()` groups own towns with
+  negative growth within 150 km, `should_train_for_overcrowding(town)`
+  picks the smallest town per cluster (one train fixes the cluster).
 - `find_build_site(state, config, ref_x, ref_y, salt)`: 20 deterministic
   samples angle = hash%3600/3600·2π, dist = 80–350 km from ref point
   (tuned per bot), clamped to map, scored by
@@ -46,26 +51,33 @@
 ## Per-Bot Behaviour
 
 ### expander — The Colonist
-- Train every town ≥1600 that passes `can_train_safely` non-conservative.
+- Train every town that passes `can_train_here` non-conservative;
+  also trains 35k–65k peak towns only if `should_train_for_overcrowding`.
+  Farm tier 8k–34k is preserved (not trained when growing >5/turn unless overcrowded).
 - Idle armies (no target, no viceroy): find site expanding outward from
   army position (120–350 km, salt 11), MOVE_TO. If already moving and
   within 20 km of its target, BUILD at target. Always building, never
   wandering. Most prolific builder.
 
 ### random — The Wanderer
-- Train ≥1600 with 50% peak throttle (skip if 35k–65k and hash%2==0).
+- Train via `can_train_here` with 50% peak throttle (skip if 35k–65k and hash%2==0); overcrowding emergency overrides peak block.
 - Idle armies: 60% build (100–350 km from army), 40% wander to random
   own town. When moving, same BUILD-on-arrival rule as expander.
 
 ### turtle — The Fortifier
 - Train only when every own town ≥2600 and none in 35k–65k peak,
-  via `can_train_safely` conservative, and only up to one train per turn.
+  via `can_train_here` conservative (overcrowding emergency still allows
+  one peak town per cluster), and only one train per turn.
 - Build at most one army at a time, site 40–120 km from most populous
   own town. Otherwise garrison: idle armies drift to nearest own town
   if >20 km away.
 
 ### aggressive — The Conqueror
-- Train ≥1600 non-conservative every town.
+- Train via `can_train_here` non-conservative (peak preserved, overcrowding allowed).
+- Combat: 1v1 results in equal deaths, 2v1 results in 0 deaths for the pair.
+  Stacks armies for 2v1 by sending all idle armies to a single focal
+  enemy town nearest own capital (info delay makes far coordination hard).
+  Uses `BotForecast` to chase enemy armies at their delay-compensated position.
 - Priority: if enemy towns exist, all idle armies MOVE_TO nearest enemy
   town (capture via proximity, never BUILD on enemy town); else if
   enemy armies exist MOVE_TO forecast position; else fall through to
@@ -73,7 +85,9 @@
   no thrash.
 
 ### greedy — The Raider
-- Train ≥1500 non-conservative (most aggressive).
+- Train most aggressively via custom 1500 threshold plus `should_train_for_overcrowding` and pending guard.
+- Same 2v1 stacking as aggressive when attacking, but build distances
+  80–300 km (shorter than aggressive 120–340 km).
 - Same priority as aggressive but with closer build distances when
   expanding (80–280 km) and willingness to train one band lower.
   Otherwise identical chase-then-build logic, ensuring the two fighters

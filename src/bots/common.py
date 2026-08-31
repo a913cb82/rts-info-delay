@@ -105,6 +105,9 @@ class BotState:
         self._army_targets: dict[int, tuple[float, float]] = {}
         self._pending_trains: dict[int, int] = {}  # town_id -> expiry turn (when pop_change expected)
         self._pending_builds: dict[int, int] = {}  # army_id -> expiry turn
+        self._prev_pop: dict[int, float] = {}
+        self._growth: dict[int, float] = {}
+        self._cluster_cache: tuple[int, list[list[Town]]] | None = None
 
     def init(self, config: GameConfig, faction: int):
         self.config = config
@@ -115,8 +118,16 @@ class BotState:
 
     def update(self, turn: int, events: list[dict]):
         self.turn = turn
+        prev = {t.id: t.population for t in self.world.towns}
         from engine.events import apply_events
         apply_events(self.world, events, self.config)
+        self._growth = {}
+        for t in self.world.towns:
+            if t.id in prev:
+                self._growth[t.id] = t.population - prev[t.id]
+            else:
+                self._growth[t.id] = 0.0
+        self._prev_pop = prev
         # sync local target tracker with engine has_target
         for a in list(self.world.armies):
             if not a.has_target and a.id in self._army_targets:
@@ -212,6 +223,46 @@ class BotState:
         if a and a.has_target:
             return (a.target_x, a.target_y)
         return self._army_targets.get(aid)
+
+    def get_growth(self, town_id: int) -> float:
+        return self._growth.get(town_id, 0.0)
+
+    def overcrowded_clusters(self) -> list[list[Town]]:
+        if self._cluster_cache and self._cluster_cache[0] == self.turn:
+            return self._cluster_cache[1]
+        cands = []
+        for t in self.own_towns():
+            if t.id in self._pending_trains and self.turn <= self._pending_trains[t.id]:
+                continue
+            g = self._growth.get(t.id, 0)
+            if g < -1e-9 and 500 <= t.population < 35000:
+                cands.append(t)
+        clusters: list[list[Town]] = []
+        visited = set()
+        for t in cands:
+            if t.id in visited:
+                continue
+            queue = [t]; comp: list[Town] = []; visited.add(t.id)
+            while queue:
+                cur = queue.pop()
+                comp.append(cur)
+                for other in cands:
+                    if other.id in visited:
+                        continue
+                    if math.hypot(cur.x - other.x, cur.y - other.y) <= 150:
+                        visited.add(other.id)
+                        queue.append(other)
+            clusters.append(comp)
+        self._cluster_cache = (self.turn, clusters)
+        return clusters
+
+    def should_train_for_overcrowding(self, town: Town) -> bool:
+        for cluster in self.overcrowded_clusters():
+            if town.id not in {t.id for t in cluster}:
+                continue
+            rep = min(cluster, key=lambda t: (t.population, self._growth.get(t.id, 0), _hash(self.turn, t.id, 99)))
+            return rep.id == town.id
+        return False
 
 # ── BotForecast: separate from BotState, constructed from it ──
 
@@ -320,6 +371,16 @@ class BotForecast:
         """Predict battles from forecasted positions."""
         # TODO: run combat weakness check on forecasted positions
         return []
+
+
+def towns_by_train_priority(state: "BotState", conservative: bool = False) -> list[Town]:
+    cands = [t for t in state.own_towns() if state.can_train_here(t, conservative=conservative)]
+    # overcrowded cluster reps first, then by growth asc (most negative), then pop asc
+    def key(t: Town):
+        over = 0 if state.should_train_for_overcrowding(t) else 1
+        return (over, state.get_growth(t.id), t.population)
+    cands.sort(key=key)
+    return cands
 
 
 def can_train_safely(town: Town, conservative: bool = False) -> bool:

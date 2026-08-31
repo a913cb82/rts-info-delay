@@ -23,9 +23,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
 
-    for t in state.own_towns():
-        if _can_train_greedy(state, t):
-            out.append(f"TRAIN {t.id}")
+    # greedy prioritises overcrowded reps first
+    cands = [t for t in state.own_towns() if _can_train_greedy(state, t)]
+    cands.sort(key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1, state.get_growth(t.id), t.population))
+    for t in cands:
+        out.append(f"TRAIN {t.id}")
 
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
     enemy_armies = [a for a in state.world.armies if a.faction != faction]

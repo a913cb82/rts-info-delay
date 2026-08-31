@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import _hash, BotState, bot_main, can_train_safely, find_build_site, PEAK_LOW, PEAK_HIGH
+from .common import _hash, BotState, bot_main, find_build_site, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -11,9 +11,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     own_t = state.own_towns()
 
-    for t in own_t:
-        if not state.can_train_here(t, conservative=False):
-            continue
+    for t in towns_by_train_priority(state, conservative=False):
         h = _hash(state.turn, t.id, 7)
         if PEAK_LOW <= t.population <= PEAK_HIGH and h % 2 == 0:
             continue

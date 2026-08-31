@@ -3,16 +3,15 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_safely, find_build_site
+from .common import BotForecast, BotState, bot_main, find_build_site, towns_by_train_priority
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
 
-    for t in state.own_towns():
-        if state.can_train_here(t, conservative=False):
-            out.append(f"TRAIN {t.id}")
+    for t in towns_by_train_priority(state, conservative=False):
+        out.append(f"TRAIN {t.id}")
 
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
     enemy_armies = [a for a in state.world.armies if a.faction != faction]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, can_train_safely, find_build_site
+from .common import BotState, bot_main, find_build_site, towns_by_train_priority
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -11,9 +11,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     own_t = state.own_towns()
 
-    for t in own_t:
-        if state.can_train_here(t, conservative=False):
-            out.append(f"TRAIN {t.id}")
+    for t in towns_by_train_priority(state, conservative=False):
+        out.append(f"TRAIN {t.id}")
 
     for p in state.own_armies():
         if p.is_viceroy and state.army_has_target(p.id):
