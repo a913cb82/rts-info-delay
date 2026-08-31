@@ -90,290 +90,47 @@ def _can_train(pop: float, cfg, conservative: bool = False) -> bool:
 # ── BotState: shared world tracking ──
 
 @dataclass
-class TownInfo:
-    id: int
-    faction: int
-    x: float
-    y: float
-    population: float
-    is_capital: bool
-    # Tracking
-    prev_population: float = 0.0  # population at start of last turn
-    spent_on_train: float = 0.0   # total pop spent on TRAIN this turn
-    inferred_growth: float = 0.0  # inferred growth this turn (delta + spent)
-    _trained_this_turn: bool = False  # a TRAIN was delivered this turn
-    _last_trained_turn: int = 0       # last turn a TRAIN was delivered
-
-    @property
-    def net_change(self) -> float:
-        """Population change this turn (negative = lost pop)."""
-        return self.population - self.prev_population
-
-    @property
-    def growth(self) -> float:
-        """Inferred growth amount (always positive or zero)."""
-        return self.inferred_growth
-
-
-@dataclass
-class ArmyInfo:
-    id: int
-    faction: int
-    x: float
-    y: float
-    has_target: bool = False
-    target_x: float = 0.0
-    target_y: float = 0.0
-    is_viceroy: bool = False
-
-
 class BotState:
-    """Shared bot state that tracks world between turns.
-
-    All bots can use this to:
-    - Get the current world view (towns, armies)
-    - Know how much each town grew (inferred from pop delta)
-    - Know how much each town spent on TRAIN
-    - Make informed TRAIN decisions (don't over-train)
-    """
+    """Bot's view of the world, built from events only."""
 
     def __init__(self):
         self.faction: int = 0
         self.config: GameConfig | None = None
         self.world: World = World()
         self.turn: int = 0
-        self.towns: dict[int, TownInfo] = {}  # id -> TownInfo
-        self.armies: dict[int, ArmyInfo] = {}  # id -> ArmyInfo
-        self._pending_trains: dict[int, int] = {}  # town_id -> delivery_turn
 
     def init(self, config: GameConfig, faction: int):
-        """Called once at startup."""
         self.config = config
         self.faction = faction
         self.world.map_size = config.map_size
-        # Parse starting map
         if config.map:
             self.world.parse_map(config.map)
-            # Build initial TownInfo/ArmyInfo from parsed map
-            for t in self.world.towns:
-                self.towns[t.id] = TownInfo(
-                    id=t.id, faction=t.faction, x=t.x, y=t.y,
-                    population=t.population, is_capital=t.is_capital,
-                    prev_population=t.population,
-                )
-            for a in self.world.armies:
-                self.armies[a.id] = ArmyInfo(
-                    id=a.id, faction=a.faction, x=a.x, y=a.y,
-                    has_target=a.has_target, target_x=a.target_x, target_y=a.target_y,
-                    is_viceroy=a.is_viceroy,
-                )
 
     def update(self, turn: int, events: list[dict]):
-        """Update world state from events. Call at start of each turn before deciding orders."""
         self.turn = turn
-
-        # 0. Clear per-turn flags
-        for t in self.towns.values():
-            t._trained_this_turn = False
-
-        # 1. Snapshot current pop as prev BEFORE events change it
-        for t in self.towns.values():
-            t.prev_population = t.population
-
-        # 2. Apply events to internal world
-        for ev in events:
-            kind = ev.get("kind")
-            if kind == "army_spawn":
-                if not self.world.get_army(ev.get("id")):
-                    a = Army(
-                        id=ev["id"],
-                        faction=ev.get("faction", self.faction),
-                        x=ev.get("x", 0),
-                        y=ev.get("y", 0),
-                        is_fresh=True,
-                    )
-                    a.is_viceroy = ev.get("is_viceroy", False)
-                    self.world.armies.append(a)
-                # TRAIN spawn — reduce matching town pop by army_cost
-                if not ev.get("is_viceroy", False):
-                    ex, ey = ev.get("x", 0), ev.get("y", 0)
-                    cost = self.config.army_cost if self.config else 1000
-                    for tw in self.world.towns:
-                        if abs(tw.x - ex) < 1 and abs(tw.y - ey) < 1:
-                            tw.population -= cost
-                            ti = self.towns.get(tw.id)
-                            if ti:
-                                ti.population = tw.population
-                            break
-            elif kind == "town_spawn":
-                if not self.world.get_town(ev.get("id")):
-                    t = Town(
-                        id=ev["id"],
-                        faction=ev.get("faction", self.faction),
-                        x=ev.get("x", 0),
-                        y=ev.get("y", 0),
-                        population=ev.get("population", 500),
-                        is_capital=ev.get("is_capital", False),
-                    )
-                    self.world.towns.append(t)
-            elif kind == "town_capture":
-                t = self.world.get_town(ev.get("id"))
-                if t:
-                    t.faction = ev.get("new_faction", t.faction)
-                    t.population = ev.get("population", t.population)
-                    if ev.get("was_capital"):
-                        t.is_capital = False
-                    # If captor has no capital, this becomes it
-                    new_faction = ev.get("new_faction")
-                    if new_faction is not None:
-                        has_cap = any(tx.is_capital and tx.faction == new_faction for tx in self.world.towns)
-                        if not has_cap:
-                            t.is_capital = True
-            elif kind == "army_move":
-                a = self.world.get_army(ev.get("id"))
-                if a:
-                    a.x = ev.get("x", a.x)
-                    a.y = ev.get("y", a.y)
-            elif kind == "army_death":
-                self.world.remove_army(ev.get("id"))
-            elif kind == "town_death":
-                self.world.remove_town(ev.get("id"))
-
+        from engine.events import apply_events
+        apply_events(self.world, events, self.config)
         self.world._turn = turn
 
-        # 3. Rebuild TownInfo — update population from world (prev was set before events)
-        new_towns: dict[int, TownInfo] = {}
-        for t in self.world.towns:
-            existing = self.towns.get(t.id)
-            if existing:
-                existing.x = t.x
-                existing.y = t.y
-                existing.faction = t.faction
-                existing.is_capital = t.is_capital
-                existing.population = t.population  # post-event pop
-                new_towns[t.id] = existing
-            else:
-                # New town — prev = current (no prior data)
-                info = TownInfo(
-                    id=t.id, faction=t.faction, x=t.x, y=t.y,
-                    population=t.population, is_capital=t.is_capital,
-                    prev_population=t.population,
-                )
-                new_towns[t.id] = info
-        # Remove towns that died (not in world anymore)
-        self.towns = new_towns
+    def own_towns(self) -> list[Town]:
+        return [t for t in self.world.towns if t.faction == self.faction]
 
-        # Rebuild armies
-        new_armies: dict[int, ArmyInfo] = {}
-        for a in self.world.armies:
-            new_armies[a.id] = ArmyInfo(
-                id=a.id, faction=a.faction, x=a.x, y=a.y,
-                has_target=a.has_target, target_x=a.target_x, target_y=a.target_y,
-                is_viceroy=a.is_viceroy,
-            )
-        self.armies = new_armies
+    def own_armies(self) -> list[Army]:
+        return [a for a in self.world.armies if a.faction == self.faction]
 
-        # 4. Check TRAIN deliveries and infer growth
-        self._check_deliveries()
-        self._infer_growth()
 
-        # 5. Reset spent_on_train for next turn
-        for t in self.towns.values():
-            t.spent_on_train = 0.0
-
-    def record_train(self, town_id: int):
-        """Record that we sent a TRAIN order for this town."""
-        t = self.towns.get(town_id)
-        if t:
-            t.spent_on_train += self.config.army_cost if self.config else 1000
-            # Calculate exact delivery turn (same-turn for distance 0)
-            cap = self.world.faction_capital(self.faction)
-            if cap:
-                dist = math.hypot(cap.x - t.x, cap.y - t.y)
-                delivery_turn = self.turn + int(math.ceil(dist / self.config.info_speed))
-            else:
-                delivery_turn = self.turn
-            self._pending_trains[town_id] = delivery_turn
-
-    def _check_deliveries(self):
-        """Check pending TRAIN deliveries and set _trained_this_turn."""
-        delivered = []
-        for town_id, delivery_turn in self._pending_trains.items():
-            if self.turn >= delivery_turn:
-                delivered.append(town_id)
-        for town_id in delivered:
-            del self._pending_trains[town_id]
-            t = self.towns.get(town_id)
-            if t:
-                t._trained_this_turn = True
-                t._last_trained_turn = self.turn
-
-    def _infer_growth(self):
-        """Infer growth from population delta and training spend."""
-        for t in self.towns.values():
-            if t.faction != self.faction:
-                continue
-            delta = t.population - t.prev_population
-            t.inferred_growth = max(0, delta + t.spent_on_train)
-
-    def own_towns(self) -> list[TownInfo]:
-        """Return this faction's towns."""
-        return [t for t in self.towns.values() if t.faction == self.faction]
-
-    def own_armies(self) -> list[ArmyInfo]:
-        """Return this faction's armies."""
-        return [a for a in self.armies.values() if a.faction == self.faction]
-
-    def can_train_safely(self, town_id: int, conservative: bool = False) -> bool:
-        """Can we safely TRAIN from this town?
-
-        Simple rules:
-        - Pop must be above safety threshold (2000, well above death at 500)
-        - Don't over-train: pop must be above peak window if conservative
-        - Don't train if we already spent this turn
-        """
-        t = self.towns.get(town_id)
-        # DEBUG instrumentation for faction 3 43->44
-        if self.faction==3 and 43<=self.turn<=44:
-            import os
-            with open("/tmp/bot3_debug.log","a") as f:
-                f.write(f"T{self.turn} can_train check town {town_id} pop {t.population if t else 'None'} prev {t.prev_population if t else 'None'} spent {t.spent_on_train if t else 'None'} trained {getattr(t,'_trained_this_turn',False) if t else 'None'} pending {self._pending_trains} can_before={False}\n")
-        if not t or t.faction != self.faction:
+def can_train_safely(town: Town, conservative: bool = False) -> bool:
+    if town.population < 2000:
+        return False
+    if conservative:
+        if town.population < 3000:
             return False
-
-        # Already spent or a TRAIN was delivered this turn
-        if t.spent_on_train > 0:
+        if PEAK_LOW <= town.population <= PEAK_HIGH:
             return False
-        if t._trained_this_turn:
-            return False
+    return True
 
-        # Don't stack: if a TRAIN is already pending for this town
-        if town_id in self._pending_trains:
-            return False
 
-        # Cooldown: don't re-train too soon after last training
-        turns_since = self.turn - t._last_trained_turn
-        if t._last_trained_turn > 0 and turns_since < 10:
-            return False
-
-        # Must have enough pop to survive training
-        if t.population < 2000:
-            return False
-
-        if conservative:
-            if t.population < 2000:
-                return False
-            if PEAK_LOW <= t.population <= PEAK_HIGH:
-                return False
-
-        return True
-
-    def growth_rate(self, town_id: int) -> float:
-        """Estimated weekly growth rate for this town (inferred from last turn)."""
-        t = self.towns.get(town_id)
-        if not t or t.prev_population <= 0:
-            return 0.0
-        return t.inferred_growth
+# ── Shared subprocess protocol ──
 
 
 
@@ -458,15 +215,6 @@ def bot_main(decide_fn):
 
         # Let bot decide orders
         orders = decide_fn(state, cfg)
-
-        # Record TRAIN orders for tracking
-        for o in orders:
-            parts = o.strip().split()
-            if parts and parts[0].upper() == "TRAIN" and len(parts) >= 2:
-                try:
-                    state.record_train(int(parts[1]))
-                except (ValueError, IndexError):
-                    pass
 
         # Output orders
         for o in orders:

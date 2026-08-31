@@ -248,7 +248,9 @@ def apply_build(world: World, config: GameConfig) -> list[dict]:
                 found_town = t
                 break
         aid = army.id
+        ax, ay = army.x, army.y
         world.remove_army(aid)
+        events.append({"kind": "army_death", "id": aid, "x": ax, "y": ay})
         if so in world.standing_orders:
             try:
                 world.standing_orders.remove(so)

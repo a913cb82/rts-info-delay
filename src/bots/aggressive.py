@@ -22,7 +22,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for t in own_t:
         if t.spent_on_train > 0:
             continue
-        if state.can_train_safely(t.id, conservative=False):
+        if can_train_safely(t, conservative=False):
             out.append(f"TRAIN {t.id}")
 
     # Guard capital with one army

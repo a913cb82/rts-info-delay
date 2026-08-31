@@ -72,9 +72,9 @@ def test_initial_state_matches():
     cfg.map = csv
     cfg.map_size = [1000, 1000]
     bot.init(cfg, 0)
-    assert len(bot.towns) == len(engine.towns)
-    assert len(bot.armies) == len(engine.armies)
-    for t in bot.towns.values():
+    assert len(bot.world.towns) == len(engine.towns)
+    assert len(bot.world.armies) == len(engine.armies)
+    for t in bot.world.towns:
         et = next((x for x in engine.towns if x.id == t.id), None)
         assert et is not None
         assert t.population == et.population
@@ -98,7 +98,7 @@ def test_town_death_removes_from_bot():
     assert len(death_events) == 1
 
     _sync_bot(bot, engine, 1, _events_to_dicts(events))
-    assert 1 not in bot.towns
+    assert 1 not in bot.world.towns
 
 
 def test_army_spawn_adds_to_bot():
@@ -110,7 +110,7 @@ def test_army_spawn_adds_to_bot():
     bot = BotState()
     bot.init(CFG, 0)
     # Remove army from bot (init doesn't create armies from map)
-    bot.armies.clear()
+    bot.world.armies.clear()
 
     # Add TRAIN standing order
     engine.standing_orders.append(
@@ -122,7 +122,7 @@ def test_army_spawn_adds_to_bot():
     assert len(spawn_events) >= 1
 
     _sync_bot(bot, engine, 1, _events_to_dicts(events))
-    assert len(bot.armies) >= 1
+    assert len(bot.world.armies) >= 1
 
 
 def test_army_death_removes_from_bot():
@@ -138,8 +138,8 @@ def test_army_death_removes_from_bot():
     bot.init(CFG, 0)
     # Sync initial state
     _sync_bot(bot, engine, 0, [])
-    assert 10 in bot.armies
-    assert 11 in bot.armies
+    assert any(a.id == 10 for a in bot.world.armies)
+    assert any(a.id == 11 for a in bot.world.armies)
 
     events = step(engine, CFG, ledger, turn=1, orders={})
     death_events = [e for e in (events or []) if e.get("kind") == "army_death"]
@@ -149,7 +149,7 @@ def test_army_death_removes_from_bot():
     _sync_bot(bot, engine, 1, _events_to_dicts(events))
     dead_ids = {e["id"] for e in death_events}
     for did in dead_ids:
-        assert did not in bot.armies
+        assert not any(a.id == did for a in bot.world.armies)
 
 
 # ── TRAIN ──
@@ -286,7 +286,7 @@ def test_bot_tracks_population_changes():
 
     # Bot pop should match engine pop
     et = next(x for x in engine.towns if x.id == 1)
-    bt = bot.towns[1]
+    bt = bot.world.get_town(1)
     assert bt.population == et.population
 
 
@@ -307,7 +307,7 @@ def test_bot_tracks_army_count():
         events = step(engine, CFG, ledger, turn=i + 1, orders={})
         _sync_bot(bot, engine, i + 1, _events_to_dicts(events))
 
-    assert len(bot.armies) == len(engine.armies)
+    assert len(bot.world.armies) == len(engine.armies)
 
 
 def test_bot_own_towns_only():
@@ -357,7 +357,7 @@ def test_train_delivery_same_turn_for_close_town():
     # For dist=0, delivery is same turn
     _sync_bot(bot, engine, 1, _events_to_dicts(events))
     # Bot should see the spawned army
-    assert len(bot.armies) >= 1
+    assert len(bot.world.armies) >= 1
 
 
 def test_train_delivery_delayed_for_distant_town():
@@ -371,20 +371,20 @@ def test_train_delivery_delayed_for_distant_town():
     bot = BotState()
     bot.init(CFG, 0)
     _sync_bot(bot, engine, 0, [])
-    initial_armies = len(bot.armies)
+    initial_armies = len(bot.world.armies)
 
     # Send TRAIN to distant town
     events = step(engine, CFG, ledger, turn=1, orders={0: ["TRAIN 2"]})
     _sync_bot(bot, engine, 1, _events_to_dicts(events))
     # dist=300, info_speed=150 → delivery turn = ceil(300/150) = 2
     # Bot should NOT see the army yet on turn 1
-    assert len(bot.armies) == initial_armies
+    assert len(bot.world.armies) == initial_armies
 
     # Turn 2 — messenger delivers
     events2 = step(engine, CFG, ledger, turn=2, orders={})
     _sync_bot(bot, engine, 2, _events_to_dicts(events2))
     # Now bot should see the army
-    assert len(bot.armies) >= initial_armies + 1
+    assert len(bot.world.armies) >= initial_armies + 1
 
 
 # ── Capital death ──
@@ -471,8 +471,8 @@ def test_two_factions_independent():
     _sync_bot(bot1, engine, 1, dicts)
 
     # bot0 should see the new army, bot1 should not (faction filter)
-    own0 = [a for a in bot0.armies.values() if a.faction == 0]
-    own1 = [a for a in bot1.armies.values() if a.faction == 1]
+    own0 = [a for a in bot0.world.armies if a.faction == 0]
+    own1 = [a for a in bot1.world.armies if a.faction == 1]
     assert len(own0) >= 1
     assert len(own1) == 0
 
@@ -585,8 +585,8 @@ def test_empty_world():
     """BotState on empty world has no towns/armies."""
     bot = BotState()
     bot.init(CFG, 0)
-    assert len(bot.towns) == 0
-    assert len(bot.armies) == 0
+    assert len(bot.world.towns) == 0
+    assert len(bot.world.armies) == 0
     assert bot.own_towns() == []
     assert bot.own_armies() == []
 
@@ -598,7 +598,7 @@ def test_bot_handles_unknown_events():
     # Unknown army move event
     _sync_bot(bot, None, 1, [{"kind": "army_move", "id": 999, "x": 50, "y": 50}])
     # No crash, no new army
-    assert 999 not in bot.armies
+    assert 999 not in bot.world.armies
 
 
 def test_bot_handles_duplicate_events():
@@ -616,4 +616,4 @@ def test_bot_handles_duplicate_events():
         {"kind": "town_spawn", "id": 1, "faction": 0, "x": 100, "y": 100, "population": 5000, "is_capital": True},
     ])
     # Only one town in bot
-    assert len([t for t in bot.towns.values() if t.id == 1]) == 1
+    assert len([t for t in bot.world.towns if t.id == 1]) == 1

@@ -30,7 +30,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         if not all_calm:
             continue
-        if state.can_train_safely(t.id, conservative=True):
+        if can_train_safely(t, conservative=True):
             out.append(f"TRAIN {t.id}")
 
     # BUILD: only one builder, only when all calm

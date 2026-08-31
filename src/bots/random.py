@@ -25,7 +25,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # Don't train if we already spent here this turn
         if t.spent_on_train > 0:
             continue
-        if state.can_train_safely(t.id, conservative=False):
+        if can_train_safely(t, conservative=False):
             # Extra gate: skip peak window 50% of time
             h = _hash(state.turn, t.id, 7)
             if PEAK_LOW <= t.population <= PEAK_HIGH and h % 2 == 0:
