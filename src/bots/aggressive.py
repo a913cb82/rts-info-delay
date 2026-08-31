@@ -7,6 +7,7 @@ from engine.config import GameConfig
 from .common import (
     _forecast_pos,
     BotState, bot_main,
+    can_train_safely,
 )
 
 
@@ -16,7 +17,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     own_t = state.own_towns()
     own_a = state.own_armies()
     enemies = [{"x": a.x, "y": a.y, "has_target": a.has_target, "target_x": a.target_x, "target_y": a.target_y}
-               for a in state.armies.values() if a.faction != faction]
+               for a in state.world.armies if a.faction != faction]
 
     # TRAIN
     for t in own_t:

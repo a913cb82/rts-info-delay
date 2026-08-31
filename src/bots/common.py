@@ -120,10 +120,10 @@ class BotState:
 
 
 def can_train_safely(town: Town, conservative: bool = False) -> bool:
-    if town.population < 2000:
+    if town.population < 1500:
         return False
     if conservative:
-        if town.population < 3000:
+        if town.population < 2500:
             return False
         if PEAK_LOW <= town.population <= PEAK_HIGH:
             return False

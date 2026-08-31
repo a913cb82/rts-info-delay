@@ -7,6 +7,7 @@ from engine.config import GameConfig
 from .common import (
     _hash, _site,
     BotState, bot_main,
+    can_train_safely,
 )
 
 
@@ -15,12 +16,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     own_t = state.own_towns()
     own_a = state.own_armies()
-    enemies = [{"x": a.x, "y": a.y} for a in state.armies.values() if a.faction != faction]
+    enemies = [{"x": a.x, "y": a.y} for a in state.world.armies if a.faction != faction]
 
-    # TRAIN: conservative (skip peak, require >1600)
+    # TRAIN: aggressive (train at 1500+)
     for t in own_t:
-            continue
-        if can_train_safely(t, conservative=True):
+        if can_train_safely(t, conservative=False):
             out.append(f"TRAIN {t.id}")
 
     # Each army builds or tours

@@ -6,6 +6,7 @@ import math
 from engine.config import GameConfig
 from .common import (
     _forecast_pos, BotState, bot_main,
+    can_train_safely,
 )
 
 
@@ -21,7 +22,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # Armies: chase nearest enemy town or enemy army
     enemy_towns = [{"x": t.x, "y": t.y} for t in state.towns.values() if t.faction != faction]
     enemy_armies = [{"x": a.x, "y": a.y, "has_target": a.has_target, "target_x": a.target_x, "target_y": a.target_y}
-                    for a in state.armies.values() if a.faction != faction]
+                    for a in state.world.armies if a.faction != faction]
 
     # Precompute forecast positions for enemy armies
     forecast_enemies = []

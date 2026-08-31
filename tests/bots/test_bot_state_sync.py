@@ -124,7 +124,7 @@ def test_multiple_events_same_turn():
 def test_can_train_safely():
     t = Town(id=0, faction=0, x=100, y=100, population=5000, is_capital=True)
     assert can_train_safely(t) is True
-    t.population = 1999
+    t.population = 1499
     assert can_train_safely(t) is False
     t.population = 5000
     assert can_train_safely(t, conservative=True) is True
