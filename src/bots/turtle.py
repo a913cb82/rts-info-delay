@@ -9,11 +9,15 @@ from .common import BotState, bot_main, find_build_site, towns_by_train_priority
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
+    if state.should_yield():
+        return out
     own_t = state.own_towns()
 
     all_calm = all(t.population >= 2600 and not (PEAK_LOW <= t.population <= PEAK_HIGH) for t in own_t) if own_t else False
 
     for t in towns_by_train_priority(state, conservative=True):
+        if state.should_yield():
+            break
         if not all_calm and not state.should_train_for_overcrowding(t):
             continue
         out.append(f"TRAIN {t.id}")

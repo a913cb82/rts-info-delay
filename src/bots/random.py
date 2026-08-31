@@ -9,6 +9,8 @@ from .common import _hash, BotState, bot_main, find_build_site, towns_by_train_p
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
+    if state.should_yield():
+        return out
     own_t = state.own_towns()
 
     for t in towns_by_train_priority(state, conservative=False):
@@ -18,6 +20,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         out.append(f"TRAIN {t.id}")
 
     for p in state.own_armies():
+        if state.should_yield():
+            break
         if p.is_viceroy and state.army_has_target(p.id):
             continue
         if state.army_has_target(p.id):

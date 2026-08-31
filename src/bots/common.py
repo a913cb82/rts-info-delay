@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import sys
+import time
 from dataclasses import dataclass, field
 from engine.config import GameConfig
 from engine.world import World, Town, Army
@@ -62,11 +63,19 @@ def _eta(from_pos: dict, to_pos: dict, cfg) -> float:
 
 # ── Shared build-site finder ──
 
+_build_site_cache: dict[tuple, tuple[float, float] | None] = {}
+
 def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin: float = 80, rmax: float = 300, salt: int = 0) -> tuple[float, float] | None:
+    key = (state.turn, int(ref_x), int(ref_y), rmin, rmax, salt, state.faction)
+    if key in _build_site_cache:
+        return _build_site_cache[key]
     th = config.map_size[0] if isinstance(config.map_size, (list, tuple)) else 1000
-    # Sample candidates
-    cands: list[tuple[float, float, float, float]] = []  # x,y,min_dist, crowding
-    for k in range(24):
+    cands: list[tuple[float, float, float, float]] = []
+    # pre-filter towns near ref for faster crowding (only within rmax+150)
+    nearby_towns = [t for t in state.world.towns if math.hypot(t.x - ref_x, t.y - ref_y) < rmax + 200]
+    if not nearby_towns:
+        nearby_towns = state.world.towns[:50]  # fallback small sample
+    for k in range(16):
         h = _hash(state.turn, int(ref_x * 7 + ref_y * 13) & 0xFFFF, salt + k)
         ang = (h % 3600) / 3600 * 2 * math.pi
         d = rmin + ((h // 3600) % 1000) / 1000 * (rmax - rmin)
@@ -74,24 +83,36 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         y = ref_y + d * math.sin(ang)
         x = max(SITE_MARGIN, min(th - SITE_MARGIN, x))
         y = max(SITE_MARGIN, min(th - SITE_MARGIN, y))
-        # distance to nearest town (any faction)
-        min_dist = min((math.hypot(x - t.x, y - t.y) for t in state.world.towns), default=999)
+        min_dist = 999.0
+        for t in nearby_towns:
+            md = math.hypot(x - t.x, y - t.y)
+            if md < min_dist:
+                min_dist = md
+                if min_dist < config.interact_radius + 10:
+                    break
         if min_dist < config.interact_radius + 10:
             continue
-        # crowding proxy: count neighbours within 150 km weighted
         crowding = 0.0
-        for t in state.world.towns:
+        for t in nearby_towns:
             dist = math.hypot(x - t.x, y - t.y)
-            if dist < 150 and dist > 1:
-                # rough contribution
+            if 1 < dist < 150:
                 d_eq = 0.1 * math.sqrt(min(t.population, 500))
                 crowding += (d_eq / dist) ** 0.8
         cands.append((x, y, min_dist, crowding))
+        if len(cands) >= 6:
+            break
     if not cands:
+        _build_site_cache[key] = None
+        # prune cache
+        if len(_build_site_cache) > 2000:
+            _build_site_cache.clear()
         return None
-    # Score: prefer large min_dist and low crowding
     cands.sort(key=lambda c: (-c[2], c[3]))
-    return cands[0][0], cands[0][1]
+    res = (cands[0][0], cands[0][1])
+    _build_site_cache[key] = res
+    if len(_build_site_cache) > 2000:
+        _build_site_cache.clear()
+    return res
 
 # ── BotState ──
 
@@ -108,6 +129,7 @@ class BotState:
         self._prev_pop: dict[int, float] = {}
         self._growth: dict[int, float] = {}
         self._cluster_cache: tuple[int, list[list[Town]]] | None = None
+        self.deadline: float | None = None  # set per turn by bot_main
 
     def init(self, config: GameConfig, faction: int):
         self.config = config
@@ -223,6 +245,14 @@ class BotState:
         if a and a.has_target:
             return (a.target_x, a.target_y)
         return self._army_targets.get(aid)
+
+    def time_remaining_ms(self) -> float:
+        if self.deadline is None:
+            return 9999
+        return max(0, (self.deadline - time.time()) * 1000)
+
+    def should_yield(self) -> bool:
+        return self.time_remaining_ms() < 15
 
     def get_growth(self, town_id: int) -> float:
         return self._growth.get(town_id, 0.0)
@@ -461,6 +491,12 @@ def bot_main(decide_fn):
         if turn == -1:
             break
         state.update(turn, events)
+        # deadline for this turn: turn_time_ms minus margin; runner kills at turn_time_ms
+        try:
+            ms = int(getattr(cfg, "turn_time_ms", 100))
+        except Exception:
+            ms = 100
+        state.deadline = time.time() + max(0.02, ms / 1000 - 0.015)
         orders = decide_fn(state, cfg)
         for o in orders:
             # track MOVE_TO / TRAIN / BUILD locally for delay-aware decisions

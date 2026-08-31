@@ -14,5 +14,6 @@
   "build_efficiency": 0.5,
   "equilibrium_spacing": 0.1,
   "crowding_decay": 0.8,
-  "crowding_asymmetry": 0.01
+  "crowding_asymmetry": 0.01,
+  "turn_time_ms": 100
 }

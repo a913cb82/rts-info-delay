@@ -259,7 +259,7 @@ if __name__ == "__main__":
 
     csv = to_csv(settlements)
     cfg = {
-        "map": csv.rstrip("\n"), "map_size": [MAP_SIZE, MAP_SIZE], "max_turns": 500,
+        "map": csv.rstrip("\n"), "map_size": [MAP_SIZE, MAP_SIZE], "max_turns": 500, "turn_time_ms": 100,
         "info_speed": 150.0, "army_speed": 50.0, "army_cost": 1000,
         "interact_radius": 10.0, "population_cap": 100000.0,
         "population_growth": 0.001, "build_efficiency": 0.5,

@@ -22,6 +22,8 @@ def _can_train_greedy(state: BotState, town) -> bool:
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
+    if state.should_yield():
+        return out
 
     # greedy prioritises overcrowded reps first
     cands = [t for t in state.own_towns() if _can_train_greedy(state, t)]
@@ -33,6 +35,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     enemy_armies = [a for a in state.world.armies if a.faction != faction]
 
     for p in state.own_armies():
+        if state.should_yield():
+            break
         if p.is_viceroy and state.army_has_target(p.id):
             continue
         if state.army_has_target(p.id):
