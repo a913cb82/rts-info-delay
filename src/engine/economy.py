@@ -158,8 +158,9 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
                 continue
             dead.append(t)
     for t in dead:
+        was_capital = t.is_capital
         world.remove_town(t.id)
-        events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction})
+        events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction, "is_capital": was_capital})
     return events
 
 
@@ -195,8 +196,9 @@ def apply_train(world: World, config: GameConfig) -> list[dict]:
             tid = town.id
             tx, ty = town.x, town.y
             tf = town.faction
+            was_capital = town.is_capital
             world.remove_town(tid)
-            events.append({"kind": "town_death", "id": tid, "x": tx, "y": ty, "faction": tf})
+            events.append({"kind": "town_death", "id": tid, "x": tx, "y": ty, "faction": tf, "is_capital": was_capital})
     return events
 
 

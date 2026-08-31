@@ -158,14 +158,14 @@ def resolve_combat(
         for aid in comp_dead:
             army = next((a for a in combat_armies if a.id == aid), None)
             if army:
-                events.append({"kind": "army_death", "id": army.id, "x": army.x, "y": army.y})
+                events.append({"kind": "army_death", "id": army.id, "x": army.x, "y": army.y, "is_viceroy": army.is_viceroy})
 
     # For dead armies that were not in any component (isolated? shouldn't happen), still generate death
     remaining_dead = dead_ids - set().union(*components) if components else dead_ids
     for aid in remaining_dead:
         army = next((a for a in combat_armies if a.id == aid), None)
         if army:
-            events.append({"kind": "army_death", "id": army.id, "x": army.x, "y": army.y})
+            events.append({"kind": "army_death", "id": army.id, "x": army.x, "y": army.y, "is_viceroy": army.is_viceroy})
             # Also create battle for isolated dead? Not needed
 
     # Remove dead armies from world

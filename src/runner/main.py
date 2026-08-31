@@ -319,13 +319,26 @@ def run_game(
             traceback.print_exc()
             events = []
 
+        # Check faction death: capital destroyed or viceroy killed while in flight
+        for faction in list(bot_processes.keys()):
+            bp = bot_processes[faction]
+            if not bp.alive:
+                continue
+            capital = world.faction_capital(faction)
+            has_viceroy = any(a.is_viceroy and a.faction == faction for a in world.armies)
+            if capital is None and not has_viceroy:
+                # Faction has no capital and no viceroy in flight — dead
+                bp.alive = False
+                try:
+                    bp.kill()
+                except Exception:
+                    pass
+
         # Write turn record
         if record_path is not None:
             write_turn_line(turn, world, events, record_path)
 
-        # Optional early termination if all bots dead and world stable? Not needed; continue to max_turns
 
-        # Clear fresh flags? Already handled in movement
 
     # Compute final scores
     final_scores = score(world, config)

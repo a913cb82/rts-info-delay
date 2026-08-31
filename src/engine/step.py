@@ -769,8 +769,9 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0)
     for t in dead:
         if t.id not in dead_ids:
             dead_ids.add(t.id)
+            was_capital = t.is_capital
             world.remove_town(t.id)
-            growth_events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction})
+            growth_events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction, "is_capital": was_capital})
     events.extend(growth_events)
 
     # Handle standing MOVE_CAPITAL that were added via command phase but not yet emitted?
