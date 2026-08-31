@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from engine.config import GameConfig
 from .common import (
-    _hash, _can_train, _forecast_pos, _enemy_towns,
+    _forecast_pos,
     BotState, bot_main,
 )
 

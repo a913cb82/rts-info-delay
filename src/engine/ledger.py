@@ -11,6 +11,7 @@ from enum import Enum
 class EventKind(Enum):
     ARMY_SPAWN = "army_spawn"
     TOWN_SPAWN = "town_spawn"
+    TOWN_CAPTURE = "town_capture"
     ARMY_MOVE = "army_move"
     ARMY_DEATH = "army_death"
     BATTLE = "battle"

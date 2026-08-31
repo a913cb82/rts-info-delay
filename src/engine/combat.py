@@ -192,3 +192,74 @@ def _enemies_within_radius(
         if dist <= radius + 1e-9:
             res.append(other)
     return res
+
+
+def resolve_captures(world: World, config: GameConfig) -> list[dict]:
+    """Capture enemy towns within interact_radius of surviving armies.
+
+    After combat, surviving armies within interact_radius of an enemy town
+    capture it: ownership changes, population reduced by build_efficiency.
+    Capital status transfers to captor if the captured town was a capital.
+    """
+    events: list[dict] = []
+    if not world.armies or not world.towns:
+        return events
+
+    radius = config.interact_radius
+    captured_town_ids: set[int] = set()
+
+    # Only idle armies (no target, no BUILD order) can capture
+    build_army_ids = {
+        so.target_id for so in world.standing_orders
+        if so.command.name == "BUILD" and so.target_type == "army"
+    }
+
+    for army in world.armies:
+        if army.is_fresh:
+            continue  # fresh spawns don't capture
+        if army.has_target:
+            continue  # moving armies don't capture
+        if army.id in build_army_ids:
+            continue  # armies executing BUILD don't capture
+        for town in world.towns:
+            if town.id in captured_town_ids:
+                continue  # already captured this turn
+            if town.faction == army.faction:
+                continue  # can't capture own town
+            dist = math.hypot(army.x - town.x, army.y - town.y)
+            if dist > radius + 1e-9:
+                continue
+
+            # Capture!
+            old_faction = town.faction
+            was_capital = town.is_capital
+            old_pop = town.population
+
+            # If this town was a capital, demote it for old owner
+            if was_capital:
+                town.is_capital = False
+
+            # Change ownership
+            town.faction = army.faction
+
+            # Reduce population by build_efficiency
+            town.population *= (1.0 - config.build_efficiency)
+
+            # If captor has no capital, make this the new capital
+            captor_capital = world.faction_capital(army.faction)
+            if captor_capital is None:
+                town.is_capital = True
+
+            captured_town_ids.add(town.id)
+            events.append({
+                "kind": "town_capture",
+                "id": town.id,
+                "x": town.x,
+                "y": town.y,
+                "old_faction": old_faction,
+                "new_faction": army.faction,
+                "was_capital": was_capital,
+                "population": town.population,
+            })
+
+    return events

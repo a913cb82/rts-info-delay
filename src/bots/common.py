@@ -102,7 +102,7 @@ class TownInfo:
     spent_on_train: float = 0.0   # total pop spent on TRAIN this turn
     inferred_growth: float = 0.0  # inferred growth this turn (delta + spent)
     _trained_this_turn: bool = False  # a TRAIN was delivered this turn
-    _ever_trained: bool = False       # a TRAIN was ever delivered to this town
+    _last_trained_turn: int = 0       # last turn a TRAIN was delivered
 
     @property
     def net_change(self) -> float:
@@ -282,7 +282,7 @@ class BotState:
             t = self.towns.get(town_id)
             if t:
                 t._trained_this_turn = True
-                t._ever_trained = True
+                t._last_trained_turn = self.turn
 
     def _infer_growth(self):
         """Infer growth from population delta and training spend."""
@@ -322,9 +322,11 @@ class BotState:
         if town_id in self._pending_trains:
             return False
 
-        # One TRAIN per town per game — bot can't see pop changes from events
-        # so must be conservative. TRAIN costs 1000, growth at 5k is ~5/week.
-        if t._ever_trained:
+        # Cooldown: don't re-train too soon after last training
+        # At 5k pop, growth is ~5/week — need ~200 turns to recover 1000 pop
+        # Use 10-turn cooldown as reasonable minimum
+        turns_since = self.turn - t._last_trained_turn
+        if t._last_trained_turn > 0 and turns_since < 10:
             return False
 
         # Must have enough pop to survive training
@@ -332,7 +334,7 @@ class BotState:
             return False
 
         if conservative:
-            if t.population < 3000:
+            if t.population < 2000:
                 return False
             if PEAK_LOW <= t.population <= PEAK_HIGH:
                 return False

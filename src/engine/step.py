@@ -173,8 +173,13 @@ def step(
     # Phase 4: Combat
     combat_events = _phase_combat(world, config)
 
+    # Phase 4b: Town capture (after combat, before economy)
+    # Record factions before capture so TRAIN uses original owner
+    pre_capture_factions = {t.id: t.faction for t in world.towns}
+    capture_events = _phase_captures(world, config)
+
     # Phase 5: Economy
-    economy_events = _phase_economy(world, config, ledger=normalized_ledger, turn=normalized_turn)
+    economy_events = _phase_economy(world, config, ledger=normalized_ledger, turn=normalized_turn, pre_capture_factions=pre_capture_factions)
 
     # Combine all events
     all_events: list[dict] = []
@@ -182,6 +187,7 @@ def step(
     all_events.extend(movement_events)
     all_events.extend(viceroy_events)
     all_events.extend(combat_events)
+    all_events.extend(capture_events)
     all_events.extend(economy_events)
 
     # Phase 6: Knowledge
@@ -691,7 +697,13 @@ def _phase_combat(world: World, config: GameConfig) -> list[dict]:
     return resolve_combat(world, config)
 
 
-def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0) -> list[dict]:
+def _phase_captures(world: World, config: GameConfig) -> list[dict]:
+    """Capture enemy towns within interact_radius of surviving armies."""
+    from engine.combat import resolve_captures
+    return resolve_captures(world, config)
+
+
+def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0, pre_capture_factions: dict[int, int] | None = None) -> list[dict]:
     """Apply growth, execute standing TRAIN/BUILD, check town death."""
     from engine.economy import apply_growth, apply_train, apply_build, check_town_death
     events: list[dict] = []
@@ -843,7 +855,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0)
             world.standing_orders.remove(so)
 
     # TRAIN
-    train_events = apply_train(world, config)
+    train_events = apply_train(world, config, pre_capture_factions=pre_capture_factions)
     events.extend(train_events)
 
     # BUILD

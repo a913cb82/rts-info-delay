@@ -164,7 +164,7 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
     return events
 
 
-def apply_train(world: World, config: GameConfig) -> list[dict]:
+def apply_train(world: World, config: GameConfig, pre_capture_factions: dict[int, int] | None = None) -> list[dict]:
     events: list[dict] = []
     train_orders = [so for so in world.standing_orders if so.command == CommandType.TRAIN and so.target_type == "town"]
     if not train_orders:
@@ -177,10 +177,14 @@ def apply_train(world: World, config: GameConfig) -> list[dict]:
             if so in world.standing_orders:
                 world.standing_orders.remove(so)
             continue
+        # Use pre-capture faction if available (capture runs before economy)
+        original_faction = town.faction
+        if pre_capture_factions and so.target_id in pre_capture_factions:
+            original_faction = pre_capture_factions[so.target_id]
         if so.args and len(so.args) >= 1:
             try:
                 requested_faction = int(float(so.args[0]))
-                if requested_faction != town.faction:
+                if requested_faction != original_faction:
                     continue
             except (ValueError, TypeError):
                 pass
@@ -189,7 +193,7 @@ def apply_train(world: World, config: GameConfig) -> list[dict]:
         should_spawn = original_pop >= config.army_cost - 1e-9
         if should_spawn:
             new_id = world.allocate_id()
-            army = Army(id=new_id, faction=town.faction, x=town.x, y=town.y, is_fresh=True, is_viceroy=False)
+            army = Army(id=new_id, faction=original_faction, x=town.x, y=town.y, is_fresh=True, is_viceroy=False)
             world.armies.append(army)
             events.append({"kind": "army_spawn", "id": army.id, "faction": army.faction, "x": army.x, "y": army.y, "is_viceroy": False})
         if town.population < config.death_threshold - 1e-9:

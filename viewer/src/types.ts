@@ -50,6 +50,7 @@ export interface TurnRecord {
 
 export type EventKind =
   | "town_death"
+  | "town_capture"
   | "army_spawn"
   | "town_spawn"
   | "army_move"
