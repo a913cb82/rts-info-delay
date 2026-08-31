@@ -1,139 +1,69 @@
 """Turtle — hunkers down, garrisons, shy build. Pure function."""
 
 from __future__ import annotations
-import json, math, sys
+
+import math
 from engine.config import GameConfig
-from engine.world import World
-try:
-    from .common import _busy, _hash, _own, _site, _world, _can_train
-except ImportError:
-    from bots.common import _busy, _hash, _own, _site, _world, _can_train
+from .common import (
+    _site, _can_train,
+    BotState, bot_main,
+)
 
 
-def decide_orders(world: World, faction: int, config: GameConfig) -> list[str]:
-    view = {
-        "faction": faction,
-        "armies": [{"id": a.id, "faction": a.faction, "x": a.x, "y": a.y, "has_target": a.has_target, "target_x": a.target_x, "target_y": a.target_y} for a in world.armies],
-        "towns": [{"id": t.id, "faction": t.faction, "x": t.x, "y": t.y, "population": t.population, "is_capital": t.is_capital} for t in world.towns],
-        "turn": getattr(world, "_turn", 0),
-    }
-    f = _world(view)
+def decide_orders(state: BotState, config: GameConfig) -> list[str]:
+    faction = state.faction
     out: list[str] = []
-    busy = _busy(f)
-    own_towns = [t for t in f["towns"] if t["faction"] == faction]
-    own_armies = [a for a in f["armies"] if a["faction"] == faction]
-    enemies = [a for a in f["armies"] if a["faction"] != faction]
+    own_t = state.own_towns()
+    own_a = state.own_armies()
 
-    # TRAIN — very conservative (peak-aware + high bar)
-    for t in own_towns:
-        if t["id"] in busy:
+    # All towns calm?
+    all_calm = all(
+        t.population >= 1500 and not (35000 <= t.population <= 65000)
+        for t in own_t
+    )
+
+    # TRAIN: very conservative, all calm, pop >= 3000
+    for t in own_t:
+        if t.spent_on_train > 0:
             continue
-        wt = next((x for x in world.towns if x.id == t["id"]), None)
-        pop = wt.population if wt else t["population"]
-        if _can_train(pop, config, conservative=True) and pop >= 3000:
-            out.append(f"TRAIN {t['id']}")
+        if t.population < 3000:
+            continue
+        if not all_calm:
+            continue
+        if state.can_train_safely(t.id, conservative=True):
+            out.append(f"TRAIN {t.id}")
 
-    # Shy build: only when every own town >= 1500 and pop outside peak, only strongest idle, clustered tight
-    all_calm = all((next((w.population for w in world.towns if w.id == t["id"]), 500) >= 1500) for t in own_towns) if own_towns else False
-    # also need outside peak for calm
-    all_calm = all_calm and all(not (35000 <= next((w.population for w in world.towns if w.id == t["id"]), 0) <= 65000) for t in own_towns) if own_towns else False
+    # BUILD: only one builder, only when all calm
+    builders = 0
+    if all_calm and own_t:
+        biggest = max(own_t, key=lambda t: t.population)
+        # Sort armies by distance to biggest town
+        sorted_a = sorted(own_a, key=lambda a: math.hypot(a.x - biggest.x, a.y - biggest.y))
+        for p in sorted_a:
+            if builders >= 1:
+                break
+            if p.is_viceroy and p.has_target:
+                continue
+            sx, sy = _site(state.turn, p.id, config,
+                           [{"x": t.x, "y": t.y, "population": t.population} for t in own_t],
+                           salt=13, rmin=40, rmax=100, around={"x": biggest.x, "y": biggest.y})
+            out.append(f"BUILD {p.id} {sx:.1f} {sy:.1f}")
+            builders += 1
 
-    idle = [p for p in own_armies if p["id"] not in busy]
+    # Garrison idle armies near nearest town
+    for p in own_a:
+        if p.is_viceroy and p.has_target:
+            continue
+        if any(o.startswith(f"BUILD {p.id}") for o in out):
+            continue
+        if own_t:
+            nearest = min(own_t, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
+            dist = math.hypot(p.x - nearest.x, p.y - nearest.y)
+            if dist > 20:
+                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")
 
-    # If not calm, keep garrison: idle armies move to nearest own town
-    if not all_calm and idle and own_towns:
-        for p in idle:
-            # nearest own town
-            t = min(own_towns, key=lambda t: math.hypot(t["x"]-p["x"], t["y"]-p["y"]))
-            out.append(f"MOVE_TO {p['id']} {p['x']:.1f} {p['y']:.1f} {t['x']:.1f} {t['y']:.1f}")
-        return out
-
-    # Shy build: one builder, tight around biggest town
-    if all_calm and idle and own_towns:
-        # biggest by pop
-        big = max(own_towns, key=lambda t: next((w.population for w in world.towns if w.id == t["id"]), 0))
-        # strongest idle
-        g = max(idle, key=lambda p: 1)  # all equal strength in min, use id
-        x, y = _site(f.get("turn", 0), g["id"], config, own_towns, salt=17, rmin=40, rmax=100, around=big)
-        out.append(f"BUILD {g['id']} {x:.1f} {y:.1f}")
-        idle = [p for p in idle if p["id"] != g["id"]]
-        # remaining idle keep garrison
-        for p in idle:
-            t = min(own_towns, key=lambda t: math.hypot(t["x"]-p["x"], t["y"]-p["y"]))
-            out.append(f"MOVE_TO {p['id']} {p['x']:.1f} {p['y']:.1f} {t['x']:.1f} {t['y']:.1f}")
-        return out
-
-    # Otherwise garrison already handled
     return out
 
 
-def _read_startup():
-    import json, sys
-    from engine.config import GameConfig
-    cfg = GameConfig(); fac = 0
-    for line in sys.stdin:
-        line=line.strip()
-        if not line: continue
-        if line.startswith("config "):
-            try: cfg = GameConfig.from_dict(json.loads(line[7:]))
-            except: pass
-        elif line.startswith("faction "):
-            try: fac = int(line.split()[1])
-            except: pass
-        elif line == "go": break
-        elif line.startswith("end "): sys.exit(0)
-    return cfg, fac
-
-def _read_turn():
-    import json, sys
-    turn=None; ev=[]
-    for line in sys.stdin:
-        line=line.strip()
-        if not line: continue
-        if line.startswith("turn "):
-            try: turn=int(line.split()[1])
-            except: turn=0
-        elif line=="go":
-            if turn is not None: return turn, ev
-        elif line.startswith("end "): return -1, []
-        elif line.startswith("{"):
-            try: ev.append(json.loads(line))
-            except: pass
-        else:
-            try: ev.append(json.loads(line))
-            except: pass
-    return None
-
-def main():
-    cfg, faction = _read_startup()
-    world = World(); world.map_size=cfg.map_size
-    if cfg.map: world.parse_map(cfg.map)
-    while True:
-        r=_read_turn()
-        if r is None: break
-        turn,events=r
-        if turn==-1: break
-        world._turn=turn
-        for ev in events:
-            k=ev.get("kind")
-            if k=="army_spawn":
-                if any(a.id==ev.get("id") for a in world.armies): continue
-                from engine.world import Army
-                a=Army(id=ev.get("id"), faction=ev.get("faction",faction), x=ev.get("x",0), y=ev.get("y",0), is_fresh=True)
-                a.is_viceroy=ev.get("is_viceroy",False)
-                world.armies.append(a)
-            elif k=="town_spawn":
-                if any(t.id==ev.get("id") for t in world.towns): continue
-                from engine.world import Town
-                t=Town(id=ev.get("id"), faction=ev.get("faction",faction), x=ev.get("x",0), y=ev.get("y",0), population=ev.get("population",500), is_capital=ev.get("is_capital",False))
-                world.towns.append(t)
-            elif k=="army_move":
-                a=world.get_army(ev.get("id"))
-                if a: a.x,a.y=ev.get("x",a.x),ev.get("y",a.y)
-            elif k=="army_death": world.remove_army(ev.get("id"))
-            elif k=="town_death": world.remove_town(ev.get("id"))
-        orders=decide_orders(world,faction,cfg)
-        for o in orders: sys.stdout.write(o+"\n")
-        sys.stdout.write("go\n"); sys.stdout.flush()
-
-if __name__=="__main__": main()
+if __name__ == "__main__":
+    bot_main(decide_orders)
