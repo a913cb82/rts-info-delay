@@ -1,0 +1,36 @@
+"""Generate empty.json — minimal map, 1 settlement per player at 500 pop."""
+
+import json
+import math
+
+MAP_SIZE = 1000
+R = 280
+cx, cy = 500, 500
+
+csv_lines = ["x,y,type,population"]
+for i in range(5):
+    theta = math.radians(90 + i * 72)
+    x = cx + R * math.cos(theta)
+    y = cy + R * math.sin(theta)
+    csv_lines.append(f"{x:.1f},{y:.1f},{chr(65 + i)},500")
+
+config = {
+    "map": "\n".join(csv_lines),
+    "map_size": [MAP_SIZE, MAP_SIZE],
+    "max_turns": 500,
+    "info_speed": 150.0,
+    "army_speed": 50.0,
+    "army_cost": 1000,
+    "interact_radius": 10.0,
+    "population_cap": 100000.0,
+    "population_growth": 0.001,
+    "build_efficiency": 0.5,
+    "equilibrium_spacing": 0.1,
+    "crowding_decay": 0.8,
+    "crowding_asymmetry": 0.01,
+}
+
+with open("maps/empty.json", "w") as f:
+    json.dump(config, f, indent=2)
+
+print(f"Wrote maps/empty.json ({len(csv_lines)-1} settlements)")
