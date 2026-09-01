@@ -128,30 +128,22 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
     moving_indices: list[int] = []
     for i, army in enumerate(world.armies):
         if not army.has_target:
-            vel_x[i] = 0.0
-            vel_y[i] = 0.0
             continue
-        # Fresh spawns are immune: they do not move this turn, and do not block
         if is_fresh[i]:
-            vel_x[i] = 0.0
-            vel_y[i] = 0.0
             continue
         dx = army.target_x - army.x
         dy = army.target_y - army.y
         dist = math.hypot(dx, dy)
         if dist < 1e-9:
-            vel_x[i] = 0.0
-            vel_y[i] = 0.0
+            continue
+        if dist <= speed:
+            vel_x[i] = dx
+            vel_y[i] = dy
         else:
-            if dist <= speed:
-                vel_x[i] = dx
-                vel_y[i] = dy
-            else:
-                scale = speed / dist
-                vel_x[i] = dx * scale
-                vel_y[i] = dy * scale
-        if abs(vel_x[i]) > 1e-9 or abs(vel_y[i]) > 1e-9:
-            moving_indices.append(i)
+            scale = speed / dist
+            vel_x[i] = dx * scale
+            vel_y[i] = dy * scale
+        moving_indices.append(i)
 
     if not moving_indices:
         for a in world.armies:
@@ -166,10 +158,10 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
     sh_town = None
     try:
         from engine.spatial import SpatialHash
-        # army hash
+        # army hash — all armies (stationary can block moving)
         sh_army = SpatialHash.__new__(SpatialHash)
         sh_army.config = config
-        sh_army.cell_size = 60.0  # > army_speed + radius
+        sh_army.cell_size = 60.0
         try: mx, my = config.map_size[0], config.map_size[1]
         except: mx, my = 1000, 1000
         sh_army.width = int(math.ceil(mx / sh_army.cell_size)) if sh_army.cell_size else 1
@@ -208,19 +200,45 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
             if is_fresh[bi]: continue
             if factions[bi] == m_faction: continue
             bx = start_x[bi]; by = start_y[bi]; wx = vel_x[bi]; wy = vel_y[bi]
-            # early bbox reject before hypot
-            # if both far in x or y beyond radius+travel, skip quickly (optional)
-            t_star, min_dist = _closest_approach_numba(ax, ay, vx, vy, bx, by, wx, wy) if 'numba' in str(type(_closest_approach_numba)) else _closest_approach(ax, ay, vx, vy, bx, by, wx, wy)
+            # inline closest approach (avoids Python function call overhead)
+            ddx = bx - ax; ddy = by - ay
+            eex = wx - vx; eey = wy - vy
+            denom = eex * eex + eey * eey
+            if denom < 1e-12:
+                min_dist = math.hypot(ddx, ddy)
+                t_s = 0.0
+            else:
+                dot = ddx * eex + ddy * eey
+                t_s = -dot / denom
+                if t_s < 0.0: t_s = 0.0
+                elif t_s > 1.0: t_s = 1.0
+                rx = ddx + t_s * eex
+                ry = ddy + t_s * eey
+                min_dist = math.hypot(rx, ry)
             if min_dist <= radius + 1e-9:
-                contacts.append((t_star, mi, bi, "army", min_dist))
+                contacts.append((t_s, mi, bi, "army", min_dist))
         cand_towns = range(len(town_list)) if not use_hash else sh_town.query_radius(float(ax), float(ay), 60.0)
         for ti in cand_towns:
             town = town_list[ti]
             if town.faction == m_faction: continue
             tx, ty = town.x, town.y
-            t_star, min_dist = _closest_approach(ax, ay, vx, vy, tx, ty, 0.0, 0.0)
+            # inline closest approach vs stationary (wx=wy=0)
+            ddx = tx - ax; ddy = ty - ay
+            eex = -vx; eey = -vy
+            denom = eex * eex + eey * eey
+            if denom < 1e-12:
+                min_dist = math.hypot(ddx, ddy)
+                t_s = 0.0
+            else:
+                dot = ddx * eex + ddy * eey
+                t_s = -dot / denom
+                if t_s < 0.0: t_s = 0.0
+                elif t_s > 1.0: t_s = 1.0
+                rx = ddx + t_s * eex
+                ry = ddy + t_s * eey
+                min_dist = math.hypot(rx, ry)
             if min_dist <= radius + 1e-9:
-                contacts.append((t_star, mi, ti, "town", min_dist))
+                contacts.append((t_s, mi, ti, "town", min_dist))
 
     # If no contacts, just move all moving armies full speed
     # Sort contacts by t_star then moving_idx for determinism

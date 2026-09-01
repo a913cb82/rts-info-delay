@@ -96,50 +96,68 @@ Benchmarked at commit `bed4967` (bench suite creation).
 
 ---
 
-## opt7: Step economy batch crowding (IN PROGRESS)
+## opt7: Step economy batch crowding
 
-**Status:** Edit partially applied to `step.py:_phase_economy`. Replaced per-town `crowding_net` loop with `crowding_nets_batch` call. Needs syntax verification, test suite, and benchmark.
+**Commit:** `4845603`
+**Changes:** `step.py:_phase_economy` replaced per-town `crowding_net` loop with `crowding_nets_batch`.
 
-**Plan:**
-1. Verify edit compiles and tests pass
-2. Run benchmarks, record before/after
-3. Commit
+| Benchmark | Before (ms) | After (ms) | Change |
+|---|---|---|---|
+| step heavy 207t+3036a | 3,336 | 3,330 | — (negligible) |
+| crowding 500 | 54 | 54 | — |
 
-**Expected:** heavy step ~3,336→~2,800ms (eliminates 500 individual crowding_net calls, uses batch numba)
+Conclusion: crowding batch was already 0.8ms; bottleneck was in combat, not economy.
 
 ---
 
-## Remaining (opt8-11, not started)
+## opt8: Combat single-pass weakness+adjacency
 
-### opt8: Spatial hash tiered cell + incremental army hash
-- `movement.py`: Build army hash once per `_phase_movement`, reuse for weakness+adjacency
+**Commit:** `4e2575f`
+**Changes:**
+- `combat.py`: Added `_compute_weaknesses_and_adj()` — single-pass builds both weakness dict and adjacency dict using spatial hash (n≥400) or brute (n<400)
+- `resolve_combat`: Uses pre-built adjacency for death determination (eliminates duplicate `_enemies_within_radius` O(n²) pass and separate adjacency O(n²) pass)
+- `compute_weaknesses` kept backward-compatible (returns dict only)
+
+| Benchmark | Before (ms) | After (ms) | Change |
+|---|---|---|---|
+| step heavy 207t+3036a | 3,336 | 975 | 3.42× |
+| combat 200 | 13.5 | 5.44 | 2.48× |
+| weakness 1k | 19 | 16.79 | 1.13× |
+| movement heavy 3036a | 244 | 227 | 1.07× |
+| crowding 500 | 54 | 52 | — |
+
+---
+
+## Remaining (opt9-11, not started)
+
+### opt9: Spatial hash incremental army + tiered cell
+- `movement.py`: Build army hash once per step, reuse across movement+weakness+captures
 - Tiered cells: cell=10 for combat (R=10), cell=150 for crowding/movement (R=110/60)
-- Incremental: add/remove changed armies instead of full rebuild
+- Incremental: add/remove changed armies instead of full rebuild each phase
 
-### opt9: Movement velocities numpy + numba batch
+### opt10: Movement velocities numpy + numba batch
 - `movement.py`: `compute_velocities` numpy vectorized (xs,ys,txs,tys → vxs,vys in one shot)
 - `_closest_approach` batch numpy instead of per-army Python loop
 - Early bbox reject for trivially non-blocking cases
 
-### opt10c: Ants-inspired (future, try if blocked)
+### opt11: Ants-inspired early exit (try if blocked)
 - `do_attack_support` pre-filter: if friends ≥ enemies for all, skip weakness entirely
 - `kill_ant` dict removal O(1) by loc vs our O(n) list scan — applies to captures `armies×towns`
-- Already covered: single-pass weakness+adjacency (ants `do_attack_focus`); grid offsets cache (our SpatialHash)
 
-### opt11: Record/world incremental pop_total
+### opt12: Record/world incremental pop_total
 - `record.py`: maintain `pop_total[faction]`/`army_count[faction]` incrementally on growth/conquest/spawn/death instead of full scan
 
 ---
 
 ## Cumulative Performance
 
-| Benchmark | Baseline | After all opts | Total speedup |
+| Benchmark | Baseline | Now | Total speedup |
 |---|---|---|---|
-| step heavy 207t+3036a | 11,732ms | (in progress) | — |
-| crowding 500 | 203ms | 54ms | 3.8× |
-| crowding batch 500 | — | 0.82ms | — |
-| movement heavy 3036a | 1,596ms | 244ms | 6.5× |
-| movement 1k | 787ms | 136ms | 5.8× |
-| weakness 1k | 398ms | 19ms | 20.9× |
-| combat 200 | 20.5ms | 13.5ms | 1.5× |
-| captures 100 | 12ms | 1.55ms | 7.7× |
+| step heavy 207t+3036a | 11,732ms | **975ms** | **12.0×** |
+| crowding 500 | 203ms | 52ms | 3.9× |
+| crowding batch 500 | — | 0.77ms | — |
+| movement heavy 3036a | 1,596ms | 227ms | 7.0× |
+| movement 1k | 787ms | 134ms | 5.9× |
+| weakness 1k | 398ms | 17ms | 23.4× |
+| combat 200 | 20.5ms | 5.44ms | 3.8× |
+| captures 100 | 12ms | 1.47ms | 8.2× |
