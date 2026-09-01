@@ -76,9 +76,15 @@ class World:
     _index_dirty: bool = field(default=True, repr=False, compare=False)
 
     def allocate_id(self) -> int:
-        nid = self._next_id
-        self._next_id += 1
-        return nid
+        # ensure no collision with existing ids (handles manual id assignment in tests)
+        while True:
+            nid = self._next_id
+            self._next_id += 1
+            if nid not in self._town_by_id and nid not in self._army_by_id:
+                # also check lists for case where indexes not yet rebuilt
+                if any(t.id == nid for t in self.towns) or any(a.id == nid for a in self.armies):
+                    continue
+                return nid
 
     def _rebuild_indexes(self) -> None:
         self._army_by_id = {a.id: a for a in self.armies}

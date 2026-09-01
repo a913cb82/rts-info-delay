@@ -496,18 +496,32 @@ def test_move_capital_events():
 
 
 def test_move_capital_old_capital_demoted():
-    """After MOVE_CAPITAL arrival, old capital is demoted."""
+    """After MOVE_CAPITAL arrival, old capital is demoted (non-stacked target)."""
     t = _town(fid=0, x=100, y=100, pop=5000, tid=1)
     engine = _make_world(towns=[t])
-
-    # Target = current pos → instant arrival
-    step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={0: ["MOVE_CAPITAL 100 100"]})
-
+    ledger = Ledger(CFG.info_speed, 1414)
+    # 200,200 is 141 away -> viceroy spawns t1 (fresh), moves t2, arrives t2
+    step(engine, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
+    step(engine, CFG, ledger, turn=2, orders={})
+    step(engine, CFG, ledger, turn=3, orders={})
     old_cap = next((x for x in engine.towns if x.id == 1), None)
     assert old_cap is not None
     assert not old_cap.is_capital
     new_caps = [x for x in engine.towns if x.is_capital and x.faction == 0]
     assert len(new_caps) == 1
+    assert new_caps[0].x == 200 and new_caps[0].y == 200
+
+
+def test_move_capital_stacked_die():
+    """Stacked MOVE_CAPITAL (same tile) insta-kills lower-pop new (bot fault)."""
+    t = _town(fid=0, x=100, y=100, pop=5000, tid=1)
+    engine = _make_world(towns=[t])
+    step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={0: ["MOVE_CAPITAL 100 100"]})
+    old_cap = next((x for x in engine.towns if x.id == 1), None)
+    assert old_cap is not None
+    assert not old_cap.is_capital
+    new_caps = [x for x in engine.towns if x.is_capital and x.faction == 0]
+    assert len(new_caps) == 0
 
 
 def test_move_capital_delayed_arrival():

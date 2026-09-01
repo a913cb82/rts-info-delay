@@ -49,10 +49,17 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
                     return log
                 pj = pops[mask]
                 d = dists[mask]
-                d = np.where(d < 1e-9, 1e-6, d)
+                # stacked insta-kill: if any neighbour at same pos has higher pop, this town dies
+                stacked = d < 1e-9
+                if np.any(stacked):
+                    # if any stacked neighbour has pop >= this town, lower dies
+                    if np.any(pj[stacked] >= town.population):
+                        # insta-kill lower
+                        return log * (1.0 - 1e6)
                 mins = np.minimum(pj, town.population)
                 mins = np.maximum(mins, 0.0)
                 d_eqs = config.equilibrium_spacing * np.sqrt(mins)
+                d = np.where(d < 1e-9, np.where(d_eqs>0, d_eqs, 1.0), d)
                 asy = np.ones_like(d)
                 if town.population > 0:
                     valid = pj > 0
@@ -111,17 +118,16 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
         dx = town.x - xs_f
         dy = town.y - ys_f
         dists = np.hypot(dx, dy)
-        # dists already <= info_speed by query, but keep epsilon
-        dists = np.where(dists < 1e-9, 1e-6, dists)
         mins = np.minimum(pops_f, town.population)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)
+        dists = np.where(dists < 1e-9, np.where(d_eqs>0, d_eqs, 1.0), dists)
         asy = np.ones_like(dists)
         valid = (pops_f > 0) & (town.population > 0)
         if np.any(valid):
             ratio_log = np.log(pops_f[valid] / town.population)
             asy[valid] = 1.0 + config.crowding_asymmetry * ratio_log
-        ratios = (d_eqs / dists) ** config.crowding_decay
+        ratios = np.where(d_eqs>0, (d_eqs / dists) ** config.crowding_decay, 0.0)
         total = float(np.sum(asy * ratios))
         return log * (1.0 - total)
     except Exception:
@@ -268,11 +274,15 @@ try:
                 if i == j: continue
                 d = D_[i, j]
                 if d > R_: continue
-                if d < 1e-9: d = 1e-6
                 pj = pops_[j]
                 m = pi if pi < pj else pj
                 if m < 0: m = 0
                 d_eq = eq_sp * math.sqrt(m) if m > 0 else 0.0
+                if d < 1e-9:
+                    # stacked insta-kill: lower pop dies
+                    if pi <= pj:
+                        total += 1e6  # make lower insta-die
+                    continue
                 a = 1.0
                 if pi > 0 and pj > 0:
                     a = 1.0 + asym * math.log(pj / pi)
