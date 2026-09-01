@@ -121,14 +121,13 @@ Benchmarked at commit `bed4967` (bench suite creation).
 - `_closest_approach` batch numpy instead of per-army Python loop
 - Early bbox reject for trivially non-blocking cases
 
-### opt10: Combat union-find + id→obj dict
-- `combat.py`: `id→army` dict for O(1) lookup (already have from opt1, use it)
-- Union-find for 1v1 mutual kill chain resolution (O(α(n)) vs O(n²))
-- Single hash query shared across all armies for weakness
+### opt10c: Ants-inspired (future, try if blocked)
+- `do_attack_support` pre-filter: if friends ≥ enemies for all, skip weakness entirely
+- `kill_ant` dict removal O(1) by loc vs our O(n) list scan — applies to captures `armies×towns`
+- Already covered: single-pass weakness+adjacency (ants `do_attack_focus`); grid offsets cache (our SpatialHash)
 
 ### opt11: Record/world incremental pop_total
-- `record.py`: Maintain `pop_total[faction]` and `army_count[faction]` incrementally
-- Update on growth/conquest/spawn/death instead of full O(T+A) scan each turn
+- `record.py`: maintain `pop_total[faction]`/`army_count[faction]` incrementally on growth/conquest/spawn/death instead of full scan
 
 ---
 

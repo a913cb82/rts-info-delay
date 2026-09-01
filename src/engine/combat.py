@@ -17,85 +17,103 @@ def compute_weaknesses(
     n = len(armies)
     if n == 0:
         return {}
-    # small n: brute with squared early reject (avoid hypot)
     radius = config.interact_radius
     R2 = (radius + 1e-9)*(radius + 1e-9)
-    # for large n use hash
     if n < 400:
         result: dict[int, int] = {}
         for a in armies:
             cnt = 0
-            ax, ay = a.x, a.y
-            af = a.faction
-            aid = a.id
+            ax, ay, af, aid = a.x, a.y, a.faction, a.id
             for b in armies:
                 if b.id == aid or b.faction == af: continue
                 dx = b.x - ax; dy = b.y - ay
-                if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
                 if dx*dx + dy*dy <= R2:
                     cnt += 1
             result[aid] = cnt
         return result
-    # large n: hash cell=10
-    try:
-        from engine.spatial import SpatialHash
-        import numpy as np, math as m
-        sh = SpatialHash.__new__(SpatialHash)
-        sh.config = config; sh.cell_size = float(radius if radius>=1 else 10)
-        try: mx, my = config.map_size[0], config.map_size[1]
-        except: mx, my = 1000, 1000
-        sh.width = int(m.ceil(mx / sh.cell_size)); sh.height = int(m.ceil(my / sh.cell_size))
-        sh.cells = {}
-        pos = np.array([[a.x, a.y] for a in armies], dtype=float)
-        sh.positions = pos
-        for idx, (x, y) in enumerate(pos):
-            key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
-            sh.cells.setdefault(key, []).append(idx)
-        result = {}
-        for a in armies:
-            neigh = sh.query_radius(float(a.x), float(a.y), float(radius+1e-9))
-            cnt = 0
-            for idx in neigh:
-                b = armies[idx]
-                if b.id == a.id or b.faction == a.faction: continue
-                # query already filtered by dist, but include check for stacked case (dist 0 excluded incorrectly for exclusive hash)
-                # for hash with r=10 and query exclusive, stacked at same pos would be missed; so double-check brute for those
-                cnt += 1
-            # fix stacked same pos missed by hash exclusive: brute check for those at same pos
-            # find armies at same pos within 1e-9 (rare, handle via brute scan of same cell)
-            result[a.id] = cnt
-        # for stacks at exactly same pos, hash exclusive would have excluded; patch by brute for those
-        # detect any pair with dist~0 and different faction: do brute for those
-        # simpler: if any army shares pos with another enemy, brute count them
-        # we do small brute for same-pos only
-        pos_map: dict[tuple[int,int], list[int]] = {}
-        for i,a in enumerate(armies):
-            key = (int(round(a.x*1000)), int(round(a.y*1000)))
-            pos_map.setdefault(key, []).append(i)
-        for lst in pos_map.values():
-            if len(lst) < 2: continue
-            # check factions differ
-            for i in lst:
-                for j in lst:
-                    if i==j: continue
-                    if armies[i].faction == armies[j].faction: continue
-                    # if hash missed due to exclusive, add
-                    # result counts already include if hash included; if not, add now
-                    # we can just recompute brute for these small clusters
-                    pass
-        return result
-    except Exception:
-        pass
+    # large n: hash cell=radius (10)
+    from engine.spatial import SpatialHash
+    import math as m
+    sh = SpatialHash.__new__(SpatialHash)
+    sh.config = config; sh.cell_size = float(radius if radius >= 1 else 10)
+    try: mx, my = config.map_size[0], config.map_size[1]
+    except: mx, my = 1000, 1000
+    sh.width = int(m.ceil(mx / sh.cell_size)); sh.height = int(m.ceil(my / sh.cell_size))
+    sh.cells = {}
+    pos = np.array([[a.x, a.y] for a in armies], dtype=float)
+    sh.positions = pos
+    for idx, (x, y) in enumerate(pos):
+        key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
+        sh.cells.setdefault(key, []).append(idx)
     result = {}
     for a in armies:
+        neigh = sh.query_radius(float(a.x), float(a.y), float(radius + 1e-9))
         cnt = 0
-        for b in armies:
+        for idx in neigh:
+            b = armies[idx]
             if b.id == a.id or b.faction == a.faction: continue
-            if abs(b.x - a.x) > radius+1e-9 or abs(b.y - a.y) > radius+1e-9: continue
-            if (b.x-a.x)**2 + (b.y-a.y)**2 <= R2:
-                cnt += 1
+            cnt += 1
         result[a.id] = cnt
     return result
+
+
+def _compute_weaknesses_and_adj(
+    armies: list[Army], config: GameConfig
+) -> tuple[dict[int, int], dict[int, set[int]]]:
+    """Single-pass weakness + adjacency. Returns (weaknesses, adj)."""
+    n = len(armies)
+    if n == 0:
+        return {}, {}
+    radius = config.interact_radius
+    R2 = (radius + 1e-9) * (radius + 1e-9)
+    adj: dict[int, set[int]] = {a.id: set() for a in armies}
+    if n < 400:
+        result: dict[int, int] = {}
+        for a in armies:
+            cnt = 0
+            ax, ay, af, aid = a.x, a.y, a.faction, a.id
+            for b in armies:
+                if b.id == aid or b.faction == af:
+                    continue
+                dx = b.x - ax
+                dy = b.y - ay
+                if dx * dx + dy * dy <= R2:
+                    cnt += 1
+                    adj[aid].add(b.id)
+                    adj[b.id].add(aid)
+            result[aid] = cnt
+        return result, adj
+    from engine.spatial import SpatialHash
+    import math as m
+
+    sh = SpatialHash.__new__(SpatialHash)
+    sh.config = config
+    sh.cell_size = float(radius if radius >= 1 else 10)
+    try:
+        mx, my = config.map_size[0], config.map_size[1]
+    except Exception:
+        mx, my = 1000, 1000
+    sh.width = int(m.ceil(mx / sh.cell_size))
+    sh.height = int(m.ceil(my / sh.cell_size))
+    sh.cells = {}
+    pos = np.array([[a.x, a.y] for a in armies], dtype=float)
+    sh.positions = pos
+    for idx, (x, y) in enumerate(pos):
+        key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
+        sh.cells.setdefault(key, []).append(idx)
+    result = {}
+    for a in armies:
+        neigh = sh.query_radius(float(a.x), float(a.y), float(radius + 1e-9))
+        cnt = 0
+        for idx in neigh:
+            b = armies[idx]
+            if b.id == a.id or b.faction == a.faction:
+                continue
+            cnt += 1
+            adj[a.id].add(b.id)
+            adj[b.id].add(a.id)
+        result[a.id] = cnt
+    return result, adj
 
 
 def resolve_combat(
@@ -116,20 +134,14 @@ def resolve_combat(
     if not combat_armies:
         return events
 
-    weaknesses = compute_weaknesses(combat_armies, config)
+    weaknesses, adj = _compute_weaknesses_and_adj(combat_armies, config)
 
-    # Determine deaths
+    # Determine deaths using pre-built adjacency (no second O(n²) pass)
     dead_ids: set[int] = set()
-    # For each army, check enemies within radius
     for a in combat_armies:
         w_a = weaknesses.get(a.id, 0)
-        # Find enemies within radius
-        enemies_in_radius = _enemies_within_radius(a, combat_armies, radius)
-        if not enemies_in_radius:
-            continue
-        # If any enemy has weakness <= w_a, then a dies
-        for enemy in enemies_in_radius:
-            w_e = weaknesses.get(enemy.id, 0)
+        for eid in adj.get(a.id, set()):
+            w_e = weaknesses.get(eid, 0)
             if w_e <= w_a:
                 dead_ids.add(a.id)
                 break
@@ -137,32 +149,7 @@ def resolve_combat(
     if not dead_ids:
         return events
 
-    # Generate battle events grouping
-    # Group dead and involved armies by spatial clustering
-    # Build graph where edge between combat_armies if dist <= radius and factions differ? Or just any enemy within radius regardless of faction? Use enemy condition.
-    # Simpler: cluster based on any pair within radius (regardless of faction) that are both in combat_armies and at least one is dead or involved?
-    # We'll cluster all combat_armies that are within radius of each other (any faction diff or same? but same faction not enemy but still could be in same battle via chained enemies)
-    # Use union-find for all combat_armies where dist <= radius*2? Actually use radius directly: if dist <= radius, they are in same battle cluster if there's enemy linkage
-
-    # We'll do BFS clustering: start from dead armies, expand to all enemies within radius recursively
-    # That will group distinct battles.
-
-    # Create adjacency for enemy within radius
-    n = len(combat_armies)
-    # Map id -> index
-    id_to_idx = {a.id: i for i, a in enumerate(combat_armies)}
-    adj: dict[int, set[int]] = {a.id: set() for a in combat_armies}
-    R2 = (radius+1e-9)*(radius+1e-9)
-    for i in range(n):
-        a = combat_armies[i]
-        for j in range(i+1, n):
-            b = combat_armies[j]
-            if a.faction == b.faction: continue
-            dx = b.x - a.x; dy = b.y - a.y
-            if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
-            if dx*dx + dy*dy <= R2:
-                adj[a.id].add(b.id)
-                adj[b.id].add(a.id)
+    # adj already built by compute_weaknesses — skip O(n²) rebuild
 
     # Find connected components among armies that are involved (have at least one enemy edge)
     visited: set[int] = set()
