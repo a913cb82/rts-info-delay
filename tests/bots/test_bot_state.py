@@ -500,10 +500,11 @@ def test_move_capital_old_capital_demoted():
     t = _town(fid=0, x=100, y=100, pop=5000, tid=1)
     engine = _make_world(towns=[t])
     ledger = Ledger(CFG.info_speed, 1414)
-    # 200,200 is 141 away -> viceroy spawns t1 (fresh), moves t2, arrives t2
+    # 200,200 is 141 away -> travel ceil(141/50)=3 turns, arrives t4
     step(engine, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
     step(engine, CFG, ledger, turn=2, orders={})
     step(engine, CFG, ledger, turn=3, orders={})
+    step(engine, CFG, ledger, turn=4, orders={})
     old_cap = next((x for x in engine.towns if x.id == 1), None)
     assert old_cap is not None
     assert not old_cap.is_capital
