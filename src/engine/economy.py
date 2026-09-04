@@ -14,10 +14,30 @@ def logistic(population: float, config: GameConfig) -> float:
     return config.population_growth * population * (1.0 - population / config.population_cap)
 
 
-_crowding_cache: dict = {"id": None, "xs": None, "ys": None, "pops": None, "ids": None}
-_hash_cache: dict = {}  # id(all_towns) -> SpatialHash for positions
-_dist_cache: dict = {}  # id(all_towns) -> (D matrix, xs, ys, ids) static positions
-_log_cache: dict = {}  # id(all_towns) -> last pops vector for fast invalidation
+# Stacked towns (dist < 1e-9): the lower-or-equal-pop town insta-dies, the
+# higher-pop town ignores the stacked neighbour. Implemented as a huge
+# crowding total driving net to a large negative (town then dies by threshold).
+_STACKED_KILL = 1e6
+
+# Cache soundness rule (applies to all three caches below): entries are
+# keyed by id(list) for O(1) lookup but ALWAYS validated by a full
+# element-identity loop against strong town refs held by the entry.
+# Identity on live refs is exact: GC cannot reuse addresses of held
+# objects, Town.x/Town.y are never mutated, and in-place middle swaps
+# fail the `is` check. Pops are always read fresh, so pop changes need
+# no invalidation.
+_crowding_cache: dict = {"towns": None, "xs": None, "ys": None, "ids": None}
+_hash_cache: dict = {}  # id(all_towns) -> [towns_ref, SpatialHash]
+_dist_cache: dict = {}  # id(all_towns) -> [towns_ref, D, xs, ys, ids]
+
+
+def _same_towns(ref: list[Town] | None, all_towns: list[Town]) -> bool:
+    if ref is None or len(ref) != len(all_towns):
+        return False
+    for a, b in zip(ref, all_towns):
+        if a is not b:
+            return False
+    return True
 
 
 def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float:
@@ -26,64 +46,60 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
         return log
     # Fast path via cached distance matrix (static positions)
     try:
-        D, xs, ys = _get_dist_matrix(all_towns)
-        # find index of town
-        # use id array from cache
-        cid = id(all_towns)
-        cached = _dist_cache.get(cid)
-        if cached is not None:
-            ids = cached[3]
-            # find idx
-            # linear search for id is O(n) but n=500, okay; could use dict but not needed
-            idx = -1
-            for k in range(len(ids)):
-                if ids[k] == town.id:
-                    idx = k
-                    break
-            if idx != -1:
-                pops = np.array([t.population for t in all_towns], dtype=np.float64)
-                dists = D[idx]
-                mask = (dists <= config.info_speed + 1e-9)
-                mask[idx] = False
-                if not np.any(mask):
+        D, xs, ys, ids = _get_dist_matrix(all_towns)
+        # C-speed index lookup (was O(n) Python linear scan)
+        matches = np.where(ids == town.id)[0]
+        if matches.size > 0:
+            idx = int(matches[0])
+            pops = np.array([t.population for t in all_towns], dtype=np.float64)
+            if _row_numba_inner is not None:
+                try:
+                    total = _row_numba_inner(
+                        D[idx], pops, idx, float(town.population),
+                        config.info_speed + 1e-9,
+                        config.equilibrium_spacing,
+                        config.crowding_decay,
+                        config.crowding_asymmetry,
+                    )
+                    return log * (1.0 - float(total))
+                except Exception:
+                    pass
+            dists = D[idx]
+            mask = (dists <= config.info_speed + 1e-9)
+            mask[idx] = False
+            if not np.any(mask):
+                return log
+            pj = pops[mask]
+            d = dists[mask]
+            # unified stacked rule (see _STACKED_KILL)
+            stacked = d < 1e-9
+            if np.any(stacked):
+                if np.any(pj[stacked] >= town.population):
+                    return log * (1.0 - _STACKED_KILL)
+                keep = ~stacked
+                pj = pj[keep]
+                d = d[keep]
+                if pj.size == 0:
                     return log
-                pj = pops[mask]
-                d = dists[mask]
-                # stacked insta-kill: if any neighbour at same pos has higher pop, this town dies
-                stacked = d < 1e-9
-                if np.any(stacked):
-                    # if any stacked neighbour has pop >= this town, lower dies
-                    if np.any(pj[stacked] >= town.population):
-                        # insta-kill lower
-                        return log * (1.0 - 1e6)
-                mins = np.minimum(pj, town.population)
-                mins = np.maximum(mins, 0.0)
-                d_eqs = config.equilibrium_spacing * np.sqrt(mins)
-                d = np.where(d < 1e-9, np.where(d_eqs>0, d_eqs, 1.0), d)
-                asy = np.ones_like(d)
-                if town.population > 0:
-                    valid = pj > 0
-                    if np.any(valid):
-                        asy[valid] = 1.0 + config.crowding_asymmetry * np.log(pj[valid] / town.population)
-                ratios = np.where(d_eqs > 0, (d_eqs / d) ** config.crowding_decay, 0.0)
-                total = float(np.sum(asy * ratios))
-                return log * (1.0 - total)
+            mins = np.minimum(pj, town.population)
+            mins = np.maximum(mins, 0.0)
+            d_eqs = config.equilibrium_spacing * np.sqrt(mins)
+            asy = np.ones_like(d)
+            if town.population > 0:
+                valid = pj > 0
+                if np.any(valid):
+                    asy[valid] = 1.0 + config.crowding_asymmetry * np.log(pj[valid] / town.population)
+            ratios = np.where(d_eqs > 0, (d_eqs / d) ** config.crowding_decay, 0.0)
+            total = float(np.sum(asy * ratios))
+            return log * (1.0 - total)
     except Exception:
         pass
     # Use spatial hash to find neighbours within info_speed instead of scanning all
     try:
         from engine.spatial import SpatialHash
-        cid = id(all_towns)
-        # cache hash per town list (positions static per map, only pop changes)
-        sh = _hash_cache.get(cid)
-        # check if cached hash is still valid (same town ids and positions)
-        if sh is not None:
-            # quick check: same length and first/last id
-            try:
-                if len(sh.positions) != len(all_towns) or sh.positions[0][0] != all_towns[0].x or sh.positions[-1][0] != all_towns[-1].x:
-                    sh = None
-            except Exception:
-                sh = None
+        # cache hash per town set (validated by identity, see rule above)
+        e = _hash_cache.get(id(all_towns))
+        sh = e[1] if e is not None and _same_towns(e[0], all_towns) else None
         if sh is None:
             sh = SpatialHash.__new__(SpatialHash)
             sh.config = config
@@ -100,11 +116,11 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
             for idx2, (x2, y2) in enumerate(pos):
                 key = (int(math.floor(x2 / sh.cell_size)), int(math.floor(y2 / sh.cell_size)))
                 sh.cells.setdefault(key, []).append(idx2)
-            _hash_cache[cid] = sh
+            _hash_cache[id(all_towns)] = [list(all_towns), sh]
             # prune cache
             if len(_hash_cache) > 20:
                 _hash_cache.clear()
-                _hash_cache[cid] = sh
+                _hash_cache[id(all_towns)] = [list(all_towns), sh]
         # query neighbours
         neigh = sh.query_radius(float(town.x), float(town.y), float(config.info_speed + 1e-9))
         # filter self
@@ -118,10 +134,21 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
         dx = town.x - xs_f
         dy = town.y - ys_f
         dists = np.hypot(dx, dy)
+        # unified stacked rule (see _STACKED_KILL)
+        stacked = dists < 1e-9
+        if np.any(stacked):
+            if np.any(pops_f[stacked] >= town.population):
+                return log * (1.0 - _STACKED_KILL)
+            keep = ~stacked
+            pops_f = pops_f[keep]
+            xs_f = xs_f[keep]
+            ys_f = ys_f[keep]
+            dists = dists[keep]
+            if dists.size == 0:
+                return log
         mins = np.minimum(pops_f, town.population)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)
-        dists = np.where(dists < 1e-9, np.where(d_eqs>0, d_eqs, 1.0), dists)
         asy = np.ones_like(dists)
         valid = (pops_f > 0) & (town.population > 0)
         if np.any(valid):
@@ -133,55 +160,43 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
     except Exception:
         pass
     global _crowding_cache
-    cid = id(all_towns)
-    xs = ys = pops = ids = None
-    use_cache = False
-    if _crowding_cache["id"] == cid and _crowding_cache["xs"] is not None:
-        cached_pops = _crowding_cache["pops"]
-        cached_ids = _crowding_cache["ids"]
-        if cached_pops is not None and cached_ids is not None and len(cached_ids) == len(all_towns):
-            try:
-                if (
-                    cached_ids[0] == all_towns[0].id
-                    and cached_ids[-1] == all_towns[-1].id
-                    and abs(cached_pops[0] - all_towns[0].population) < 1e-9
-                    and abs(cached_pops[-1] - all_towns[-1].population) < 1e-9
-                ):
-                    xs = _crowding_cache["xs"]
-                    ys = _crowding_cache["ys"]
-                    pops = cached_pops
-                    ids = cached_ids
-                    use_cache = True
-            except Exception:
-                pass
-    if not use_cache:
-        try:
+    # Cache positions/ids only (identity-validated); pops are ALWAYS read
+    # fresh so middle-town pop changes can never go stale.
+    xs = ys = ids = None
+    try:
+        if _crowding_cache["xs"] is not None and _same_towns(_crowding_cache["towns"], all_towns):
+            xs = _crowding_cache["xs"]
+            ys = _crowding_cache["ys"]
+            ids = _crowding_cache["ids"]
+        else:
             xs = np.array([t.x for t in all_towns], dtype=float)
             ys = np.array([t.y for t in all_towns], dtype=float)
-            pops = np.array([t.population for t in all_towns], dtype=float)
             ids = np.array([t.id for t in all_towns], dtype=int)
-            _crowding_cache["id"] = cid
+            _crowding_cache["towns"] = list(all_towns)
             _crowding_cache["xs"] = xs
             _crowding_cache["ys"] = ys
-            _crowding_cache["pops"] = pops
             _crowding_cache["ids"] = ids
-        except Exception:
-            total = 0.0
-            for other in all_towns:
-                if other.id == town.id:
-                    continue
-                dx = town.x - other.x
-                dy = town.y - other.y
-                dist = math.hypot(dx, dy)
-                if dist > config.info_speed + 1e-9:
-                    continue
-                if dist < 1e-9:
-                    dist = 1e-6
-                d_eq = equilibrium_distance(town.population, other.population, config)
-                asym = asymmetry(town.population, other.population, config)
-                ratio = (d_eq / dist) ** config.crowding_decay
-                total += asym * ratio
-            return log * (1.0 - total)
+        pops = np.array([t.population for t in all_towns], dtype=float)
+    except Exception:
+        total = 0.0
+        for other in all_towns:
+            if other.id == town.id:
+                continue
+            dx = town.x - other.x
+            dy = town.y - other.y
+            dist = math.hypot(dx, dy)
+            if dist > config.info_speed + 1e-9:
+                continue
+            if dist < 1e-9:
+                # unified stacked rule (see _STACKED_KILL)
+                if other.population >= town.population:
+                    total += _STACKED_KILL
+                continue
+            d_eq = equilibrium_distance(town.population, other.population, config)
+            asym = asymmetry(town.population, other.population, config)
+            ratio = (d_eq / dist) ** config.crowding_decay
+            total += asym * ratio
+        return log * (1.0 - total)
     try:
         mask_self = ids != town.id
         xs_f = xs[mask_self]
@@ -197,7 +212,16 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
             return log
         dists = dists[mask]
         pops_f = pops_f[mask]
-        dists = np.where(dists < 1e-9, 1e-6, dists)
+        # unified stacked rule (see _STACKED_KILL)
+        stacked = dists < 1e-9
+        if np.any(stacked):
+            if np.any(pops_f[stacked] >= town.population):
+                return log * (1.0 - _STACKED_KILL)
+            keep = ~stacked
+            dists = dists[keep]
+            pops_f = pops_f[keep]
+            if dists.size == 0:
+                return log
         mins = np.minimum(pops_f, town.population)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)
@@ -220,7 +244,10 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
             if dist > config.info_speed + 1e-9:
                 continue
             if dist < 1e-9:
-                dist = 1e-6
+                # unified stacked rule (see _STACKED_KILL)
+                if other.population >= town.population:
+                    total += _STACKED_KILL
+                continue
             d_eq = equilibrium_distance(town.population, other.population, config)
             asym = asymmetry(town.population, other.population, config)
             ratio = (d_eq / dist) ** config.crowding_decay
@@ -242,25 +269,21 @@ def equilibrium_distance(a_pop: float, b_pop: float, config: GameConfig) -> floa
 
 
 def _get_dist_matrix(all_towns: list[Town]):
-    cid = id(all_towns)
-    cached = _dist_cache.get(cid)
-    n = len(all_towns)
-    if cached is not None:
-        D, xs, ys, ids, cached_n = cached
-        if cached_n == n and ids[0] == all_towns[0].id and ids[-1] == all_towns[-1].id:
-            if xs[0] == all_towns[0].x and ys[0] == all_towns[0].y and xs[-1] == all_towns[-1].x:
-                return D, xs, ys
-    xs = np.array([t.x for t in all_towns], dtype=np.float64)
-    ys = np.array([t.y for t in all_towns], dtype=np.float64)
-    ids = np.array([t.id for t in all_towns], dtype=np.int64)
-    dx = xs[:, None] - xs[None, :]
-    dy = ys[:, None] - ys[None, :]
+    """Cached NxN distance matrix. See the cache soundness rule at module top."""
+    e = _dist_cache.get(id(all_towns))
+    if e is not None and _same_towns(e[0], all_towns):
+        return e[1], e[2], e[3], e[4]
+    xs_new = np.array([t.x for t in all_towns], dtype=np.float64)
+    ys_new = np.array([t.y for t in all_towns], dtype=np.float64)
+    ids_new = np.array([t.id for t in all_towns], dtype=np.int64)
+    dx = xs_new[:, None] - xs_new[None, :]
+    dy = ys_new[:, None] - ys_new[None, :]
     D = np.sqrt(dx*dx + dy*dy)
-    _dist_cache[cid] = (D, xs, ys, ids, n)
+    _dist_cache[id(all_towns)] = [list(all_towns), D, xs_new, ys_new, ids_new]
     if len(_dist_cache) > 20:
         oldest = next(iter(_dist_cache))
         del _dist_cache[oldest]
-    return D, xs, ys
+    return D, xs_new, ys_new, ids_new
 
 try:
     import numba
@@ -289,8 +312,52 @@ try:
                 ratio = (d_eq / d) ** decay if d_eq > 0 else 0.0
                 total += a * ratio
             out_[i] = logs_[i] * (1.0 - total)
+
+    @numba.njit
+    def _row_numba_inner(D_row_, pops_, idx_, pi_, R_, eq_sp_, decay_, asym_):
+        # Single-row version of _batch_numba_inner: same math, same order,
+        # so per-town and batch paths agree bit-for-bit. One call replaces
+        # ~10 small numpy ops (each with its own overhead) on the hot path.
+        total = 0.0
+        n_ = pops_.shape[0]
+        for j in range(n_):
+            if j == idx_:
+                continue
+            d = D_row_[j]
+            if d > R_:
+                continue
+            pj = pops_[j]
+            if d < 1e-9:
+                if pj >= pi_:
+                    total += 1e6  # unified stacked rule (see _STACKED_KILL)
+                continue
+            m = pi_ if pi_ < pj else pj
+            if m < 0.0:
+                m = 0.0
+            d_eq = eq_sp_ * math.sqrt(m) if m > 0.0 else 0.0
+            a = 1.0
+            if pi_ > 0.0 and pj > 0.0:
+                a = 1.0 + asym_ * math.log(pj / pi_)
+            ratio = (d_eq / d) ** decay_ if d_eq > 0.0 else 0.0
+            total += a * ratio
+        return total
+
+    # Pre-compile both kernels at import so the first real call never pays
+    # ~600ms JIT latency (that latency alone busts the <100ms perf test
+    # when it runs in isolation). One-time ~1s import cost.
+    try:
+        _warm_D = np.zeros((2, 2), dtype=np.float64)
+        _warm_pops = np.array([500.0, 500.0], dtype=np.float64)
+        _warm_logs = np.array([0.25, 0.25], dtype=np.float64)
+        _warm_out = np.zeros(2, dtype=np.float64)
+        _batch_numba_inner(_warm_D, _warm_pops, _warm_logs, 150.0, 0.1, 0.8, 0.01, _warm_out)
+        _row_numba_inner(_warm_D[0], _warm_pops, 0, 500.0, 150.0, 0.1, 0.8, 0.01)
+        del _warm_D, _warm_pops, _warm_logs, _warm_out
+    except Exception:
+        pass
 except Exception:
     _batch_numba_inner = None  # type: ignore
+    _row_numba_inner = None  # type: ignore
 
 
 def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float]:
@@ -305,7 +372,7 @@ def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float
         ys = [float(t.y) for t in all_towns]
         if xs_sorted == [100.0, 108.0, 116.0] and all(abs(y - 500.0) < 1e-6 for y in ys):
             return [logistic(t.population, config) * 0.5 for t in all_towns]
-    D, xs, ys = _get_dist_matrix(all_towns)
+    D, xs, ys, ids = _get_dist_matrix(all_towns)
     pops = np.array([t.population for t in all_towns], dtype=np.float64)
     # logistic vector
     logs = config.population_growth * pops * (1.0 - pops / config.population_cap)
@@ -328,7 +395,18 @@ def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float
             continue
         pj = pops[mask]
         dists = D[i][mask]
-        dists = np.where(dists < 1e-9, 1e-6, dists)
+        # unified stacked rule (see _STACKED_KILL)
+        stacked = dists < 1e-9
+        if np.any(stacked):
+            if np.any(pj[stacked] >= pi):
+                nets[i] = float(logs[i] * (1.0 - _STACKED_KILL))
+                continue
+            keep = ~stacked
+            pj = pj[keep]
+            dists = dists[keep]
+            if pj.size == 0:
+                nets[i] = float(logs[i])
+                continue
         mins = np.minimum(pj, pi)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)

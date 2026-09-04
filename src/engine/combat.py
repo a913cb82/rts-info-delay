@@ -10,51 +10,34 @@ from engine.config import GameConfig
 from engine.world import Army, World
 
 
+def _brute_weakness_adj(
+    armies: list[Army], R2: float, adj: dict[int, set[int]] | None
+) -> dict[int, int]:
+    """O(n^2) weakness (+ optional adjacency). Fallback and small-n path."""
+    result: dict[int, int] = {}
+    for a in armies:
+        cnt = 0
+        ax, ay, af, aid = a.x, a.y, a.faction, a.id
+        for b in armies:
+            if b.id == aid or b.faction == af:
+                continue
+            dx = b.x - ax
+            dy = b.y - ay
+            if dx * dx + dy * dy <= R2:
+                cnt += 1
+                if adj is not None:
+                    adj[aid].add(b.id)
+                    adj[b.id].add(aid)
+        result[aid] = cnt
+    return result
+
+
 def compute_weaknesses(
     armies: list[Army], config: GameConfig
 ) -> dict[int, int]:
     """Return {army_id: num_enemy_armies_within_interact_radius}."""
-    n = len(armies)
-    if n == 0:
-        return {}
-    radius = config.interact_radius
-    R2 = (radius + 1e-9)*(radius + 1e-9)
-    if n < 400:
-        result: dict[int, int] = {}
-        for a in armies:
-            cnt = 0
-            ax, ay, af, aid = a.x, a.y, a.faction, a.id
-            for b in armies:
-                if b.id == aid or b.faction == af: continue
-                dx = b.x - ax; dy = b.y - ay
-                if dx*dx + dy*dy <= R2:
-                    cnt += 1
-            result[aid] = cnt
-        return result
-    # large n: hash cell=radius (10)
-    from engine.spatial import SpatialHash
-    import math as m
-    sh = SpatialHash.__new__(SpatialHash)
-    sh.config = config; sh.cell_size = float(radius if radius >= 1 else 10)
-    try: mx, my = config.map_size[0], config.map_size[1]
-    except: mx, my = 1000, 1000
-    sh.width = int(m.ceil(mx / sh.cell_size)); sh.height = int(m.ceil(my / sh.cell_size))
-    sh.cells = {}
-    pos = np.array([[a.x, a.y] for a in armies], dtype=float)
-    sh.positions = pos
-    for idx, (x, y) in enumerate(pos):
-        key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
-        sh.cells.setdefault(key, []).append(idx)
-    result = {}
-    for a in armies:
-        neigh = sh.query_radius(float(a.x), float(a.y), float(radius + 1e-9))
-        cnt = 0
-        for idx in neigh:
-            b = armies[idx]
-            if b.id == a.id or b.faction == a.faction: continue
-            cnt += 1
-        result[a.id] = cnt
-    return result
+    weaknesses, _ = _compute_weaknesses_and_adj(armies, config)
+    return weaknesses
 
 
 def _compute_weaknesses_and_adj(
@@ -68,52 +51,43 @@ def _compute_weaknesses_and_adj(
     R2 = (radius + 1e-9) * (radius + 1e-9)
     adj: dict[int, set[int]] = {a.id: set() for a in armies}
     if n < 400:
-        result: dict[int, int] = {}
-        for a in armies:
-            cnt = 0
-            ax, ay, af, aid = a.x, a.y, a.faction, a.id
-            for b in armies:
-                if b.id == aid or b.faction == af:
-                    continue
-                dx = b.x - ax
-                dy = b.y - ay
-                if dx * dx + dy * dy <= R2:
-                    cnt += 1
-                    adj[aid].add(b.id)
-                    adj[b.id].add(aid)
-            result[aid] = cnt
-        return result, adj
-    from engine.spatial import SpatialHash
-    import math as m
-
-    sh = SpatialHash.__new__(SpatialHash)
-    sh.config = config
-    sh.cell_size = float(radius if radius >= 1 else 10)
+        return _brute_weakness_adj(armies, R2, adj), adj
+    # large n: spatial hash, brute fallback on any failure
     try:
-        mx, my = config.map_size[0], config.map_size[1]
+        from engine.spatial import SpatialHash
+        import math as m
+
+        sh = SpatialHash.__new__(SpatialHash)
+        sh.config = config
+        sh.cell_size = float(radius if radius >= 1 else 10)
+        try:
+            mx, my = config.map_size[0], config.map_size[1]
+        except Exception:
+            mx, my = 1000, 1000
+        sh.width = int(m.ceil(mx / sh.cell_size))
+        sh.height = int(m.ceil(my / sh.cell_size))
+        sh.cells = {}
+        pos = np.array([[a.x, a.y] for a in armies], dtype=float)
+        sh.positions = pos
+        for idx, (x, y) in enumerate(pos):
+            key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
+            sh.cells.setdefault(key, []).append(idx)
+        result = {}
+        for a in armies:
+            neigh = sh.query_radius(float(a.x), float(a.y), float(radius + 1e-9))
+            cnt = 0
+            for idx in neigh:
+                b = armies[idx]
+                if b.id == a.id or b.faction == a.faction:
+                    continue
+                cnt += 1
+                adj[a.id].add(b.id)
+                adj[b.id].add(a.id)
+            result[a.id] = cnt
+        return result, adj
     except Exception:
-        mx, my = 1000, 1000
-    sh.width = int(m.ceil(mx / sh.cell_size))
-    sh.height = int(m.ceil(my / sh.cell_size))
-    sh.cells = {}
-    pos = np.array([[a.x, a.y] for a in armies], dtype=float)
-    sh.positions = pos
-    for idx, (x, y) in enumerate(pos):
-        key = (int(m.floor(x / sh.cell_size)), int(m.floor(y / sh.cell_size)))
-        sh.cells.setdefault(key, []).append(idx)
-    result = {}
-    for a in armies:
-        neigh = sh.query_radius(float(a.x), float(a.y), float(radius + 1e-9))
-        cnt = 0
-        for idx in neigh:
-            b = armies[idx]
-            if b.id == a.id or b.faction == a.faction:
-                continue
-            cnt += 1
-            adj[a.id].add(b.id)
-            adj[b.id].add(a.id)
-        result[a.id] = cnt
-    return result, adj
+        adj = {a.id: set() for a in armies}
+        return _brute_weakness_adj(armies, R2, adj), adj
 
 
 def resolve_combat(

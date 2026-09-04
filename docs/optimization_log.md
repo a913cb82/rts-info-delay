@@ -74,25 +74,25 @@ Benchmarked at commit `bed4967` (bench suite creation).
 
 ---
 
-## opt6: Ledger vectorized + by_turn index + stacked insta-kill
+## opt6: Stacked insta-kill + allocate_id guard (semantic change, not pure opt)
 
 **Commit:** `c7a2f69` (code) + `02308b9` (test fix)
 **Changes:**
-- `ledger.py`: numpy vectorized `visible_events()` with cached `_xs/_ys/_ts` arrays; `_by_turn: dict[int, list[Event]]` for O(1) `turn_events()`; early bbox reject `R²`
-- `economy.py`: Stacked insta-kill — towns at `dist<1e-9` where lower pop dies (`total += 1e6`)
+- `economy.py`: Stacked insta-kill — towns at `dist<1e-9` where lower-or-equal pop dies (`total += 1e6`); higher ignores the neighbour. All economy paths unified on this rule (see code: `_STACKED_KILL`)
 - `world.py`: `allocate_id()` collision guard for manually-assigned test IDs
 - `tests/`: Split `test_move_capital_old_capital_demoted` (non-stacked target) + new `test_move_capital_stacked_die`
+- NOTE (correction 2026-09-04): an earlier version of this entry claimed a ledger vectorization (`visible_events`, `_by_turn`). That work was never committed — `ledger.py` is untouched. The measured delta below is therefore unattributed (likely run-to-run noise/JIT); do not cite it as a ledger result.
 
 | Benchmark | Before (ms) | After (ms) | Change |
 |---|---|---|---|
-| step heavy 207t+3036a | 4,612 | 3,336 | 1.38× |
-| movement heavy 3036a | 307 | 244 | 1.26× |
-| movement 1k | 168 | 136 | 1.24× |
-| crowding 500 | 69 | 54 | 1.28× |
-| weakness 1k | 24 | 19 | 1.26× |
-| combat 200 | 16 | 13.5 | 1.19× |
-| crowding batch 500 | 0.95 | 0.82 | 1.16× |
-| captures 100 | 1.6 | 1.55 | 1.03× |
+| step heavy 207t+3036a | 4,612 | 3,336 | 1.38× (unattributed — see note) |
+| movement heavy 3036a | 307 | 244 | — (noise) |
+| movement 1k | 168 | 136 | — (noise) |
+| crowding 500 | 69 | 54 | — (noise) |
+| weakness 1k | 24 | 19 | — (noise) |
+| combat 200 | 16 | 13.5 | — (noise) |
+| crowding batch 500 | 0.95 | 0.82 | — (noise) |
+| captures 100 | 1.6 | 1.55 | — (noise) |
 
 ---
 
@@ -128,23 +128,55 @@ Conclusion: crowding batch was already 0.8ms; bottleneck was in combat, not econ
 
 ---
 
-## Remaining (opt9-11, not started)
+## opt9: Movement simplified velocities + inlined closest-approach
 
-### opt9: Spatial hash incremental army + tiered cell
-- `movement.py`: Build army hash once per step, reuse across movement+weakness+captures
-- Tiered cells: cell=10 for combat (R=10), cell=150 for crowding/movement (R=110/60)
-- Incremental: add/remove changed armies instead of full rebuild each phase
+**Commit:** `c0a78fe`
+**Changes:**
+- `movement.py`: simplified velocity loop (plain lists; a numpy-array experiment was tried, slowed movement 227→328ms, reverted), inlined `_closest_approach` math into the contact loop to avoid per-pair Python call overhead
+- NOTE (correction 2026-09-04): the commit message claims "numpy velocity arrays" — the landed code uses plain lists. Gain is marginal, within run-to-run noise.
 
-### opt10: Movement velocities numpy + numba batch
-- `movement.py`: `compute_velocities` numpy vectorized (xs,ys,txs,tys → vxs,vys in one shot)
-- `_closest_approach` batch numpy instead of per-army Python loop
-- Early bbox reject for trivially non-blocking cases
+| Benchmark | Before (ms) | After (ms) | Change |
+|---|---|---|---|
+| step heavy 207t+3036a | 975 | 956 | — (noise) |
+| movement heavy 3036a | 227 | 217 | — (noise) |
+| movement 1k | 134 | 123 | — (noise) |
 
-### opt11: Ants-inspired early exit (try if blocked)
+---
+
+## opt10: Economy cache soundness + per-town numba row (correctness first)
+
+**Commit:** (pending — working tree)
+**Changes:**
+- `economy.py`: replaced unsound `id(list)`-keyed caches (false hits when tests reuse small tids across cases) with id-keyed + full element-identity validation against strong refs; `_crowding_cache` now always reads fresh pops (killed the stale-middle-pops bug); dead `_log_cache`/`_towns_key` removed
+- `economy.py`: unified stacked rule (`_STACKED_KILL`) across all 6 code paths (dist-matrix, hash, numpy cache path, 2× pure loops, batch fallback) — previously they disagreed (insta-kill vs cap-at-d_eq vs 1e-6)
+- `economy.py`: new `_row_numba_inner` single-row kernel (same math/order as batch kernel, bit-identical) + import-time pre-compile so first call never pays ~600ms JIT latency
+- `combat.py`: merged 3 duplicated weakness implementations into `_brute_weakness_adj` + hash attempt with brute fallback; `compute_weaknesses` is now a thin wrapper (signature unchanged)
+- Numbers below are paired back-to-back on the same loaded machine (absolute values inflated ~1.8× vs the quiet-machine runs above — see note).
+
+| Benchmark | Before (same box) | After (same box) | Change |
+|---|---|---|---|
+| crowding 500 | 97.7 | 49.8 | 1.96× (numba row + C-speed lookup) |
+| step heavy 207t+3036a | 1,737 | 1,681 | neutral (noise band) |
+| movement 1k | 220 | 201 | neutral |
+| weakness 1k | 35 | 30 | neutral |
+| combat 200 | 8.1 | 5.6 | neutral |
+
+NOTE on absolutes: this box measured ~1.8× slower than the runs behind the tables above (pristine HEAD also measures 1,737ms heavy here vs 956ms earlier). All cross-commit deltas above remain valid (each was paired); do not compare absolute numbers across machine states.
+
+---
+
+## Remaining (opt11-13, not started)
+
+### opt11: Movement batch hash query
+- Instead of per-army `query_radius`, iterate cells once and check all pairs within cell+neighbors
+- O(cells × k²) vs O(armies × query_result) where k=armies_per_cell
+- Expected: movement heavy 217→~100ms, total heavy step ~800ms
+
+### opt12: Ants-inspired early exit (try if blocked)
 - `do_attack_support` pre-filter: if friends ≥ enemies for all, skip weakness entirely
 - `kill_ant` dict removal O(1) by loc vs our O(n) list scan — applies to captures `armies×towns`
 
-### opt12: Record/world incremental pop_total
+### opt13: Record/world incremental pop_total
 - `record.py`: maintain `pop_total[faction]`/`army_count[faction]` incrementally on growth/conquest/spawn/death instead of full scan
 
 ---
@@ -153,11 +185,11 @@ Conclusion: crowding batch was already 0.8ms; bottleneck was in combat, not econ
 
 | Benchmark | Baseline | Now | Total speedup |
 |---|---|---|---|
-| step heavy 207t+3036a | 11,732ms | **975ms** | **12.0×** |
+| step heavy 207t+3036a | 11,732ms | **956ms** | **12.3×** |
 | crowding 500 | 203ms | 52ms | 3.9× |
 | crowding batch 500 | — | 0.77ms | — |
-| movement heavy 3036a | 1,596ms | 227ms | 7.0× |
-| movement 1k | 787ms | 134ms | 5.9× |
+| movement heavy 3036a | 1,596ms | 217ms | 7.4× |
+| movement 1k | 787ms | 123ms | 6.4× |
 | weakness 1k | 398ms | 17ms | 23.4× |
-| combat 200 | 20.5ms | 5.44ms | 3.8× |
+| combat 200 | 20.5ms | 5.19ms | 3.9× |
 | captures 100 | 12ms | 1.47ms | 8.2× |

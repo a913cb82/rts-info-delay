@@ -53,13 +53,18 @@ weakness 1k                     20 ms
 captures                        2.7 ms
 ```
 
-## Next planned — to be filled live
+## Actuals opt6–9 (summarised — live record is docs/optimization_log.md)
 
-- opt6: ledger visibility cache + turn_events index
-- opt7: step economy dedup (call crowding_nets_batch single path, tree for skip_growth)
-- opt8: spatial hash tiered cell + incremental army hash + query_radius vectorization
-- opt9: movement velocities numpy + numba batch closest + early bbox reject
-- opt10: combat union-find + id->obj dict + single distance matrix reuse
-- opt11: record/world faction incremental + delta pop totals
+- opt6 `c7a2f69`: stacked insta-kill + allocate_id guard (semantic change; heavy 4612→3336 unattributed, likely noise; ledger work claimed earlier never landed)
+- opt7 `4845603`: step economy batch crowding (heavy 3336→3330, negligible as predicted)
+- opt8 `4e2575f`: combat single-pass weakness+adjacency (heavy 3336→975, 3.42x — the real win)
+- opt9 `c0a78fe`: movement simplified velocities + inlined closest-approach (heavy 975→956, noise)
+- opt10 (pending): economy cache soundness (identity-validated) + unified stacked rule + per-town numba row + combat dedup; fixes cross-test cache pollution found during review
 
-Each will be benched via same suite before/after and appended below.
+## Next planned
+
+- opt11: movement batch hash query (iterate cells once instead of per-army query_radius)
+- opt12: ants-inspired early exit (support pre-filter) — try if blocked
+- opt13: record/world incremental pop_total + army_count
+
+See docs/optimization_log.md for the live log; this file keeps raw per-run numbers.
