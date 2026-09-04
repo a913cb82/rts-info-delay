@@ -179,6 +179,15 @@ NOTE on absolutes: this box measured ~1.8× slower than the runs behind the tabl
 ### opt13: Record/world incremental pop_total
 - `record.py`: maintain `pop_total[faction]`/`army_count[faction]` incrementally on growth/conquest/spawn/death instead of full scan
 
+### opt14 (untried): Shared army hash per step
+- Build the army SpatialHash once per step and share across movement, combat weakness, and captures instead of 3× O(A) rebuilds per turn
+
+### opt15 (untried): Ledger visibility, properly profiled
+- `visible_events`/`turn_events` run per faction per turn in the runner; earlier claimed numbers were noise. Re-profile first — gain may be zero
+
+### opt16 (untried): Hot-loop allocation pressure
+- Hot loops allocate thousands of small numpy arrays/tuples/dicts per turn (contacts, neighbor arrays, events). Buffer reuse would help single-digit % at significant complexity cost — deliberately deferred
+
 ---
 
 ## Cumulative Performance

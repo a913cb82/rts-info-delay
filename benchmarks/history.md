@@ -66,5 +66,8 @@ captures                        2.7 ms
 - opt11: movement batch hash query (iterate cells once instead of per-army query_radius)
 - opt12: ants-inspired early exit (support pre-filter) — try if blocked
 - opt13: record/world incremental pop_total + army_count
+- opt14 (untried): shared army hash built once per step (movement+combat+captures)
+- opt15 (untried): ledger visibility, properly profiled (earlier numbers were noise)
+- opt16 (untried): hot-loop allocation pressure (deferred: small gain, high complexity)
 
 See docs/optimization_log.md for the live log; this file keeps raw per-run numbers.
