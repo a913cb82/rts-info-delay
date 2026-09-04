@@ -172,7 +172,7 @@ PLAN: `weakness = #enemy armies within interact_radius`; army dies if **any** en
 | I3 | At capital immediate | dist 0 | visible next propagation step |
 | I4 | Independent delays | 3 events at 10, 150, 300 km | visible at turns now+0, +1, +2 respectively |
 | I5 | Ledger window retain | event at dist 800, max map ≈1414, info_speed 150 → window ≥ 9.4 turns | ledger retains ≥10 turns |
-| I5b | No delivery during MOVE_CAPITAL flight (NEW) | capital flight turn 5→8 | events otherwise visible in that window are withheld until new capital established |
+| I5b | Blind + mute during MOVE_CAPITAL flight | capital flight turn 5→8 | no turns sent, no orders read, clock frozen; landing rebuilds (see B13) |
 | I5c | Capital move changes dist (NEW) | event at (0,0), old capital (0,0) vs new capital (500,0) | after move, dist for old events recomputed? Actually ledger stores (t,x,y) so new capital distance matters for still-undelivered events |
 | I5d | Event kind fields (NEW) | any event logged | has t (turn), x, y, kind, payload; dist uses event x,y |
 | I5e | Faction-specific visibility (NEW) | 2 factions, event near F_A capital, far from F_B | F_A sees early, F_B late |
@@ -191,7 +191,7 @@ PLAN: `weakness = #enemy armies within interact_radius`; army dies if **any** en
 | L5b | TRAIN standing repeats (NEW) | TRAIN once | spawns each economy step until cancelled |
 | L5c | Messenger pursuit (NEW) | order to moving army; messenger targets current pos not send-time pos | messenger intercepts; if army moves away, delivery delayed but still follows |
 | L5d | FIFO across movement (NEW) | army moving, two orders queued; first changes direction | second starts from new course, not original |
-| L5e | MOVE_CAPITAL instant exception (NEW) | MOVE_CAPITAL command | executes instantly at capital, no messenger created |
+| L5e | MOVE_CAPITAL normal command (was: instant exception) | MOVE_CAPITAL command | 0-distance messenger to the capital, delivered same turn; execution in economy (deduct, demote, spawn viceroy) |
 
 ## 12. Commands
 
@@ -208,14 +208,16 @@ PLAN: `weakness = #enemy armies within interact_radius`; army dies if **any** en
 | O6 | BUILD distance fail | army at (0,0), BUILD 20 0 | no town, army survives |
 | O6b | BUILD ownership of army (NEW) | BUILD <enemy_army_id> … | ignored (not owned) |
 | O7 | BUILD consumes | after success | army gone |
-| O8 | MOVE_CAPITAL instant | `MOVE_CAPITAL 200 200` from capital | guard army raised immediately before propagation; costs 1000 pop from capital (pop −=1000) |
+| O8 | MOVE_CAPITAL economy execution | `MOVE_CAPITAL 200 200` from capital | intent delivered in propagation; economy deducts 1000, demotes old capital, spawns viceroy (marches from next turn) |
 | O9 | MOVE_CAPITAL guard | capital pop 5000 | pop→4000, guard at capital pos with is_viceroy=true |
-| O9b | MOVE_CAPITAL guard moves at army_speed (NEW) | guard path to (200,200) | advances 50/turn |
+| O9b | MOVE_CAPITAL guard moves at army_speed (NEW) | guard path to (200,200) | unmoved spawn turn (economy spawn, post-movement), advances 50/turn after |
 | O10 | MOVE_CAPITAL blind | during flight 3 turns | faction ledger deliveries =0 even for nearby events |
-| O10b | MOVE_CAPITAL insufficient pop? (NEW) | capital pop 400 | MOVE_CAPITAL rejected or capital dies? Must decide and test |
-| O11 | MOVE_CAPITAL founds | guard arrives | new town at dest, pop 500? or transferred? is_capital=true, old capital is_capital=false |
-| O11b | Old capital demoted (NEW) | after arrival | exactly one capital per faction |
-| O11c | Multiple MOVE_CAPITAL queued (NEW) | second sent during flight | first in flight blocks second? or rejected while blind |
+| O10b | MOVE_CAPITAL insufficient pop | capital pop 400 | rejected cleanly: no deduction, no viceroy, order dropped |
+| O11 | MOVE_CAPITAL founds | guard arrives | new town at dest, pop 500, is_capital=true (old capital was demoted at train time, not here) |
+| O11b | Old capital demoted (NEW) | at train time (economy execution) | exactly one capital per faction; none exists mid-flight |
+| O11d | Capture never creates capitals (NEW) | headless faction captures a (capital) town | town flips, demoted if it was a capital; captor stays headless — beheading is permanent |
+| O11e | Capital falls before economy (NEW) | invader on capital the turn MOVE_CAPITAL is ordered | capture in 4b voids the intent: no viceroy, town lost |
+| O11c | Multiple MOVE_CAPITAL queued (NEW) | second sent during flight | dropped: no capital to target while headless (plus in-flight guard at execution) |
 | O12 | All invalid commands ignored (NEW) | `FOO`, `MOVE_TO` missing args, bad id | no crash, no state change |
 | O13 | Multiple commands per turn (NEW) | `TRAIN 1`, `MOVE_TO 2 0 0 10 10`, `BUILD 3 5 5` then `go` | all three processed in order |
 
@@ -242,7 +244,7 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | R3 | All turns present | max_turns=10, game ends at 10 | exactly 10 turn lines (plus config) |
 | R4 | Events changes only | turn with no battles | events=[] but world still full |
 | R5 | World complete | any turn | armies have id,faction,x,y; towns have id,faction,x,y,population,is_capital |
-| R5b | Event fields correct (NEW) | trigger each kind | `army_spawn:{id,faction,x,is_viceroy}`, `town_spawn:{id,faction,x,y,population,is_capital}`, `army_move:{id,x,y}`, `army_death:{id,x,y}`, `battle:{x,y,combatants:[{id,faction}],killed:[id]}` |
+| R5b | Event fields correct (NEW) | trigger each kind | `army_spawn:{id,faction,x,is_viceroy}`, `town_spawn:{id,faction,x,y,population,is_capital}`, `army_move:{id,x,y}`, `army_death:{id,x,y}`, `battle:{x,y,combatants:[{id,faction}],killed:[id]}`, `town_death:{id,x,y,faction,is_capital}` |
 | R5c | JSONL line-delimited (NEW) | cat file | one JSON object per line, no outer array, no trailing comma |
 | R5d | Deterministic output (NEW) | run twice | byte-identical JSONL |
 | R5e | Turn numbers sequential (NEW) | scan file | 1..T with no gaps |
@@ -266,6 +268,11 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | B9b | End after timeout still sent? (NEW) | timed-out bot | still receives `end` before SIGKILL? or not — pin choice |
 | B10 | Malformed bot line ignored (NEW) | bot prints `MOVE_TO garbage` | no crash, line skipped |
 | B11 | Unknown faction id in bot output (NEW) | bot orders enemy army | ignored (ownership check) |
+| B12 | In-flight faction muted (NEW) | viceroy airborne for faction | payload builder returns []; game loop skips write+read, orders empty |
+| B13 | Landing rebuild (NEW) | first post-landing payload | full spawns + delay-consistent moves + audible battles; bot wipes on unknown own-capital spawn, redelivery skips wipe (known id) |
+| B14 | Delayed town state (NEW) | town 600 km out, pop/faction changed recently | bot sees values as of now − dist/info (floored, never future); own capital always fresh |
+| B15 | No event resends (NEW) | same audible battle across two turns | sent once (per-faction seq sets); second payload omits it, new events still flow |
+| B16 | Faction/flag rides pop_change (NEW) | pre-landing capture (since-hidden) | landing seeds old faction; delayed pop stream adds `faction`/`is_capital` on change only; wakes sleep |
 
 ## 16. Score
 

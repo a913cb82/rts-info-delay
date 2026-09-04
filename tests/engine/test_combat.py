@@ -241,8 +241,8 @@ class TestCombat:
         resolve_combat(w, CFG)
         assert len(w.armies) == 0
 
-    def test_fresh_spawns_dont_fight(self) -> None:
-        """C13: Fresh spawns don't fight."""
+    def test_new_spawns_fight_immediately(self) -> None:
+        """C13: Newly spawned armies fight with no immunity."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -259,8 +259,9 @@ class TestCombat:
         spawned = [army for army in w.armies if army.id != 10]
         assert len(spawned) == 1
         resolve_combat(w, CFG)
-        # Fresh spawn should survive its first combat turn (immune)
-        assert len([a for a in w.armies if a.id != 10]) == 1
+        # 1v1 mutual kill: the new spawn dies with its enemy
+        assert len([a for a in w.armies if a.id != 10]) == 0
+        assert len(w.armies) == 0
 
     def test_battle_event_has_combatants_with_id_faction(self) -> None:
         """Battle event combatants list has {id, faction} entries."""
@@ -283,3 +284,32 @@ class TestCombat:
         alive = {army.id for army in w.armies}
         assert 1 not in alive
         assert 2 in alive and 3 in alive
+
+
+class TestCaptureCapitals:
+    """Beheading is permanent: captures never create capitals."""
+
+    def _world(self) -> World:
+        w = World()
+        w.map_size = [1000, 1000]
+        return w
+
+    def test_capture_demotes_capital(self) -> None:
+        from engine.combat import resolve_captures
+        w = self._world()
+        w.towns.append(Town(id=0, faction=0, x=100, y=100, population=4000, is_capital=True))
+        w.armies.append(Army(id=1, faction=1, x=100, y=100))
+        resolve_captures(w, CFG)
+        t = w.get_town(0)
+        assert t is not None and t.faction == 1 and not t.is_capital
+
+    def test_headless_captor_gains_no_capital(self) -> None:
+        from engine.combat import resolve_captures
+        w = self._world()
+        # faction 1 is headless (town but no capital); it beheads faction 0
+        w.towns.append(Town(id=0, faction=0, x=100, y=100, population=4000, is_capital=True))
+        w.towns.append(Town(id=1, faction=1, x=500, y=500, population=2000, is_capital=False))
+        w.armies.append(Army(id=2, faction=1, x=100, y=100))
+        resolve_captures(w, CFG)
+        assert w.faction_capital(0) is None
+        assert w.faction_capital(1) is None

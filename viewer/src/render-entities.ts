@@ -1,10 +1,10 @@
 import type { ArmyState, TownState, AnimBattle } from "./types.js";
 
-/** Radius formula: 4 + 6 × √(pop / population_cap) */
+/** Radius formula: 8 + 12 × √(pop / population_cap) */
 export function townRadius(pop: number, cap = 100_000): number {
-  if (cap <= 0) return 4;
-  if (pop <= 0) return 4;
-  return 4 + 6 * Math.sqrt(pop / cap);
+  if (cap <= 0) return 8;
+  if (pop <= 0) return 8;
+  return 8 + 12 * Math.sqrt(pop / cap);
 }
 
 /** Group armies by position (toFixed 3) for stacking. */

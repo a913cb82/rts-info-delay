@@ -58,14 +58,14 @@ class TestMovementMedium:
         move_armies(w, CFG)
         assert a.x >= 0 and a.y >= 0
 
-    def test_M22_fresh_spawn_doesnt_block(self) -> None:
-        """M22: Fresh spawn doesn't block movement."""
-        a = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True, is_fresh=False)
-        b = Army(id=2, faction=1, x=25, y=5, is_fresh=True)  # halfway, fresh
+    def test_M22_new_spawn_blocks(self) -> None:
+        """M22: A newly spawned army blocks movement like any other."""
+        a = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True)
+        b = Army(id=2, faction=1, x=25, y=5)  # halfway along path
         w = _make_world(a, b)
         move_armies(w, CFG)
-        # Fresh spawn immune → A passes through to speed-limited position
-        assert a.x == 50
+        # Path passes within 5 of b → A stops at closest approach, not 50
+        assert abs(a.x - 25) < 10
 
     def test_M23_head_on_both_stop(self) -> None:
         """M23: Two armies head-on both stop."""

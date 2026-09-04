@@ -90,8 +90,8 @@ class TestDeterminism:
         from engine.world import Army
 
         # Two armies moving toward each other — same t* for both
-        a1 = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True, is_fresh=False)
-        a2 = Army(id=2, faction=1, x=100, y=0, target_x=0, target_y=0, has_target=True, is_fresh=False)
+        a1 = Army(id=1, faction=0, x=0, y=0, target_x=100, target_y=0, has_target=True)
+        a2 = Army(id=2, faction=1, x=100, y=0, target_x=0, target_y=0, has_target=True)
         w.armies = [a1, a2]
 
         # Run movement twice — must produce identical result

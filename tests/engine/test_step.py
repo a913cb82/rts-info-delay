@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from engine.config import GameConfig
@@ -90,8 +92,8 @@ class TestTurnOrder:
         for ev in ledger.events:
             assert ev.turn == 1
 
-    def test_fresh_spawns_immune_this_turn(self) -> None:
-        """T5: TRAIN-spawned army immune from combat this turn."""
+    def test_spawned_army_fights_next_turn(self) -> None:
+        """T5: TRAIN spawns post-combat, so it fights from the next turn."""
         t = _town(0, 0, 5000, faction=0, tid=1)
         enemy = _army(3, 0, faction=1, aid=2)  # very close to town
         w = _world_with(towns=[t], armies=[enemy])
@@ -100,9 +102,12 @@ class TestTurnOrder:
             StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
         )
         step(w, CFG, ledger, turn=1, orders={})
-        # Spawned army should exist (immune from combat)
+        # Spawned in economy (after combat), so it exists after turn 1 ...
         friendly_armies = [a for a in w.armies if a.faction == 0]
         assert len(friendly_armies) >= 1
+        # ... and fights a 1v1 mutual kill on turn 2 (no immunity)
+        step(w, CFG, ledger, turn=2, orders={})
+        assert len(w.armies) == 0
 
     def test_eviction_last(self) -> None:
         """T6: Ledger eviction happens after knowledge phase."""
@@ -349,13 +354,13 @@ class TestOrderLag:
         step(w, CFG, ledger, turn=2, orders=orders2)
 
     def test_move_capital_instant(self) -> None:
-        """L5e: MOVE_CAPITAL executes instantly at capital."""
+        """L5e: MOVE_CAPITAL takes effect the same turn (economy spawn)."""
         t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         orders = {0: ["MOVE_CAPITAL 200 200"]}
         step(w, CFG, ledger, turn=1, orders=orders)
-        # Guard army should be spawned instantly
+        # Guard army spawned in economy the same turn the order was sent
         viceroy_armies = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy_armies) == 1
 
@@ -464,7 +469,7 @@ class TestCommands:
         assert w.get_army(1) is None
 
     def test_move_capital_instant_cmd(self) -> None:
-        """O8: MOVE_CAPITAL executes instantly, guard spawned immediately."""
+        """O8: MOVE_CAPITAL takes effect the same turn, guard spawned in economy."""
         t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
@@ -473,24 +478,31 @@ class TestCommands:
         assert len(viceroy) == 1
 
     def test_move_capital_guard(self) -> None:
-        """O9: Capital pop reduces by army_cost, guard at capital pos."""
+        """O9: Economy executes the intent: pop -1000, old capital demoted,
+        viceroy spawned at the capital (marches from next turn)."""
         t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
         assert t.population == pytest.approx(4000)  # 5000 - 1000
+        assert t.is_capital is False  # demoted at train time
         viceroy = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy) == 1
+        # Spawned in economy (after movement): still at the capital
         assert viceroy[0].x == 100
         assert viceroy[0].y == 100
 
     def test_move_capital_guard_speed(self) -> None:
-        """O9b: Viceroy guard moves at army_speed (50 km/turn)."""
+        """O9b: Viceroy marches at army_speed (50 km/turn) from turn 2."""
         t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
-        # After 1 turn of movement
+        # Spawned in economy: unmoved after turn 1 ...
+        viceroy = [a for a in w.armies if a.is_viceroy]
+        assert len(viceroy) == 1
+        assert viceroy[0].x == 100 and viceroy[0].y == 100
+        # ... marches 50 on turn 2
         step(w, CFG, ledger, turn=2, orders={})
         viceroy = [a for a in w.armies if a.is_viceroy]
         if viceroy:
@@ -541,6 +553,34 @@ class TestCommands:
         # Exactly one capital per faction
         capitals = [t for t in w.towns if t.faction == 0 and t.is_capital]
         assert len(capitals) == 1
+
+    def test_move_capital_dropped_if_capital_falls_first(self) -> None:
+        """O9c: Invader on the capital captures it in 4b, so the economy-
+        phase intent finds no capital and drops (no viceroy, town lost)."""
+        t = _town(0, 0, 5000, faction=0, tid=1, cap=True)
+        invader = _army(3, 0, faction=1, aid=9)  # on top of the capital
+        w = _world_with(towns=[t], armies=[invader])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
+        assert len([a for a in w.armies if a.is_viceroy]) == 0
+        assert w.get_town(1) is not None and w.get_town(1).faction == 1
+
+    def test_escape_founds_after_capture(self) -> None:
+        """Viceroy escapes, old capital falls mid-flight: founds, survives."""
+        t = _town(0, 0, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t])
+        w.armies.append(Army(id=50, faction=1, x=0, y=130))
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 500 0"],
+                                             1: ["MOVE_TO 50 0 130 0 0"]})
+        assert w.faction_capital(0) is None  # demoted at train time
+        for turn in range(2, 12):
+            step(w, CFG, ledger, turn=turn, orders={})
+        # Old town taken mid-flight, new capital founded on arrival
+        old = w.get_town(1)
+        assert old is not None and old.faction == 1 and not old.is_capital
+        new = w.faction_capital(0)
+        assert new is not None and (new.x, new.y) == (500.0, 0.0)
 
     def test_multiple_move_capital_queued(self) -> None:
         """O11c: Second MOVE_CAPITAL during flight → rejected or blocked."""
@@ -699,9 +739,13 @@ class TestMoveCapitalEvents:
         ledger = Ledger(CFG.info_speed, 1414)
         w.standing_orders.append(
             StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town",
-                           args=[100.0, 100.0])  # same pos → instant
+                           args=[100.0, 100.0])  # same pos → arrives turn 2
         )
         events = step(w, CFG, ledger, turn=1, orders={})
+        # Turn 1: spawn + demote only, no founding yet
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
+        assert t.is_capital is False
+        events = step(w, CFG, ledger, turn=2, orders={})
         cap_spawns = [e for e in events
                       if e.get("kind") == "town_spawn" and e.get("is_capital") is True]
         assert len(cap_spawns) == 1
@@ -718,6 +762,9 @@ class TestMoveCapitalEvents:
                            args=[100.0, 100.0])
         )
         step(w, CFG, ledger, turn=1, orders={})
+        # In flight after turn 1 (spawned in economy, same-pos arrival turn 2)
+        assert len([a for a in w.armies if a.is_viceroy]) == 1
+        step(w, CFG, ledger, turn=2, orders={})
         viceroy = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy) == 0
 
@@ -757,7 +804,7 @@ class TestMoveCapitalEdgeCases:
     """MOVE_CAPITAL edge cases."""
 
     def test_same_position_as_current_capital(self) -> None:
-        """MOVE_CAPITAL to same position → completes immediately."""
+        """MOVE_CAPITAL to same position → demote turn 1, found turn 2."""
         t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
@@ -766,11 +813,15 @@ class TestMoveCapitalEdgeCases:
                            args=[100.0, 100.0])
         )
         events = step(w, CFG, ledger, turn=1, orders={})
+        # Turn 1: demote at train time, no founding yet
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
+        assert t.is_capital is False
+        assert len([a for a in w.armies if a.is_viceroy]) == 1
+        events = step(w, CFG, ledger, turn=2, orders={})
         cap_spawns = [e for e in events if e.get("kind") == "town_spawn" and e.get("is_capital")]
         assert len(cap_spawns) == 1
         assert cap_spawns[0]["x"] == 100
         assert cap_spawns[0]["y"] == 100
-        assert t.is_capital is False
 
     def test_no_capital_exists(self) -> None:
         """MOVE_CAPITAL when faction has no capital → ignored."""
@@ -799,9 +850,13 @@ class TestMoveCapitalEdgeCases:
                            args=[300.0, 300.0])
         )
         events = step(w, CFG, ledger, turn=1, orders={})
-        cap_spawns = [e for e in events if e.get("kind") == "town_spawn" and e.get("is_capital")]
-        assert len(cap_spawns) == 1
-        assert cap_spawns[0]["x"] == 200 and cap_spawns[0]["y"] == 200
+        # First executes (one viceroy to 200,200), second drops; no founding yet
+        spawns = [e for e in events if e.get("kind") == "army_spawn" and e.get("is_viceroy")]
+        assert len(spawns) == 1
+        viceroy = [a for a in w.armies if a.is_viceroy]
+        assert len(viceroy) == 1
+        assert (viceroy[0].target_x, viceroy[0].target_y) == (200.0, 200.0)
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
 
 
 class TestMoveCapitalLedger:
@@ -857,16 +912,34 @@ class TestMoveCapitalLedger:
         # Event at old capital before move
         from engine.ledger import Event, EventKind
         ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
-        # MOVE_CAPITAL instantly to (100,0) at turn 2
+        # MOVE_CAPITAL to (100,100) at turn 2: spawns turn 2, 141 km flight
+        # arrives turn 5 (50 km/turn)
         w.standing_orders.append(
             StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town", args=[100.0, 100.0])
         )
-        step(w, CFG, ledger, turn=2, orders={})
-        # After move, old event at t=1 should not be visible from new capital at (100,0)
-        visible = ledger.visible_events(faction=0, capital_x=100, capital_y=0, now=10)
-        # The old t=1 event is < capital_since (2), so filtered
-        assert all(e.turn >= 2 for e in visible)
-        # A new event at t=3 near new capital should be visible
-        ledger.log(Event(turn=3, x=100, y=0, kind=EventKind.BATTLE, payload={}))
+        for turn in (2, 3, 4, 5):
+            step(w, CFG, ledger, turn=turn, orders={})
+        # After arrival, old event at t=1 should not be visible from new capital
+        visible = ledger.visible_events(faction=0, capital_x=100, capital_y=100, now=10)
+        # The old t=1 event is < capital_since (5), so filtered
+        assert all(e.turn >= 5 for e in visible)
+        # A new event at t=6 near new capital should be visible
+        ledger.log(Event(turn=6, x=100, y=0, kind=EventKind.BATTLE, payload={}))
         visible2 = ledger.visible_events(faction=0, capital_x=100, capital_y=0, now=10)
-        assert any(e.turn == 3 for e in visible2)
+        assert any(e.turn == 6 for e in visible2)
+
+    def test_viceroy_fights_before_founding(self) -> None:
+        """O11c: founding is the BUILD-step in economy — an arrived viceroy
+        lives through combat first. 1v1 with an adjacent foe annihilates
+        both (no town); the old arrival-founding would have founded the
+        town and lost it to same-turn capture instead."""
+        t = _town(0, 0, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t], armies=[_army(100, 0, 1, 7)])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 100 0"]})
+        events = step(w, CFG, ledger, turn=2, orders={})
+        events = step(w, CFG, ledger, turn=3, orders={})
+        assert [e for e in events if e.get("kind") == "battle"], "expected interception battle"
+        assert not [x for x in w.towns if abs(x.x - 100) < 1 and abs(x.y) < 1]
+        assert not [a for a in w.armies if a.is_viceroy]
+        assert not [x for x in w.towns if x.faction == 0 and x.is_capital]

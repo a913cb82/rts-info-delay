@@ -1,7 +1,7 @@
 # Bot time management — roadmap (ideas 1–6)
 
 Bots run under a Fischer clock (cap `turn_time_ms`, +`time_increment_ms`/turn).
-These six ideas cut think cost or spend the bank deliberately. Status: all six implemented (commits below). Bot code only; no engine changes.
+These six ideas cut think cost or spend the bank deliberately. Status: all six implemented (commits below). Originally bot code only; post-campaign intel work below spans engine + runner + bots.
 Benchmarks: `benchmarks/bot_bench.py` (quiet turn + 2000-event backlog).
 
 ## 1. Incremental BotState — DONE (`0f171dd`)
@@ -87,6 +87,31 @@ full bank → expensive searches (coordination, wide site search).
 - **10 engine standing orders — REJECTED.** Engine stays simple; the
   equivalent lives bot-side as plan caches (idea 5). Revisit only with data
   showing round-trips dominate a thinking bot's clock.
+
+## After the campaign: intel-era work (engine + runner + bots)
+
+Delayed intel changed what bots may know (see `BOTS.md` intel model):
+
+- **In-flight mute.** A faction with a viceroy airborne gets no turns
+  and gives no orders (game loop skips I/O, clock frozen); the payload
+  builder independently returns [] for such factions (pop leaks closed).
+- **Landing rebuild.** First post-landing payload: full spawns in existing
+  event shapes + delay-consistent army moves + audible battles. `BotState`
+  wipes on its unknown landing capital and applies the batch onto the
+  empty world (redeliveries skip the wipe via the known-id guard).
+- **Delayed town state.** Runner keeps per-turn `{id: (pop, faction,
+  capital)}` history; pops/factions/flags report as of `now − dist/info`
+  (floored, never future, clamped to birth). Slim wire kept. Bot-side
+  staleness machinery (`stale_turns`, distance buffers, pending guards)
+  is now load-bearing rather than vestigial.
+- **TOWN_DEATH ledger kind.** The old battle-fallback blinded bots to all
+  deaths (ghosts forever); force-counting is trustworthy since.
+- **Economy-phase MOVE_CAPITAL.** Order → 0-distance messenger → intent →
+  economy execution (deduct, demote at train, spawn viceroy) → march →
+  arrival founds. Needs a 1-turn lead; drops if the capital falls first.
+- Tests live with the behaviors they cover (`tests/runner/test_main.py`
+  flight/rebuild, `tests/bots/test_bot_state.py` wipe + replay,
+  `tests/engine/test_step.py` evac chains); convention below still holds.
 
 ## Conventions
 - New tests go in `tests/bots/`; integration-level (drive `bot_main` or

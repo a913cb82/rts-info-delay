@@ -377,29 +377,27 @@ class TestPathBlocking:
         assert t_star == pytest.approx(0, abs=0.01)
         assert min_dist == pytest.approx(5.0, abs=0.1)
 
-    def test_fresh_spawn_immune(self) -> None:
-        """M17: Fresh spawn not involved in path blocking."""
+    def test_spawn_blocks_immediately(self) -> None:
+        """M17: A newly spawned army blocks paths like any other."""
         a = _army(0, 0)
         a.target_x, a.target_y = 100, 0
         a.has_target = True
         spawn = _army(25, 3, faction=1)  # halfway along path
-        spawn.is_fresh = True  # just spawned this turn
         w = _world_with(a, spawn)
         move_armies(w, CFG)
-        # Fresh spawn immune → A passes through to speed-limited position
-        assert a.x == pytest.approx(50, abs=1)
+        # No immunity → A stops at closest approach to the spawn
+        assert a.x == pytest.approx(25, abs=1)
 
-    def test_fresh_spawn_no_block_town(self) -> None:
-        """M17b: Fresh spawn at town path → no block."""
+    def test_spawn_blocks_town_path(self) -> None:
+        """M17b: Spawn on a town path blocks like any other army."""
         a = _army(0, 0)
         a.target_x, a.target_y = 100, 0
         a.has_target = True
         spawn = _army(25, 3, faction=1)  # halfway along path
-        spawn.is_fresh = True
         w = _world_with(a, spawn)
         move_armies(w, CFG)
-        # Fresh spawn immune → A passes through to speed-limited position
-        assert a.x == pytest.approx(50, abs=1)
+        # No immunity → A stops at closest approach to the spawn
+        assert a.x == pytest.approx(25, abs=1)
 
 
 class TestMovementStacking:

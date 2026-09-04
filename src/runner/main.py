@@ -32,6 +32,9 @@ class BotProcess:
         self.cmd = cmd
         self._reader = None
         self._last_sent_pop: dict[int, int] = {}  # town_id -> last int pop sent (idea 8)
+        self._last_sent_status: dict[int, tuple] = {}  # town_id -> last (faction, is_capital) sent
+        self._sent_seqs: set[int] = set()  # ledger seqs already sent: no resends, ever.
+        # No prune: bounded by game length (few thousand turns), freed per game.
         # Byo-yomi clock, engine-authoritative: main reservoir first, then
         # one period (cap + increment). Cold-start imports come out of the
         # 1s main time, so turn 1 needs no handshake.
@@ -412,63 +415,227 @@ class TurnMultiplexer:
         return done
 
 
-def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, events: list[dict], bp: BotProcess) -> list[dict]:
+def faction_in_flight(world: World, faction: int) -> bool:
+    """Command authority sits in the flying army: blind and mute."""
+    return any(a.is_viceroy and a.faction == faction for a in world.armies)
+
+
+def landed_this_turn(events: list[dict], faction: int) -> bool:
+    """Did faction's viceroy found its new capital in these step events?"""
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        if ev.get("kind") == "town_spawn" and ev.get("is_capital") and ev.get("faction") == faction:
+            return True
+    return False
+
+
+def _ledger_event_to_dict(ev) -> dict:
+    """Wire form of one ledger event (pops as ints, absolute values)."""
+    d: dict = {
+        "kind": ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind),
+        "x": ev.x,
+        "y": ev.y,
+        "turn": ev.turn,
+    }
+    if isinstance(ev.payload, dict):
+        d.update(ev.payload)
+    if isinstance(d.get("population"), float):
+        d["population"] = int(round(d["population"]))
+    return d
+
+
+def landing_spawns(world: World, ledger: Ledger, faction: int,
+                   cap_x: float, cap_y: float, now: float,
+                   last_sent: dict, town_history: list[TownSnap],
+                   last_status: dict | None = None) -> list[dict]:
+    """Rebuild payload for a landed faction, existing kinds only.
+
+    Spawns every town with delay-consistent (pop, faction, capital) from
+    town_history — same horizon rule as normal play, so faction takeovers
+    and demotions land exactly when the news could have arrived — then every
+    army at its stalest known pos (birth, else oldest move, else current),
+    one delay-consistent move per army when audible (never future intel),
+    and audible flight battles.
+    The bot wipes on its unknown landing capital and applies this batch, so
+    ghosts, stale capitals and stale trackers all die in one move — no merge.
+    Known tradeoff: existence of everything is revealed at once (any faction
+    can earn it, rarely, by suffering decapitation + blindness first).
+    State for unknown-birth entities needs no fallback: the horizon lookup
+    clamps to birth values, and spawns always carry coordinates.
+    """
+    info = ledger.info_speed or 150.0
+    since = ledger.capital_since.get(faction, 0)
+    out: list[dict] = []
+
+    def audible(turn: float, x: float, y: float) -> bool:
+        return turn + math.hypot(x - cap_x, y - cap_y) / info <= now + 1e-9
+
+    for t in world.towns:
+        delayed = delayed_town(town_history, t.id, now,
+                               math.hypot(t.x - cap_x, t.y - cap_y), info)
+        if delayed is None:
+            continue
+        ip, fac, cap = delayed
+        last_sent[t.id] = ip
+        if last_status is not None:
+            last_status[t.id] = (fac, cap)
+        out.append({"kind": "town_spawn", "id": t.id, "faction": fac,
+                    "x": t.x, "y": t.y, "population": ip,
+                    "is_capital": cap})
+    moves: dict[int, list] = {}
+    births: dict[int, object] = {}
+    for ev in ledger.events:
+        kind = ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind)
+        aid = ev.payload.get("id") if isinstance(ev.payload, dict) else None
+        if aid is None:
+            continue
+        if kind == "army_move":
+            moves.setdefault(aid, []).append(ev)
+        elif kind == "army_spawn" and aid not in births:
+            births[aid] = ev  # ledger is turn-sorted: first is birth
+    for a in world.armies:
+        # Spawn pos: stalest known (birth, else oldest move, else current —
+        # which equals birth for the never-moved). Existence itself is the
+        # one-time reveal; everything positional then obeys the horizon.
+        # Evicted births are old enough that any position was long audible.
+        hist = moves.get(a.id, [])
+        bev = births.get(a.id)
+        if bev is not None:
+            sx, sy = bev.x, bev.y
+        elif hist:
+            oldest = min(hist, key=lambda e: getattr(e, "turn", 0))
+            sx, sy = oldest.x, oldest.y
+        else:
+            sx, sy = a.x, a.y
+        out.append({"kind": "army_spawn", "id": a.id, "faction": a.faction,
+                    "x": sx, "y": sy, "is_viceroy": a.is_viceroy})
+        picked = None
+        for ev in sorted(hist, key=lambda e: getattr(e, "turn", 0), reverse=True):
+            if audible(getattr(ev, "turn", 0), ev.x, ev.y):
+                picked = ev
+                break
+        if picked is None:
+            # Nothing audible: send nothing (stale pre-flight pos, or
+            # continued ignorance, are both honest; the future is not).
+            # Trackability survives: later audible moves update normally.
+            continue
+        out.append(_ledger_event_to_dict(picked))
+    for ev in ledger.events:
+        kind = ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind)
+        if kind != "battle":
+            continue
+        t = getattr(ev, "turn", 0)
+        if t >= since:
+            continue  # post-arrival turns travel the normal path
+        if audible(t, ev.x, ev.y):
+            out.append(_ledger_event_to_dict(ev))
+    return out
+
+
+# Town history: per-turn snapshots {town_id: (pop_int, faction, is_capital)},
+# index == turn number (hist[0] pre-game, hist[t] post-step-t). Owned by the
+# game loop; the single source for delaying ALL town state (pop, faction,
+# capital flags) by the same horizon rule everywhere, normal play and
+# landing alike. Post-step truth captures every change eventlessly
+# (demotions, captures, births) — no event stream can go stale.
+TownSnap = dict[int, tuple[int, int, bool]]
+
+
+def delayed_town(town_history: list[TownSnap], tid: int, now: float,
+                 dist: float, info_speed: float) -> tuple[int, int, bool] | None:
+    """Town state as known across distance: values as of now - dist/info.
+
+    Floored to a recorded turn (never future); if the horizon predates the
+    town's birth, the earliest known values. Dead towns are the caller's
+    business (callers iterate live towns; deaths travel by ledger).
+    """
+    if not town_history:
+        return None
+    h = now - dist / (info_speed or 150.0)
+    idx = min(max(int(math.floor(h + 1e-9)), 0), len(town_history) - 1)
+    if tid in town_history[idx]:
+        return town_history[idx][tid]
+    for j in range(idx + 1, len(town_history)):
+        if tid in town_history[j]:
+            return town_history[j][tid]
+    return None
+
+
+def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, events: list[dict], bp: BotProcess, town_history: list[TownSnap]) -> list[dict]:
     """Build one faction's event payload (serial; GIL-bound numpy/JSON work).
 
     Idea 8 slimming: populations go out as ints (absolute values — the bot
     assigns them absolutely, so wire error is bounded to +-1 and can never
-    compound), and pop_change is only sent when the int actually changed.
-    The engine's own floats and the record file are untouched.
+    compound), and pop_change is only sent when the int value changed.
+    Pops are delayed like everything else: each town reports its pop as of
+    now - dist/info_speed from town_history. Engine floats and record file
+    untouched.
     """
+    # Viceroy in an army can neither command nor observe: no payload at all
+    # (the game loop also skips I/O for these factions; this guards the
+    # builder itself, e.g. pop_changes below would otherwise leak through).
+    if faction_in_flight(world, faction):
+        return []
     # Determine visible events for this faction
     capital = world.faction_capital(faction)
     if capital is None:
         cap_x, cap_y = 0.0, 0.0
-        is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
         # If no capital, still need to handle is_in_flight? No capital means no visibility?
         # For factions with no towns, they see nothing?
     else:
         cap_x, cap_y = capital.x, capital.y
-        # Check if faction has viceroy in flight -> blind
-        is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
+    # Viceroy in an army can neither command nor observe.
+    is_in_flight = faction_in_flight(world, faction)
     visible_events = ledger.visible_events(faction=faction, capital_x=cap_x, capital_y=cap_y, now=float(turn), is_in_flight=is_in_flight)
-    # When MOVE_CAPITAL completes (new capital spawned), send ALL events
-    # so bot can fully rebuild BotState from new capital's perspective
-    move_cap_complete = any(
-        hasattr(ev, 'payload') and isinstance(ev.payload, dict)
-        and ev.kind.value == "town_spawn" and ev.payload.get("is_capital")
-        for ev in visible_events
-    )
-    if move_cap_complete:
-        visible_events = ledger.turn_events(turn)
+    # Landing after blind flight: lead with the missed backlog in
+    # delay-consistent form (replay, not snapshot). Normal events still
+    # follow (idempotent: spawn guards skip known ids, pops/deaths absolute).
+    landed = landed_this_turn(events, faction)
     # Convert to dict list for bot
     bot_events: list[dict] = []
+    if landed:
+        bot_events.extend(landing_spawns(
+            world, ledger, faction, cap_x, cap_y, float(turn), bp._last_sent_pop,
+            town_history, bp._last_sent_status))
+    # No resends: each ledger event goes out once per faction, ever. (Pops
+    # below were always change-driven; this extends that to ledger events.
+    # Tradeoff: a dropped payload no longer self-heals — accepted, transport
+    # is reliable pipes (full turn or dead bot) and landing reseeds anyway.)
+    sent = bp._sent_seqs
     for ev in visible_events:
-        d: dict = {
-            "kind": ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind),
-            "x": ev.x,
-            "y": ev.y,
-            "turn": ev.turn,
-        }
-        if isinstance(ev.payload, dict):
-            d.update(ev.payload)
-        if isinstance(d.get("population"), float):
-            d["population"] = int(round(d["population"]))
-        bot_events.append(d)
-    # Append pop_change events from previous step (not in ledger) —
-    # only when the int value changed since this faction last saw it.
-    if events:
-        last = bp._last_sent_pop
-        for ev in events:
-            if isinstance(ev, dict) and ev.get("kind") == "pop_change":
-                try:
-                    ip = int(round(float(ev.get("population", 0))))
-                except Exception:
-                    continue
-                tid = ev.get("id")
-                if last.get(tid) != ip:
-                    last[tid] = ip
-                    bot_events.append({"kind": "pop_change", "id": tid, "population": ip})
+        seq = getattr(ev, "seq", None)
+        if seq is not None:
+            if seq in sent:
+                continue
+            sent.add(seq)
+        bot_events.append(_ledger_event_to_dict(ev))
+    # Delayed pops for every town (not in ledger) — only when the
+    # delay-consistent int differs from what this faction last saw.
+    info = ledger.info_speed or 150.0
+    last = bp._last_sent_pop
+    status = bp._last_sent_status
+    for t in world.towns:
+        delayed = delayed_town(town_history, t.id, float(turn),
+                               math.hypot(t.x - cap_x, t.y - cap_y), info)
+        if delayed is None:
+            continue
+        ip, fac, cap = delayed
+        ev = None
+        if last.get(t.id) != ip:
+            last[t.id] = ip
+            ev = {"kind": "pop_change", "id": t.id, "population": ip}
+        # Faction/flag takeovers ride along on change: pre-landing captures
+        # are since-hidden from the ledger, so without this the bot would
+        # hold the old faction forever (pop stream used to carry pop only).
+        if status.get(t.id) != (fac, cap):
+            status[t.id] = (fac, cap)
+            if ev is None:
+                ev = {"kind": "pop_change", "id": t.id, "population": ip}
+            ev["faction"] = fac
+            ev["is_capital"] = cap
+        if ev is not None:
+            bot_events.append(ev)
     return bot_events
 
 
@@ -533,6 +700,11 @@ def run_game(
     # threads for ~2ms of real work.) Orders merge in faction order, so the
     # game stays deterministic regardless of read completion order.
     events: list[dict] = []
+    # Town-state history for delaying pops/factions/capitals like events:
+    # hist[0] pre-game, hist[t] post-step-t. Index == turn number.
+    town_history: list[TownSnap] = [
+        {t.id: (int(round(t.population)), t.faction, t.is_capital) for t in world.towns}
+    ]
     mux = TurnMultiplexer()
     for bp in bot_processes.values():
         if bp.proc is not None:
@@ -553,8 +725,14 @@ def run_game(
             if not bp.alive:
                 orders_dict[faction] = []
                 continue
+            if faction_in_flight(world, faction):
+                # Command authority sits in the flying army: blind and mute.
+                # Skip I/O entirely (bot stalls on readline, resumes on
+                # landing); orders empty, clock frozen.
+                orders_dict[faction] = []
+                continue
             budget_ms = max(0.0, float(bp.turn_budget()))
-            if not bp._write_block(turn, _build_bot_events(faction, world, ledger, turn, events, bp), budget_ms, True):
+            if not bp._write_block(turn, _build_bot_events(faction, world, ledger, turn, events, bp, town_history), budget_ms, True):
                 bp.alive = False
                 try:
                     bp.kill()
@@ -607,6 +785,8 @@ def run_game(
             print(f"step failed at turn {turn}: {e}", file=sys.stderr)
             traceback.print_exc()
             events = []
+        town_history.append(
+            {t.id: (int(round(t.population)), t.faction, t.is_capital) for t in world.towns})
 
         # Check faction death: capital destroyed or viceroy killed while in flight
         for faction in list(bot_processes.keys()):
@@ -740,12 +920,13 @@ def parse_orders(lines: list[str]) -> list[str]:
 def apply_orders_to_world(
     world: World, faction: int, orders: list[str], config: GameConfig
 ) -> None:
-    """Queue orders as messengers for delivery (MOVE_CAPITAL instant)."""
+    """Queue orders as messengers for delivery (MOVE_CAPITAL included:
+    0-distance messenger to the capital itself)."""
     # Reuse step's command logic for single faction
     # We'll call _phase_command equivalent for this faction
     # For simplicity, create a small orders dict and call step's helper
     # But to avoid circular import, implement directly
-    from engine.world import CommandType, Messenger, StandingOrder, Army
+    from engine.world import CommandType, Messenger
     import math
 
     for order_str in orders:
@@ -765,16 +946,11 @@ def apply_orders_to_world(
             capital = world.faction_capital(faction)
             if capital is None:
                 continue
-            if capital.population < config.army_cost - 1e-9:
-                continue
-            if any(a.is_viceroy and a.faction == faction for a in world.armies):
-                continue
-            capital.population -= config.army_cost
-            nid = world.allocate_id()
-            viceroy = Army(id=nid, faction=faction, x=capital.x, y=capital.y, target_x=tx, target_y=ty, has_target=True, is_viceroy=True, is_fresh=True)
-            world.armies.append(viceroy)
-            # Add standing order for arrival tracking
-            world.standing_orders.append(StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=capital.id, target_type="town", args=[tx, ty]))
+            # Normal command: 0-distance messenger to the capital itself.
+            messenger = Messenger(faction=faction, command=CommandType.MOVE_CAPITAL,
+                                  target_id=capital.id, target_type="town",
+                                  args=[tx, ty], remaining_dist=0.0)
+            world.messengers.append(messenger)
             continue
         elif cmd == "MOVE_TO":
             if len(parts) != 6:

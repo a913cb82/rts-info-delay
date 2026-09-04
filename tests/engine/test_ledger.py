@@ -201,3 +201,33 @@ class TestLedgerEviction:
         # Event from turn 5 with dist=0 → visible at turn 5, should survive
         visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=6.0)
         assert len(visible) == 1
+
+    def test_death_visible_before_eviction_at_max_distance(self) -> None:
+        """A death at max map distance is still delivered before eviction.
+
+        This is what makes death-by-silence transient: eviction only fires
+        past the maximum possible delay, so every death reaches every
+        capital-holding faction exactly once (barring blind flight, which
+        the landing wipe covers).
+        """
+        ledger = Ledger(info_speed=150, map_diagonal=1414)
+        ledger.log(_event(turn=5, x=1414, y=0, kind=EventKind.TOWN_DEATH,
+                          payload={"id": 7}))
+        window = 1414 / 150
+        # Still present at the last audible instant ...
+        ledger.evict(now=5 + window)
+        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0,
+                                        now=5 + window)
+        assert any(e.kind == EventKind.TOWN_DEATH for e in visible)
+        # ... and gone only once nobody could hear it.
+        ledger.evict(now=5 + window + 1.0)
+        assert len(ledger.events) == 0
+
+    def test_log_assigns_increasing_seqs(self) -> None:
+        """Dedup keys: every logged event gets a unique monotonic seq."""
+        ledger = Ledger(info_speed=150, map_diagonal=1414)
+        a = _event(turn=2, x=0, y=0)
+        b = _event(turn=1, x=0, y=0)  # out-of-order insert shares the counter
+        ledger.log(a)
+        ledger.log(b)
+        assert (a.seq, b.seq) == (0, 1)

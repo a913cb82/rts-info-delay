@@ -52,8 +52,8 @@ class TestCombatMedium:
         resolve_combat(w, CFG)
         assert len(w.armies) == 0
 
-    def test_C13_fresh_spawns_dont_fight(self) -> None:
-        """C13: Fresh spawns don't fight."""
+    def test_C13_new_spawns_fight(self) -> None:
+        """C13: Newly spawned armies fight with no immunity."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -66,11 +66,9 @@ class TestCombatMedium:
         apply_train(w, CFG)
         spawned = [a for a in w.armies if a.id != 10]
         assert len(spawned) == 1
-        # Spawned army is fresh — should not be in combat
-        # (resolve_combat would need to filter fresh)
         resolve_combat(w, CFG)
-        # Fresh spawn should survive (or at least, the test pins the behavior)
-        # The engine must skip fresh armies in combat check
+        # 1v1 mutual kill: the new spawn dies with its enemy
+        assert len(w.armies) == 0
 
     def test_C14_score_reflects_deaths(self) -> None:
         """C14: Score reflects combat deaths."""
@@ -150,8 +148,8 @@ class TestTurnResolution:
         spawn_events = [e for e in events if e.get("kind") == "army_spawn"]
         assert len(spawn_events) >= 1
 
-    def test_T12_fresh_spawns_immune(self) -> None:
-        """T12: Fresh spawns immune to combat."""
+    def test_T12_spawned_army_fights_next_turn(self) -> None:
+        """T12: TRAIN spawns post-combat, so it fights from the next turn."""
         from engine.step import step
 
         w = World()
@@ -164,9 +162,12 @@ class TestTurnResolution:
             StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
         )
         step(w, CFG, [])
-        # Spawned army should survive (fresh immune)
+        # Spawned in economy (after combat), so it exists after turn 1 ...
         spawned = [a for a in w.armies if a.id != 10]
-        # At minimum, the engine must handle this gracefully
+        assert len(spawned) == 1
+        # ... and fights a 1v1 mutual kill on turn 2 (no immunity)
+        step(w, CFG, [])
+        assert len(w.armies) == 0
 
     def test_T13_multiple_systems_one_step(self) -> None:
         """T13: Multiple systems interact in one step."""

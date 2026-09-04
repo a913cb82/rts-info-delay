@@ -164,11 +164,9 @@ def step(
     # Phase 2: Propagation
     propagation_events = _phase_propagation(world, config, normalized_turn)
 
-    # Phase 3: Movement + viceroy arrival handling
+    # Phase 3: Movement (viceroys march like any army; founding is a
+    # BUILD-step in economy, not an arrival side effect)
     movement_events = _phase_movement(world, config)
-
-    # After movement, check viceroy arrival (part of movement/economy)
-    viceroy_events = _handle_viceroy_arrival(world, config, ledger=normalized_ledger, turn=normalized_turn)
 
     # Phase 4: Combat
     combat_events = _phase_combat(world, config)
@@ -185,7 +183,6 @@ def step(
     all_events: list[dict] = []
     all_events.extend(propagation_events)
     all_events.extend(movement_events)
-    all_events.extend(viceroy_events)
     all_events.extend(combat_events)
     all_events.extend(capture_events)
     all_events.extend(economy_events)
@@ -199,11 +196,6 @@ def step(
     except Exception:
         pass
 
-    # Clear is_fresh for next turn (fresh immunity lasts one turn only)
-    for army in world.armies:
-        # Keep viceroy fresh for one turn after spawn? Already handled, but clear now for next turn
-        army.is_fresh = False
-
     # For compatibility, if caller passed ledger as list (not Ledger), we also need to store events somewhere
     # If world has attribute ledger, attach?
     # Return events for test inspection
@@ -213,7 +205,9 @@ def step(
 def _phase_command(
     world: World, config: GameConfig, orders: dict[int, list[str]] | list[dict] | list[str], turn: int
 ) -> None:
-    """Parse bot orders, create messengers (or execute MOVE_CAPITAL instantly)."""
+    """Parse bot orders, create messengers (MOVE_CAPITAL included: its
+    messenger targets the capital itself, distance 0, so it delivers in
+    propagation this same turn; execution happens in economy like TRAIN)."""
     if orders is None:
         return
     # Handle list[dict] structured orders (medium tests)
@@ -302,28 +296,19 @@ def _phase_command(
                         continue
                     # Need faction; assume 0 for structured
                     faction = 0
-                    # Check capital
                     capital = world.faction_capital(faction)
                     if capital is None:
-                        # Find any town for faction 0? If no capital, find first
-                        towns = world.towns_for_faction(faction)
-                        capital = towns[0] if towns else None
-                    if capital is None:
                         continue
-                    if capital.population < config.army_cost - 1e-9:
-                        continue
-                    if any(a.is_viceroy and a.faction == faction for a in world.armies):
-                        continue
-                    capital.population -= config.army_cost
-                    nid = world.allocate_id()
-                    viceroy = Army(id=nid, faction=faction, x=capital.x, y=capital.y, target_x=x, target_y=y, has_target=True, is_viceroy=True, is_fresh=True)
-                    # Clamp target
-                    viceroy.target_x, viceroy.target_y = world.clamp_position(x, y)
-                    world.armies.append(viceroy)
-                    # Immediate arrival check
-                    # If start == target, handle arrival same turn later via _handle_viceroy_arrival? For structured orders test, they expect immediate? We'll handle after command
-                    # For now, add standing order for MOVE_CAPITAL to be processed in economy/viceroy handling
-                    world.standing_orders.append(StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=capital.id, target_type="town", args=[viceroy.target_x, viceroy.target_y]))
+                    x, y = world.clamp_position(x, y)
+                    # Same normal path as string orders: 0-distance messenger.
+                    world.messengers.append(Messenger(
+                        faction=faction,
+                        command=CommandType.MOVE_CAPITAL,
+                        target_id=capital.id,
+                        target_type="town",
+                        args=[x, y],
+                        remaining_dist=0.0,
+                    ))
             return
         # If list of strings?
         # Could be list[str] orders for single faction (e.g., ["MOVE_TO ..."])
@@ -365,40 +350,18 @@ def _phase_command(
                 capital = world.faction_capital(faction)
                 if capital is None:
                     continue
-                # Check insufficient pop
-                if capital.population < config.army_cost - 1e-9:
-                    continue
-                # Check already in flight
-                if any(a.is_viceroy and a.faction == faction for a in world.armies):
-                    continue
-                # Also check if standing MOVE_CAPITAL already pending for this faction
-                if any(so.command == CommandType.MOVE_CAPITAL and world.get_town(so.target_id) and world.get_town(so.target_id).faction == faction for so in world.standing_orders):
-                    continue
-                # Execute instantly
-                capital.population -= config.army_cost
-                # If capital now below death threshold, should it die? But then no capital to spawn from? The spec says insufficient pop rejected, but if exactly enough, capital remains with pop 4000 etc.
-                # If capital population after subtraction falls below death threshold, it should be handled in economy death check, but we should still spawn viceroy?
-                nid = world.allocate_id()
-                viceroy = Army(id=nid, faction=faction, x=capital.x, y=capital.y, target_x=tx, target_y=ty, has_target=True, is_viceroy=True, is_fresh=True)
-                world.armies.append(viceroy)
-                # Also add standing order to track MOVE_CAPITAL destination for arrival handling (to know capital id)
-                # Use capital id as target_id
-                world.standing_orders.append(StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=capital.id, target_type="town", args=[tx, ty]))
-                # Note: event generation for viceroy spawn will be done in economy or knowledge? We'll generate now via propagation_events? Instead, let _phase_propagation or _handle_viceroy handle event.
-                # For immediate spawn, we should ensure an army_spawn event will be emitted. We'll let _handle_viceroy or economy produce? Simpler to emit via standing order processing in next phase.
-                # But we already spawned, so we need to ensure event logged. We'll rely on _phase_economy or direct generation after command.
-                # Instead, we can directly log event creation here is not yet ledger. We will generate events in _phase_propagation? For MOVE_CAPITAL instant, we should generate army_spawn event immediately as part of command phase.
-                # We'll handle event generation in _phase_command via a temporary list? But step currently doesn't collect command events. Instead, we will make viceroy spawn event be generated in _phase_economy via handling of MOVE_CAPITAL standing orders, but we already spawned. To avoid duplicate, we should not spawn again.
-                # Alternative: spawn here and also create a marker for event generation. We'll add a hidden standing order that economy will use to know to emit event? Simpler: we can store event generation responsibility to _handle_viceroy_arrival and command events list. For now, we will generate event directly and store in world for later? We can just let _handle_viceroy_arrival not emit spawn, but we need spawn event.
-                # To make tests pass for MOVE_CAPITAL immediate spawn, we need to emit army_spawn is_viceroy in same step's returned events.
-                # The simplest: don't add standing order for MOVE_CAPITAL now; instead, rely on viceroy army presence to indicate flight, and spawn event will be generated in _phase_movement? No.
-                # We'll generate a temporary marker: we will not use standing order for spawn event, but will ensure _handle_viceroy or economy generates it.
-                # Instead, we can directly create an event dict and store in a world attribute for later? But step's logic separates phases.
-                # We could add viceroy spawn event to a list that will be returned via _phase_propagation? Let's make _phase_command handle event generation via world.__dict__ stash.
-                # Simpler: Add a field world._pending_events list to accumulate.
-                if not hasattr(world, "_pending_events"):
-                    world._pending_events = []  # type: ignore
-                world._pending_events.append({"kind": "army_spawn", "id": viceroy.id, "faction": viceroy.faction, "x": viceroy.x, "y": viceroy.y, "is_viceroy": True})  # type: ignore
+                # Normal command: messenger to the capital itself. Distance 0
+                # means delivery in propagation this same turn — no instant
+                # execution, same machinery and validity rules as the rest.
+                messenger = Messenger(
+                    faction=faction,
+                    command=CommandType.MOVE_CAPITAL,
+                    target_id=capital.id,
+                    target_type="town",
+                    args=[tx, ty],
+                    remaining_dist=0.0,
+                )
+                world.messengers.append(messenger)
                 continue
 
             # For other commands, create messenger
@@ -495,13 +458,9 @@ def _phase_propagation(
 ) -> list[dict]:
     """Advance messengers, execute delivered commands, collect events."""
     events: list[dict] = []
-    # Also include any pending events stashed by _phase_command (MOVE_CAPITAL spawns)
-    if hasattr(world, "_pending_events"):
-        events.extend(world._pending_events)  # type: ignore
-        world._pending_events = []  # type: ignore
 
     # Snapshot initial army positions/targets for same-turn FIFO checks (so second order in same turn sees start pos, not updated by first order)
-    _init_army_state = {a.id: (a.x, a.y, a.has_target, a.target_x, a.target_y, a.is_fresh) for a in world.armies}
+    _init_army_state = {a.id: (a.x, a.y, a.has_target, a.target_x, a.target_y) for a in world.armies}
     # Advance each messenger
     # Create copy list to iterate, as we may remove
     remaining_messengers: list[Messenger] = []
@@ -529,11 +488,11 @@ def _phase_propagation(
             # Use snapshot for same-turn FIFO: both orders see start pos
             snap = _init_army_state.get(army.id)
             if snap is not None:
-                sx, sy, shas, stx, sty, s_fresh = snap
+                sx, sy, shas, stx, sty = snap
             else:
-                sx, sy, shas, stx, sty, s_fresh = army.x, army.y, army.has_target, army.target_x, army.target_y, army.is_fresh
+                sx, sy, shas, stx, sty = army.x, army.y, army.has_target, army.target_x, army.target_y
             check_x, check_y = sx, sy
-            if shas and not s_fresh:
+            if shas:
                 dx = stx - sx
                 dy = sty - sy
                 d2 = math.hypot(dx, dy)
@@ -565,11 +524,11 @@ def _phase_propagation(
             bx, by = world.clamp_position(bx, by)
             snap = _init_army_state.get(army.id)
             if snap is not None:
-                sx, sy, shas, stx, sty, s_fresh = snap
+                sx, sy, shas, stx, sty = snap
             else:
-                sx, sy, shas, stx, sty, s_fresh = army.x, army.y, army.has_target, army.target_x, army.target_y, army.is_fresh
+                sx, sy, shas, stx, sty = army.x, army.y, army.has_target, army.target_x, army.target_y
             check_x, check_y = sx, sy
-            if shas and not s_fresh:
+            if shas:
                 dx = stx - sx
                 dy = sty - sy
                 d2 = math.hypot(dx, dy)
@@ -613,8 +572,27 @@ def _phase_propagation(
                 world.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=town.id, target_type="town", args=[float(m.faction)]))
             delivered = True
         elif m.command == CommandType.MOVE_CAPITAL:
-            # Should not happen via messenger, but handle
-            continue
+            # Delivery only queues the intent; execution (deduct, demote,
+            # spawn) happens in economy like TRAIN, where mid-turn captures
+            # are visible. Full validity is checked there.
+            town = world.get_town(m.target_id)
+            if town is None:
+                continue
+            if len(m.args) < 2:
+                continue
+            try:
+                tx = float(m.args[0])
+                ty = float(m.args[1])
+            except (ValueError, TypeError):
+                continue
+            tx, ty = world.clamp_position(tx, ty)
+            exists = any(so.command == CommandType.MOVE_CAPITAL
+                         and so.target_id == town.id
+                         for so in world.standing_orders)
+            if not exists:
+                world.standing_orders.append(StandingOrder(
+                    command=CommandType.MOVE_CAPITAL, target_id=town.id,
+                    target_type="town", args=[tx, ty]))
         else:
             continue
         # If delivered, messenger removed (not added to remaining). If not delivered due to distance fail, also remove (command ignored, not retried)
@@ -627,69 +605,6 @@ def _phase_movement(world: World, config: GameConfig) -> list[dict]:
     """Advance armies toward targets, resolve path-blocking contacts."""
     from engine.movement import move_armies
     return move_armies(world, config)
-
-
-def _handle_viceroy_arrival(world: World, config: GameConfig, ledger=None, turn: int = 0) -> list[dict]:
-    """Check viceroy arrival and found town."""
-    events: list[dict] = []
-    # Find viceroy armies that have reached target
-    for viceroy in list(world.armies):
-        if not viceroy.is_viceroy:
-            continue
-        # Check if has_target
-        if not viceroy.has_target:
-            continue
-        # Distance to target
-        dist = math.hypot(viceroy.x - viceroy.target_x, viceroy.y - viceroy.target_y)
-        # If within small epsilon or within interact_radius? Use epsilon for exact arrival, but also allow within 1e-6; For same position case, dist 0, arrival.
-        # For moving viceroy, after move_armies, if target was 10 away, viceroy will be at target exactly (since speed 50>10), so dist 0.
-        # We'll consider arrival if dist <= 1e-6
-        if dist > 1e-6:
-            continue
-        # Viceroy arrived: found town at target (or at viceroy pos)
-        tx, ty = viceroy.target_x, viceroy.target_y
-        tx, ty = world.clamp_position(tx, ty)
-        # Demote old capital for this faction
-        old_capital = world.faction_capital(viceroy.faction)
-        if old_capital:
-            old_capital.is_capital = False
-            world.mark_dirty()
-        # Create new town
-        nid = world.allocate_id()
-        new_town = world.towns.__class__  # placeholder
-        from engine.world import Town
-        new_town_obj = Town(id=nid, faction=viceroy.faction, x=tx, y=ty, population=config.army_cost * config.build_efficiency, is_capital=True)
-        world.towns.append(new_town_obj)
-        events.append({"kind": "town_spawn", "id": new_town_obj.id, "faction": new_town_obj.faction, "x": new_town_obj.x, "y": new_town_obj.y, "population": new_town_obj.population, "is_capital": True})
-        # Record new capital time for ledger filtering: only events with turn >= this are visible from new capital
-        if ledger is not None and hasattr(ledger, "set_capital_since"):
-            try:
-                ledger.set_capital_since(viceroy.faction, turn)
-            except Exception:
-                pass
-        # Remove viceroy army (consumed)
-        viceroy_id = viceroy.id
-        vx, vy = viceroy.x, viceroy.y
-        world.remove_army(viceroy_id)
-        events.append({"kind": "army_death", "id": viceroy_id, "x": vx, "y": vy})
-        # Remove any MOVE_CAPITAL standing orders for this faction
-        # Find standing orders with MOVE_CAPITAL for this faction's old capital or any
-        to_remove = []
-        for so in world.standing_orders:
-            if so.command == CommandType.MOVE_CAPITAL:
-                # Check if args matches tx,ty or target_id matches old capital
-                if len(so.args) >= 2 and abs(so.args[0] - tx) < 1e-9 and abs(so.args[1] - ty) < 1e-9:
-                    to_remove.append(so)
-                elif so.target_type == "town" and old_capital and so.target_id == old_capital.id:
-                    to_remove.append(so)
-        for so in to_remove:
-            if so in world.standing_orders:
-                world.standing_orders.remove(so)
-        # Also ensure no other MOVE_CAPITAL for same faction remains (should be only one)
-        # If multiple, remove all for faction
-        # But spec says only first executes, so other queued should be removed or ignored
-        # We'll keep only arrival one removed
-    return events
 
 
 def _phase_combat(world: World, config: GameConfig) -> list[dict]:
@@ -802,8 +717,48 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
             growth_events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction, "is_capital": was_capital})
     events.extend(growth_events)
 
+    # MOVE_CAPITAL founding: the BUILD-step of the composite. An arrived
+    # viceroy (within BUILD tolerance of its target) is consumed and founds
+    # the new capital here — same phase, same tolerance, same consumption
+    # as BUILD. It lived through combat as a normal army (interception can
+    # still kill the evac), and the new town can never be same-turn captured
+    # (captures already ran in 4b).
+    for viceroy in list(world.armies):
+        if not viceroy.is_viceroy or not viceroy.has_target:
+            continue
+        tx, ty = world.clamp_position(viceroy.target_x, viceroy.target_y)
+        if math.hypot(viceroy.x - tx, viceroy.y - ty) > config.interact_radius + 1e-9:
+            continue
+        old_capital = world.faction_capital(viceroy.faction)
+        if old_capital:
+            old_capital.is_capital = False
+            world.mark_dirty()
+        nid = world.allocate_id()
+        from engine.world import Town
+        new_town = Town(id=nid, faction=viceroy.faction, x=tx, y=ty,
+                        population=config.army_cost * config.build_efficiency,
+                        is_capital=True)
+        world.towns.append(new_town)
+        events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction,
+                       "x": new_town.x, "y": new_town.y, "population": new_town.population,
+                       "is_capital": True})
+        # Record new capital time for ledger filtering: only events with
+        # turn >= this are visible from the new capital.
+        if ledger is not None and hasattr(ledger, "set_capital_since"):
+            try:
+                ledger.set_capital_since(viceroy.faction, turn)
+            except Exception:
+                pass
+        viceroy_id, vx, vy = viceroy.id, viceroy.x, viceroy.y
+        world.remove_army(viceroy_id)
+        events.append({"kind": "army_death", "id": viceroy_id, "x": vx, "y": vy})
+        for so in [s for s in world.standing_orders if s.command == CommandType.MOVE_CAPITAL]:
+            if (len(so.args) >= 2 and abs(so.args[0] - tx) < 1e-9 and abs(so.args[1] - ty) < 1e-9) or \
+                    (so.target_type == "town" and old_capital and so.target_id == old_capital.id):
+                world.standing_orders.remove(so)
+
     # Handle standing MOVE_CAPITAL that were added via command phase but not yet emitted?
-    # The viceroy arrival already handled via _handle_viceroy_arrival after movement. However, if MOVE_CAPITAL was issued via standing order directly (test using standing_orders), we need to handle it here as well.
+    # Founding itself happens in economy (BUILD-step of the composite). However, if MOVE_CAPITAL was issued via standing order directly (test using standing_orders), we need to handle it here as well.
     # Check standing_orders for MOVE_CAPITAL that haven't been spawned as viceroy yet.
     # In _phase_command we handled MOVE_CAPITAL string orders by spawning viceroy and adding standing order. But if test directly appends StandingOrder for MOVE_CAPITAL without spawning viceroy, we need to spawn here.
     # So handle pending MOVE_CAPITAL standing orders where no viceroy exists for that faction.
@@ -839,35 +794,20 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
             continue
         tx, ty = (so.args[0], so.args[1]) if len(so.args) >= 2 else (town.x, town.y)
         tx, ty = world.clamp_position(tx, ty)
-        # Deduct pop
+        # TRAIN-like execution: deduct, demote the old capital to a normal
+        # town, and spawn the viceroy with its march target. Marching uses
+        # normal movement; founding + promotion are the BUILD-step in
+        # economy. One-shot: the order is consumed.
+        # Unlike TRAIN, failure is a clean drop (no deduction): demoting or
+        # charging for a viceroy that never flies would be pure loss.
         town.population -= config.army_cost
         processed_factions.add(faction)
-        # For standing order path, create immediate town (to satisfy test suite that expects instant founding without viceroy travel)
-        # Also create viceroy spawn event for compatibility with viceroy spawn test
+        town.is_capital = False
+        world.mark_dirty()
         nid = world.allocate_id()
-        viceroy = Army(id=nid, faction=faction, x=town.x, y=town.y, target_x=tx, target_y=ty, has_target=True, is_viceroy=True, is_fresh=True)
+        viceroy = Army(id=nid, faction=faction, x=town.x, y=town.y, target_x=tx, target_y=ty, has_target=True, is_viceroy=True)
         world.armies.append(viceroy)
         events.append({"kind": "army_spawn", "id": viceroy.id, "faction": viceroy.faction, "x": viceroy.x, "y": viceroy.y, "is_viceroy": True})
-        # Immediate founding: create new capital town at target (even if distance >0, for test compatibility we found immediately)
-        # This matches TestMoveCapitalEdgeCases.test_multiple_MOVE_CAPITAL_queued which expects immediate town_spawn at 200,200
-        # For normal travel via command path, viceroy travel is handled via _handle_viceroy_arrival, but for standing order we do immediate
-        old_cap = town
-        old_cap.is_capital = False
-        world.mark_dirty()
-        new_id = world.allocate_id()
-        from engine.world import Town
-        new_town = Town(id=new_id, faction=faction, x=tx, y=ty, population=config.army_cost * config.build_efficiency, is_capital=True)
-        world.towns.append(new_town)
-        events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction, "x": new_town.x, "y": new_town.y, "population": new_town.population, "is_capital": True})
-        # Record new capital time for ledger filtering
-        if ledger is not None and hasattr(ledger, "set_capital_since"):
-            try:
-                ledger.set_capital_since(faction, turn)
-            except Exception:
-                pass
-        # Remove viceroy immediately (consumed)
-        world.remove_army(viceroy.id)
-        events.append({"kind": "army_death", "id": viceroy.id, "x": viceroy.x, "y": viceroy.y})
         if so in world.standing_orders:
             world.standing_orders.remove(so)
 
@@ -907,18 +847,12 @@ def _phase_knowledge(
         # pop_change is a direct state update, not a ledger event
         if kind_str == "pop_change":
             continue
-        # Map kind string to EventKind
+        # Map kind string to EventKind (all step kinds have variants;
+        # truly unknown ones fall back to battle)
         try:
             ek = EventKind(kind_str)
         except ValueError:
-            # Unknown kind, try to map
-            if kind_str == "town_death":
-                ek = EventKind.TOWN_SPAWN  # not ideal, but map to something
-                # Actually town_death not in EventKind, but we can map to TOWN_SPAWN or handle generically
-                # For ledger, we need a kind; use BATTLE as fallback
-                ek = EventKind.BATTLE
-            else:
-                ek = EventKind.BATTLE
+            ek = EventKind.BATTLE
         # Determine x,y
         x = float(ev.get("x", 0.0))
         y = float(ev.get("y", 0.0))

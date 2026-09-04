@@ -14,6 +14,7 @@ class EventKind(Enum):
     ARMY_SPAWN = "army_spawn"
     TOWN_SPAWN = "town_spawn"
     TOWN_CAPTURE = "town_capture"
+    TOWN_DEATH = "town_death"
     ARMY_MOVE = "army_move"
     ARMY_DEATH = "army_death"
     BATTLE = "battle"
@@ -95,6 +96,7 @@ class Ledger:
             self.map_diagonal = 1414.0
         self.events = deque()
         self.eviction_ptr = 0
+        self._next_seq = 0  # dedup key: every logged event gets one
         # opt15: turn index for O(1) turn_events + versioned array cache
         # so the 5 per-turn visible_events queries share one array build.
         # _version bumps on every log/evict; arrays rebuild only on change.
@@ -109,6 +111,8 @@ class Ledger:
 
     def log(self, event: Event) -> None:
         """Append an event."""
+        event.seq = self._next_seq  # type: ignore[attr-defined]
+        self._next_seq += 1
         # Handle flexible Event construction: allow t instead of turn, kind as string
         # If event is not proper EventKind, convert
         if not isinstance(event.kind, EventKind):
@@ -208,10 +212,7 @@ class Ledger:
         return [ev for ev, m in zip(self.events, mask) if m]
 
     def turn_events(self, turn: float) -> list[Event]:
-        """Return all events for a specific turn (no distance filtering).
-
-        Used when MOVE_CAPITAL completes so bot can fully rebuild state.
-        """
+        """Return all events for a specific turn (no distance filtering)."""
         # O(1) index; turns are ints in practice, float queries match exactly.
         try:
             key = int(turn)
@@ -275,7 +276,7 @@ class Ledger:
 
     def set_capital_since(self, faction: int, turn: int) -> None:
         """Set the turn when faction's current capital was established.
-        
+
         Only events with turn >= this value will be visible to the faction.
         Called when MOVE_CAPITAL completes.
         """

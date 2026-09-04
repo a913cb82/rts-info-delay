@@ -48,6 +48,7 @@ let svg!: SVGSVGElement;
 let worldG!: SVGGElement;
 let tooltip!: HTMLDivElement;
 let turnLabelEl!: HTMLSpanElement;
+let factionNamesEl!: HTMLDivElement;
 
 let playBtn!: HTMLButtonElement;
 let speedSel!: HTMLSelectElement;
@@ -112,6 +113,31 @@ function buildScoreCache(): void {
 
 /* ── Load ── */
 
+/* Custom faction names via ?names=pro,greedy,... (defaults to "Faction N").
+   Recordings only carry faction numbers, so bot names must come from the URL. */
+let _customNames: string[] | null | undefined;
+function customFactionNames(): string[] | null {
+  if (_customNames === undefined) {
+    const p = new URLSearchParams(location.search).get("names");
+    _customNames = p ? p.split(",").map((s) => s.trim()).filter((s) => s.length > 0) : null;
+  }
+  return _customNames;
+}
+
+function renderFactionNames(): void {
+  if (!factionNamesEl) return;
+  factionNamesEl.innerHTML = "";
+  const custom = customFactionNames();
+  for (const f of getFactions()) {
+    const span = document.createElement("span");
+    span.className = "faction-name";
+    span.style.color = factionColor(f, factionCount);
+    span.textContent = custom && custom[f] ? custom[f]! : `Faction ${f}`;
+    span.title = `Faction ${f}`;
+    factionNamesEl.appendChild(span);
+  }
+}
+
 function loadRecord(records: GameRecord[]): void {
   const sep = separateConfigTurns(records);
   config = sep.config;
@@ -121,6 +147,7 @@ function loadRecord(records: GameRecord[]): void {
     mapSize[1] = config.map_size[1];
     factionCount = getFactions().length || 1;
   }
+  renderFactionNames();
   turn = 0;
   animFromTurn = 0;
   animToTurn = 0;
@@ -325,7 +352,7 @@ function drawTown(t: AnimTown, eased: number, x: number, y: number, pop: number)
 
 function drawArmy(x: number, y: number, faction: number, alpha: number): void {
   const col = factionColor(faction, factionCount);
-  const sz = 7;
+  const sz = 14;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
   if (alpha < 1) g.setAttribute("opacity", String(alpha));
@@ -696,6 +723,7 @@ function boot(): void {
   app.innerHTML = `
     <header>
       <span class="turn-label" id="turn-label"></span>
+      <div class="faction-names" id="faction-names"></div>
     </header>
     <div class="bar-row"><span class="bar-label">Score</span><div class="score-bar" id="score-bar"></div></div>
     <div class="bar-row"><span class="bar-label">Towns</span><div class="score-bar" id="settle-bar"></div></div>
@@ -731,6 +759,7 @@ function boot(): void {
   worldG = document.getElementById("world-g") as unknown as SVGGElement;
   tooltip = document.getElementById("tooltip") as HTMLDivElement;
   turnLabelEl = document.getElementById("turn-label") as HTMLSpanElement;
+  factionNamesEl = document.getElementById("faction-names") as HTMLDivElement;
 
   playBtn = document.getElementById("btn-play") as HTMLButtonElement;
   speedSel = document.getElementById("speed") as HTMLSelectElement;

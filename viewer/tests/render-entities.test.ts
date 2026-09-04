@@ -9,26 +9,26 @@ import { factionColor, factionColors } from "../src/color";
 
 /* ── Town radius (V2) ── */
 
-/** Radius formula: 4 + 6 × √(pop / population_cap) */
+/** Radius formula: 8 + 12 × √(pop / population_cap) */
 function townRadius(pop: number, cap = 100_000): number {
-  return 4 + 6 * Math.sqrt(pop / cap);
+  return 8 + 12 * Math.sqrt(pop / cap);
 }
 
 describe("townRadius", () => {
-  it("V2 — village pop=500 → ~4.42 px", () => {
-    expect(townRadius(500)).toBeCloseTo(4.42, 1);
+  it("V2 — village pop=500 → ~8.85 px", () => {
+    expect(townRadius(500)).toBeCloseTo(8.85, 1);
   });
 
-  it("V2 — city pop=50000 → ~8.24 px", () => {
-    expect(townRadius(50_000)).toBeCloseTo(8.24, 1);
+  it("V2 — city pop=50000 → ~16.49 px", () => {
+    expect(townRadius(50_000)).toBeCloseTo(16.49, 1);
   });
 
-  it("pop=0 → 4 px minimum", () => {
-    expect(townRadius(0)).toBe(4);
+  it("pop=0 → 8 px minimum", () => {
+    expect(townRadius(0)).toBe(8);
   });
 
-  it("pop=100000 → 10 px maximum", () => {
-    expect(townRadius(100_000)).toBe(10);
+  it("pop=100000 → 20 px maximum", () => {
+    expect(townRadius(100_000)).toBe(20);
   });
 
   it("monotonically increasing", () => {

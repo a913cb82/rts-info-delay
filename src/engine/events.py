@@ -25,7 +25,6 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
                     faction=ev.get("faction", 0),
                     x=ev.get("x", 0),
                     y=ev.get("y", 0),
-                    is_fresh=True,
                 )
                 a.is_viceroy = ev.get("is_viceroy", False)
                 world.armies.append(a)
@@ -56,13 +55,10 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
             if t:
                 t.faction = ev.get("new_faction", t.faction)
                 t.population = ev.get("population", t.population)
+                # Captures never create capitals (beheading is permanent;
+                # only MOVE_CAPITAL founds new ones): demote, never promote.
                 if ev.get("was_capital"):
                     t.is_capital = False
-                new_faction = ev.get("new_faction")
-                if new_faction is not None:
-                    has_cap = any(tx.is_capital and tx.faction == new_faction for tx in world.towns)
-                    if not has_cap:
-                        t.is_capital = True
                 world.mark_dirty()
 
         elif kind == "army_move":
@@ -87,3 +83,7 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
             t = world.get_town(ev.get("id"))
             if t:
                 t.population = ev.get("population", t.population)
+                if "faction" in ev:
+                    t.faction = ev["faction"]
+                if "is_capital" in ev:
+                    t.is_capital = ev["is_capital"]

@@ -48,6 +48,21 @@ header {
   text-align: center;
 }
 
+.faction-names {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-left: 1rem;
+  flex-wrap: wrap;
+}
+
+.faction-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* ── Score bar ── */
 
 .bar-row {

@@ -103,8 +103,7 @@ def resolve_combat(
         return events
     radius = config.interact_radius
 
-    # Fresh spawns are immune this turn – exclude them from combat
-    combat_armies = [a for a in world.armies if not getattr(a, "is_fresh", False)]
+    combat_armies = list(world.armies)
     if not combat_armies:
         return events
     # Fast path (ants-inspired sound skip): single faction means no enemies
@@ -209,8 +208,6 @@ def resolve_combat(
     # Remove dead armies from world (single batch pass)
     world.remove_armies(dead_ids)
 
-    # For fresh armies, we still need to keep them; they remain in world
-
     return events
 
 
@@ -234,7 +231,8 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
 
     After combat, surviving armies within interact_radius of an enemy town
     capture it: ownership changes, population reduced by build_efficiency.
-    Capital status transfers to captor if the captured town was a capital.
+    A captured capital is demoted; captures never create capitals
+    (beheading is permanent, only MOVE_CAPITAL founds new ones).
     """
     events: list[dict] = []
     if not world.armies or not world.towns:
@@ -246,14 +244,11 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
     # Hoisted bookkeeping: one O(T+A) snapshot instead of per-capture
     # O(T)/O(A) scans (faction_capital + any() checks). Updated per capture.
     # Armies are static during captures, so viceroy presence is precomputed.
-    town_counts: dict[int, int] = {}
     capitals: dict[int, object] = {}
     for t in world.towns:
-        town_counts[t.faction] = town_counts.get(t.faction, 0) + 1
         if t.is_capital and t.faction not in capitals:
             capitals[t.faction] = t
-    viceroy_factions = {a.faction for a in world.armies if a.is_viceroy}
-    book = (capitals, town_counts, viceroy_factions)
+    book = capitals
     # small n: brute with squared reject is faster than hash
     if len(world.armies) * len(world.towns) < 50000:
         for army in world.armies:
@@ -318,7 +313,6 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
             old_pop = town.population
 
             # Capture via shared bookkept helper (no per-capture scans).
-            # If captor is completely dead (no towns, no viceroy), don't revive them.
             events.append(_apply_capture(world, town, army.faction, config, book))
             captured_town_ids.add(town.id)
 
@@ -330,12 +324,11 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
 def _apply_capture(world: World, town, new_faction: int, config: GameConfig, book) -> dict:
     """Apply one town capture, maintaining the hoisted bookkeeping.
 
-    book = (capitals, town_counts, viceroy_factions). Equivalent to the old
-    per-capture faction_capital + any() scans on the mutated state: the
-    captured town itself counts toward its new faction, and a demoted old
-    capital is forgotten only if it was the recorded one.
+    book = {faction: capital town} for old-capital demotion. Captures never
+    create capitals: a captured capital is demoted and beheading is
+    permanent — only MOVE_CAPITAL founds new capitals.
     """
-    capitals, town_counts, viceroy_factions = book
+    capitals = book
     old_faction = town.faction
     was_capital = town.is_capital
     if was_capital:
@@ -343,12 +336,7 @@ def _apply_capture(world: World, town, new_faction: int, config: GameConfig, boo
         if capitals.get(old_faction) is town:
             del capitals[old_faction]
     town.faction = new_faction
-    town_counts[old_faction] = town_counts.get(old_faction, 0) - 1
-    town_counts[new_faction] = town_counts.get(new_faction, 0) + 1
     town.population *= (1.0 - config.build_efficiency)
-    if capitals.get(new_faction) is None and (town_counts.get(new_faction, 0) > 0 or new_faction in viceroy_factions):
-        town.is_capital = True
-        capitals[new_faction] = town
     return {
         "kind": "town_capture",
         "id": town.id,

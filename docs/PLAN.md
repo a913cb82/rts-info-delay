@@ -100,9 +100,15 @@ Deaths computed simultaneously from final positions.
 
 Events logged to ledger with (t, x, y, kind, payload). Faction observes events where `t + dist(event, capital) / info_speed ≤ now`. During MOVE_CAPITAL flight: no events delivered.
 
+Town state (pop, faction, capital flags) is delayed by the same rule: each
+town reports values as of `now − dist(town, capital) / info_speed` (floored
+to a recorded turn, never future; clamped to birth values). The runner keeps
+per-turn town snapshots as the single source; bots assign the absolute ints.
+No instant intel anywhere — own capital (dist 0) is the only fresh reading.
+
 ## Order lag
 
-All orders travel via messenger at info_speed. Delivered when messenger reaches target. FIFO per entity. Dead letters if target destroyed. MOVE_CAPITAL executes instantly at capital.
+All orders travel via messenger at info_speed. Delivered when messenger reaches target. FIFO per entity. Dead letters if target destroyed. MOVE_CAPITAL is a normal command whose target is the capital itself (distance 0, so delivered the same turn); it executes in economy as a pre-programmed TRAIN (deduct, demote old capital, spawn viceroy with its march target), and the viceroy marches and founds via the normal movement/arrival machinery. No capital exists during the flight; a failed evac (viceroy dies) beheads permanently.
 
 ## Commands
 
@@ -111,9 +117,9 @@ All orders travel via messenger at info_speed. Delivered when messenger reaches 
 | `MOVE_TO <army_id> <from_x> <from_y> <to_x> <to_y>` | Army | Walk toward (to_x,to_y). Standing order. |
 | `TRAIN <town_id>` | Town | Population -= army_cost. Army spawns at town. Standing order. |
 | `BUILD <army_id> <x> <y>` | Location | Army consumed. Found town (pop = army_cost × build_efficiency) or boost existing town (+ army_cost × build_efficiency pop). |
-| `MOVE_CAPITAL <x> <y>` | Viceroy (instant) | Guard army raised (costs army_cost pop). Moves to (x,y). On arrival: founds town, becomes capital. Faction blind during flight. |
+| `MOVE_CAPITAL <x> <y>` | Viceroy | Pre-programmed TRAIN (costs army_cost pop, demotes old capital at train time) + march to (x,y) + BUILD. On arrival: founds town, becomes capital. Faction blind during flight. |
 
-All commands are valid only if the commander faction owns the target. `BUILD` and `MOVE_TO` require the army to be within `interact_radius` of the command target when the command arrives — otherwise the command has no effect. `TRAIN` is sent to the town at (x,y) via messenger and executes on arrival. `MOVE_CAPITAL` executes instantly at the capital (no messenger).
+All commands are valid only if the commander faction owns the target. `BUILD` and `MOVE_TO` require the army to be within `interact_radius` of the command target when the command arrives — otherwise the command has no effect. `TRAIN` is sent to the town at (x,y) via messenger and executes on arrival. `MOVE_CAPITAL` is sent to the capital via messenger (distance 0, delivered same turn) and executes in economy like TRAIN; if the capital falls before economy, the order drops.
 
 ## Turn resolution
 
@@ -126,7 +132,10 @@ All commands are valid only if the commander faction owns the target. `BUILD` an
 
 ## Game record format (JSONL)
 
-Full world state every turn for replay/viewer.
+Full world state every turn for replay/viewer. Trust assumption: the
+record is written live during the game with undelayed truth, so bot
+processes must be sandboxed from reading it (or it must be buffered to
+game end) the day bots are untrusted — today they do no file/network I/O.
 
 ```
 {"type":"config","map":[1000,1000],"info_speed":150.0,...}
@@ -172,6 +181,28 @@ go
 
 Timeout: runner kills process. No orders that turn or ever again.
 
+During MOVE_CAPITAL flight the faction is blind and mute: the runner sends
+it no turns and reads no orders (its clock frozen) until landing. Only the
+viceroy's death while headless kills the faction (no capital and no viceroy
+in flight → dead); if the old capital falls mid-flight the escaped viceroy
+still founds and the bot survives.
+
+On the first turn after landing, the payload leads with a rebuild in
+existing event shapes — `town_spawn` for every town with delay-consistent
+(pop, faction, capital) from the same horizon rule (takeovers and demotions
+land exactly when the news could have arrived), `army_spawn` + one move per
+live army (latest audible move; nothing when inaudible (stale-or-ignorant beats future intel; later audible moves restore tracking)), then
+audible flight battles — followed by the normal events. The bot wipes on
+its unknown landing capital (capitals spawn no other way; redeliveries find
+the id known and skip the wipe) and applies the batch onto the empty world,
+so ghosts, stale capitals and stale trackers all die in one move. Spawn positions
+anchor at birth pos when known (evicted births are old enough that any
+position was long audible), else current. Stale
+backlog is harmless: it applies first onto the empty world, where unknown
+ids are ignored or skipped. Known tradeoff: existence of everything is
+revealed at once (any faction can earn it, rarely, by suffering decapitation
++ blindness first).
+
 ### Game end
 ```
 end <scores_json>
@@ -180,6 +211,9 @@ end <scores_json>
 ## Score
 
 `total_town_population + army_cost × num_armies`
+
+Captures never create capitals: a captured capital is demoted and beheading
+is permanent — only MOVE_CAPITAL founds new capitals.
 
 ## Spatial optimisation
 
@@ -204,7 +238,7 @@ TypeScript + Vite, single-page app. Canvas background + SVG entities.
 
 | Element | Shape | Size |
 |---|---|---|---|
-| town | circle | radius = 4 + 6 × √(pop / population_cap) |
+| town | circle | radius = 8 + 12 × √(pop / population_cap) |
 | capital | circle + center dot | same + white dot |
 | army | triangle | fixed size, stacked if co-located |
 | battle | crossed lines | at battle position |

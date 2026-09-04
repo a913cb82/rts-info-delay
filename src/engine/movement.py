@@ -122,14 +122,11 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
     vel_x = [0.0] * n
     vel_y = [0.0] * n
     has_target = [a.has_target for a in world.armies]
-    is_fresh = [bool(getattr(a, "is_fresh", False)) for a in world.armies]
     factions = [a.faction for a in world.armies]
 
     moving_indices: list[int] = []
     for i, army in enumerate(world.armies):
         if not army.has_target:
-            continue
-        if is_fresh[i]:
             continue
         dx = army.target_x - army.x
         dy = army.target_y - army.y
@@ -146,8 +143,6 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
         moving_indices.append(i)
 
     if not moving_indices:
-        for a in world.armies:
-            a.is_fresh = False
         return []
 
     contacts: list[tuple[float, int, int, str, float]] = []
@@ -210,7 +205,7 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
                             qx = start_x[b] - start_x[a]; qy = start_y[b] - start_y[a]
                             if qx * qx + qy * qy > RQ2_ARMY:
                                 continue
-                            if a_moves and not is_fresh[b] and factions[a] != factions[b]:
+                            if a_moves and factions[a] != factions[b]:
                                 ax = start_x[a]; ay = start_y[a]; vx = vel_x[a]; vy = vel_y[a]
                                 bx = start_x[b]; by = start_y[b]; wx = vel_x[b]; wy = vel_y[b]
                                 ddx = bx - ax; ddy = by - ay
@@ -229,7 +224,7 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
                                     min_dist = math.hypot(rx, ry)
                                 if min_dist <= radius + 1e-9:
                                     contacts.append((t_s, a, b, "army", min_dist))
-                            if b_moves and not is_fresh[a] and factions[a] != factions[b]:
+                            if b_moves and factions[a] != factions[b]:
                                 ax = start_x[b]; ay = start_y[b]; vx = vel_x[b]; vy = vel_y[b]
                                 bx = start_x[a]; by = start_y[a]; wx = vel_x[a]; wy = vel_y[a]
                                 ddx = bx - ax; ddy = by - ay
@@ -250,11 +245,9 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
                                     contacts.append((t_s, b, a, "army", min_dist))
     else:
         for mi in moving_indices:
-            if is_fresh[mi]: continue
             ax = start_x[mi]; ay = start_y[mi]; vx = vel_x[mi]; vy = vel_y[mi]; m_faction = factions[mi]
             for bi in range(n):
                 if bi == mi: continue
-                if is_fresh[bi]: continue
                 if factions[bi] == m_faction: continue
                 t_s, min_dist = _closest_approach(ax, ay, vx, vy, start_x[bi], start_y[bi], vel_x[bi], vel_y[bi])
                 if min_dist <= radius + 1e-9:
@@ -272,7 +265,6 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
                         continue
                     for bi in members:
                         if bi not in moving_set: continue
-                        if is_fresh[bi]: continue
                         if factions[bi] == town.faction: continue
                         qx = start_x[bi] - town.x; qy = start_y[bi] - town.y
                         if qx * qx + qy * qy > RQ2_TOWN:
@@ -296,7 +288,6 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
                         if min_dist <= radius + 1e-9:
                             contacts.append((t_s, bi, ti, "town", min_dist))
     for mi in moving_indices:
-        if is_fresh[mi]: continue
         ax = start_x[mi]; ay = start_y[mi]; vx = vel_x[mi]; vy = vel_y[mi]; m_faction = factions[mi]
         # candidates via hash (60 for towns)
         cand_towns = range(len(town_list)) if not use_hash else []
@@ -363,9 +354,6 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
         idx = j
 
     events: list[dict] = []
-    # Clear is_fresh for next turn after handling movement (fresh immunity only this turn)
-    for a in world.armies:
-        a.is_fresh = False
     for mi in moving_indices:
         army = world.armies[mi]
         ax = start_x[mi]

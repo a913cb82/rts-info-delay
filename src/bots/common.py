@@ -127,7 +127,7 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         for t in nearby_towns:
             dist = math.hypot(x - t.x, y - t.y)
             if 1 < dist < 150:
-                d_eq = 0.1 * math.sqrt(min(t.population, 500))
+                d_eq = 0.1 * math.sqrt(max(0.0, min(t.population, 500)))
                 crowding += (d_eq / dist) ** 0.8
         cands.append((x, y, min_dist, crowding))
         if len(cands) >= 6:
@@ -175,6 +175,37 @@ class BotState:
         if config.map:
             self.world.parse_map(config.map)
 
+    def _wipe_for_landing(self) -> None:
+        """Drop stale world + all trackers ahead of a landing rebuild.
+
+        Fired by an unknown own-capital spawn (a viceroy landing while we
+        were blind — capitals spawn no other way). The batch carries full
+        truth, so merge would keep ghosts and shadowed capitals; wipe first.
+        Safe against stale backlog: the merge below applies backlog (stale)
+        before the fresh batch, and stale events on an empty world are
+        harmless no-ops (unknown ids ignored or skipped by spawn guards).
+        """
+        w = World()
+        w.map_size = list(self.config.map_size) if self.config and self.config.map_size else [1000, 1000]
+        self.world = w
+        self._army_targets = {}
+        self._pending_trains = {}
+        self._pending_builds = {}
+        self._prev_pop = {}
+        self._growth = {}
+        self._cluster_cache = None
+        self._pending_events = []
+        self._stale_cache = {}
+        self._stale_key = None
+        self._standing_orders = None
+        self._plan = None
+        for attr in ("_wave_ids", "_wave_hold_until"):
+            if hasattr(self, attr):
+                try:
+                    delattr(self, attr)
+                except Exception:
+                    pass
+
     def update(self, turn: int, events: list[dict]):
         # Idea 1: growth is folded per applied event and reset on turn
         # advance, so one batched update == several chunked updates.
@@ -185,6 +216,16 @@ class BotState:
         if self._pending_events:
             events = self._pending_events + list(events)
             self._pending_events = []
+        # Landing wipe (two passes so payload order can't matter): an unknown
+        # own-capital spawn means a blind-flight landing with full truth in
+        # this batch. Redeliveries find the id known and skip the wipe.
+        for ev in events:
+            if (isinstance(ev, dict) and ev.get("kind") == "town_spawn"
+                    and ev.get("is_capital") and ev.get("faction") == self.faction
+                    and ev.get("id") is not None
+                    and self.world.get_town(ev.get("id")) is None):
+                self._wipe_for_landing()
+                break
         # Idea 1: dirty set — snapshot/sync only entities this batch names.
         touched_towns, touched_armies = _touched_ids(self.world, events)
         prev = {t.id: t.population for t in self.world.towns if t.id in touched_towns}
@@ -269,7 +310,12 @@ class BotState:
     def is_quiet(self, events) -> bool:
         """Idea 4: a turn is quiet if nothing military happened."""
         for ev in events:
-            if isinstance(ev, dict) and ev.get("kind") in self.MILITARY_KINDS:
+            if not isinstance(ev, dict):
+                continue
+            if ev.get("kind") in self.MILITARY_KINDS:
+                return False
+            # Takeover news rides pop_change: a faction/flag flip wakes too.
+            if ev.get("kind") == "pop_change" and ("faction" in ev or "is_capital" in ev):
                 return False
         return True
 

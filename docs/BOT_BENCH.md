@@ -24,15 +24,16 @@ discriminate each personality's weaknesses. Used to score the 5 bots
    town at end (halved 1500 holds). Tests profitable-raid execution.
 2. `skip_thin` — A 3000 vs B 800 (halves to 400, starves), 60 turns. Goal:
    B still owns its town at end AND focal score high (no wasted army).
-   Tests raid selectivity. Current greedy FAILS (attacks everything).
+   Tests raid selectivity. Pre-campaign greedy FAILED this (attacked
+   everything); fixed by the viability gate (skip_thin 2116→3467).
 3. `recycle` — A 5000 + idle army, no enemies, 30 turns. Goal: 0 idle
    armies at end (BUILD pop-add or found). Tests garrison recycling.
 
 ### Expander (`maps/scenarios/expander_*.json`)
 1. `settle` — A 3000, empty east, 60 turns. Goal: ≥2 towns.
 2. `guard` — A 3000 vs live `aggressive` 3000 300km away, 80 turns. Goal:
-   still owns capital at end. Tests home guard. Current FAILS (marches
-   settler out, loses capital undefended).
+   still owns capital at end. Tests home guard. Pre-campaign FAILED
+   (marched settler out, lost capital undefended); fixed by guard rule.
 3. `chain` — A 3000 + second town 2000 far east, 80 turns. Goal: ≥3 towns
    (each town owes a settler).
 
@@ -40,17 +41,20 @@ discriminate each personality's weaknesses. Used to score the 5 bots
 1. `viable` — A 3000 vs B fat 4000 nearby, 80 turns. Goal: own B's town
    (halved 2000 holds). Tests basic winning attack.
 2. `starve_trap` — A 3000 vs B thin 900, 80 turns. Goal: B still owns at
-   end (restraint) + focal score kept. Current FAILS (captures rubble).
+   end (restraint) + focal score kept. Pre-campaign FAILED (captured
+   rubble); fixed by the viability gate (map redesigned: decoy + prize).
 3. `pair` — A 5000 (affords 2 armies) vs B 3000 + B guard army, 80 turns.
    Goal: own B's town (needs 2v1 stacking to beat the defender).
-   Current FAILS (sends ones, trades).
+   Pre-campaign FAILED (sent ones, traded); fixed by departure-sync.
 
 ### Turtle (`maps/scenarios/turtle_*.json`)
 1. `defend` — A 3000 vs live `aggressive` 3000 250km away, 100 turns.
    Goal: still owns capital at end. Tests garrison defense.
 2. `wake` — A 2000 (under 2600 rule) vs distant `aggressive`, 60 turns.
    Goal: ≥1 army by turn 40. Tests threat-responsive threshold.
-   Current FAILS (never trains under 2600).
+   Pre-campaign FAILED (never trained under 2600); fixed by threat bars.
+   LAPSED in the delayed-intel transition (scores 0 on current tree) —
+   see Delayed-intel era below.
 3. `cluster` — A capital 3000 + town 2000 100km away vs far `aggressive`,
    100 turns. Goal: own both at end (mutual support).
 
@@ -62,6 +66,11 @@ discriminate each personality's weaknesses. Used to score the 5 bots
    score / eliminate B. Tests full combined game.
 
 ## Final scores (campaign complete 2026-09-04; fast sweep 1.2s, slow ~10s)
+
+> Era note: every number below was measured under **instant intel**. The
+> post-campaign engine (delayed pops/factions, beheading permanence,
+> economy-phase MOVE_CAPITAL, no spawn immunity) moved several of them —
+> see Delayed-intel era. Do not judge new work against this table.
 
 | Scenario | Before | After | Δ | What changed |
 |---|---|---|---|---|
@@ -85,6 +94,20 @@ Slow suite: efficiency 59%→100% (= policy optimum 5254); succession 0→611;
 snowball 3748→5681; attrition 4226 (held); endurance 3089 (foes tougher now);
 Elo all-draws at 3000/60t (structural): pro 1501 / greedy 1501 /
 aggressive 1500 / turtle 1499 / expander 1499 — nobody concedes anything.
+(All instant-intel era; unrestored since — see Step 0 in `BOT_PLAN.md`.)
+
+## Delayed-intel era (post-campaign engine changes, current tree)
+
+Fast suite on current tree: raid_hold 3173 / recycle 4086 / skip_thin 3467 /
+settle 2114 / chain 4319 / guard 1624 / viable 3768 / pair 4303 / trap 4040 /
+defend 1109 / wake 0 / cluster 2182 / opening 4316 / defense 0 / endgame 4928.
+Moved vs the table above: defense 1109→0, wake 1060→0 (delayed-intel
+casualties — stale pops miss train bars; the forecast episode showed this
+needs risk posture, not arithmetic), endgame 3249→4928 (unattributed —
+beheading permanence and/or intel timing; needs the Step 0 bisect if it
+matters). Single-town scenarios identical (no distant intel involved).
+This is the table new work is judged against until the Step 0 re-baseline
+lands (live scoreboard: `BOT_PLAN.md`).
 
 ## Starting baselines (pre-campaign, for the record)
 
@@ -149,11 +172,13 @@ sweep stays tactical (<5s); full sweep incl. strategic stays <30s.
   still trails (1856v2441, 2499v3232) because new towns start at 500 and
   turtle never spends. Score converts only with raiding follow-through
   (future expander work: raid turtle's fat capital with built force).
-- **Turtle > Aggressive**: garrison makes raids unprofitable. ASPIRATIONAL
-  — `turtle_defend` currently fails (no garrison). The edge to earn.
+- **Turtle > Aggressive**: garrison makes raids unprofitable. Earned in
+  campaign (`defend` HOLDS); lapsed on current tree only via the intel
+  transition, not the doctrine.
 - **Greedy** is outside the triangle (pure selfish raid economics).
-- **Pro beats all**: currently takes turtle+expander, ties greedy/aggressive
-  (Elo 1531/1529/1527 — the tie cluster to break).
+- **Pro beats all**: at campaign end took turtle+expander, tied
+  greedy/aggressive (Elo 1531/1529/1527 — the tie cluster, since broken
+  by counter-punch; current-tree standing unrestored).
 
 Each edge has its natural metric (raid success / survival / towns_held);
 score is the recorded baseline number, doctrine notes are the reading.
@@ -171,42 +196,24 @@ pro 1531 / greedy 1529 / aggressive 1527 / expander 1457 / turtle 1456
 — everyone takes turtle, otherwise mutual failure (the tie cluster).
 Fast suite: 15 maps, 1.7s total (budget <5s).
 
-## Per-bot improvement ideas (tailored to the failures above)
+## Per-bot improvement ideas — ledger (campaign plan: all five landed)
 
-Build order (each step must move its suite numbers before the next
-starts): turtle defense → aggressive viability → greedy selectivity →
-expander guard → pro tie-break. Rationale: turtle's garrison closes the
-T>A triangle edge everything else assumes; viability gating is shared
-doctrine for both raiders; pro integrates last.
-Shared foundations already landed (see `BOT_TIME.md`): incremental
+The campaign build order (turtle defense → aggressive viability → greedy
+selectivity → expander guard → pro tie-break) is complete; what follows
+is the achieved-vs-open ledger. Open work now lives in `BOT_PLAN.md`
+(Steps 0–6) — this section is record, not roadmap.
+
+Achieved: greedy viability gate + recycle fix + shared home defense;
+aggressive viability gate + departure-sync + leader-targeting; expander
+guard + working settlers + chain-as-policy; turtle threat bars + picket +
+evac + recall + cap-concentration; pro counter-punch + duel-gated rope,
+home defense and viability + empty-field hold + evac.
+
+Open (see `BOT_PLAN.md`): demand-gated trains (successor to the reverted
+forecast episode); meeting forecast + computed arrival-sync; post-capture
+doctrine; evac v2 + capital-sniping + settler-hunting; pro siege craft;
+turtle survive floor (relaxed 1200-trains still suicide — Step 1).
+Shared foundations landed (see `BOT_TIME.md`): incremental
 update, staged decide, memoized staleness, quiet replay, plan queue,
 clock effort, slim wire, measured margins. Bots also have carryover
 backlogs, Fischer/byo-yomi clocks, and the ideas-1–6 test files.
-
-### Greedy — learn selectivity, recycle idlers (triangle: outside, pure raid economics)
-- `skip_thin` fix: pre-compute `target.pop × (1 − build_efficiency) > death_threshold + margin` before marching; skip (or denial-raid deliberately) otherwise.
-- `recycle` already passes; extend to mid-game idlers (armies 17/18 in empty3000 stood down the war): no enemy in range → BUILD pop-add into nearest own town.
-- Raid commitment plans (idea 5): lock target, re-evaluate only on military intel (cuts the 11-turn dither seen on long marches).
-
-### Expander — guard the homeland, pipeline settlers (triangle: beats turtle by out-settling 3v2; loses to aggressive raids)
-- `guard` fix: never leave capital empty while forecast shows enemy inside N-turn march; settler waits or escorts.
-- Score build sites (enemy distance × growth room × own support), not first-fit.
-- Chain rule: each town past 1500 owes one settler (already emergent in `chain`, make it policy).
-- Pre-issued succession marches: lineage survives decapitation by design (commander rule makes this the expander's signature mechanic).
-
-### Aggressive — viability gating, real stacking (triangle: beats expander by raiding first; loses to turtle garrisons once they exist)
-- `starve_trap` fix: same halve-vs-floor check as greedy, inverted into doctrine — never take rubble without a settler-army one march behind (two-wave plan).
-- `pair` passes via waves today; true 2v1 arrival-sync should show in `viable` margins and `pro_endgame`: pair arrivals, don't trickle.
-- Target selection: weight by leader score (dent greedy), not just nearest (farming irrelevance while the leader compounds).
-- Forecast-gated offensives: don't leave home empty while a raid is plausibly inbound (no garrison — character stays all-out).
-
-### Turtle — wake up, garrison, cluster (triangle: beats aggressive by making raids fail; loses to expander's spread. HIGHEST priority — closes the triangle)
-- `wake` fix: threat-responsive threshold (2600 peace → ~1200 as inbound ETA shrinks).
-- `defend` fix: one home army after first contact; a garrison forces a real battle instead of a free capture.
-- `cluster` fix: settle within mutual-support range; emergency last-turn train when the capital is about to fall (rules be damned, it's falling anyway).
-
-### Pro — combine everything, break symmetry (triangle: beats all)
-- Starts as greedy copy: passes `opening`/`defense` by inheritance.
-- `endgame` tie-break: needs what no tier has — combined arms (raid + settle + guard in one game), multi-wave planning, and leader-targeting. Build by porting each tier's fixed behavior behind a situation selector: defend when threatened (turtle), expand when safe (expander), raid when profitable (greedy), kill when advantageous (aggressive).
-- Pro is the only bot allowed to ignore personality; judge it solely on the suite + full-game score.
-- Scoreboard to beat: Elo tie cluster 1531/1529/1527, endgame 2245–2245, efficiency 59% (longpeace 3124/5254). First milestone: take a side-game off greedy.

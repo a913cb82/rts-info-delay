@@ -114,3 +114,27 @@ Doctrine learned (all measured, kept only what scored):
 - Cluster 2730→2182 accepted: baseline held by accident (B wave2 died on a
   settler); 2182 holds by design (t12 garrison). Counter-raid doctrine
   (take B's emptied capital) is the future fix. No regressions elsewhere.
+
+### Forecast-at-arrival train gate — tried, REVERTED (2026-09-04)
+Replaced the 400/turn distance fudge in `can_train_here` / greedy / pro /
+turtle-relaxed with `forecast_pop` (measured growth over intel + messenger
+legs) + a 1500 survive floor. Unit-correct, bench-negative, reverted same day.
+Fast suite (current tree): pair 4303→3773, trap 4040→3463, viable 3768→3233,
+chain 4319→3773, raid_hold 3173→2643, skip_thin 3467→2887, endgame 4928→2000
+(uniform ~-530; single-town scenarios flat; wake/defense stayed 0).
+Same-spawn-count autopsy (viable 4v4): the gate didn't add trains, it moved
+them earlier — distant conquests cleared 1600 instead of 2133, pulling
+-500 train→build cycles inside the scoring window.
+Doctrine learned:
+- Affordability != desirability. The fudge was load-bearing as a spending
+  brake: at 1-5 pop/turn growth, a 1000-pop train repays over hundreds of
+  turns, so earlier distant trains lose at every horizon tested (80 AND
+  1500 turns). Gating *whether* to train needs demand (targets/threats/
+  settler pipeline), not just arrival math — that doctrine is still open.
+- Delayed intel can't be outgrown: wake stayed 0 because 4-turn growth
+  (~+4) can't close 100+ intel gaps at 1200-2600 bars. Stale-threshold
+  scenarios need risk posture, not arithmetic.
+- Attribution hygiene held: stashed campaign code reproduces the old table
+  exactly, isolating all movement to post-campaign engine changes
+  (delayed intel moved defense 1109→0, wake 1060→0, endgame 3249→4928 —
+  separate ledger to settle).

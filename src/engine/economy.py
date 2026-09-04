@@ -491,7 +491,7 @@ def apply_train(world: World, config: GameConfig, pre_capture_factions: dict[int
         should_spawn = original_pop >= config.army_cost - 1e-9
         if should_spawn:
             new_id = world.allocate_id()
-            army = Army(id=new_id, faction=original_faction, x=town.x, y=town.y, is_fresh=True, is_viceroy=False)
+            army = Army(id=new_id, faction=original_faction, x=town.x, y=town.y, is_viceroy=False)
             world.armies.append(army)
             events.append({"kind": "army_spawn", "id": army.id, "faction": army.faction, "x": army.x, "y": army.y, "is_viceroy": False})
         if town.population < config.death_threshold - 1e-9:

@@ -23,7 +23,6 @@ class Army:
     target_y: float = 0.0
     has_target: bool = False
     is_viceroy: bool = False
-    is_fresh: bool = False  # immune from combat/movement this turn when True (set on spawn, cleared next turn)
 
 
 @dataclass

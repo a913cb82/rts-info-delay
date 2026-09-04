@@ -86,11 +86,13 @@ def test_town_capture_changes_faction():
     assert t is not None and t.faction == 0 and t.population == 2500
 
 
-def test_town_capture_becomes_capital():
+def test_town_capture_never_becomes_capital():
+    # Beheading is permanent: even a headless captor gains no capital —
+    # only MOVE_CAPITAL founds new ones.
     bot = _bot_with_town(fid=1, tid=0, cap=True)
     bot.update(1, [{"kind": "town_capture", "id": 0, "new_faction": 0, "population": 2500, "was_capital": True}])
     t = bot.world.get_town(0)
-    assert t is not None and t.is_capital
+    assert t is not None and not t.is_capital
 
 
 def test_train_then_death():
@@ -130,3 +132,4 @@ def test_can_train_safely():
     assert can_train_safely(t, conservative=True) is True
     t.population = 40000  # in peak window
     assert can_train_safely(t, conservative=True) is False
+
