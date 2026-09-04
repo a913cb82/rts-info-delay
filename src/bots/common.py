@@ -130,6 +130,7 @@ class BotState:
         self._growth: dict[int, float] = {}
         self._cluster_cache: tuple[int, list[list[Town]]] | None = None
         self.deadline: float | None = None  # set per turn by bot_main
+        self._pending_events: list = []  # unapplied backlog carried into next turn
 
     def init(self, config: GameConfig, faction: int):
         self.config = config
@@ -140,9 +141,20 @@ class BotState:
 
     def update(self, turn: int, events: list[dict]):
         self.turn = turn
+        # Oldest first: finish last turn's backlog before this turn's events.
+        if self._pending_events:
+            events = self._pending_events + list(events)
+            self._pending_events = []
         prev = {t.id: t.population for t in self.world.towns}
         from engine.events import apply_events
-        apply_events(self.world, events, self.config)
+        # Chunked so a huge backlog can't blow the clock before decide runs;
+        # whatever doesn't fit carries over to next turn (order preserved).
+        CHUNK = 64
+        for i in range(0, len(events), CHUNK):
+            apply_events(self.world, events[i:i + CHUNK], self.config)
+            if i + CHUNK < len(events) and self.should_yield():
+                self._pending_events = events[i + CHUNK:]
+                break
         self._growth = {}
         for t in self.world.towns:
             if t.id in prev:
@@ -497,7 +509,8 @@ def bot_main(decide_fn):
         if turn == -1:
             break
         t_start = time.time()
-        state.update(turn, events)
+        # deadline BEFORE update: a huge backlog must not blow the clock
+        # before decide runs — update() yields mid-backlog and carries over.
         # deadline: Fischer clock from engine when sent, else legacy fixed budget
         if clock is None:
             try:
@@ -507,6 +520,7 @@ def bot_main(decide_fn):
             state.deadline = t_start + max(0.02, ms / 1000 - 0.015)
         else:
             state.deadline = t_start + max(0.005, clock / 1000 - 0.015)
+        state.update(turn, events)
         orders = decide_fn(state, cfg)
         for o in orders:
             # track MOVE_TO / TRAIN / BUILD locally for delay-aware decisions
