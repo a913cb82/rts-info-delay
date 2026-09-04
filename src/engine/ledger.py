@@ -12,6 +12,55 @@ import numpy as np
 from numba import njit
 
 
+@njit
+def _observe_masks(ex, ey, skip, facs, f_start, f_len, anc_x, anc_y,
+                   los2, full_mask, out):
+    """Bitmask of observing factions per entity (flat anchor scan).
+
+    Same float64 ops and comparison as the reference scan, so tags are
+    bit-identical; the OR-mask makes discovery order irrelevant to
+    determinism. Live entities pass their own faction as skip (they
+    self-observe at dist 0 by construction); deaths pass -1."""
+    eps = 1e-9
+    for i in range(ex.shape[0]):
+        mask = 0
+        sk = skip[i]
+        skbit = np.int64(0)
+        if sk >= 0:
+            skbit = np.int64(1) << np.int64(sk)
+        target = full_mask ^ skbit
+        for fi in range(facs.shape[0]):
+            f = facs[fi]
+            if sk >= 0 and f == sk:
+                continue
+            bit = np.int64(1) << np.int64(f)
+            base = f_start[fi]
+            for k in range(base, base + f_len[fi]):
+                dx = anc_x[k] - ex[i]
+                dy = anc_y[k] - ey[i]
+                if dx * dx + dy * dy <= los2 + eps:
+                    mask |= bit
+                    break
+            if mask == target:
+                break
+        out[i] = mask
+
+
+def _precompile_observe():
+    # Pay JIT once at import, never mid-game (house rule opt10).
+    ex = np.zeros(4, dtype=np.float64)
+    sk = np.full(4, -1, dtype=np.int64)
+    fa = np.zeros(1, dtype=np.int64)
+    st = np.zeros(1, dtype=np.int64)
+    ln = np.zeros(1, dtype=np.int64)
+    out = np.zeros(4, dtype=np.int64)
+    _observe_masks(ex, ex, sk, fa, st, ln, ex, ex, 22500.0,
+                   np.int64(1), out)
+
+
+_precompile_observe()
+
+
 class EventKind(Enum):
     # Wire carries only state updates. Step/record dicts use plain kind
     # strings (never this enum); nothing else logs ledger entries.
@@ -172,74 +221,114 @@ class Ledger:
         turn = int(turn)
         los = float(line_of_sight)
         los2 = los * los
-        # Faction entity positions (LOS anchors) this turn.
-        anchors: dict[int, list] = {}
+        # Flat per-faction anchor arrays + one batched kernel call. Tags
+        # are bit-identical to the reference scan (same float64 ops).
+        fac_xs: dict[int, list] = {}
+        fac_ys: dict[int, list] = {}
         for t in world.towns:
-            anchors.setdefault(t.faction, []).append((t.x, t.y))
+            fac_xs.setdefault(t.faction, []).append(t.x)
+            fac_ys.setdefault(t.faction, []).append(t.y)
         for a in world.armies:
-            anchors.setdefault(a.faction, []).append((a.x, a.y))
+            fac_xs.setdefault(a.faction, []).append(a.x)
+            fac_ys.setdefault(a.faction, []).append(a.y)
+        facs = sorted(fac_xs)
+        nf = len(facs)
+        f_start = np.empty(nf, dtype=np.int64)
+        f_len = np.empty(nf, dtype=np.int64)
+        ax_parts = []
+        ay_parts = []
+        full_mask = np.int64(0)
+        for fi, f in enumerate(facs):
+            xs = fac_xs[f]
+            f_start[fi] = sum(f_len[:fi]) if fi else 0
+            f_len[fi] = len(xs)
+            ax_parts.append(np.asarray(xs, dtype=np.float64))
+            ay_parts.append(np.asarray(fac_ys[f], dtype=np.float64))
+            full_mask |= np.int64(1) << np.int64(f)
+        anc_x = np.concatenate(ax_parts) if ax_parts else np.zeros(0, dtype=np.float64)
+        anc_y = np.concatenate(ay_parts) if ay_parts else np.zeros(0, dtype=np.float64)
+        facs_np = np.asarray(facs, dtype=np.int64)
 
-        def observers(x: float, y: float) -> set:
-            out = set()
-            for f, pts in anchors.items():
-                for px, py in pts:
-                    dx = px - x
-                    dy = py - y
-                    if dx * dx + dy * dy <= los2 + 1e-9:
-                        out.add(f)
-                        break
-            return out
+        towns = world.towns
+        armies = world.armies
+        nt = len(towns)
+        na = len(armies)
+        ex = np.empty(nt + na, dtype=np.float64)
+        ey = np.empty(nt + na, dtype=np.float64)
+        skip = np.empty(nt + na, dtype=np.int64)
+        for i, t in enumerate(towns):
+            ex[i] = t.x
+            ey[i] = t.y
+            skip[i] = t.faction
+        for j, a in enumerate(armies):
+            ex[nt + j] = a.x
+            ey[nt + j] = a.y
+            skip[nt + j] = a.faction
+        masks = np.empty(nt + na, dtype=np.int64)
+        _observe_masks(ex, ey, skip, facs_np, f_start, f_len, anc_x, anc_y,
+                       los2, full_mask, masks)
+
+        def vis_of(idx: int, own: int) -> set:
+            m = int(masks[idx])
+            return {f for f in facs if (m >> f) & 1} | {own}
 
         live: set = set()
         positions: dict = {}
-        for t in world.towns:
+        for i, t in enumerate(towns):
             key = ("town", t.id)
             live.add(key)
             positions[key] = (t.x, t.y, t.faction)
-            vis = observers(t.x, t.y)
-            if not vis:
-                continue
+            vis = vis_of(i, t.faction)
             payload = {"id": t.id, "faction": t.faction,
                        "population": int(round(t.population)),
                        "is_capital": bool(t.is_capital)}
             ev = Event(turn=turn, x=t.x, y=t.y, kind=EventKind.TOWN_UPDATE,
                        payload=payload, visible_to=vis)
             self.log(ev)
-            self._column(turn, t.x, t.y, ("town", t.id), vis, payload, ev.seq)
-        for a in world.armies:
+            self._column(turn, t.x, t.y, key, vis, payload, ev.seq)
+        for j, a in enumerate(armies):
             key = ("army", a.id)
             live.add(key)
             positions[key] = (a.x, a.y, a.faction)
-            vis = observers(a.x, a.y)
-            if not vis:
-                continue
+            vis = vis_of(nt + j, a.faction)
             payload = {"id": a.id, "faction": a.faction, "alive": True,
                        "is_viceroy": bool(a.is_viceroy)}
             ev = Event(turn=turn, x=a.x, y=a.y, kind=EventKind.ARMY_UPDATE,
                        payload=payload, visible_to=vis)
             self.log(ev)
-            self._column(turn, a.x, a.y, ("army", a.id), vis, payload, ev.seq)
+            self._column(turn, a.x, a.y, key, vis, payload, ev.seq)
         # Tombstones: vanished ids, tagged with observers of the site.
-        for key in self._known_ids:
-            if key in live:
-                continue
-            kind, eid = key
-            x, y, fac = self._known_pos.get(key, (0.0, 0.0, -1))
-            vis = observers(x, y)
-            if not vis:
-                continue
-            if kind == "town":
-                payload = {"id": eid, "faction": fac, "population": 0,
-                           "is_capital": False}
-                ek = EventKind.TOWN_UPDATE
-            else:
-                payload = {"id": eid, "faction": fac, "alive": False,
-                           "is_viceroy": False}
-                ek = EventKind.ARMY_UPDATE
-            ev = Event(turn=turn, x=x, y=y, kind=ek, payload=payload,
-                       visible_to=vis)
-            self.log(ev)
-            self._column(turn, x, y, key, vis, payload, ev.seq)
+        gone = [key for key in self._known_ids if key not in live]
+        if gone:
+            gx = np.empty(len(gone), dtype=np.float64)
+            gy = np.empty(len(gone), dtype=np.float64)
+            for gi, key in enumerate(gone):
+                x, y, fac = self._known_pos.get(key, (0.0, 0.0, -1))
+                gx[gi] = x
+                gy[gi] = y
+            gskip = np.full(len(gone), -1, dtype=np.int64)
+            gmasks = np.empty(len(gone), dtype=np.int64)
+            _observe_masks(gx, gy, gskip, facs_np, f_start, f_len, anc_x,
+                           anc_y, los2, full_mask, gmasks)
+            for gi, key in enumerate(gone):
+                m = int(gmasks[gi])
+                if not m:
+                    continue
+                vis = {f for f in facs if (m >> f) & 1}
+                kind, eid = key
+                x, y, fac = self._known_pos.get(key, (0.0, 0.0, -1))
+                if kind == "town":
+                    payload = {"id": eid, "faction": fac, "population": 0,
+                               "is_capital": False}
+                    ek = EventKind.TOWN_UPDATE
+                else:
+                    payload = {"id": eid, "faction": fac, "alive": False,
+                               "is_viceroy": False}
+                    ek = EventKind.ARMY_UPDATE
+                ev = Event(turn=turn, x=x, y=y, kind=ek, payload=payload,
+                           visible_to=vis)
+                self.log(ev)
+                self._column(turn, x, y, key, vis, payload, ev.seq)
         self._known_ids = live
         self._known_pos = positions
 

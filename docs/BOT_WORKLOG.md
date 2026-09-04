@@ -213,3 +213,27 @@ Doctrine funnel for BOT_PLAN Steps: selectivity bleed (skip_thin/trap/
 viable) -> Step 2 trade evaluator (known-foe sums, last_seen risk,
 trail counts, scouting inside the step, counter-intel parked after);
 Elo all-hold verdict pre-Step-5; scoreboard re-cut to fog era.
+
+## Perf phase 1: generation (kernel wins, micros don't, skip rejected)
+
+Profile said observers() was 62% of generate. Chain (heavy rig):
+double-loop 63.1 -> self-shortcut 51.7 (-18%, exact: own anchor at dist 0
+always hit) -> grid experiment: 64.9 clustered (+26%) BUT 7.2 full20
+(-71% from 24.8). Neither dominates -> numba flat-scan kernel (same
+float64 ops, OR-mask order-free): heavy 25.1 (-60%), full20 3.4 (-86%),
+and beats grid on spread too. Micro-opts (inlined mask->set, hoisted
+_column attrs, _ensure_row inline) measured ~zero -> reverted for
+readability. Budget gates: tests/engine/test_perf_budget.py (heavy 30ms,
+full20 5ms, delivery-5 3ms; delivery actually ~0.4-1ms).
+Skip-model (99.5% of army-turns stationary in empty_3000) REJECTED:
+skipping re-times releases (older-t news arrives sooner) -> full
+trajectory churn + fog-table re-baseline for a win nobody feels
+(real games are bot-I/O bound; empty_3000 still 3.7s). Correctness proofs:
+all 15 scenario scores byte-identical post-kernel; evict/compact verified
+safe (dense row ids are values, never renumbered; SendState unaffected).
+Phase split on the pathological rig: combat ~135 + movement ~120
+(pre-existing, untouched, data-dependent +-15 + stray major-GC ~50ms per
+house rules) vs knowledge ~25 (was ~63). Combat's stacked-weakness search
+is the next fat and belongs to its own phase, not the rework.
+Latent bug fixed: bench_suite Ledger(cfg) (swallowed by the deleted
+fallback; now canonical construction).

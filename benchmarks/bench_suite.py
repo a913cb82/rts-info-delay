@@ -67,7 +67,8 @@ def bench_step_no_armies():
         # clone for repeat
         def make_fn():
             ww, cc = load_world_from_map(path)
-            lg=Ledger(cc)
+            import math
+            lg=Ledger(cc.info_speed, math.hypot(*ww.map_size))
             # init ledger with turn 0 events? not needed
             def fn():
                 # ensure deterministic: copy towns
@@ -88,7 +89,7 @@ def bench_step_no_armies():
         try:
             def full_fn():
                 ww, cc = load_world_from_map(path)
-                lg=Ledger(cc)
+                lg=Ledger(cc.info_speed, math.hypot(*ww.map_size))
                 step.step(ww, cc, lg, 1, {})
             bench(f"step no armies {name}", full_fn, repeat=5)
         except Exception as e:
@@ -171,7 +172,8 @@ def bench_heavy_snapshot():
         ww.armies=[Army(id=a.id, faction=a.faction, x=a.x, y=a.y, target_x=a.target_x, target_y=a.target_y, has_target=a.has_target) for a in w.armies]
         ww._next_army_id=w._next_army_id if hasattr(w, '_next_army_id') else 100000
         ww._next_town_id=w._next_town_id if hasattr(w, '_next_town_id') else 100000
-        lg=Ledger(cfg)
+        import math
+        lg=Ledger(cfg.info_speed, math.hypot(1000, 1000))
         step.step(ww, cfg, lg, 20, {})
     bench("step heavy 207t+3036a (t19→20)", fn, repeat=3)
     # also micro benches on that scale
