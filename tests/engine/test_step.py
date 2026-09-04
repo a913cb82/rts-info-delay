@@ -82,11 +82,11 @@ class TestTurnOrder:
         assert len(w.armies) == 1  # newly spawned
 
     def test_knowledge_after_economy(self) -> None:
-        """T4: Ledger events logged after economy+combat, not instantly."""
-        w = _world_with(armies=[_army(0, 0, 0, 1), _army(5, 0, 1, 2)])
+        """T4: Ledger updates generated after economy+combat, not instantly."""
+        w = _world_with(armies=[_army(0, 0, 0, 1), _army(500, 0, 1, 2)])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={})
-        # Events should be in ledger
+        # Updates should be in ledger (no combat at 500 km: both survive)
         assert len(ledger.events) > 0
         # All events logged at current turn
         for ev in ledger.events:
@@ -135,97 +135,6 @@ class TestTurnOrder:
         run1 = run_10_turns(None)
         run2 = run_10_turns(None)
         assert run1 == run2
-
-
-class TestInfoDelay:
-    """I1–I5e: Information delay — events visible only after propagation time."""
-
-    def test_near_event_same_turn(self) -> None:
-        """I1: Event at dist 50 → visible by turn 1 (within info_speed)."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=50, y=0, kind=EventKind.BATTLE, payload={}))
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.5)
-        assert len(visible) == 1
-
-    def test_far_event_delayed(self) -> None:
-        """I2: Event at dist 300 → delayed 2 turns."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=300, y=0, kind=EventKind.BATTLE, payload={}))
-        # Delay = 300/150 = 2.0, visible at turn 1+2=3
-        v_now2 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=2.0)
-        assert len(v_now2) == 0
-        v_now3 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=3.0)
-        assert len(v_now3) == 1
-
-    def test_at_capital_immediate(self) -> None:
-        """I3: Event at capital position → zero delay."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=5, x=100, y=200, kind=EventKind.ARMY_SPAWN, payload={}))
-        visible = ledger.visible_events(faction=0, capital_x=100, capital_y=200, now=5.0)
-        assert len(visible) == 1
-
-    def test_independent_delays(self) -> None:
-        """I4: Three events at different distances → visible at different times."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=10, y=0, kind=EventKind.BATTLE, payload={}))
-        ledger.log(Event(turn=1, x=150, y=0, kind=EventKind.BATTLE, payload={}))
-        ledger.log(Event(turn=1, x=300, y=0, kind=EventKind.BATTLE, payload={}))
-
-        v1 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.1)
-        assert len(v1) == 1  # only near event
-        v2 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=2.0)
-        assert len(v2) == 2  # near + middle
-        v3 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=3.0)
-        assert len(v3) == 3  # all
-
-    def test_ledger_window_retain(self) -> None:
-        """I5: Ledger retains events for ≥ max_dist/info_speed turns."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
-        # max window = 1414/150 ≈ 9.4 turns
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=10.0)
-        assert len(visible) == 1
-
-    def test_no_delivery_during_capital_flight(self) -> None:
-        """I5b: No events delivered during MOVE_CAPITAL flight."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
-        visible = ledger.visible_events(
-            faction=0, capital_x=0, capital_y=0, now=100.0, is_in_flight=True
-        )
-        assert len(visible) == 0
-
-    def test_capital_move_changes_dist(self) -> None:
-        """I5c: After capital move, old events re-evaluated from new capital."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
-        # Near old capital
-        v1 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.0)
-        assert len(v1) == 1
-        # Far from new capital → delay
-        v2 = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=2.0)
-        assert len(v2) == 0
-
-    def test_event_kind_fields(self) -> None:
-        """I5d: Events have kind field."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        for kind in EventKind:
-            ledger.log(Event(turn=1, x=0, y=0, kind=kind, payload={}))
-        kinds = {e.kind for e in ledger.events}
-        assert kinds == set(EventKind)
-
-    def test_faction_specific_visibility(self) -> None:
-        """I5e: Factions see events at different times based on capital distance."""
-        ledger = Ledger(CFG.info_speed, 1414)
-        ledger.log(Event(turn=1, x=100, y=0, kind=EventKind.BATTLE, payload={}))
-        # Faction 0 capital at (0,0): dist=100 → delay=0.67
-        v0 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.7)
-        assert len(v0) == 1
-        # Faction 1 capital at (400,0): dist=300 → delay=2.0
-        v1 = ledger.visible_events(faction=1, capital_x=400, capital_y=0, now=2.0)
-        assert len(v1) == 0
-        v1_later = ledger.visible_events(faction=1, capital_x=400, capital_y=0, now=3.0)
-        assert len(v1_later) == 1
 
 
 class TestOrderLag:
@@ -515,9 +424,10 @@ class TestCommands:
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
-        # During flight → visible_events returns []
-        visible = ledger.visible_events(faction=0, capital_x=100, capital_y=100, now=2.0, is_in_flight=True)
-        assert len(visible) == 0
+        # During flight → deliver returns [] (mute is the I/O skip)
+        from engine.delivery import SendState
+        from runner.main import deliver
+        assert deliver(0, w, ledger, 2, SendState()) == []
 
     def test_move_capital_insufficient_pop(self) -> None:
         """O10b: MOVE_CAPITAL when capital pop < army_cost → rejected."""
@@ -768,6 +678,21 @@ class TestMoveCapitalEvents:
         viceroy = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy) == 0
 
+    def test_viceroy_fights_before_founding(self) -> None:
+        """O11c: founding is the BUILD-step in economy — an arrived viceroy
+        lives through combat first. 1v1 with an adjacent foe annihilates
+        both (no town); the old arrival-founding would have founded the
+        town and lost it to same-turn capture instead."""
+        t = _town(0, 0, 5000, faction=0, tid=1, cap=True)
+        w = _world_with(towns=[t], armies=[_army(100, 0, 1, 7)])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 100 0"]})
+        events = step(w, CFG, ledger, turn=2, orders={})
+        events = step(w, CFG, ledger, turn=3, orders={})
+        assert [e for e in events if e.get("kind") == "battle"], "expected interception battle"
+        assert not [x for x in w.towns if abs(x.x - 100) < 1 and abs(x.y) < 1]
+        assert not [a for a in w.armies if a.is_viceroy]
+        assert not [x for x in w.towns if x.faction == 0 and x.is_capital]
 
 class TestViceroyFieldInEvents:
     """is_viceroy field in army_spawn events."""
@@ -857,89 +782,3 @@ class TestMoveCapitalEdgeCases:
         assert len(viceroy) == 1
         assert (viceroy[0].target_x, viceroy[0].target_y) == (200.0, 200.0)
         assert not [e for e in events if e.get("kind") == "town_spawn"]
-
-
-class TestMoveCapitalLedger:
-    """Event visibility after MOVE_CAPITAL — only events from new capital time onwards."""
-
-    def test_events_before_new_capital_not_visible_from_new_capital(self) -> None:
-        """Old events (t < new_capital_time) never become visible from new capital."""
-        # Old capital at (0,0), new capital will be at (500,0) established at turn 5
-        cap = _town(0, 0, 5000, faction=0, tid=1, cap=True)
-        w = _world_with(towns=[cap])
-        ledger = Ledger(CFG.info_speed, 1414)
-        # Event at old capital position at t=1 (near old capital)
-        from engine.ledger import Event, EventKind
-        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
-        # MOVE_CAPITAL at turn 5 to (500,0) — arrives same turn (dist 0 for this test, target same as start for instant)
-        # Use instant arrival: target same as capital, so new capital at (500,0) at turn 5
-        # To make it 500 away, we need a real move: use target (500,0) distance 500, speed 50 → 10 turns, but for test we use instant via same pos trick
-        # Simpler: directly set capital_since to 5 to simulate new capital at turn 5
-        # Instead, do a real MOVE_CAPITAL via step and then check visibility
-        # Log an event at t=6 near new capital (should be visible) and check filtering
-        ledger.log(Event(turn=6, x=500, y=0, kind=EventKind.BATTLE, payload={}))
-        # Simulate new capital established at turn 5
-        ledger.set_capital_since(faction=0, turn=5)
-        # Old event at t=1 should NOT be visible from new capital at (500,0) even though dist allows it (1+500/150=4.33 <=10)
-        visible_old = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=10)
-        # Only the t=6 event should be visible, not t=1
-        assert len(visible_old) == 1
-        assert visible_old[0].turn == 6
-
-    def test_new_events_visible_from_new_capital(self) -> None:
-        """Events with t >= new_capital_time are visible from new capital based on distance."""
-        from engine.ledger import Event, EventKind
-        ledger = Ledger(CFG.info_speed, 1414)
-        # New capital at (500,0) since turn 5
-        ledger.set_capital_since(faction=0, turn=5)
-        ledger.log(Event(turn=5, x=500, y=0, kind=EventKind.BATTLE, payload={"id": 1}))
-        ledger.log(Event(turn=6, x=500, y=0, kind=EventKind.BATTLE, payload={"id": 2}))
-        # Both at distance 0 from new capital, should be visible at now=6
-        visible = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=6)
-        assert len(visible) == 2
-        # Event at t=4 (before new capital) should not be visible even if close
-        ledger2 = Ledger(CFG.info_speed, 1414)
-        ledger2.set_capital_since(faction=0, turn=5)
-        ledger2.log(Event(turn=4, x=500, y=0, kind=EventKind.BATTLE, payload={}))
-        visible2 = ledger2.visible_events(faction=0, capital_x=500, capital_y=0, now=10)
-        assert len(visible2) == 0
-
-    def test_step_MOVE_CAPITAL_resets_ledger_since(self) -> None:
-        """Full step: after MOVE_CAPITAL arrival, ledger filters old events."""
-        cap = _town(0, 0, 5000, faction=0, tid=1, cap=True)
-        w = _world_with(towns=[cap])
-        ledger = Ledger(CFG.info_speed, 1414)
-        # Event at old capital before move
-        from engine.ledger import Event, EventKind
-        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
-        # MOVE_CAPITAL to (100,100) at turn 2: spawns turn 2, 141 km flight
-        # arrives turn 5 (50 km/turn)
-        w.standing_orders.append(
-            StandingOrder(command=CommandType.MOVE_CAPITAL, target_id=1, target_type="town", args=[100.0, 100.0])
-        )
-        for turn in (2, 3, 4, 5):
-            step(w, CFG, ledger, turn=turn, orders={})
-        # After arrival, old event at t=1 should not be visible from new capital
-        visible = ledger.visible_events(faction=0, capital_x=100, capital_y=100, now=10)
-        # The old t=1 event is < capital_since (5), so filtered
-        assert all(e.turn >= 5 for e in visible)
-        # A new event at t=6 near new capital should be visible
-        ledger.log(Event(turn=6, x=100, y=0, kind=EventKind.BATTLE, payload={}))
-        visible2 = ledger.visible_events(faction=0, capital_x=100, capital_y=0, now=10)
-        assert any(e.turn == 6 for e in visible2)
-
-    def test_viceroy_fights_before_founding(self) -> None:
-        """O11c: founding is the BUILD-step in economy — an arrived viceroy
-        lives through combat first. 1v1 with an adjacent foe annihilates
-        both (no town); the old arrival-founding would have founded the
-        town and lost it to same-turn capture instead."""
-        t = _town(0, 0, 5000, faction=0, tid=1, cap=True)
-        w = _world_with(towns=[t], armies=[_army(100, 0, 1, 7)])
-        ledger = Ledger(CFG.info_speed, 1414)
-        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 100 0"]})
-        events = step(w, CFG, ledger, turn=2, orders={})
-        events = step(w, CFG, ledger, turn=3, orders={})
-        assert [e for e in events if e.get("kind") == "battle"], "expected interception battle"
-        assert not [x for x in w.towns if abs(x.x - 100) < 1 and abs(x.y) < 1]
-        assert not [a for a in w.armies if a.is_viceroy]
-        assert not [x for x in w.towns if x.faction == 0 and x.is_capital]

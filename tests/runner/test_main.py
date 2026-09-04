@@ -242,213 +242,35 @@ class TestBotProtocol:
 # Score tests moved to tests/engine/test_score.py
 
 
-class TestViceroyFlight:
-    """In-flight viceroys are mute; landing rebuilds via snapshot."""
-
-    def _world(self):
-        from engine.world import World, Town, Army
-        w = World()
-        w.map_size = [1000, 1000]
-        return w, Town, Army
-
-    def test_faction_in_flight(self) -> None:
-        from runner.main import faction_in_flight
-        from engine.world import World, Town, Army
-        w = World()
-        w.map_size = [1000, 1000]
-        assert faction_in_flight(w, 0) is False
-        w.armies.append(Army(id=1, faction=0, x=0, y=0))
-        assert faction_in_flight(w, 0) is False
-        a = Army(id=2, faction=0, x=0, y=0)
-        a.is_viceroy = True
-        w.armies.append(a)
-        assert faction_in_flight(w, 0) is True
-        assert faction_in_flight(w, 1) is False
-
-    def test_landed_this_turn(self) -> None:
-        from runner.main import landed_this_turn
-        assert landed_this_turn([], 0) is False
-        evs = [{"kind": "town_spawn", "id": 7, "faction": 0, "is_capital": True}]
-        assert landed_this_turn(evs, 0) is True
-        assert landed_this_turn(evs, 1) is False
-        evs2 = [{"kind": "town_spawn", "id": 7, "faction": 0, "is_capital": False}]
-        assert landed_this_turn(evs2, 0) is False
-
-    def test_landing_spawns_rebuild_world(self) -> None:
-        """Landing payload spawns every town/army + horizon moves + battles."""
-        from engine.config import GameConfig
-        from engine.world import World, Town, Army
-        from engine.ledger import Ledger, Event
-        from runner.main import landing_spawns
-        cfg = GameConfig()
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns.append(Town(id=7, faction=0, x=0, y=0, population=1234, is_capital=False))
-        w.towns.append(Town(id=2, faction=0, x=0, y=0, population=500, is_capital=True))
-        w.armies.append(Army(id=9, faction=1, x=600, y=0))
-        w.armies.append(Army(id=10, faction=1, x=50, y=0))
-        lg = Ledger(cfg.info_speed, 1414)
-        lg.log(Event(turn=12, x=300, y=0, kind="army_move",
-                     payload={"id": 9, "has_target": True, "target_x": 0.0, "target_y": 0.0}))
-        lg.log(Event(turn=18, x=500, y=0, kind="army_move",
-                     payload={"id": 9, "has_target": True, "target_x": 0.0, "target_y": 0.0}))
-        lg.log(Event(turn=10, x=300, y=0, kind="battle", payload={}))
-        lg.log(Event(turn=18, x=1500, y=0, kind="battle", payload={}))
-        lg.set_capital_since(0, 19)
-        last: dict = {}
-        # Town 7 sits 450 km out and flipped faction at turn 18: horizon
-        # 20 - 3 = 17 still shows the OLD faction and pop.
-        w.towns[0].x = 450.0
-        hist = [{7: (1000 + 10 * t, 1 if t < 18 else 0, False),
-                 2: (500, 0, True)} for t in range(21)]
-        out = landing_spawns(w, lg, 0, 0.0, 0.0, 20.0, last, hist)
-        # Every town spawned with delay-consistent values; last-sent refreshed.
-        spawns = {e["id"]: e for e in out if e.get("kind") == "town_spawn"}
-        assert set(spawns) == {7, 2}
-        assert spawns[7]["population"] == 1170
-        assert spawns[7]["faction"] == 1  # takeover invisible for 3 turns
-        assert spawns[2]["is_capital"] is True
-        assert last == {7: 1170, 2: 500}
-        # Every army spawned + exactly one move: horizon pick for movers
-        # (t12 audible at 14 <= 20, t18 not at 21.3 > 20) ...
-        assert {e["id"] for e in out if e.get("kind") == "army_spawn"} == {9, 10}
-        moves = [(e.get("x"), e.get("y")) for e in out
-                 if e.get("kind") == "army_move" and e.get("id") == 9]
-        assert moves == [(300, 0)]
-        # ... nothing for the never-moved (spawn alone; no future to leak).
-        moves10 = [e for e in out
-                   if e.get("kind") == "army_move" and e.get("id") == 10]
-        assert moves10 == []
-        # Audible battle replays (10 + 2 <= 20); far one doesn't.
-        battles = [(e.get("x"), e.get("y")) for e in out if e.get("kind") == "battle"]
-        assert battles == [(300, 0)]
-
-    def test_normal_payload_delayed_pops(self) -> None:
-        """Pops come from history at now - dist/info, slim-wired."""
-        from types import SimpleNamespace
-        from engine.config import GameConfig
-        from engine.world import World, Town
-        from engine.ledger import Ledger
-        from runner.main import _build_bot_events
-        cfg = GameConfig()
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns.append(Town(id=1, faction=0, x=0, y=0, population=3000, is_capital=True))
-        w.towns.append(Town(id=2, faction=0, x=600, y=0, population=9999, is_capital=False))
-        lg = Ledger(cfg.info_speed, 1414)
-        bp = SimpleNamespace(_last_sent_pop={}, _last_sent_status={}, _sent_seqs=set())
-        hist = [{1: (2900, 0, True), 2: (1000, 0, False)},
-                {1: (2950, 0, True), 2: (1100, 0, False)}]
-        payload = _build_bot_events(0, w, lg, 2, [], bp, hist)
-        pops = {e["id"]: e["population"] for e in payload if e.get("kind") == "pop_change"}
-        # Home town: horizon 2 - 0 -> latest (2950, not world 3000).
-        # Far town (600 km): horizon 2 - 4 <0 -> earliest (1000, not 9999).
-        assert pops == {1: 2950, 2: 1000}
-        # Second identical build: slim wire stays quiet.
-        payload2 = _build_bot_events(0, w, lg, 2, [], bp, hist)
-        assert not [e for e in payload2 if e.get("kind") == "pop_change"]
-
-    def test_landing_spawn_uses_birth_pos(self) -> None:
-        """Spawn anchors at birth pos (minimal reveal); inaudible moves stay home."""
-        from engine.config import GameConfig
-        from engine.world import World, Town, Army
-        from engine.ledger import Ledger, Event
-        from runner.main import landing_spawns
-        cfg = GameConfig()
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns.append(Town(id=2, faction=0, x=0, y=0, population=500, is_capital=True))
-        # Born t18 far away (inaudible), moved t19 (also inaudible), now at (1300, 0).
-        w.armies.append(Army(id=12, faction=1, x=1300, y=0))
-        lg = Ledger(cfg.info_speed, 1414)
-        lg.log(Event(turn=18, x=1400, y=0, kind="army_spawn", payload={"id": 12, "faction": 1}))
-        lg.log(Event(turn=19, x=1300, y=0, kind="army_move", payload={"id": 12}))
-        lg.set_capital_since(0, 19)
-        out = landing_spawns(w, lg, 0, 0.0, 0.0, 20.0, {}, [{2: (500, 0, True)}])
-        spawns = [e for e in out if e.get("kind") == "army_spawn" and e.get("id") == 12]
-        assert len(spawns) == 1
-        assert (spawns[0]["x"], spawns[0]["y"]) == (1400, 0)  # birth, not current
-        moves = [e for e in out if e.get("kind") == "army_move" and e.get("id") == 12]
-        assert moves == []  # nothing audible: no future intel
-
-    def test_no_ledger_resends_across_turns(self) -> None:
-        """Each ledger event goes out once per faction, ever (no resends)."""
-        from types import SimpleNamespace
-        from engine.config import GameConfig
-        from engine.world import World
-        from engine.ledger import Ledger, Event
-        from runner.main import _build_bot_events
-        w = World()
-        w.map_size = [1000, 1000]
-        lg = Ledger(GameConfig().info_speed, 1414)
-        lg.log(Event(turn=1, x=100, y=0, kind="battle", payload={}))
-        bp = SimpleNamespace(_last_sent_pop={}, _last_sent_status={}, _sent_seqs=set())
-        first = _build_bot_events(0, w, lg, 2, [], bp, [])  # audible: 1 + 100/150
-        assert [e["kind"] for e in first] == ["battle"]
-        second = _build_bot_events(0, w, lg, 3, [], bp, [])
-        assert second == []
-        lg.log(Event(turn=3, x=100, y=0, kind="battle", payload={}))
-        third = _build_bot_events(0, w, lg, 4, [], bp, [])
-        assert [e["kind"] for e in third] == ["battle"]
-
-    def test_pre_landing_capture_flip_rides_pop_stream(self) -> None:
-        """A capture hidden by since still corrects via pop-carried faction.
-
-        Town 10 captured t9 (since=10 hides the ledger event forever); the
-        landing seeds pre-capture state, and the delayed pop stream carries
-        the faction flip when the horizon crosses t9.
-        """
-        from types import SimpleNamespace
-        from engine.config import GameConfig
-        from engine.world import World, Town
-        from engine.ledger import Ledger
-        from runner.main import _build_bot_events
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns.append(Town(id=10, faction=1, x=310, y=0, population=915, is_capital=False))
-        lg = Ledger(GameConfig().info_speed, 1414)
-        lg.set_capital_since(0, 10)
-        hist = [{10: (1700, 0, False)}]
-        for t in range(1, 9):
-            hist.append({10: (1700 + 5 * t, 0, False)})
-        hist.append({10: (900, 1, False)})    # t9: captured + halved
-        hist.append({10: (905, 1, False)})    # t10
-        hist.append({10: (910, 1, False)})    # t11
-        hist.append({10: (915, 1, False)})    # t12
-        # Post-landing basis: seeded pre-capture state at t10 (horizon t7).
-        bp = SimpleNamespace(_last_sent_pop={10: 1735},
-                             _last_sent_status={10: (0, False)},
-                             _sent_seqs=set())
-        out = _build_bot_events(0, w, lg, 12, [], bp, hist)
-        flips = [e for e in out if e.get("kind") == "pop_change" and e.get("id") == 10]
-        assert len(flips) == 1
-        assert flips[0]["population"] == 900  # horizon t12-2.07 -> t9
-        assert flips[0]["faction"] == 1  # the flip rides along
-        # Next turn: pop keeps catching up (horizon crosses t10) but the
-        # faction, now known, is not re-sent.
-        out2 = _build_bot_events(0, w, lg, 13, [], bp, hist + [{10: (920, 1, False)}])
-        follow = [e for e in out2 if e.get("id") == 10]
-        assert len(follow) == 1 and follow[0]["population"] == 905
-        assert "faction" not in follow[0]
-
-
-def test_builder_ignores_tagged_updates():
-    """Phase 1 additive boundary: tagged state updates ride the ledger but
-    the old delivery path ignores them (output identical to old-only)."""
-    from types import SimpleNamespace
+def test_deliver_ignores_old_kinds():
+    """New boundary: legacy event kinds riding the ledger are invisible to
+    tag-aware delivery (only town/army updates deliver)."""
+    from engine.delivery import SendState
     from engine.world import World, Town, Army
     from engine.ledger import Event, EventKind, Ledger
-    from runner.main import _build_bot_events
+    from runner.main import deliver
     w = World()
     w.map_size = [1000, 1000]
     w.towns.append(Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True))
-    w.armies.append(Army(id=7, faction=0, x=10, y=0))
     lg = Ledger(GameConfig().info_speed, 1414)
     lg.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={"a": 1}))
     lg.generate(w, turn=1, line_of_sight=150.0)
-    assert any(e.kind == EventKind.TOWN_UPDATE for e in lg.events)  # riding along
-    hist = [{1: (2000, 0, True)}]
-    bp = SimpleNamespace(_last_sent_pop={}, _last_sent_status={}, _sent_seqs=set())
-    out = _build_bot_events(0, w, lg, 1, [], bp, hist)
-    assert not [e for e in out if e.get("kind") in ("town_update", "army_update")]
-    assert [e for e in out if e.get("kind") == "battle"]  # old path intact
+    out = deliver(0, w, lg, 1, SendState())
+    assert [u for u in out if u.get("kind") == "battle"] == []
+    assert [u["id"] for u in out if u.get("kind") == "town_update"] == [1]
+
+
+def test_startup_config_strips_map():
+    """Bots never receive the map: startup JSON has rules + dims, no map."""
+    import json
+    from runner.main import _startup_config_json
+    cfg = GameConfig.from_dict({
+        "map": "x,y,type,population\n0,0,A,5000\n",
+        "map_size": [1000, 1000],
+        "max_turns": 10,
+        "info_speed": 150.0,
+    })
+    d = json.loads(_startup_config_json(cfg))
+    assert "map" not in d
+    assert d["map_size"] == [1000, 1000]
+    assert d["info_speed"] == 150.0

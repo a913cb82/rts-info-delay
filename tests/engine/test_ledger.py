@@ -14,6 +14,12 @@ def _event(
     return Event(turn=turn, x=x, y=y, kind=kind or EventKind.BATTLE, payload=payload or {})
 
 
+def _tagged(turn: int, x: float, y: float, vis: set, payload: dict | None = None) -> Event:
+    """Helper: tagged update entry (new delivery path; old kinds don't query)."""
+    return Event(turn=turn, x=x, y=y, kind=EventKind.TOWN_UPDATE,
+                 payload=payload or {"id": 1}, visible_to=vis)
+
+
 class TestLedgerLogging:
     """G1–G3: Event logging and tuple fields."""
 
@@ -50,88 +56,75 @@ class TestLedgerLogging:
 
 
 class TestLedgerVisibility:
-    """G2–G3, I1–I5e: Visibility delay per faction."""
+    """G2–G3, I1–I5e: Tag+delay+S delivery per faction (query)."""
 
     def test_visible_within_delay(self) -> None:
         """G2: Event visible when t + dist/info_speed ≤ now."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        # Event at turn 1, distance 100 → visible at turn 1 + 100/150 ≈ 1.67
-        ledger.log(_event(turn=1, x=100, y=0))
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=2.0)
+        # Entry at turn 1, distance 100 → delivers at turn 1 + 100/150 ≈ 1.67
+        ledger.log(_tagged(turn=1, x=100, y=0, vis={0}))
+        visible = ledger.query(0, 0.0, 0.0, now=2.0)
         assert len(visible) == 1
 
     def test_not_yet_visible(self) -> None:
         """G3: Event not visible when t + dist/info_speed > now."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        # Event at turn 1, distance 300 → visible at turn 1 + 2.0 = 3.0
-        ledger.log(_event(turn=1, x=300, y=0))
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=2.0)
+        # Entry at turn 1, distance 300 → delivers at turn 1 + 2.0 = 3.0
+        ledger.log(_tagged(turn=1, x=300, y=0, vis={0}))
+        visible = ledger.query(0, 0.0, 0.0, now=2.0)
         assert len(visible) == 0
 
     def test_at_capital_zero_delay(self) -> None:
         """I3: Event at capital → visible immediately (next propagation step)."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ledger.log(_event(turn=1, x=100, y=200))
-        visible = ledger.visible_events(
-            faction=0, capital_x=100, capital_y=200, now=1.0
-        )
+        ledger.log(_tagged(turn=1, x=100, y=200, vis={0}))
+        visible = ledger.query(0, 100.0, 200.0, now=1.0)
         assert len(visible) == 1
 
     def test_independent_delays(self) -> None:
         """I4: Three events at different distances → visible at different times."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ledger.log(_event(turn=1, x=10, y=0))    # delay = 10/150 ≈ 0.067
-        ledger.log(_event(turn=1, x=150, y=0))   # delay = 150/150 = 1.0
-        ledger.log(_event(turn=1, x=300, y=0))   # delay = 300/150 = 2.0
+        ledger.log(_tagged(turn=1, x=10, y=0, vis={0}))    # delay = 10/150 ≈ 0.067
+        ledger.log(_tagged(turn=1, x=150, y=0, vis={0}))   # delay = 150/150 = 1.0
+        ledger.log(_tagged(turn=1, x=300, y=0, vis={0}))   # delay = 300/150 = 2.0
 
-        # At now=1.07: only nearest visible
-        v1 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.07)
+        # At now=1.07: only nearest delivers
+        v1 = ledger.query(0, 0.0, 0.0, now=1.07)
         assert len(v1) == 1
 
-        # At now=2.0: nearest + middle visible
-        v2 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=2.0)
+        # At now=2.0: nearest + middle deliver
+        v2 = ledger.query(0, 0.0, 0.0, now=2.0)
         assert len(v2) == 2
 
-        # At now=3.0: all three visible
-        v3 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=3.0)
+        # At now=3.0: all three deliver
+        v3 = ledger.query(0, 0.0, 0.0, now=3.0)
         assert len(v3) == 3
 
     def test_ledger_window_retain(self) -> None:
         """I5: Events retained for ≥ max_dist/info_speed turns."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
         # max_delays = 1414/150 ≈ 9.43, window ≥ 10 turns
-        ledger.log(_event(turn=1, x=0, y=0))
-        # Check at turn 11 (10 turns later): event from turn 1 with dist=0
-        # t + 0/150 = 1 ≤ 11 → still visible
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=11.0)
+        ledger.log(_tagged(turn=1, x=0, y=0, vis={0}))
+        # Check at turn 11 (10 turns later): entry from turn 1 with dist=0
+        # t + 0/150 = 1 ≤ 11 → still delivers
+        visible = ledger.query(0, 0.0, 0.0, now=11.0)
         assert len(visible) == 1
 
-    def test_no_delivery_during_capital_flight(self) -> None:
-        """I5b: During MOVE_CAPITAL flight, events are not delivered."""
-        ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ledger.log(_event(turn=1, x=50, y=0))
-        # Simulate flight by passing a special flag or checking docstring
-        # The visible_events method should return [] during flight
-        # We pass a very large now but flag flight via parameter
-        # Based on docstring: "Returns [] if faction is mid-MOVE_CAPITAL flight."
-        # The implementation may use a separate parameter or state
-        visible = ledger.visible_events(
-            faction=0, capital_x=0, capital_y=0, now=100.0, is_in_flight=True
-        )
-        assert len(visible) == 0
+    # I5b (mute during flight) lives at the deliver level now
+    # (TestDeliver.test_flight_returns_empty) — query has no flight concept.
 
     def test_capital_move_changes_dist(self) -> None:
         """I5c: After capital move, distance recomputed for new capital position."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        # Event at (0,0), turn 1
-        ledger.log(_event(turn=1, x=0, y=0))
+        # Entry at (0,0), turn 1
+        ledger.log(_tagged(turn=1, x=0, y=0, vis={0}))
         # Old capital at (0,0) → immediate
-        v_old = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.0)
+        v_old = ledger.query(0, 0.0, 0.0, now=1.0)
         assert len(v_old) == 1
         # New capital at (500,0) → delay = 500/150 ≈ 3.33
-        v_new = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=2.0)
+        v_new = ledger.query(0, 500.0, 0.0, now=2.0)
         assert len(v_new) == 0
-        v_new2 = ledger.visible_events(faction=0, capital_x=500, capital_y=0, now=5.0)
+        v_new2 = ledger.query(0, 500.0, 0.0, now=5.0)
         assert len(v_new2) == 1
 
     def test_event_kind_fields(self) -> None:
@@ -149,14 +142,14 @@ class TestLedgerVisibility:
     def test_faction_specific_visibility(self) -> None:
         """I5e: Two factions see same event at different times based on capital distance."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ledger.log(_event(turn=1, x=100, y=0))
-        # Faction 0 capital at (0,0) → dist=100 → visible at 1+0.67=1.67
-        v0 = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.7)
+        ledger.log(_tagged(turn=1, x=100, y=0, vis={0, 1}))
+        # Faction 0 capital at (0,0) → dist=100 → delivers at 1+0.67=1.67
+        v0 = ledger.query(0, 0.0, 0.0, now=1.7)
         assert len(v0) == 1
-        # Faction 1 capital at (400,0) → dist=300 → visible at 1+2.0=3.0
-        v1 = ledger.visible_events(faction=1, capital_x=400, capital_y=0, now=2.0)
+        # Faction 1 capital at (400,0) → dist=300 → delivers at 1+2.0=3.0
+        v1 = ledger.query(1, 400.0, 0.0, now=2.0)
         assert len(v1) == 0
-        v1_later = ledger.visible_events(faction=1, capital_x=400, capital_y=0, now=3.0)
+        v1_later = ledger.query(1, 400.0, 0.0, now=3.0)
         assert len(v1_later) == 1
 
 
@@ -179,8 +172,8 @@ class TestLedgerEviction:
         # max_delay = 1414/150 ≈ 9.43
         # Events from turn 1 should be retained until at least turn ~11
         # Even at now=10, event at distance 0 from turn 1 is still deliverable
-        ledger.log(_event(turn=1, x=0, y=0))
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=10.0)
+        ledger.log(_tagged(turn=1, x=0, y=0, vis={0}))
+        visible = ledger.query(0, 0.0, 0.0, now=10.0)
         assert len(visible) == 1
 
     def test_eviction_o1(self) -> None:
@@ -196,10 +189,10 @@ class TestLedgerEviction:
     def test_no_premature_eviction(self) -> None:
         """Events not evicted before their delivery window expires."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ledger.log(_event(turn=5, x=0, y=0))
+        ledger.log(_tagged(turn=5, x=0, y=0, vis={0}))
         ledger.evict(now=6.0)
-        # Event from turn 5 with dist=0 → visible at turn 5, should survive
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=6.0)
+        # Entry from turn 5 with dist=0 → delivers at turn 5, should survive
+        visible = ledger.query(0, 0.0, 0.0, now=6.0)
         assert len(visible) == 1
 
     def test_death_visible_before_eviction_at_max_distance(self) -> None:
@@ -211,14 +204,13 @@ class TestLedgerEviction:
         the landing wipe covers).
         """
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ledger.log(_event(turn=5, x=1414, y=0, kind=EventKind.TOWN_DEATH,
-                          payload={"id": 7}))
+        ledger.log(_tagged(turn=5, x=1414, y=0, vis={0},
+                           payload={"id": 7, "population": 0}))
         window = 1414 / 150
         # Still present at the last audible instant ...
         ledger.evict(now=5 + window)
-        visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0,
-                                        now=5 + window)
-        assert any(e.kind == EventKind.TOWN_DEATH for e in visible)
+        visible = ledger.query(0, 0.0, 0.0, now=5 + window)
+        assert any(e.payload.get("population") == 0 for e in visible)
         # ... and gone only once nobody could hear it.
         ledger.evict(now=5 + window + 1.0)
         assert len(ledger.events) == 0

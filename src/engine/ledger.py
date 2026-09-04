@@ -106,17 +106,11 @@ class Ledger:
         self.events = deque()
         self.eviction_ptr = 0
         self._next_seq = 0  # dedup key: every logged event gets one
-        # opt15: turn index for O(1) turn_events + versioned array cache
-        # so the 5 per-turn visible_events queries share one array build.
-        # _version bumps on every log/evict; arrays rebuild only on change.
-        self._by_turn: dict = {}
+        # _version bumps on every log/evict; the columnar snapshot cache
+        # keys on it.
         self._version: int = 0
-        self._arr_cache = None
         # window in turns = max_dist / info_speed
         self._window = self.map_diagonal / self.info_speed if self.info_speed != 0 else 10.0
-        # Per-faction capital establishment time: only events with turn >= capital_since[faction] are visible
-        # Default 0 means all events from game start are visible
-        self.capital_since: dict[int, int] = {}
         # S (Phase 1): per-faction last landing turn, 0 if never landed.
         # Tagged entries with generation turn < S never deliver.
         self.S: dict[int, int] = {}
@@ -179,7 +173,6 @@ class Ledger:
         # Since events are mostly appended in order, we can check if last event turn <= new turn, append fast
         if len(self.events) == 0 or self.events[-1].turn <= event.turn:
             self.events.append(event)
-            self._by_turn.setdefault(event.turn, []).append(event)
             self._version += 1
         else:
             # Need to insert sorted
@@ -195,88 +188,7 @@ class Ledger:
             if not inserted:
                 lst.append(event)
             self.events = deque(lst)
-            self._by_turn.setdefault(event.turn, []).append(event)
             self._version += 1
-
-    def _arrays(self):
-        """Cached (xs, ys, ts) aligned with self.events; rebuilt on change."""
-        cached = self._arr_cache
-        if cached is not None and cached[0] == self._version:
-            return cached[1], cached[2], cached[3]
-        n = len(self.events)
-        xs = np.empty(n, dtype=np.float64)
-        ys = np.empty(n, dtype=np.float64)
-        ts = np.empty(n, dtype=np.float64)
-        for i, ev in enumerate(self.events):
-            xs[i] = ev.x
-            ys[i] = ev.y
-            ts[i] = getattr(ev, "turn", getattr(ev, "t", 0))
-        self._arr_cache = (self._version, xs, ys, ts)
-        return xs, ys, ts
-
-    def visible_events(
-        self, faction: int, capital_x: float, capital_y: float, now: float, is_in_flight: bool = False, **kwargs
-    ) -> list[Event]:
-        """Return events visible to faction at current turn.
-
-        Returns [] if faction is mid-MOVE_CAPITAL flight.
-        """
-        # Support alternative signature used by medium tests: visible(faction, capital_x, capital_y, info_speed, now)
-        # Detect if kwargs contains info_speed or now is mis-ordered
-        # Also support ledger.visible(...) alias
-        if kwargs:
-            # handle info_speed override etc.
-            if "is_in_flight" in kwargs:
-                is_in_flight = kwargs.pop("is_in_flight")
-            # If called with info_speed param, ignore?
-            pass
-        if is_in_flight:
-            return []
-        # Only events from capital establishment time onwards are visible
-        since = self.capital_since.get(faction, 0)
-        if not self.events:
-            return []
-        # Vectorized: same predicates as the scalar loop below used to be —
-        # t >= since, and t + hypot/ info_speed <= now + 1e-9.
-        xs, ys, ts = self._arrays()
-        mask = ts >= since
-        if self.info_speed != 0:
-            mask = mask & (ts + np.hypot(xs - capital_x, ys - capital_y) / self.info_speed <= now + 1e-9)
-        else:
-            mask = mask & (ts <= now + 1e-9)
-        return [ev for ev, m in zip(self.events, mask) if m]
-
-    def turn_events(self, turn: float) -> list[Event]:
-        """Return all events for a specific turn (no distance filtering)."""
-        # O(1) index; turns are ints in practice, float queries match exactly.
-        try:
-            key = int(turn)
-            if abs(key - turn) < 1e-9:
-                return list(self._by_turn.get(key, []))
-        except Exception:
-            pass
-        result: list[Event] = []
-        for ev in self.events:
-            t = getattr(ev, "turn", getattr(ev, "t", 0))
-            if abs(t - turn) < 1e-9:
-                result.append(ev)
-        return result
-
-    # Alias for medium tests that call ledger.visible(...)
-    def visible(self, *args, faction: int = 0, capital_x: float = 0, capital_y: float = 0, info_speed: float | None = None, now: float = 0, **kw) -> list[Event]:
-        # Handle flexible positional args: ledger.visible(0, faction=0, ...) where first arg is duplicate faction
-        # If args provided, try to interpret
-        if args:
-            # If first arg is int and faction kw also provided, ignore args[0] as duplicate
-            # If args has single value, treat as now if not provided
-            pass
-        if info_speed is not None:
-            old_speed = self.info_speed
-            self.info_speed = float(info_speed)
-            res = self.visible_events(faction=faction, capital_x=capital_x, capital_y=capital_y, now=now, **kw)
-            self.info_speed = old_speed
-            return res
-        return self.visible_events(faction=faction, capital_x=capital_x, capital_y=capital_y, now=now, **kw)
 
     def evict(self, now: float) -> None:
         """Remove events no longer deliverable to anyone."""
@@ -292,19 +204,6 @@ class Ledger:
             if t + self._window < now - 1e-9:
                 self.events.popleft()
                 self.eviction_ptr += 1
-                # keep the turn index in sync (multiset-correct: equal
-                # events are interchangeable, eviction is oldest-first)
-                bl = self._by_turn.get(t)
-                if bl:
-                    try:
-                        bl.remove(ev)
-                    except ValueError:
-                        pass
-                    if not bl:
-                        try:
-                            del self._by_turn[t]
-                        except KeyError:
-                            pass
                 self._version += 1
             else:
                 break
@@ -328,14 +227,6 @@ class Ledger:
             del self._c_seq[:start]
             self._c_start = 0
             self._col_cache = None
-
-    def set_capital_since(self, faction: int, turn: int) -> None:
-        """Set the turn when faction's current capital was established.
-
-        Only events with turn >= this value will be visible to the faction.
-        Called when MOVE_CAPITAL completes.
-        """
-        self.capital_since[faction] = int(turn)
 
     def set_landing(self, faction: int, turn: int) -> None:
         """Record faction's last landing turn S (0 = never landed)."""
@@ -493,11 +384,7 @@ class Ledger:
                 out.append(ev)
         return out
 
-    def _visibility_delay(self, event: Event, capital_x: float, capital_y: float) -> float:
-        """Turn at which event becomes visible: event.t + dist / info_speed."""
-        t = getattr(event, "turn", getattr(event, "t", 0))
-        dist = math.hypot(event.x - capital_x, event.y - capital_y)
-        return t + dist / self.info_speed if self.info_speed != 0 else float(t)
+
 
 
 @dataclass

@@ -45,9 +45,9 @@ def step(
     normalized_turn: int = 1
     normalized_orders: dict[int, list[str]] | list[dict] | None = None
 
-    # Helper to check if object is Ledger-like (has events deque)
+    # Helper to check if object is Ledger-like (generation log)
     def is_ledger_obj(obj):
-        return hasattr(obj, "events") and hasattr(obj, "log") and hasattr(obj, "visible_events")
+        return hasattr(obj, "events") and hasattr(obj, "log") and hasattr(obj, "generate")
 
     if is_ledger_obj(ledger):
         normalized_ledger = ledger  # type: ignore
@@ -187,8 +187,9 @@ def step(
     all_events.extend(capture_events)
     all_events.extend(economy_events)
 
-    # Phase 6: Knowledge
-    _phase_knowledge(normalized_ledger, all_events, config, normalized_turn, world)
+    # Phase 6: Knowledge — tagged state generation only. Step event dicts
+    # travel to the record file, never into the ledger (old kinds deleted).
+    _phase_knowledge(normalized_ledger, config, normalized_turn, world)
 
     # Attach ledger to world for medium tests that check w.ledger
     try:
@@ -742,13 +743,8 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction,
                        "x": new_town.x, "y": new_town.y, "population": new_town.population,
                        "is_capital": True})
-        # Record new capital time for ledger filtering: only events with
-        # turn >= this are visible from the new capital.
-        if ledger is not None and hasattr(ledger, "set_capital_since"):
-            try:
-                ledger.set_capital_since(viceroy.faction, turn)
-            except Exception:
-                pass
+        # S (landing turn) is set runner-side: note_landing() detects this
+        # event in the step output (engine never filters by establishment).
         viceroy_id, vx, vy = viceroy.id, viceroy.x, viceroy.y
         world.remove_army(viceroy_id)
         events.append({"kind": "army_death", "id": viceroy_id, "x": vx, "y": vy})
@@ -839,38 +835,12 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
 
 
 def _phase_knowledge(
-    ledger: Ledger, events: list[dict], config: GameConfig, turn: int,
-    world=None,
+    ledger: Ledger, config: GameConfig, turn: int, world=None,
 ) -> None:
-    """Log events to ledger, generate tagged updates, evict old entries.
-
-    Update generation (Phase 1) is additive: the old delivery path ignores
-    the new kinds until the Phase 3 wire-up.
-    """
+    """Generate tagged state updates, evict old entries."""
     if world is not None and hasattr(ledger, "generate"):
         ledger.generate(world, turn,
                         line_of_sight=getattr(config, "line_of_sight",
                                              config.info_speed))
-    for ev in events:
-        kind_str = ev.get("kind", "battle")
-        # pop_change is a direct state update, not a ledger event
-        if kind_str == "pop_change":
-            continue
-        # Map kind string to EventKind (all step kinds have variants;
-        # truly unknown ones fall back to battle)
-        try:
-            ek = EventKind(kind_str)
-        except ValueError:
-            ek = EventKind.BATTLE
-        # Determine x,y
-        x = float(ev.get("x", 0.0))
-        y = float(ev.get("y", 0.0))
-        payload = {k: v for k, v in ev.items() if k not in ("kind", "x", "y", "turn")}
-        # Ensure payload includes id etc.
-        event_obj = Event(turn=turn, x=x, y=y, kind=ek, payload=payload)
-        # Also store original kind string in payload for record replay? Keep as is
-        # For ledger visibility, need kind, but we store ek
-        # Also store original kind string in payload if needed
-        ledger.log(event_obj)
     # Evict old entries
     ledger.evict(now=float(turn))

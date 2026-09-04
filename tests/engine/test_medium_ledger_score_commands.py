@@ -23,14 +23,17 @@ class TestLedgerMedium:
         assert len(w.ledger.events) > 0
 
     def test_G7_event_visible_after_delay(self) -> None:
-        """G7: Event visible after correct delay."""
-        ledger = Ledger(window=100)
-        # Log event at turn 0
-        ledger.log(Event(t=0, x=0, y=0, kind="army_spawn", payload={}))
-        # Faction capital at (50, 0), info_speed 150
+        """G7: Update visible after correct delay (tag+delay delivery)."""
+        from engine.delivery import SendState, build_updates
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns = [Town(id=1, faction=0, x=50, y=0, population=2000, is_capital=True)]
+        w.armies = [Army(id=7, faction=0, x=0, y=0)]
+        ledger = Ledger(150.0, 1414)
+        ledger.generate(w, turn=0, line_of_sight=150.0)
         # dist = 50, delay = 50/150 = 0.33 → visible at t >= 0.33
-        visible = ledger.visible(0, faction=0, capital_x=50, capital_y=0, info_speed=150, now=1)
-        assert len(visible) == 1
+        got = build_updates(ledger, 0, SendState(), 0, (50.0, 0.0), 1.0)
+        assert any(u["id"] == 7 for u in got)
 
     def test_G8_old_events_evicted(self) -> None:
         """G8: Old events evicted after window."""
@@ -223,16 +226,21 @@ class TestInfoDelayMedium:
         step(w, CFG, [])
 
     def test_I7_far_event_delayed(self) -> None:
-        """I7: Event delayed 2 turns if far."""
-        from engine.ledger import Ledger, Event
+        """I7: Update delayed 2 turns if far (tag+delay delivery)."""
+        from engine.delivery import SendState, build_updates
+        from engine.ledger import Ledger
 
-        ledger = Ledger(window=100)
-        ledger.log(Event(t=0, x=0, y=0, kind="army_spawn", payload={}))
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns = [Town(id=1, faction=0, x=300, y=0, population=2000, is_capital=True)]
+        w.armies = [Army(id=7, faction=0, x=0, y=0)]
+        ledger = Ledger(150.0, 1414)
+        ledger.generate(w, turn=0, line_of_sight=400.0)
         # Capital at (300, 0), info_speed 150
-        visible_t1 = ledger.visible(0, faction=0, capital_x=300, capital_y=0, info_speed=150, now=1)
-        visible_t2 = ledger.visible(0, faction=0, capital_x=300, capital_y=0, info_speed=150, now=2)
-        assert len(visible_t1) == 0  # not yet
-        assert len(visible_t2) == 1  # arrived
+        got_t1 = build_updates(ledger, 0, SendState(), 0, (300.0, 0.0), 1.0)
+        got_t2 = build_updates(ledger, 0, SendState(), 0, (300.0, 0.0), 2.0)
+        assert not [u for u in got_t1 if u["id"] == 7]  # not yet
+        assert [u["id"] for u in got_t2 if u["id"] == 7] == [7]  # arrived
 
     def test_I8_capital_blind_during_flight(self) -> None:
         """I8: Capital blind during MOVE_CAPITAL."""

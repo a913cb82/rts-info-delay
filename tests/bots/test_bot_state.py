@@ -18,6 +18,7 @@ import pytest
 from engine.config import GameConfig
 from engine.world import World, Town, Army, StandingOrder, CommandType
 from engine.step import step
+from engine.delivery import SendState, build_updates
 from engine.ledger import Ledger
 from bots.common import BotState
 
@@ -401,9 +402,9 @@ def test_capital_death_no_events():
     death = [e for e in (events or []) if e.get("kind") == "town_death"]
     assert len(death) == 1
 
-    # Bot with dead capital should get no visible events
-    visible = ledger.visible_events(faction=0, capital_x=0, capital_y=0, now=1.0)
-    assert len(visible) == 0
+    # Bot with dead capital and no remaining entities observes nothing:
+    # the tombstone is untagged, so delivery is silent.
+    assert build_updates(ledger, 0, SendState(), 0, (0.0, 0.0), 1.0) == []
 
 
 # ── Enemy visibility ──
@@ -421,11 +422,11 @@ def test_enemy_town_visible_from_own_capital():
     )
     step(engine, CFG, ledger, turn=1, orders={})
 
-    # dist=100, info_speed=150 → visible_turn = 1 + 100/150 ≈ 1.67
-    # Need now >= 1.67 for visibility
-    visible = ledger.visible_events(faction=0, capital_x=100, capital_y=100, now=2.0)
-    spawn_events = [e for e in visible if e.kind.value == "army_spawn"]
-    assert len(spawn_events) >= 1
+    # dist=100, info_speed=150 → release at 1 + 100/150 ≈ 1.67
+    # Need now >= 1.67 for delivery
+    got = build_updates(ledger, 0, SendState(), 0, (100.0, 100.0), 2.0)
+    spawns = [u for u in got if u["kind"] == "army_update"]
+    assert len(spawns) >= 1
 
 
 def test_enemy_town_far_not_visible():
@@ -440,9 +441,9 @@ def test_enemy_town_far_not_visible():
     )
     step(engine, CFG, ledger, turn=1, orders={})
 
-    visible = ledger.visible_events(faction=0, capital_x=100, capital_y=100, now=1.0)
-    spawn_events = [e for e in visible if e.kind.value == "army_spawn"]
-    assert len(spawn_events) == 0
+    got = build_updates(ledger, 0, SendState(), 0, (100.0, 100.0), 1.0)
+    assert not [u for u in got if u["kind"] == "army_update"]
+    assert not [u for u in got if u.get("id") == 2]
 
 
 # ── Multiple factions ──
