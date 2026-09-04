@@ -19,6 +19,18 @@ Self-play diffs 0.
 
 ## Log
 
+### Expander — guard + working settlers (2026-09-04)
+Fast: guard 1000→1624 (capital HELD + settle), settle/chain flat (correct).
+Elo: expander now holds vs greedy+aggressive (was: taken) — see doctrine.
+Doctrine learned:
+- Same latent note_move bug as greedy (settlers sat on sites); fixed.
+- 3000-vs-3000 60-turn raids are STRUCTURALLY drawish once both trade
+  once (neither can afford wave 3) — first strike needs 2v1 (5000+ pop).
+  A>E at parity = disruption (t5 mid-field settler kill measured), not
+  takes; takes need force advantage (pair model). Elo all-fail is honest.
+- Expander ships WITHOUT evac (character: accepts decapitation, wins by
+  spread; guard + lineage suffice).
+
 ### Greedy — viability, recycle, shared home defense (2026-09-04)
 Fast: skip_thin 2116→3467 (map redesigned twice: timing alone can't price
 restraint — scarcity can: one army, near decoy, far prize; baseline wastes
