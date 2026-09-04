@@ -1,8 +1,9 @@
 # Bot worklog — optimization campaign
 
-Rule: bot code only (src/bots/*). Every entry records suite numbers
-before → after. Fast suite (`scenario_bench.py`, 1.7s) per change;
-slower suite (`strategic_bench.py`, ~10s) at milestones.
+Rule: one entry per change with suite numbers before → after. Fast suite
+(`scenario_bench.py`) per change; slower suite (`strategic_bench.py`) at
+milestones. Scope grew past bot-only in the intel era (engine + runner +
+bots). History below is append-only — do not rewrite old entries.
 
 ## Starting baselines (2026-09-04, pre-campaign)
 

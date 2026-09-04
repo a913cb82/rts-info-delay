@@ -1,7 +1,7 @@
-# Bot time management — roadmap (ideas 1–6)
+# Bot time management — clock infrastructure (ideas 1–6, all landed)
 
 Bots run under a Fischer clock (cap `turn_time_ms`, +`time_increment_ms`/turn).
-These six ideas cut think cost or spend the bank deliberately. Status: all six implemented (commits below). Originally bot code only; post-campaign intel work below spans engine + runner + bots.
+These six ideas cut think cost or spend the bank deliberately. Status: all six implemented (commits below).
 Benchmarks: `benchmarks/bot_bench.py` (quiet turn + 2000-event backlog).
 
 ## 1. Incremental BotState — DONE (`0f171dd`)
@@ -47,8 +47,9 @@ decide); military kinds bust, partial-backlog turns never cache. Wired into
 busted the cache). Fixed with a decide-relevant fingerprint (quantized
 pops/positions, membership, pending trackers, 25-turn heartbeat): replay
 requires fingerprint stability, so affordability changes force fresh decides.
-If a turn brings only `pop_change` (no military/capture/spawn/death
-events), re-issue standing orders without running decide; bank the +10ms.
+If a turn's payload carries no new military information (no creations,
+removals, or faction changes — only unchanged or ticked snapshots),
+re-issue standing orders without running decide; bank the +10ms.
 - Tests: quiet-turn replay (orders identical to full decide across 50 idle
   turns); cache-bust test (each military event kind forces a full decide);
   bank test (clock balance rises over a quiet stretch, never exceeds cap).
@@ -76,9 +77,10 @@ full bank → expensive searches (coordination, wide site search).
 
 ## Decided (not in 1–6)
 
-- **8 wire slimming — IMPLEMENTED.** Populations go out as absolute ints;
-  `pop_change` only on int change. Wire error bounded <1, never compounds
-  (engine floats + record file untouched; bot assigns absolutely). Measured:
+- **8 wire slimming — IMPLEMENTED.** Populations go out as absolute ints
+  inside `town_update`; the send-state diff resends only changed snapshots.
+  Wire error bounded <1, never compounds (engine floats + record file
+  untouched; bot assigns absolutely). Measured:
   278→198 B/bot-turn (−29%); 3000-turn scores 11077→11073 (single ±1
   threshold flip at t1110, final within 0.04%).
 - **9 margins — IMPLEMENTED, measured.** Instant round-trip med 0.15ms, p99
@@ -88,30 +90,14 @@ full bank → expensive searches (coordination, wide site search).
   equivalent lives bot-side as plan caches (idea 5). Revisit only with data
   showing round-trips dominate a thinking bot's clock.
 
-## After the campaign: intel-era work (engine + runner + bots)
+## After the campaign: intel-era work (superseded by EVENT_REWORK)
 
-Delayed intel changed what bots may know (see `BOTS.md` intel model):
-
-- **In-flight mute.** A faction with a viceroy airborne gets no turns
-  and gives no orders (game loop skips I/O, clock frozen); the payload
-  builder independently returns [] for such factions (pop leaks closed).
-- **Landing rebuild.** First post-landing payload: full spawns in existing
-  event shapes + delay-consistent army moves + audible battles. `BotState`
-  wipes on its unknown landing capital and applies the batch onto the
-  empty world (redeliveries skip the wipe via the known-id guard).
-- **Delayed town state.** Runner keeps per-turn `{id: (pop, faction,
-  capital)}` history; pops/factions/flags report as of `now − dist/info`
-  (floored, never future, clamped to birth). Slim wire kept. Bot-side
-  staleness machinery (`stale_turns`, distance buffers, pending guards)
-  is now load-bearing rather than vestigial.
-- **TOWN_DEATH ledger kind.** The old battle-fallback blinded bots to all
-  deaths (ghosts forever); force-counting is trustworthy since.
-- **Economy-phase MOVE_CAPITAL.** Order → 0-distance messenger → intent →
-  economy execution (deduct, demote at train, spawn viceroy) → march →
-  arrival founds. Needs a 1-turn lead; drops if the capital falls first.
-- Tests live with the behaviors they cover (`tests/runner/test_main.py`
-  flight/rebuild, `tests/bots/test_bot_state.py` wipe + replay,
-  `tests/engine/test_step.py` evac chains); convention below still holds.
+The event-shape machinery this section once described (landing rebuild
+payloads, per-turn town snapshots, `TOWN_DEATH` kind, builder-returns-[]
+mute) was deleted by the rework — see `BOTS.md` intel model and
+`docs/EVENT_REWORK.md`. What survived into the fog era: `stale_turns`
+compensation (load-bearing), quiet-turn replay (any update breaks sleep),
+plan queue, clock effort. The worklog entries stand as record.
 
 ## Conventions
 - New tests go in `tests/bots/`; integration-level (drive `bot_main` or

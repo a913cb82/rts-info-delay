@@ -70,13 +70,19 @@ furniture for scenarios, not a personality. There is no `random` bot
 
 ## Shared machinery (`common.py`)
 
-- `BotState`: world mirror + `turn/faction`, `_army_targets` (MOVE_TO
-  tracking, cleared on BUILD/death/arrival), `_pending_trains/_builds`
-  (messenger-lag guards), `_prev_pop/_growth` (per-turn net deltas, reset
-  on turn advance), overcrowding clusters (negative-growth towns within
-  150 km; smallest per cluster trains), memoized `stale_turns`
-  (dist-to-capital/info_speed), fingerprint-gated standing-order replay +
-  plan queue + clock effort (see `BOT_TIME.md`).
+- `BotState`: seen-only world mirror (holds only delivered updates) +
+  `turn/faction`; upsert parser (absolute create/update/remove, unknown
+  kinds ignored, deaths clear trackers); `evac_ordered` flag + amnesia
+  wipe on stream jump (world, trackers, plans, `last_seen`, trails);
+  `_army_targets` (own MOVE_TO notes via `note_orders`, cleared on
+  BUILD/death/arrival); `_pending_trains/_builds` confirmed by own
+  `town_update` pop drops; `last_seen` delivery stamps + per-army
+  position trails (foe velocity stands in for intent); `_prev_pop/_growth`
+  (per-turn net deltas, reset on turn advance), overcrowding clusters
+  (negative-growth towns within 150 km; smallest per cluster trains),
+  memoized `stale_turns` (dist-to-capital/info_speed), fingerprint-gated
+  standing-order replay + plan queue + clock effort (see `BOT_TIME.md`).
+  `is_quiet`: any update breaks sleep.
 - Defense trio (greedy/aggressive/expander/pro): `inbound_eta` (per-town
   inbound ETAs ≤ 8 turns; stationary foe guards excluded),
   `note_wave_watch` (vanished own army → hold one home 6 turns),
@@ -91,34 +97,39 @@ furniture for scenarios, not a personality. There is no `random` bot
   truncate to trains-only); aggressive/expander/turtle run single loops.
   Deterministic throughout (`_hash`, no `random` module).
 
-## Intel model (delayed everything)
+## Intel model (updates, not events)
 
-The only honest mental model: **no instant intel anywhere**. A faction
-observes events where `t + dist(event, capital)/info_speed ≤ now`, and
-town state (pop, faction, capital flags) as of `now − dist/info_speed`
-from the runner's per-turn snapshots (floored, never future, clamped to
-birth). Pops arrive as absolute ints (slim wire, send-on-change). Own
-capital (dist 0) is the only fresh reading.
+The only honest mental model: **bots see snapshots, late — never events,
+never the map**. Each turn the engine observes (line-of-sight discs,
+`line_of_sight` 150 km, own entities always seen), stamps what was seen,
+and delivers when each observation's delay releases
+(`t + dist/capital/info_speed ≤ now`, exact) — but only observations
+from turns at or after the faction's last landing S. Three gates
+(tagged + released + ≥ S), no exceptions.
 
+- **Wire**: `town_update{id,x,y,faction,population,is_capital}` (pop 0 =
+  dead) and `army_update{id,x,y,faction,alive,is_viceroy}`
+  (`alive False` = dead — that *is* the battle report). No intent, no
+  battle events, no map, no seer lists. Newest passing snapshot wins per
+  entity; unchanged snapshots stay silent, so quiet worlds cost ~nothing.
 - **Flight**: a faction with a viceroy airborne is blind *and mute* —
   no turns sent, no orders read, clock frozen.
-- **Landing**: the first post-landing payload rebuilds (full spawns in
-  existing event shapes + delay-consistent army moves + audible battles).
-  `BotState` wipes on its unknown landing capital and applies the batch
-  onto the empty world (ghosts/stale capitals/trackers die at once;
-  redeliveries find ids known and skip the wipe; stale backlog applies
-  first as harmless no-ops). Existence of everything leaks once per
-  landing — accepted tradeoff, documented in `PLAN.md`.
-- **Deaths flow**: `TOWN_DEATH` is a first-class ledger kind (an old
-  fallback degraded it to `battle`, blinding bots to all deaths — fixed).
-  Force-counting is trustworthy; the +1 doctrine can rely on it.
+- **Landing**: the runner sets S and resets send-state; the bot wipes on
+  its own remembered MOVE_CAPITAL order (stream jump = success, wipe
+  everything; sequential = failure, carry on). Survivors re-announce
+  paced by delay; the S−1 transient is never known; ghosts are
+  impossible — the wiped bot has no memory for a corpse to haunt.
+- **Deaths are uniform**: told-alive implies told-dead through the same
+  three gates, no special cases. Force-counting is trustworthy; the +1
+  doctrine can rely on it. Own capital (dist 0) is the only fresh reading.
 
 ## Mechanics that matter
 
 - **Turn order**: command → propagation (messengers advance/deliver) →
   movement (50 km/turn, path-blocking stops at closest approach) →
-  viceroy arrival → combat (simultaneous) → captures → economy (growth,
-  TRAIN spawns, BUILD consumes, deaths) → knowledge (ledger + eviction).
+  combat (simultaneous) → captures → economy (growth, TRAIN spawns,
+  BUILD consumes incl. viceroy founding, deaths) → knowledge (ledger
+  generate + evict).
 - **Combat (weakness)**: armies count enemies within 10 km; an army dies
   if any enemy in radius has weakness ≤ its own. 1v1 *and* 2v2 annihilate
   everybody; any strict outnumbering (2v1, 3v2) kills clean with zero
@@ -135,11 +146,12 @@ capital (dist 0) is the only fresh reading.
   demoted. **Never creates capitals — beheading is permanent.**
 - **MOVE_CAPITAL** is a pre-programmed TRAIN: messenger → economy execution
   (deduct, demote old capital *at train time*, spawn viceroy with march
-  target) → normal march → arrival founds (pop 500) and promotes. No
-  capital exists mid-flight; second orders during flight die at send
-  (no capital to target); if the capital falls before economy, the intent
-  drops; if the viceroy dies, the beheading is permanent. Needs a 1-turn
-  lead — same-turn rescue is structurally impossible.
+  target) → normal march → a later economy BUILD-step founds (pop 500)
+  and promotes. The viceroy marches *through* combat and can be
+  intercepted; if it dies, the beheading is permanent. No capital exists
+  mid-flight; second orders during flight die at send (no capital to
+  target); if the capital falls before economy, the intent drops. Needs
+  a 1-turn lead — same-turn rescue is structurally impossible.
 - **Economy**: logistic 0.001·P·(1−P/100k) minus crowding, ~1–25 pop/turn
   realistic. A train→build cycle is −500 *now*; at these growth rates it
   repays over hundreds of turns. Spending is the scarce resource.
@@ -166,5 +178,5 @@ capital (dist 0) is the only fresh reading.
 
 Fast suite (`scenario_bench.py`, ~1.5s) per change; strategic suite
 (`strategic_bench.py`, ~10s) at milestones; `empty_3000` rematch read as
-a trade ledger; `pytest` green. Baselines in `BOT_BENCH.md` — note the
-era: campaign numbers are instant-intel era and no longer bind.
+a trade ledger; `pytest` green. Binding baselines: `BOT_BENCH.md` fog-era
+table (campaign/delayed tables are record, not targets).

@@ -1,4 +1,7 @@
-# Bot scenario benchmarks + improvement plan
+# Bot scenario benchmarks (numbers)
+
+Roadmap lives in `BOT_PLAN.md`; this file is numbers + suite docs.
+Exactly one table binds (fog era, below); the rest is record.
 
 ## Goal
 Per-bot scenario suites (disjoint map sets) that run in seconds and
@@ -53,8 +56,8 @@ discriminate each personality's weaknesses. Used to score the 5 bots
 2. `wake` — A 2000 (under 2600 rule) vs distant `aggressive`, 60 turns.
    Goal: ≥1 army by turn 40. Tests threat-responsive threshold.
    Pre-campaign FAILED (never trained under 2600); fixed by threat bars.
-   LAPSED in the delayed-intel transition (scores 0 on current tree) —
-   see Delayed-intel era below.
+   Lapsed under delayed intel (scored 0); re-observation under S fixed it
+   in the fog era (wake 2121).
 3. `cluster` — A capital 3000 + town 2000 100km away vs far `aggressive`,
    100 turns. Goal: own both at end (mutual support).
 
@@ -65,12 +68,10 @@ discriminate each personality's weaknesses. Used to score the 5 bots
 3. `endgame` — symmetric 2v2 towns 4000 each, 100 turns. Goal: higher
    score / eliminate B. Tests full combined game.
 
-## Final scores (campaign complete 2026-09-04; fast sweep 1.2s, slow ~10s)
+## Campaign scores (instant-intel era, record — complete 2026-09-04; fast sweep 1.2s, slow ~10s)
 
-> Era note: every number below was measured under **instant intel**. The
-> post-campaign engine (delayed pops/factions, beheading permanence,
-> economy-phase MOVE_CAPITAL, no spawn immunity) moved several of them —
-> see Delayed-intel era. Do not judge new work against this table.
+> Every number below was measured under **instant intel**. Record only —
+> do not judge new work against this table.
 
 | Scenario | Before | After | Δ | What changed |
 |---|---|---|---|---|
@@ -96,8 +97,9 @@ Elo all-draws at 3000/60t (structural): pro 1501 / greedy 1501 /
 aggressive 1500 / turtle 1499 / expander 1499 — nobody concedes anything.
 (All instant-intel era; unrestored since — see Step 0 in `BOT_PLAN.md`.)
 
-## Fog era (EVENT_REWORK landed, current tree)
+## Fog era (EVENT_REWORK landed — BINDING table, current tree)
 
+New work is judged against this table (live scoreboard: BOT_PLAN.md).
 Fast suite: raid_hold 3066 / recycle 6052 / skip_thin 2151 / settle 3066 /
 chain 5250 / guard 3088 / viable 3088 / pair 5105 / trap 3165 / defend 3207 /
 wake 2121 / cluster 5465 / opening 3242 / defense 3305 / endgame 8804.
@@ -122,9 +124,10 @@ the selectivity bleed (skip_thin/trap/viable), then the Elo all-hold
 verdict, then Steps 3–6; scouting ships inside Step 2, counter-intel
 parked after the evaluator.
 
-## Delayed-intel era (post-campaign engine changes, current tree)
+## Delayed-intel era (superseded interim, record)
 
-Fast suite on current tree: raid_hold 3173 / recycle 4086 / skip_thin 3467 /
+Superseded by the fog-era table when EVENT_REWORK landed (Step 0 DONE).
+Fast suite under the interim engine: raid_hold 3173 / recycle 4086 / skip_thin 3467 /
 settle 2114 / chain 4319 / guard 1624 / viable 3768 / pair 4303 / trap 4040 /
 defend 1109 / wake 0 / cluster 2182 / opening 4316 / defense 0 / endgame 4928.
 Moved vs the table above: defense 1109→0, wake 1060→0 (delayed-intel
@@ -132,8 +135,6 @@ casualties — stale pops miss train bars; the forecast episode showed this
 needs risk posture, not arithmetic), endgame 3249→4928 (unattributed —
 beheading permanence and/or intel timing; needs the Step 0 bisect if it
 matters). Single-town scenarios identical (no distant intel involved).
-This is the table new work is judged against until the Step 0 re-baseline
-lands (live scoreboard: `BOT_PLAN.md`).
 
 ## Starting baselines (pre-campaign, for the record)
 
@@ -170,8 +171,9 @@ clock-bank management over thousands of turns, or five personalities
 interacting. A bot can ace all 15 and still misevaluate a 3000-turn game.
 
 Since maps cost ~110ms (and even 1000-turn games cost ~2s), the answer is
-more scenarios, not longer iteration. Planned strategic set (~10 maps,
-all 2-faction, 150–1000 turns, est. total <20s):
+more scenarios, not longer iteration. The strategic set (11 maps, all
+2-faction, 150–1000 turns) ships in `maps/strategic/`, run by
+`strategic_bench.py` (~10s):
 
 | Scenario | Setup | Tests | Turns |
 |---|---|---|---|
@@ -199,8 +201,8 @@ sweep stays tactical (<5s); full sweep incl. strategic stays <30s.
   turtle never spends. Score converts only with raiding follow-through
   (future expander work: raid turtle's fat capital with built force).
 - **Turtle > Aggressive**: garrison makes raids unprofitable. Earned in
-  campaign (`defend` HOLDS); lapsed on current tree only via the intel
-  transition, not the doctrine.
+  campaign (`defend` HOLDS); lapsed under delayed intel, restored in the
+  fog era (defend 3207) — the doctrine, not the transition, was right.
 - **Greedy** is outside the triangle (pure selfish raid economics).
 - **Pro beats all**: at campaign end took turtle+expander, tied
   greedy/aggressive (Elo 1531/1529/1527 — the tie cluster, since broken
@@ -209,7 +211,7 @@ sweep stays tactical (<5s); full sweep incl. strategic stays <30s.
 Each edge has its natural metric (raid success / survival / towns_held);
 score is the recorded baseline number, doctrine notes are the reading.
 
-## Slower suite results (strategic_bench.py — 8.3s total, budget <30s)
+## Slower suite results (instant-intel era, record; strategic_bench.py — 8.3s total, budget <30s)
 
 Strategic maps (focal pro): succession 0 (head-on meeting engagement
 lost; lineage lesson), guard_duty 0 (overrun by 8000-aggressive),
@@ -235,11 +237,6 @@ guard + working settlers + chain-as-policy; turtle threat bars + picket +
 evac + recall + cap-concentration; pro counter-punch + duel-gated rope,
 home defense and viability + empty-field hold + evac.
 
-Open (see `BOT_PLAN.md`): demand-gated trains (successor to the reverted
-forecast episode); meeting forecast + computed arrival-sync; post-capture
-doctrine; evac v2 + capital-sniping + settler-hunting; pro siege craft;
-turtle survive floor (relaxed 1200-trains still suicide — Step 1).
-Shared foundations landed (see `BOT_TIME.md`): incremental
-update, staged decide, memoized staleness, quiet replay, plan queue,
-clock effort, slim wire, measured margins. Bots also have carryover
-backlogs, Fischer/byo-yomi clocks, and the ideas-1–6 test files.
+Open work: `BOT_PLAN.md` Steps 1–6. Shared foundations landed (see
+`BOT_TIME.md`): incremental update, staged decide, memoized staleness,
+quiet replay, plan queue, clock effort, slim wire, measured margins.
