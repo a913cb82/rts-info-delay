@@ -227,6 +227,12 @@ NOTE on absolutes: this box measured ~1.8× slower than the runs behind the tabl
 - Slow bots that use their budget (3× 80ms CPU-burn + 2 fast, steady-state turns 12–40): **244.0ms → 83.8ms per turn (2.9×)** — three full budgets now cost one window. Pure-wait bots: 292 → 133ms wall (incl. startup/teardown); steady state ≈ 84ms
 - Fixed alongside: turn timeout never actually fired — `send_turn` created a `with ThreadPoolExecutor` per readline whose `shutdown(wait=True)` blocked until the silent bot answered (100ms timeout took 5018ms; an infinitely-hung bot hung the game forever). Replaced with a persistent per-bot reader + `shutdown(wait=False)`: timeout now 101ms, hung bot contained, rest of game unaffected (3-turn hang game 6068 → 1114ms)
 
+### opt19: Bot wire slimming (idea 8) — DONE
+- Populations as absolute ints + `pop_change` only on int change; engine floats and record file untouched. 278→198 B/bot-turn (−29%). No-compounding proof: absolute values only, bot assigns absolutely (err <1 forever); the one observed play flip (t1110 train ±1 turn, scores −0.04%) is threshold quantization, not drift
+
+### opt20: Deadline margins from data (idea 9) — DONE
+- Measured 1000 instant round-trips first: med 0.15ms, p99 0.45ms, max 11ms spike. Margins now 3ms flush + 5ms think = 8ms unusable (was 30ms double margin). Kept 8 not 2–3 because of the 11ms spike tail; legacy no-clock path stays conservative
+
 ### opt18: Engine thread-level parallelism — EVALUATED, NOT ATTEMPTED (measured)
 - Median engine step is **0.11ms**; measured thread fan-out overhead alone is ~2ms/turn (opt17) — overhead would exceed the work ~20×. The engine already exploits parallelism where it pays: SIMD/vectorized numpy ops and serial-njit kernels (threading those would also risk FP-order quant diffs)
 - Verdict: no code change. Coarse-grained parallelism (whole games, parameter sweeps via multiprocessing) is the level that would pay off, when needed

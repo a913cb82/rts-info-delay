@@ -263,8 +263,16 @@ class BotState:
             return 9999
         return max(0, (self.deadline - time.time()) * 1000)
 
+    # Idea 9 margins (measured 2026-09: instant round-trip med 0.15ms,
+    # p99 0.45ms, max 11ms scheduling spike in 1000). Total unusable 8ms
+    # of the clock: 3ms flush margin + 5ms think margin. Covers stalls up
+    # to ~7ms landing inside the sub-ms check-to-flush window (rare^2);
+    # the old 30ms double margin (15+15) is not reinstated without data.
+    FLUSH_MARGIN_MS = 3.0
+    YIELD_AT_MS = 5.0
+
     def should_yield(self) -> bool:
-        return self.time_remaining_ms() < 15
+        return self.time_remaining_ms() < self.YIELD_AT_MS
 
     def get_growth(self, town_id: int) -> float:
         return self._growth.get(town_id, 0.0)
@@ -519,7 +527,7 @@ def bot_main(decide_fn):
                 ms = 100
             state.deadline = t_start + max(0.02, ms / 1000 - 0.015)
         else:
-            state.deadline = t_start + max(0.005, clock / 1000 - 0.015)
+            state.deadline = t_start + max(0.005, clock / 1000 - BotState.FLUSH_MARGIN_MS / 1000)
         state.update(turn, events)
         orders = decide_fn(state, cfg)
         for o in orders:

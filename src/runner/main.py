@@ -31,6 +31,7 @@ class BotProcess:
         self.alive = True
         self.cmd = cmd
         self._reader = None
+        self._last_sent_pop: dict[int, int] = {}  # town_id -> last int pop sent (idea 8)
         # Fischer clock: starts full (cap), engine-authoritative.
         try:
             self.clock_ms = float(getattr(config, "turn_time_ms", 100) or 100)
@@ -266,8 +267,14 @@ class BotProcess:
         self._reader = None
 
 
-def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, events: list[dict]) -> list[dict]:
-    """Build one faction's event payload (serial; GIL-bound numpy/JSON work)."""
+def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, events: list[dict], bp: BotProcess) -> list[dict]:
+    """Build one faction's event payload (serial; GIL-bound numpy/JSON work).
+
+    Idea 8 slimming: populations go out as ints (absolute values — the bot
+    assigns them absolutely, so wire error is bounded to +-1 and can never
+    compound), and pop_change is only sent when the int actually changed.
+    The engine's own floats and the record file are untouched.
+    """
     # Determine visible events for this faction
     capital = world.faction_capital(faction)
     if capital is None:
@@ -300,12 +307,23 @@ def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, eve
         }
         if isinstance(ev.payload, dict):
             d.update(ev.payload)
+        if isinstance(d.get("population"), float):
+            d["population"] = int(round(d["population"]))
         bot_events.append(d)
-    # Append pop_change events from previous step (not in ledger)
+    # Append pop_change events from previous step (not in ledger) —
+    # only when the int value changed since this faction last saw it.
     if events:
+        last = bp._last_sent_pop
         for ev in events:
             if isinstance(ev, dict) and ev.get("kind") == "pop_change":
-                bot_events.append(ev)
+                try:
+                    ip = int(round(float(ev.get("population", 0))))
+                except Exception:
+                    continue
+                tid = ev.get("id")
+                if last.get(tid) != ip:
+                    last[tid] = ip
+                    bot_events.append({"kind": "pop_change", "id": tid, "population": ip})
     return bot_events
 
 
@@ -379,7 +397,7 @@ def run_game(
                 if not bp.alive:
                     orders_dict[faction] = []
                     continue
-                bot_events = _build_bot_events(faction, world, ledger, turn, events)
+                bot_events = _build_bot_events(faction, world, ledger, turn, events, bp)
                 futs[pool.submit(bp.send_turn, turn=turn, events=bot_events, time_ms=bp.clock_ms)] = faction
             # Merge in bot_processes order (not completion order): step()
             # allocates IDs in dict order, so this keeps bit-identical
