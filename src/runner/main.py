@@ -32,11 +32,18 @@ class BotProcess:
         self.cmd = cmd
         self._reader = None
         self._last_sent_pop: dict[int, int] = {}  # town_id -> last int pop sent (idea 8)
-        # Fischer clock: starts full (cap), engine-authoritative.
+        # Byo-yomi clock, engine-authoritative: main reservoir first, then
+        # one period (cap + increment). Cold-start imports come out of the
+        # 1s main time, so turn 1 needs no handshake.
+        try:
+            self.main_ms = float(getattr(config, "main_time_ms", 1000.0) or 1000.0)
+        except Exception:
+            self.main_ms = 1000.0
         try:
             self.clock_ms = float(getattr(config, "turn_time_ms", 100) or 100)
         except Exception:
             self.clock_ms = 100.0
+        self.in_byoyomi = False
         try:
             import os
             env = os.environ.copy()
@@ -82,6 +89,13 @@ class BotProcess:
                 self.kill()
             except Exception:
                 pass
+            return
+    def turn_budget(self) -> float:
+        """This turn's budget: main reservoir remainder, or the byo-yomi
+        period clock once main is exhausted."""
+        if not self.in_byoyomi:
+            return max(0.0, self.main_ms)
+        return max(0.0, self.clock_ms)
 
     def send_turn(self, turn: int, events: list[dict], time_ms: float | None = None) -> list[str]:
         """Send turn header + clock + events, read orders until 'go'.
@@ -198,15 +212,22 @@ class BotProcess:
             return False
 
     def _finish_block(self, lines, timed_out: bool, crashed: bool, elapsed_ms: float,
-                      use_clock: bool, cap: float, inc: float, budget_ms: float) -> list[str]:
-        """Shared completion: timeout/crash kill, else validate + clock."""
+                      use_clock: bool, cap: float, inc: float, budget_ms: float, turn=None) -> list[str]:
+        """Shared completion: timeout/crash kill, else validate + clock.
+
+        Deaths are logged (faction/turn/reason): silent sudden-death used to
+        be indistinguishable from being outplayed in post-game analysis.
+        """
         if timed_out:
             if use_clock:
+                self.main_ms = 0.0
                 self.clock_ms = 0.0
+            print(f"bot {self.faction} dead turn {turn}: timeout ({elapsed_ms:.0f}ms > {budget_ms:.0f}ms budget)", file=sys.stderr)
             self.alive = False
             self.kill()
             return []
         if crashed:
+            print(f"bot {self.faction} dead turn {turn}: crash/eof", file=sys.stderr)
             self.alive = False
             try:
                 self.kill()
@@ -215,9 +236,19 @@ class BotProcess:
             return []
         validated = parse_orders(lines)
         if use_clock:
-            self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
-            if self.clock_ms < 0.0:
-                self.clock_ms = 0.0
+            if not self.in_byoyomi:
+                # Main time: deduct; hitting zero enters byo-yomi fresh.
+                # (Overrunning the budget dies above, so the crossing turn
+                # is never punished beyond entering the period.)
+                self.main_ms -= elapsed_ms
+                if self.main_ms <= 0:
+                    self.main_ms = 0.0
+                    self.in_byoyomi = True
+                    self.clock_ms = cap
+            else:
+                self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
+                if self.clock_ms < 0.0:
+                    self.clock_ms = 0.0
         return validated
 
     def send_end(self, scores: dict[int, int]) -> None:
@@ -521,7 +552,7 @@ def run_game(
             if not bp.alive:
                 orders_dict[faction] = []
                 continue
-            budget_ms = max(0.0, float(bp.clock_ms))
+            budget_ms = max(0.0, float(bp.turn_budget()))
             if not bp._write_block(turn, _build_bot_events(faction, world, ledger, turn, events, bp), budget_ms, True):
                 bp.alive = False
                 try:

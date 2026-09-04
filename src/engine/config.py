@@ -12,10 +12,12 @@ class GameConfig:
     map_size: list[int] = field(default_factory=lambda: [1000, 1000])
     map: str = ""  # CSV entity list
 
-    # Timing (Fischer clock per bot: turn_time_ms cap, +increment per turn)
+    # Timing (byo-yomi per bot: main_time_ms reservoir, then one period of
+    # turn_time_ms cap with +time_increment_ms per turn)
     max_turns: int = 500
     turn_time_ms: int = 1000
     time_increment_ms: float = 10.0
+    main_time_ms: float = 1000.0
 
     # Units
     info_speed: float = 150.0
