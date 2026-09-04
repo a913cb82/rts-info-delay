@@ -1,11 +1,11 @@
 {
- "map": "x,y,type,population\n300.0,500.0,A,3000\n500.0,500.0,B,900",
+ "map": "x,y,type,population\n200.0,500.0,A,3000\n400.0,500.0,B,900\n550.0,500.0,B,4000",
  "map_size": [
   1000,
   1000
  ],
- "max_turns": 80,
- "turn_time_ms": 1000,
+ "max_turns": 150,
+ "turn_time_ms": 100,
  "info_speed": 150.0,
  "army_speed": 50.0,
  "army_cost": 1000,
@@ -22,7 +22,8 @@
  },
  "focal": 0,
  "goal": {
-  "type": "enemy_owns",
-  "town": 1
- }
+  "type": "own_town",
+  "town": 2
+ },
+ "note": "thin decoy + fat prize: restraint AND target selection"
 }

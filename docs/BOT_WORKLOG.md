@@ -19,6 +19,27 @@ Self-play diffs 0.
 
 ## Log
 
+### Aggressive — viability, departure-sync, home defense (2026-09-04)
+Fast: pair 3782→4317 (clean 2v1, guard dies alone), trap 2306→4039
+(map redesigned: thin decoy + fat prize; gate skips rubble, takes 4000),
+viable 3771 (holds). Elo 1487→1514; all raids vs expander succeed (A>E),
+all raids vs turtle fail (T>A), tie cluster with pro/greedy.
+Doctrine learned:
+- Viability gate (halve-vs-floor+200) first misfired as pure restraint
+  (old trap: 2310 vs 2314 — timing wash); redesigned map proves selection.
+- Arrival-sync is unworkable (1-turn decision + 1-turn messenger lag +
+  stale intel vs 50km/turn; creep evaluated on corpses; halt ordered
+  settles; dual gates deadlocked). Departure-sync works: lone army holds
+  while home town can retrench (pop ≥ 2x cost), releases with the pack.
+- A1 nearly broke defense (chasing ghosts left cap empty, t8 walk-in):
+  home-hold vs predicted inbound + second-wave watch (vanished known
+  army → hold one home 6 turns; bot-side memory on state object).
+- Stationary guards are not inbound (pair freeze: 5105 hoard scored well
+  for doing nothing — excluded guards on own towns from inbound).
+- Cross-bot coupling is normal: turtle_defend 2547↔1109 swings came from
+  B-side changes (both hold); wake 1527→527 honest (B hunts settler now).
+  Suicide-evac gated to pop ≥ 2x cost (turtle tweak).
+
 ### Turtle — threat defense + MOVE_CAPITAL evac (2026-09-04)
 Fast: defend 548→2547 (HOLDS), wake 0→1527 (evac lineage), cluster 2730→2182.
 Slow: Elo turtle 1456→? (all raids vs turtle now fail — T>A edge live);

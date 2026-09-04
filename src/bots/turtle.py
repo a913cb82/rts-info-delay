@@ -85,7 +85,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # capital on arrival; a faction with a viceroy in flight survives the old
     # capital's fall. Needs no existing town (founds one).
     evacuating = any(a.faction == faction and a.is_viceroy for a in state.world.armies)
-    if cap is not None and not evacuating and hopeless and cap.population >= config.army_cost:
+    # evac needs 2x cost: the viceroy takes 1000 and the old town must stay
+    # above the death floor (suicide-evacs at ~1000 killed the cap for
+    # nothing — wake lesson vs synced raiders).
+    if cap is not None and not evacuating and hopeless and cap.population >= 2 * config.army_cost:
         foes = [a for a in state.world.armies if a.faction != faction]
         if foes:
             fx = sum(a.x for a in foes) / len(foes)
