@@ -61,7 +61,32 @@ discriminate each personality's weaknesses. Used to score the 5 bots
 3. `endgame` — symmetric 2v2 towns 4000 each, 100 turns. Goal: higher
    score / eliminate B. Tests full combined game.
 
-## Baselines (score = final focal-faction score; full sweep 1.7s, ~110ms/map)
+## Final scores (campaign complete 2026-09-04; fast sweep 1.2s, slow ~10s)
+
+| Scenario | Before | After | Δ | What changed |
+|---|---|---|---|---|
+| greedy_raid_hold | 3176 | 3172 | flat | correct already |
+| greedy_recycle | 3592 | 4086 | +494 | settlers actually BUILD (latent note_move bug) |
+| greedy_skip_thin | 2116 | 3467 | +1351 | viability gate; map redesigned (scarcity prices restraint) |
+| expander_settle | 2114 | 2114 | flat | correct already |
+| expander_chain | 4319 | 4319 | flat | emergent, now policy |
+| expander_guard | 2000 | 1624 | holds* | was capital LOST; now holds + settles (*score lower, position won) |
+| aggressive_viable | 3771 | 3771 | flat | correct already |
+| aggressive_pair | 3782 | 4317 | +535 | departure-sync: clean 2v1, guard dies alone |
+| aggressive_starve_trap | 2159 | 4038 | +1879 | viability gate; map redesigned (decoy + prize) |
+| turtle_defend | 548 | 1109 | holds | was capital LOST; now holds (mutual annihilation) |
+| turtle_wake | 0 | 1060 | alive | was killed t9; now lineages (+evac when rich enough) |
+| turtle_cluster | 2730 | 2186 | -544 | accepted: baseline held by accident, now holds by design |
+| pro_opening | 3240 | 4316 | +1076 | leader-target + full doctrine |
+| pro_defense | 1109 | 1109 | holds | holds |
+| pro_endgame | 2245 | 3249 | +1004 | counter-punch breaks the mirror (out-settles; takes still future) |
+
+Slow suite: efficiency 59%→100% (= policy optimum 5254); succession 0→611;
+snowball 3748→5681; attrition 4226 (held); endurance 3089 (foes tougher now);
+Elo all-draws at 3000/60t (structural): pro 1501 / greedy 1501 /
+aggressive 1500 / turtle 1499 / expander 1499 — nobody concedes anything.
+
+## Starting baselines (pre-campaign, for the record)
 
 | Scenario | Score | Notes |
 |---|---|---|
