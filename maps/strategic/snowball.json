@@ -1,0 +1,25 @@
+{
+ "map": "x,y,type,population\n200.0,500.0,A,3000\n400.0,500.0,B,3000",
+ "map_size": [
+  1000,
+  1000
+ ],
+ "max_turns": 500,
+ "turn_time_ms": 1000,
+ "info_speed": 150.0,
+ "army_speed": 50.0,
+ "army_cost": 1000,
+ "interact_radius": 10.0,
+ "population_cap": 100000.0,
+ "population_growth": 0.001,
+ "build_efficiency": 0.5,
+ "equilibrium_spacing": 0.1,
+ "crowding_decay": 0.8,
+ "crowding_asymmetry": 0.01,
+ "teams": {
+  "0": "pro",
+  "1": "stub"
+ },
+ "focal": 0,
+ "note": "early take compounding"
+}

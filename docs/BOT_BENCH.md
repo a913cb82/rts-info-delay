@@ -86,6 +86,66 @@ aggressive ~1600 (3771→2159); guard failure costs expander ~2300
 (chain 4319 → guard 2000); turtle's three maps span 0–2733 (highest
 variance, most headroom); pro ties its mirror (nothing learned yet).
 
+## Why the tactical suite is not enough (and what covers the rest)
+
+The 15 maps test single decisions over 30–100 turns: one raid, one
+settle, one defense. They cannot see compounding (the 1100-turn wait
+before the first train in empty3000), multi-war campaigns, succession
+after commander death (expander t1183), staleness compensation at range,
+clock-bank management over thousands of turns, or five personalities
+interacting. A bot can ace all 15 and still misevaluate a 3000-turn game.
+
+Since maps cost ~110ms (and even 1000-turn games cost ~2s), the answer is
+more scenarios, not longer iteration. Planned strategic set (~10 maps,
+all 2-faction, 150–1000 turns, est. total <20s):
+
+| Scenario | Setup | Tests | Turns |
+|---|---|---|---|
+| `succession` | focal loses capital ~t15, settler en route | posthumous lineage score at 200 | 200 |
+| `snowball` | focal takes first capital early | compounding at 500 | 500 |
+| `comeback` | focal poor 500 vs rich 5000 turtle | economy + raiding from behind | 500 |
+| `longpeace` | 2 growers, far apart, no contact | pure train cadence on the logistic curve | 1000 |
+| `attrition` | symmetric 3v3 towns vs greedy | combined arms | 500 |
+| `staleness` | enemy 800km away | delay-compensated distant raid | 300 |
+| `siege` | many thin towns around | restraint at scale (no rubble) | 300 |
+| `guard_duty` | rich aggressive vs focal, 300 turns | long defense | 300 |
+| `opening` | 1200 starts (action by t50) | early economy | 150 |
+| `endurance` | 1000-turn free play vs mixed pair | generalship | 1000 |
+
+Plus `empty_3000` itself (~4s, 5 bots) as the integration gate. Fast
+sweep stays tactical (<5s); full sweep incl. strategic stays <30s.
+
+## Personality triangle (doctrine)
+
+- **Aggressive > Expander**: raid kills the settler faction before it
+  compounds. Proven: `expander_guard` (capital falls), empty3000 t1183.
+- **Expander > Turtle**: out-settle the sleeper. Proven territorially:
+  `expander_outsettle` towns_held 3v2 at 200 AND 500 turns — but score
+  still trails (1856v2441, 2499v3232) because new towns start at 500 and
+  turtle never spends. Score converts only with raiding follow-through
+  (future expander work: raid turtle's fat capital with built force).
+- **Turtle > Aggressive**: garrison makes raids unprofitable. ASPIRATIONAL
+  — `turtle_defend` currently fails (no garrison). The edge to earn.
+- **Greedy** is outside the triangle (pure selfish raid economics).
+- **Pro beats all**: currently takes turtle+expander, ties greedy/aggressive
+  (Elo 1531/1529/1527 — the tie cluster to break).
+
+Each edge has its natural metric (raid success / survival / towns_held);
+score is the recorded baseline number, doctrine notes are the reading.
+
+## Slower suite results (strategic_bench.py — 8.3s total, budget <30s)
+
+Strategic maps (focal pro): succession 0 (head-on meeting engagement
+lost; lineage lesson), guard_duty 0 (overrun by 8000-aggressive),
+snowball 3748, staleness 4654, siege 3347, opening 1391, comeback 821,
+attrition 4226, endurance 6424, longpeace 3124 (efficiency 59% of policy
+optimum 5254), outsettle 1856 (towns 3v2 — see triangle).
+Policy optimum (in-process, 1.7s): best = hold/never-train, 5254.
+Self-play: 0-diff mirrors (stable, uninformative). Elo home-and-away:
+pro 1531 / greedy 1529 / aggressive 1527 / expander 1457 / turtle 1456
+— everyone takes turtle, otherwise mutual failure (the tie cluster).
+Fast suite: 15 maps, 1.7s total (budget <5s).
+
 ## Per-bot improvement ideas (tailored to the failures above)
 
 ### Greedy — learn selectivity, recycle idlers
