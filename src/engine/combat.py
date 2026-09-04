@@ -107,6 +107,15 @@ def resolve_combat(
     combat_armies = [a for a in world.armies if not getattr(a, "is_fresh", False)]
     if not combat_armies:
         return events
+    # Fast path (ants-inspired sound skip): single faction means no enemies
+    # anywhere, so no deaths — skip weakness/hash entirely. Common early game.
+    first_faction = combat_armies[0].faction
+    if all(a.faction == first_faction for a in combat_armies):
+        return events
+
+    # id->army dict: event building below does O(1) lookups instead of
+    # O(n) linear scans per member (was O(n^2) total for big battles).
+    by_id = {a.id: a for a in combat_armies}
 
     weaknesses, adj = _compute_weaknesses_and_adj(combat_armies, config)
 
@@ -160,14 +169,14 @@ def resolve_combat(
         # Gather combatants in this component (all ids)
         combatants = []
         for aid in comp:
-            army = next((a for a in combat_armies if a.id == aid), None)
+            army = by_id.get(aid)
             if army:
                 combatants.append({"id": army.id, "faction": army.faction})
         # Compute battle position as centroid of dead armies or average of component
         xs = []
         ys = []
         for aid in comp:
-            army = next((a for a in combat_armies if a.id == aid), None)
+            army = by_id.get(aid)
             if army:
                 xs.append(army.x)
                 ys.append(army.y)
@@ -185,22 +194,20 @@ def resolve_combat(
         })
         # Also generate army_death events for each dead in component
         for aid in comp_dead:
-            army = next((a for a in combat_armies if a.id == aid), None)
+            army = by_id.get(aid)
             if army:
                 events.append({"kind": "army_death", "id": army.id, "x": army.x, "y": army.y, "is_viceroy": army.is_viceroy})
 
     # For dead armies that were not in any component (isolated? shouldn't happen), still generate death
     remaining_dead = dead_ids - set().union(*components) if components else dead_ids
     for aid in remaining_dead:
-        army = next((a for a in combat_armies if a.id == aid), None)
+        army = by_id.get(aid)
         if army:
             events.append({"kind": "army_death", "id": army.id, "x": army.x, "y": army.y, "is_viceroy": army.is_viceroy})
             # Also create battle for isolated dead? Not needed
 
-    # Remove dead armies from world
-    # Also need to clean standing orders for dead armies (world.remove_army will handle per id but we batch)
-    for aid in dead_ids:
-        world.remove_army(aid)
+    # Remove dead armies from world (single batch pass)
+    world.remove_armies(dead_ids)
 
     # For fresh armies, we still need to keep them; they remain in world
 

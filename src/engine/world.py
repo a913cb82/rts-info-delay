@@ -132,12 +132,18 @@ class World:
         return self._town_by_id.get(id)
 
     def remove_army(self, id: int) -> None:
-        # remove from list
-        self.armies = [a for a in self.armies if a.id != id]
-        self.standing_orders = [so for so in self.standing_orders if not (so.target_type == "army" and so.target_id == id)]
-        # dict
-        if id in self._army_by_id:
-            del self._army_by_id[id]
+        self.remove_armies([id])
+
+    def remove_armies(self, ids) -> None:
+        # Batch removal: single-pass filters instead of O(A) per id.
+        dead = set(ids)
+        if not dead:
+            return
+        self.armies = [a for a in self.armies if a.id not in dead]
+        self.standing_orders = [so for so in self.standing_orders if not (so.target_type == "army" and so.target_id in dead)]
+        for id in dead:
+            if id in self._army_by_id:
+                del self._army_by_id[id]
         # invalidate faction cache
         self._index_dirty = True
 
