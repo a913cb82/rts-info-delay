@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+from array import array
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+from numba import njit
 
 
 class EventKind(Enum):
@@ -121,6 +123,26 @@ class Ledger:
         # Live-registry for tombstones: (kind, id) -> last-known (x, y).
         self._known_ids: set = set()
         self._known_pos: dict = {}
+        # Columnar delivery accelerator (Phase 2): one row per update entry,
+        # appended at generation alongside the Event log. Tags are a faction
+        # bitmask (faction f -> bit 1 << f). Rows never move; _c_start
+        # advances past evicted turns (compacts when half-dead).
+        self._c_turn = array("q")
+        self._c_x = array("d")
+        self._c_y = array("d")
+        self._c_row = array("q")
+        self._c_tag = array("q")
+        self._c_pay: list = []
+        self._c_seq = array("q")
+        # Per dense entity row: last turn its snapshot changed (-1 = new).
+        # Lets delivery skipnovalue-change rows without payload compares.
+        self._chg: list = []
+        # Last snapshot per entity key (generation-side change detection).
+        self._last_snap: dict = {}
+        self._c_start: int = 0
+        self._c_row_of: dict = {}
+        self._c_key_of: list = []
+        self._col_cache = None
 
     def log(self, event: Event) -> None:
         """Append an event."""
@@ -286,6 +308,26 @@ class Ledger:
                 self._version += 1
             else:
                 break
+        # Advance the columnar store past the same cutoff (rows are in
+        # turn order, so this is amortised O(evicted)).
+        cturn = self._c_turn
+        start = self._c_start
+        n = len(cturn)
+        while start < n and cturn[start] + self._window < now - 1e-9:
+            start += 1
+        if start != self._c_start:
+            self._c_start = start
+            self._col_cache = None
+        if start > 0 and start * 2 >= len(cturn):
+            del self._c_turn[:start]
+            del self._c_x[:start]
+            del self._c_y[:start]
+            del self._c_row[:start]
+            del self._c_tag[:start]
+            del self._c_pay[:start]
+            del self._c_seq[:start]
+            self._c_start = 0
+            self._col_cache = None
 
     def set_capital_since(self, faction: int, turn: int) -> None:
         """Set the turn when faction's current capital was established.
@@ -339,11 +381,13 @@ class Ledger:
             vis = observers(t.x, t.y)
             if not vis:
                 continue
-            self.log(Event(turn=turn, x=t.x, y=t.y, kind=EventKind.TOWN_UPDATE,
-                           payload={"id": t.id, "faction": t.faction,
-                                    "population": int(round(t.population)),
-                                    "is_capital": bool(t.is_capital)},
-                           visible_to=vis))
+            payload = {"id": t.id, "faction": t.faction,
+                       "population": int(round(t.population)),
+                       "is_capital": bool(t.is_capital)}
+            ev = Event(turn=turn, x=t.x, y=t.y, kind=EventKind.TOWN_UPDATE,
+                       payload=payload, visible_to=vis)
+            self.log(ev)
+            self._column(turn, t.x, t.y, ("town", t.id), vis, payload, ev.seq)
         for a in world.armies:
             key = ("army", a.id)
             live.add(key)
@@ -351,11 +395,12 @@ class Ledger:
             vis = observers(a.x, a.y)
             if not vis:
                 continue
-            self.log(Event(turn=turn, x=a.x, y=a.y, kind=EventKind.ARMY_UPDATE,
-                           payload={"id": a.id, "faction": a.faction,
-                                    "alive": True,
-                                    "is_viceroy": bool(a.is_viceroy)},
-                           visible_to=vis))
+            payload = {"id": a.id, "faction": a.faction, "alive": True,
+                       "is_viceroy": bool(a.is_viceroy)}
+            ev = Event(turn=turn, x=a.x, y=a.y, kind=EventKind.ARMY_UPDATE,
+                       payload=payload, visible_to=vis)
+            self.log(ev)
+            self._column(turn, a.x, a.y, ("army", a.id), vis, payload, ev.seq)
         # Tombstones: vanished ids, tagged with observers of the site.
         for key in self._known_ids:
             if key in live:
@@ -373,10 +418,57 @@ class Ledger:
                 payload = {"id": eid, "faction": fac, "alive": False,
                            "is_viceroy": False}
                 ek = EventKind.ARMY_UPDATE
-            self.log(Event(turn=turn, x=x, y=y, kind=ek, payload=payload,
-                           visible_to=vis))
+            ev = Event(turn=turn, x=x, y=y, kind=ek, payload=payload,
+                       visible_to=vis)
+            self.log(ev)
+            self._column(turn, x, y, key, vis, payload, ev.seq)
         self._known_ids = live
         self._known_pos = positions
+
+    def _ensure_row(self, key):
+        row = self._c_row_of.get(key)
+        if row is None:
+            row = len(self._c_key_of)
+            self._c_row_of[key] = row
+            self._c_key_of.append(key)
+            self._chg.append(-1)
+        return row
+
+    def _column(self, turn: int, x: float, y: float, key, vis: set, payload: dict, seq) -> None:
+        """Append one delivery-accelerator row (called for every entry)."""
+        # Release cached snapshots FIRST: frombuffer views pin the arrays
+        # and appends fail while any view lives.
+        self._col_cache = None
+        row = self._ensure_row(key)
+        mask = 0
+        for f in vis:
+            mask |= 1 << int(f)
+        self._c_turn.append(turn)
+        self._c_x.append(x)
+        self._c_y.append(y)
+        self._c_row.append(row)
+        self._c_tag.append(mask)
+        self._c_pay.append(payload)
+        self._c_seq.append(seq if seq is not None else -1)
+
+    def columns(self):
+        """Flat numpy arrays over live column rows (shared per version)."""
+        import numpy as np
+        cached = self._col_cache
+        if cached is not None and cached[0] == self._version and cached[1] == self._c_start:
+            return cached[2]
+        s = self._c_start
+        arr = (np.frombuffer(self._c_turn, dtype=np.int64)[s:],
+               np.frombuffer(self._c_x, dtype=np.float64)[s:],
+               np.frombuffer(self._c_y, dtype=np.float64)[s:],
+               np.frombuffer(self._c_row, dtype=np.int64)[s:],
+               np.frombuffer(self._c_tag, dtype=np.int64)[s:],
+               np.frombuffer(self._c_seq, dtype=np.int64)[s:],
+               self._c_pay[s:],
+               len(self._c_key_of),
+               np.asarray(self._chg, dtype=np.int64))
+        self._col_cache = (self._version, s, arr)
+        return arr
 
     def query(self, faction: int, capital_x: float, capital_y: float, now: float) -> list[Event]:
         """Reference delivery: entries passing TAG + DELAY + S (Phase 1).
