@@ -86,8 +86,8 @@ class TestIntegration:
         try:
             write_config_line(CFG, path)
             for t in range(1, 6):
-                step(w, CFG, ledger, turn=t, orders={})
-                write_turn_line(t, w, ledger.visible_events(0, 100, 100, float(t)), path)
+                events = step(w, CFG, ledger, turn=t, orders={})
+                write_turn_line(t, w, events, path)
 
             # Read back and verify
             with open(path) as f:

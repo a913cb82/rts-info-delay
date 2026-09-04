@@ -5,13 +5,13 @@
 **Wire.** Two update kinds, generated from world state in the knowledge phase:
 
 - `town_update {id, x, y, faction, population, is_capital}` — `population 0` means dead.
-- `army_update {id, x, y, faction, alive, is_viceroy, has_target, target_x, target_y}` — `alive False` means dead. (Target fields added: free — it's state — and they preserve forecasting. Proposing to include.)
+- `army_update {id, x, y, faction, alive, is_viceroy}` — `alive False` means dead. (Tags never go over the wire — the seer list would leak other factions' positions.) (Decided: NO target/intent fields. Consequence: bots lose foe intent — meeting forecasts downgrade to velocity inferred from delivered positions, so bots keep short position trails; BOT_PLAN Step 3 gets harder. Own intent stays known locally, so departure-sync survives.)
 
 **Core metaphor: eyes are instant, mail is slow.** Observation (line-of-sight) uses current positions; reporting (delay) uses distance to capital. A scout sees the enemy NOW; the news still travels at `info_speed`.
 
 **Ledger (kept, reshaped).** The shared ledger stays, windowed as today (`diag/info_speed` turns). Every entry is a state update tagged with `visible_to`: the set of factions observing that entity that turn. Generation is unconditional but observation-gated: every observed entity gets an entry every turn; unobserved entities cost nothing (no entry — safe, because values are always live: the first tagged entry carries current truth, so no announcement can be missed and no first-sighting rule is needed). On-change generation is demoted to a future optimisation — explicitly NOT now, per the invisible-army risk. Deaths: knowledge sees an id vanish (global live-registry diff) and appends one death entry tagged with observers of the site (tombstone pos), then drops the id. Entries carry generation turn + position (delay basis).
 
-**Visibility.** Faction F observes entity E at turn t iff `dist(E.pos@t, any F entity pos@t) ≤ line_of_sight` (`line_of_sight` defaults to `info_speed`, 150 km — D4 proposes a single knob, separable later). Own entities are always observed (self, dist 0). No generation-side blindness rule: mute is the I/O skip alone — any tags accrued mid-flight die in the S-filter unobserved, so the viceroy may anchor LOS like any army without effect.
+**Visibility.** Faction F observes entity E at turn t iff `dist(E.pos@t, any F entity pos@t) ≤ line_of_sight` (`line_of_sight` is its own config knob from day one, default 150 km — decided: two knobs, independently tunable.) Own entities are always observed (self, dist 0). No generation-side blindness rule: mute is the I/O skip alone — any tags accrued mid-flight die in the S-filter unobserved, so the viceroy may anchor LOS like any army without effect.
 
 **Delivery — three gates + latest-only.** Faction F receives a ledger entry iff ALL three hold: (1) TAG — F is in the entry's `visible_to` (someone of F's saw it that turn); (2) DELAY — `t + dist(entry pos, F's current capital)/info_speed ≤ now` (the mail has had time to travel; exact comparison, not floor — `160//150 = 1` would deliver at S+1 news needing 1.07 turns); (3) S — entry generation turn ≥ S (S = F's last landing turn, 0 if never landed — runner-side int per faction). At most ONE update per entity per payload: among passing entries take the newest generation turn that differs from last-delivered (older eligible entries are superseded — stale mail behind fresher mail is waste, and the bot needs current truth, not the path). Integer turns quantize up: effective latency is `ceil(dist/info)` (160 km → generated S, released S+1.07, first present in the S+2 payload — pinned case). No exceptions — deaths pass all three gates like everything else (site tags, delay, S). Ghosts are impossible for a different reason: the bot forgets everything at landing (below), so there is no memory for a corpse to haunt. A death during flight simply never arrives; the wiped bot never knew the entity in this epoch.
 
@@ -21,7 +21,7 @@
 
 **Bots never receive the map.** The runner strips `map` from the startup config JSON (rules + `map_size` stay — board dimensions aren't intel). Bot init starts with an empty world; the first payload is the first observation (own capital immediate at dist 0, LOS neighborhood delayed). Pre-seeded geography is gone, so unseen-phantom gating (`last_seen`) is load-bearing, not optional.
 
-**Battles.** Dropped as events (proposed; see D2). Deaths carry outcomes via `alive False`; trade inference moves bot-side (same-turn paired deaths near each other). Own-death-driven machinery (wave-watch, quiet-breaking) keys off updates instead.
+**Battles.** Dropped as events (decided — `alive` is enough). Deaths carry outcomes via `alive False`; trade inference moves bot-side (same-turn paired deaths near each other). Own-death-driven machinery (wave-watch, quiet-breaking) keys off updates instead.
 
 ## Deletions (the point of the exercise)
 
@@ -46,7 +46,8 @@
 - Grep every `Ledger`/`visible_events`/`capital_since`/`town_history`/`delayed_town`/`_last_sent_pop`/`_last_sent_status` user (engine tests, medium tests, determinism tests, benches, bots). Decide per user: deleted, migrated, or kept (only the record path keeps its event dicts). (`event.seq`/`_sent_seqs` stay — delivery needs sent-once keys.)
 - Snapshot bench baselines (fast + strategic) — fog will move numbers a lot; record pre-fog table.
 - Snapshot **builder** baseline on the heavy rig (207t+3036a) and a real turn-20 `full.json` capture: ms/turn + payload bytes. This is the number the rework must beat, paired same-box.
-- Confirm record/viewer need zero changes (step event dicts feed record as today).
+- Confirm record/viewer need zero changes (step event dicts feed record as today). DONE: `write_turn_line(turn, world, events)` is ledger-independent — zero changes.
+- **Findings (done).** Audit decisions — KEPT: `Ledger` (reshaped), `event.seq`/`_sent_seqs` (delivery keys), `Messenger`, compat shims (`Ledger(window=)`, `.visible`, `Event(t=,kind=str)`) until migration. REWRITTEN: `visible_events` → tag+delay+S delivery (Phase 2/3). DELETED (Phase 3 with wire-up): `capital_since`, `town_history`/`delayed_town`, `_last_sent_pop/_last_sent_status`+pop loop, `landing_spawns`/`landed_this_turn`/landing branch, old-kind ledger logging. UNDECIDED (spike decides): `turn_events`/`_by_turn` (zero callers today — per-faction deques may replace). Migrated tests: `TestMoveCapitalLedger` (→S-tests), medium `G7` (→tag+delay), `test_bot_state` ledger-shape tests (→builder/parser tests). Pre-fog bench table = BOT_BENCH delayed-intel table (current). Builder baselines (this box): heavy 207t+3036a cold **4.95 ms / 89.8 KiB (1020 updates)**, warm 4.37 ms / 0 B; full.json turn-20 (415t+100a, scripted TRAIN) cold **4.37 ms / 200.8 KiB (2255 updates)**, warm 6.89 ms / 0 B. Lesson: settle gc + best-of-3 (a mid-measure major collection costs ~50 ms noise). Design note found during audit: every live entity is owner-observed (dist 0), so generation skip fires only for unwatched deaths.
 
 **Phase 1 — ledger tagging + S plumbing (no histories).**
 - Generation: EVERY observed entity gets an entry EVERY turn (unconditional — static entities included; the delivery diff-check, not generation, keeps the wire slim); unobserved entities get none (skip, not empty-tag — first tagged entry carries live truth). Tests: entry-every-turn-when-observed, nothing-when-unobserved, tag correctness (mixed observers, own-always), generation turn + position recorded.
@@ -55,7 +56,7 @@
 - Memory spot-check: windowed ledger + send-state ≈ small; nothing grows with game length.
 
 **Phase 2 — builder.** Pure fn `(ledger, faction, send-state, S, capital-now, now) → updates`, canonical order = ledger order (turn-sorted already; deterministic — tag sets must never leak order into output).
-- Shapes/fields incl. target passthrough; death encodings; send-once (second call silent).
+- Shapes/fields (no intent — see Wire); death encodings; send-once (second call silent).
 - LOS: outside all discs → silent; inside → update; boundary `≤` pinned; anchors: town-only, army-only, mixed; own entities always.
 - Delay: generated t, released when `t + dist/current-capital ≤ now` (basis re-evaluated per check — capital moves shift pending; pin with shifted-release test. Pinned case: generated S-phase-6 at 160 km → first present in the S+2 payload — integer quantization, `ceil(dist/info)`).
 - Per-faction independence (F1 sees, F2 doesn't, same turn).
@@ -91,7 +92,7 @@
 - Init: delete `parse_map` pre-seed (empty world start). First payload creates the own capital — pin it. Decide must tolerate an empty world regardless (elimination edge).
 - Seen-only world (automatic — memory holds only delivered updates) plus `last_seen` staleness for risk posture: targeting/scoring sums over known entities; thresholds scale with staleness (BOT_PLAN). Pin: distant foe simply absent from leader sums until observed; stale-entry caution, not exclusion.
 - `is_quiet`: any update breaks sleep. Fingerprint: extend over full known state (membership + pops + positions); pin invalidation on position change alone.
-- Migrated machinery keeps its tests, updated: pending-train confirm via own `town_update` pop drop; wave-watch via own `alive False`; forecast inputs (existing forecast tests moved over); staged decide/clocks untouched.
+- Migrated machinery keeps its tests, updated: pending-train confirm via own `town_update` pop drop; wave-watch via own `alive False`; forecast reworked intent-free (velocity from bot-kept position trails — tests rewritten, not moved); staged decide/clocks untouched.
 - Bot unit tests: apply matrix (create/update/remove/unknown-kind/unknown-faction), no wipe without a preceding order, wipe clears every tracker (enumerated assertion), death-clears-trackers, quiet rules.
 
 **Phase 5 — docs + baseline.**
@@ -131,8 +132,8 @@ Bench: `bench_builder_full` in `benchmarks/bench_suite.py` on the existing heavy
 
 ## Decisions for ratification
 
-- **D1 (recommend yes):** include `has_target/target_x/target_y` in `army_update` (free, saves forecasting).
-- **D2 (recommend yes):** drop battle events entirely (deaths + updates cover outcomes; trade inference bot-side). Risk: simultaneous-engagement intel gets thinner — acceptable, fog era anyway.
+- **D1: decided NO** (intent stays out; bots infer velocity from position trails).
+- **D2: decided DROP** (no battle events; `alive` suffices; trade inference bot-side).
 - **D3 (recommend: keep):** the ledger stays — windowed, tagged, as the shared generation log. Audit only migrates its tests.
-- **D4:** `line_of_sight` single knob = `info_speed`, or separate config from day one? Recommend single (fewer moving parts; split when a bench demands it).
+- **D4: decided TWO KNOBS** (`line_of_sight` separate GameConfig field, default 150 — tuned independently of `info_speed`).
 - **D5: decided yes** (entailed by no-map-to-bots: with no pre-seed geography, seen-tracking is load-bearing — targeting/scoring gate on it).

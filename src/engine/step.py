@@ -188,7 +188,7 @@ def step(
     all_events.extend(economy_events)
 
     # Phase 6: Knowledge
-    _phase_knowledge(normalized_ledger, all_events, config, normalized_turn)
+    _phase_knowledge(normalized_ledger, all_events, config, normalized_turn, world)
 
     # Attach ledger to world for medium tests that check w.ledger
     try:
@@ -839,9 +839,18 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
 
 
 def _phase_knowledge(
-    ledger: Ledger, events: list[dict], config: GameConfig, turn: int
+    ledger: Ledger, events: list[dict], config: GameConfig, turn: int,
+    world=None,
 ) -> None:
-    """Log events to ledger, evict old entries."""
+    """Log events to ledger, generate tagged updates, evict old entries.
+
+    Update generation (Phase 1) is additive: the old delivery path ignores
+    the new kinds until the Phase 3 wire-up.
+    """
+    if world is not None and hasattr(ledger, "generate"):
+        ledger.generate(world, turn,
+                        line_of_sight=getattr(config, "line_of_sight",
+                                             config.info_speed))
     for ev in events:
         kind_str = ev.get("kind", "battle")
         # pop_change is a direct state update, not a ledger event

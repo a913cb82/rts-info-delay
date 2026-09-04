@@ -11,7 +11,7 @@ from pathlib import Path
 import concurrent.futures
 
 from engine.config import GameConfig
-from engine.ledger import Ledger
+from engine.ledger import EventKind, Ledger
 from engine.record import write_config_line, write_turn_line
 from engine.step import step
 from engine.world import World
@@ -604,6 +604,10 @@ def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, eve
     # is reliable pipes (full turn or dead bot) and landing reseeds anyway.)
     sent = bp._sent_seqs
     for ev in visible_events:
+        # Phase 1 additive: tagged state updates ride the ledger but the
+        # old delivery path ignores them until the Phase 3 wire-up.
+        if getattr(ev, "kind", None) in (EventKind.TOWN_UPDATE, EventKind.ARMY_UPDATE):
+            continue
         seq = getattr(ev, "seq", None)
         if seq is not None:
             if seq in sent:

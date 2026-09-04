@@ -138,3 +138,28 @@ Doctrine learned:
   exactly, isolating all movement to post-campaign engine changes
   (delayed intel moved defense 1109→0, wake 1060→0, endgame 3249→4928 —
   separate ledger to settle).
+
+## EVENT_REWORK Phase 0+1 (engine): tagged generation + S plumbing
+
+Phase 0 audit decisions — kept: Ledger (reshaped), seq/_sent_seqs,
+Messenger, compat shims until migration. Rewritten: visible_events →
+tag+delay+S (Ph2/3). Deleted in Ph3: capital_since, town_history/
+delayed_town, last_sent_pop/status+pop loop, landing_spawns/
+landed_this_turn/landing branch, old-kind ledger logging. Undecided
+(spike decides): turn_events/_by_turn (zero callers). Record/viewer:
+zero changes (write_turn_line is ledger-independent; fixed one
+integration test that misused ledger events as record dicts — latent
+breakage, only ever passed on empty ledgers).
+Baselines (this box): heavy 207t+3036a cold 4.95ms/89.8KiB(1020u),
+warm 4.37ms/0B; full.json t20 (415t+100a) cold 4.37ms/200.8KiB(2255u),
+warm 6.89ms/0B. Lesson: gc.collect + best-of-3 (stray major GC ≈50ms).
+Design note: every live entity is owner-observed (dist 0), so the
+generate-skip fires only for unwatched deaths.
+Phase 1 (TDD, 23 tests): generate() every-observed-every-turn + skip,
+visible_to tags (squared-reject, ≤ boundary pinned), tombstones from
+last-known (pos+faction) pruned past window, query() as the no-send-state
+reference delivery (TAG+DELAY+S), S storage, windowed memory proof,
+160km transient + delay-exact (S+1.07→S+2) pinned. Wired additively into
+knowledge phase; old delivery ignores new kinds (test-pinned). Two test
+fixes were test bugs (foe at exactly LOS sees; battle inaudible at t1).
+Suite green, 15 scenario scores byte-identical.

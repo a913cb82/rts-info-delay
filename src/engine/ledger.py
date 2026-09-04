@@ -18,6 +18,8 @@ class EventKind(Enum):
     ARMY_MOVE = "army_move"
     ARMY_DEATH = "army_death"
     BATTLE = "battle"
+    TOWN_UPDATE = "town_update"
+    ARMY_UPDATE = "army_update"
 
 
 @dataclass
@@ -55,6 +57,11 @@ class Event:
         self.y = float(y)
         self.kind = kind  # type: ignore
         self.payload = payload if payload is not None else {}
+        # Tagging (Phase 1): factions observing this entry at generation.
+        # Ledger-internal only — never serialized to bots (seer lists leak
+        # other factions' positions).
+        vis = kw.pop("visible_to", None)
+        self.visible_to: set = set(vis) if vis else set()
         # Also store t alias for compatibility
         self.t = self.turn
         # Handle extra payload from kw if any
@@ -108,6 +115,12 @@ class Ledger:
         # Per-faction capital establishment time: only events with turn >= capital_since[faction] are visible
         # Default 0 means all events from game start are visible
         self.capital_since: dict[int, int] = {}
+        # S (Phase 1): per-faction last landing turn, 0 if never landed.
+        # Tagged entries with generation turn < S never deliver.
+        self.S: dict[int, int] = {}
+        # Live-registry for tombstones: (kind, id) -> last-known (x, y).
+        self._known_ids: set = set()
+        self._known_pos: dict = {}
 
     def log(self, event: Event) -> None:
         """Append an event."""
@@ -281,6 +294,112 @@ class Ledger:
         Called when MOVE_CAPITAL completes.
         """
         self.capital_since[faction] = int(turn)
+
+    def set_landing(self, faction: int, turn: int) -> None:
+        """Record faction's last landing turn S (0 = never landed)."""
+        self.S[int(faction)] = int(turn)
+
+    def generate(self, world, turn: int, line_of_sight: float = 150.0) -> None:
+        """Append one tagged state entry per observed entity (Phase 1).
+
+        Unconditional but observation-gated: every entity observed by at
+        least one faction gets an entry every turn; entities nobody
+        observes get none (live entities are always self-observed at
+        dist 0, so in practice only unwatched deaths skip). Removed ids
+        yield one death entry tagged with observers of the site
+        (last-known pos basis), then leave the registry.
+        """
+        turn = int(turn)
+        los = float(line_of_sight)
+        los2 = los * los
+        # Faction entity positions (LOS anchors) this turn.
+        anchors: dict[int, list] = {}
+        for t in world.towns:
+            anchors.setdefault(t.faction, []).append((t.x, t.y))
+        for a in world.armies:
+            anchors.setdefault(a.faction, []).append((a.x, a.y))
+
+        def observers(x: float, y: float) -> set:
+            out = set()
+            for f, pts in anchors.items():
+                for px, py in pts:
+                    dx = px - x
+                    dy = py - y
+                    if dx * dx + dy * dy <= los2 + 1e-9:
+                        out.add(f)
+                        break
+            return out
+
+        live: set = set()
+        positions: dict = {}
+        for t in world.towns:
+            key = ("town", t.id)
+            live.add(key)
+            positions[key] = (t.x, t.y, t.faction)
+            vis = observers(t.x, t.y)
+            if not vis:
+                continue
+            self.log(Event(turn=turn, x=t.x, y=t.y, kind=EventKind.TOWN_UPDATE,
+                           payload={"id": t.id, "faction": t.faction,
+                                    "population": int(round(t.population)),
+                                    "is_capital": bool(t.is_capital)},
+                           visible_to=vis))
+        for a in world.armies:
+            key = ("army", a.id)
+            live.add(key)
+            positions[key] = (a.x, a.y, a.faction)
+            vis = observers(a.x, a.y)
+            if not vis:
+                continue
+            self.log(Event(turn=turn, x=a.x, y=a.y, kind=EventKind.ARMY_UPDATE,
+                           payload={"id": a.id, "faction": a.faction,
+                                    "alive": True,
+                                    "is_viceroy": bool(a.is_viceroy)},
+                           visible_to=vis))
+        # Tombstones: vanished ids, tagged with observers of the site.
+        for key in self._known_ids:
+            if key in live:
+                continue
+            kind, eid = key
+            x, y, fac = self._known_pos.get(key, (0.0, 0.0, -1))
+            vis = observers(x, y)
+            if not vis:
+                continue
+            if kind == "town":
+                payload = {"id": eid, "faction": fac, "population": 0,
+                           "is_capital": False}
+                ek = EventKind.TOWN_UPDATE
+            else:
+                payload = {"id": eid, "faction": fac, "alive": False,
+                           "is_viceroy": False}
+                ek = EventKind.ARMY_UPDATE
+            self.log(Event(turn=turn, x=x, y=y, kind=ek, payload=payload,
+                           visible_to=vis))
+        self._known_ids = live
+        self._known_pos = positions
+
+    def query(self, faction: int, capital_x: float, capital_y: float, now: float) -> list[Event]:
+        """Reference delivery: entries passing TAG + DELAY + S (Phase 1).
+
+        No send-state (every passing entry returned, newest and oldest
+        alike) — the Phase 2 builder adds slimming on top and is tested
+        for equivalence with this.
+        """
+        s = self.S.get(faction, 0)
+        info = self.info_speed or 150.0
+        out = []
+        for ev in self.events:
+            if ev.kind not in (EventKind.TOWN_UPDATE, EventKind.ARMY_UPDATE):
+                continue
+            if faction not in ev.visible_to:
+                continue
+            t = getattr(ev, "turn", getattr(ev, "t", 0))
+            if t < s:
+                continue
+            dist = math.hypot(ev.x - capital_x, ev.y - capital_y)
+            if t + dist / info <= now + 1e-9:
+                out.append(ev)
+        return out
 
     def _visibility_delay(self, event: Event, capital_x: float, capital_y: float) -> float:
         """Turn at which event becomes visible: event.t + dist / info_speed."""

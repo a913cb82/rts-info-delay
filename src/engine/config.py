@@ -21,6 +21,7 @@ class GameConfig:
 
     # Units
     info_speed: float = 150.0
+    line_of_sight: float = 150.0
     army_speed: float = 50.0
     army_cost: int = 1000
     interact_radius: float = 10.0

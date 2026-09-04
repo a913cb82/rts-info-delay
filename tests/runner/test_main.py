@@ -430,3 +430,25 @@ class TestViceroyFlight:
         follow = [e for e in out2 if e.get("id") == 10]
         assert len(follow) == 1 and follow[0]["population"] == 905
         assert "faction" not in follow[0]
+
+
+def test_builder_ignores_tagged_updates():
+    """Phase 1 additive boundary: tagged state updates ride the ledger but
+    the old delivery path ignores them (output identical to old-only)."""
+    from types import SimpleNamespace
+    from engine.world import World, Town, Army
+    from engine.ledger import Event, EventKind, Ledger
+    from runner.main import _build_bot_events
+    w = World()
+    w.map_size = [1000, 1000]
+    w.towns.append(Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True))
+    w.armies.append(Army(id=7, faction=0, x=10, y=0))
+    lg = Ledger(GameConfig().info_speed, 1414)
+    lg.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={"a": 1}))
+    lg.generate(w, turn=1, line_of_sight=150.0)
+    assert any(e.kind == EventKind.TOWN_UPDATE for e in lg.events)  # riding along
+    hist = [{1: (2000, 0, True)}]
+    bp = SimpleNamespace(_last_sent_pop={}, _last_sent_status={}, _sent_seqs=set())
+    out = _build_bot_events(0, w, lg, 1, [], bp, hist)
+    assert not [e for e in out if e.get("kind") in ("town_update", "army_update")]
+    assert [e for e in out if e.get("kind") == "battle"]  # old path intact
