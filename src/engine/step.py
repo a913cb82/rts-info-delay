@@ -653,6 +653,7 @@ def _handle_viceroy_arrival(world: World, config: GameConfig, ledger=None, turn:
         old_capital = world.faction_capital(viceroy.faction)
         if old_capital:
             old_capital.is_capital = False
+            world.mark_dirty()
         # Create new town
         nid = world.allocate_id()
         new_town = world.towns.__class__  # placeholder
@@ -852,6 +853,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         # For normal travel via command path, viceroy travel is handled via _handle_viceroy_arrival, but for standing order we do immediate
         old_cap = town
         old_cap.is_capital = False
+        world.mark_dirty()
         new_id = world.allocate_id()
         from engine.world import Town
         new_town = Town(id=new_id, faction=faction, x=tx, y=ty, population=config.army_cost * config.build_efficiency, is_capital=True)

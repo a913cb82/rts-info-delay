@@ -95,7 +95,8 @@ class World:
         self._armies_by_faction = {}
         for t in self.towns:
             self._towns_by_faction.setdefault(t.faction, []).append(t)
-            if t.is_capital:
+            # keep FIRST capital per faction (matches old linear-scan order)
+            if t.is_capital and t.faction not in self._capital_by_faction:
                 self._capital_by_faction[t.faction] = t
         for a in self.armies:
             self._armies_by_faction.setdefault(a.faction, []).append(a)
@@ -221,18 +222,18 @@ class World:
         self.mark_dirty()
 
     def armies_for_faction(self, faction: int) -> list[Army]:
-        # linear scan to stay correct after faction changes (capture)
-        # still faster than before due to id cache for other ops; faction queries are rare (few per turn)
-        return [a for a in self.armies if a.faction == faction]
+        # Cached; correct because every in-place faction/is_capital mutation
+        # site marks the index dirty (see mark_dirty callers in combat/step/events).
+        self._ensure_indexes()
+        return list(self._armies_by_faction.get(faction, []))
 
     def towns_for_faction(self, faction: int) -> list[Town]:
-        return [t for t in self.towns if t.faction == faction]
+        self._ensure_indexes()
+        return list(self._towns_by_faction.get(faction, []))
 
     def faction_capital(self, faction: int) -> Town | None:
-        for t in self.towns:
-            if t.faction == faction and t.is_capital:
-                return t
-        return None
+        self._ensure_indexes()
+        return self._capital_by_faction.get(faction)
 
     def num_factions(self) -> int:
         facs = set()

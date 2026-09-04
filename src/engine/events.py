@@ -63,6 +63,7 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
                     has_cap = any(tx.is_capital and tx.faction == new_faction for tx in world.towns)
                     if not has_cap:
                         t.is_capital = True
+                world.mark_dirty()
 
         elif kind == "army_move":
             a = world.get_army(ev.get("id"))

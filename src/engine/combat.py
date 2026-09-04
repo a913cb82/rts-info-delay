@@ -243,6 +243,17 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
     radius = config.interact_radius
     R2 = (radius+1e-9)*(radius+1e-9)
     captured_town_ids: set[int] = set()
+    # Hoisted bookkeeping: one O(T+A) snapshot instead of per-capture
+    # O(T)/O(A) scans (faction_capital + any() checks). Updated per capture.
+    # Armies are static during captures, so viceroy presence is precomputed.
+    town_counts: dict[int, int] = {}
+    capitals: dict[int, object] = {}
+    for t in world.towns:
+        town_counts[t.faction] = town_counts.get(t.faction, 0) + 1
+        if t.is_capital and t.faction not in capitals:
+            capitals[t.faction] = t
+    viceroy_factions = {a.faction for a in world.armies if a.is_viceroy}
+    book = (capitals, town_counts, viceroy_factions)
     # small n: brute with squared reject is faster than hash
     if len(world.armies) * len(world.towns) < 50000:
         for army in world.armies:
@@ -253,20 +264,11 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
                 dx = town.x - ax; dy = town.y - ay
                 if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
                 if dx*dx + dy*dy > R2: continue
-                # capture below
-                old_faction = town.faction
-                was_capital = town.is_capital
-                if was_capital: town.is_capital = False
-                town.faction = af
-                town.population *= (1.0 - config.build_efficiency)
-                captor_capital = world.faction_capital(af)
-                if captor_capital is None:
-                    has_towns = any(t.faction == af for t in world.towns)
-                    has_viceroy = any(a.is_viceroy and a.faction == af for a in world.armies)
-                    if has_towns or has_viceroy:
-                        town.is_capital = True
+                # capture below (bookkept, no per-capture scans)
+                events.append(_apply_capture(world, town, af, config, book))
                 captured_town_ids.add(town.id)
-                events.append({"kind": "town_capture", "id": town.id, "x": town.x, "y": town.y, "old_faction": old_faction, "new_faction": af, "was_capital": was_capital, "population": town.population})
+        if captured_town_ids:
+            world.mark_dirty()
         return events
     # large: hash cell 10
     try:
@@ -292,18 +294,10 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
                 # query already guarantees dist <=R, but double-check for exclusive zero case
                 dx = town.x - army.x; dy = town.y - army.y
                 if dx*dx + dy*dy > R2: continue
-                old_faction = town.faction; was_capital = town.is_capital
-                if was_capital: town.is_capital = False
-                town.faction = army.faction
-                town.population *= (1.0 - config.build_efficiency)
-                captor_capital = world.faction_capital(army.faction)
-                if captor_capital is None:
-                    has_towns = any(t.faction == army.faction for t in world.towns)
-                    has_viceroy = any(a.is_viceroy and a.faction == army.faction for a in world.armies)
-                    if has_towns or has_viceroy:
-                        town.is_capital = True
+                events.append(_apply_capture(world, town, army.faction, config, book))
                 captured_town_ids.add(town.id)
-                events.append({"kind": "town_capture", "id": town.id, "x": town.x, "y": town.y, "old_faction": old_faction, "new_faction": army.faction, "was_capital": was_capital, "population": town.population})
+        if captured_town_ids:
+            world.mark_dirty()
         return events
     except Exception:
         pass
@@ -323,35 +317,45 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
             was_capital = town.is_capital
             old_pop = town.population
 
-            # If this town was a capital, demote it for old owner
-            if was_capital:
-                town.is_capital = False
-
-            # Change ownership
-            town.faction = army.faction
-
-            # Reduce population by build_efficiency
-            town.population *= (1.0 - config.build_efficiency)
-
-            # If captor has no capital AND has a viceroy or town alive, make this the new capital
-            # If captor is completely dead (no towns, no viceroy), don't revive them
-            captor_capital = world.faction_capital(army.faction)
-            if captor_capital is None:
-                has_towns = any(t.faction == army.faction for t in world.towns)
-                has_viceroy = any(a.is_viceroy and a.faction == army.faction for a in world.armies)
-                if has_towns or has_viceroy:
-                    town.is_capital = True
-
+            # Capture via shared bookkept helper (no per-capture scans).
+            # If captor is completely dead (no towns, no viceroy), don't revive them.
+            events.append(_apply_capture(world, town, army.faction, config, book))
             captured_town_ids.add(town.id)
-            events.append({
-                "kind": "town_capture",
-                "id": town.id,
-                "x": town.x,
-                "y": town.y,
-                "old_faction": old_faction,
-                "new_faction": army.faction,
-                "was_capital": was_capital,
-                "population": town.population,
-            })
 
+    if captured_town_ids:
+        world.mark_dirty()
     return events
+
+
+def _apply_capture(world: World, town, new_faction: int, config: GameConfig, book) -> dict:
+    """Apply one town capture, maintaining the hoisted bookkeeping.
+
+    book = (capitals, town_counts, viceroy_factions). Equivalent to the old
+    per-capture faction_capital + any() scans on the mutated state: the
+    captured town itself counts toward its new faction, and a demoted old
+    capital is forgotten only if it was the recorded one.
+    """
+    capitals, town_counts, viceroy_factions = book
+    old_faction = town.faction
+    was_capital = town.is_capital
+    if was_capital:
+        town.is_capital = False
+        if capitals.get(old_faction) is town:
+            del capitals[old_faction]
+    town.faction = new_faction
+    town_counts[old_faction] = town_counts.get(old_faction, 0) - 1
+    town_counts[new_faction] = town_counts.get(new_faction, 0) + 1
+    town.population *= (1.0 - config.build_efficiency)
+    if capitals.get(new_faction) is None and (town_counts.get(new_faction, 0) > 0 or new_faction in viceroy_factions):
+        town.is_capital = True
+        capitals[new_faction] = town
+    return {
+        "kind": "town_capture",
+        "id": town.id,
+        "x": town.x,
+        "y": town.y,
+        "old_faction": old_faction,
+        "new_faction": new_faction,
+        "was_capital": was_capital,
+        "population": town.population,
+    }
