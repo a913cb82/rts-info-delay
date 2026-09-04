@@ -115,26 +115,9 @@ class BotProcess:
         use_clock = time_ms is not None
         budget_ms = max(0.0, float(time_ms)) if use_clock else cap
 
-        # Send turn data
+        # Send turn data (shared with the multiplexed path)
         t_start = time.perf_counter()
-        try:
-            self.proc.stdin.write(f"turn {turn}\n")
-            if use_clock:
-                self.proc.stdin.write(f"clock {budget_ms:.2f}\n")
-            for ev in events:
-                # ev is dict, write as json line
-                if isinstance(ev, dict):
-                    self.proc.stdin.write(json.dumps(ev) + "\n")
-                else:
-                    # Handle Ledger Event objects
-                    try:
-                        # Try to serialize
-                        self.proc.stdin.write(json.dumps({"kind": ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind), "x": ev.x, "y": ev.y, "turn": ev.turn, **ev.payload}) + "\n")
-                    except Exception:
-                        self.proc.stdin.write(str(ev) + "\n")
-            self.proc.stdin.write("go\n")
-            self.proc.stdin.flush()
-        except Exception:
+        if not self._write_block(turn, events, budget_ms, use_clock):
             self.alive = False
             self.kill()
             return []
@@ -168,9 +151,7 @@ class BotProcess:
                 # readline returns '' on EOF
                 if line == "":
                     # EOF - process closed
-                    self.alive = False
-                    self.kill()
-                    return []
+                    return self._finish_block([], True, False, 0.0, use_clock, cap, inc, budget_ms)
                 stripped = line.strip()
                 if stripped == "":
                     continue
@@ -182,26 +163,58 @@ class BotProcess:
                 if time.time() - start_time > timeout_sec:
                     raise TimeoutError("turn timeout")
         except TimeoutError:
+            return self._finish_block(None, True, False, 0.0, use_clock, cap, inc, budget_ms)
+        except Exception:
+            # Any other exception, treat as dead but not necessarily timeout
+            # For mocked tests that raise TimeoutError directly from readline, we already handle
+            # For other exceptions, mark dead
+            return self._finish_block([], False, True, 0.0, use_clock, cap, inc, budget_ms)
+
+        # Validate orders via parse_orders
+        elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        return self._finish_block(orders, False, False, elapsed_ms, use_clock, cap, inc, budget_ms)
+
+    def _write_block(self, turn: int, events: list[dict], budget_ms: float, use_clock: bool) -> bool:
+        """Write turn header + clock + events + go. False on failure."""
+        try:
+            self.proc.stdin.write(f"turn {turn}\n")
+            if use_clock:
+                self.proc.stdin.write(f"clock {budget_ms:.2f}\n")
+            for ev in events:
+                # ev is dict, write as json line
+                if isinstance(ev, dict):
+                    self.proc.stdin.write(json.dumps(ev) + "\n")
+                else:
+                    # Handle Ledger Event objects
+                    try:
+                        # Try to serialize
+                        self.proc.stdin.write(json.dumps({"kind": ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind), "x": ev.x, "y": ev.y, "turn": ev.turn, **ev.payload}) + "\n")
+                    except Exception:
+                        self.proc.stdin.write(str(ev) + "\n")
+            self.proc.stdin.write("go\n")
+            self.proc.stdin.flush()
+            return True
+        except Exception:
+            return False
+
+    def _finish_block(self, lines, timed_out: bool, crashed: bool, elapsed_ms: float,
+                      use_clock: bool, cap: float, inc: float, budget_ms: float) -> list[str]:
+        """Shared completion: timeout/crash kill, else validate + clock."""
+        if timed_out:
             if use_clock:
                 self.clock_ms = 0.0
             self.alive = False
             self.kill()
             return []
-        except Exception:
-            # Any other exception, treat as dead but not necessarily timeout
-            # For mocked tests that raise TimeoutError directly from readline, we already handle
-            # For other exceptions, mark dead
+        if crashed:
             self.alive = False
             try:
                 self.kill()
             except Exception:
                 pass
             return []
-
-        # Validate orders via parse_orders
-        validated = parse_orders(orders)
+        validated = parse_orders(lines)
         if use_clock:
-            elapsed_ms = (time.perf_counter() - t_start) * 1000.0
             self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
             if self.clock_ms < 0.0:
                 self.clock_ms = 0.0
@@ -265,6 +278,106 @@ class BotProcess:
         except Exception:
             pass
         self._reader = None
+
+
+class TurnMultiplexer:
+    """Single-threaded select loop reading all bot pipes at once.
+
+    Threads were measured 6.5x slower per round-trip than sequential
+    (futex/GIL storm: 136 voluntary switches/turn across 11 threads for
+    ~2ms of real work). This keeps live threads at main+1: the main
+    thread writes all turns serially (fast), this thread multiplexes the
+    blocking reads. Slow bots still overlap; fast bots pay ~no overhead.
+    """
+
+    def __init__(self):
+        self._bufs: dict[int, bytearray] = {}  # fd -> pending bytes
+        self._fps: dict[int, BotProcess] = {}  # fd -> owner
+
+    def _fd(self, bp: BotProcess) -> int:
+        return bp.proc.stdout.fileno()
+
+    def register(self, bp: BotProcess) -> None:
+        try:
+            fd = self._fd(bp)
+            import os
+            os.set_blocking(fd, False)
+            self._bufs[fd] = bytearray()
+            self._fps[fd] = bp
+        except Exception:
+            pass
+
+    def unregister(self, bp: BotProcess) -> None:
+        try:
+            fd = self._fd(bp)
+            self._bufs.pop(fd, None)
+            self._fps.pop(fd, None)
+        except Exception:
+            pass
+
+    def read_turns(self, deadlines: dict[int, float]) -> dict[int, tuple[list[str] | None, float]]:
+        """Read one order batch per registered fd. Returns {fd: (lines, t)}:
+        lines excludes the trailing 'go'; lines is None past deadline
+        (caller kills those bots); t is completion time. EOF yields the
+        lines collected so far (caller checks poll() for death)."""
+        import os
+        import select
+        import time as _time
+        _now = _time.perf_counter
+        pending = {fd: [] for fd in self._bufs if fd in deadlines}
+        done: dict[int, tuple[list[str] | None, float]] = {}
+        while pending:
+            now = _now()
+            remaining = {fd: deadlines[fd] - now for fd in pending}
+            live = {fd: r for fd, r in remaining.items() if r > 0}
+            if not live:
+                for fd in pending:
+                    done[fd] = (None, _now())
+                break
+            timeout = min(live.values())
+            try:
+                ready, _, _ = select.select(list(live.keys()), [], [], timeout)
+            except Exception:
+                ready = []
+            now = _now()
+            if not ready:
+                # select timed out: whoever is past deadline is done waiting
+                for fd in list(pending.keys()):
+                    if deadlines[fd] - now <= 0:
+                        done[fd] = (None, now)
+                        del pending[fd]
+                continue
+            for fd in ready:
+                if fd not in pending:
+                    continue
+                try:
+                    chunk = os.read(fd, 65536)
+                except (BlockingIOError, InterruptedError):
+                    continue
+                except Exception:
+                    done[fd] = (pending.pop(fd), _now())
+                    continue
+                if not chunk:
+                    done[fd] = (pending.pop(fd), _now())  # EOF
+                    continue
+                buf = self._bufs[fd]
+                buf.extend(chunk)
+                while True:
+                    nl = buf.find(b"\n")
+                    if nl < 0:
+                        break
+                    line = bytes(buf[:nl]).decode("utf-8", "replace").strip()
+                    del buf[:nl + 1]
+                    if not line:
+                        continue
+                    if line == "go":
+                        done[fd] = (pending.pop(fd), _now())
+                        break
+                    pending[fd].append(line)
+                if fd in pending and deadlines[fd] - _now() <= 0:
+                    done[fd] = (None, _now())
+                    del pending[fd]
+        return done
 
 
 def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, events: list[dict], bp: BotProcess) -> list[dict]:
@@ -382,65 +495,105 @@ def run_game(
         write_config_line(config, record_path)
 
     # Game loop. Bots are independent processes sharing one turn window:
-    # all factions are queried concurrently, so N bots using the full
-    # turn_time_ms budget cost ~1 window, not N. Event-payload building
-    # stays serial (GIL-bound numpy/JSON thrashes under threads); only the
-    # blocking pipe round-trips fan out. Orders merge by faction key, so
-    # the game stays deterministic regardless of thread scheduling.
+    # all turns are written serially (fast), then ONE select loop reads all
+    # pipes concurrently — main+1 live threads total. (A ThreadPool fan-out
+    # was measured 6.5x slower per round-trip: futex/GIL storm across 11
+    # threads for ~2ms of real work.) Orders merge in faction order, so the
+    # game stays deterministic regardless of read completion order.
     events: list[dict] = []
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(bot_processes)))
-    try:
-        for turn in range(1, config.max_turns + 1):
-            orders_dict: dict[int, list[str]] = {}
-            futs = {}
-            for faction, bp in bot_processes.items():
-                if not bp.alive:
-                    orders_dict[faction] = []
-                    continue
-                bot_events = _build_bot_events(faction, world, ledger, turn, events, bp)
-                futs[pool.submit(bp.send_turn, turn=turn, events=bot_events, time_ms=bp.clock_ms)] = faction
-            # Merge in bot_processes order (not completion order): step()
-            # allocates IDs in dict order, so this keeps bit-identical
-            # behavior with the old sequential loop.
-            done: dict[int, list[str]] = {}
-            for fut in concurrent.futures.as_completed(futs):
-                done[futs[fut]] = fut.result()
-            for faction in bot_processes.keys():
-                if faction in done:
-                    orders_dict[faction] = done[faction]
-
-            # Execute step
+    mux = TurnMultiplexer()
+    for bp in bot_processes.values():
+        if bp.proc is not None:
+            mux.register(bp)
+    for turn in range(1, config.max_turns + 1):
+        orders_dict: dict[int, list[str]] = {}
+        # Serial writes (fast; also fixes per-bot write timestamps).
+        try:
+            cap = float(getattr(config, "turn_time_ms", 100) or 100)
+        except Exception:
+            cap = 100.0
+        try:
+            inc = float(getattr(config, "time_increment_ms", 10.0) or 0.0)
+        except Exception:
+            inc = 10.0
+        writes: dict[int, tuple] = {}
+        for faction, bp in bot_processes.items():
+            if not bp.alive:
+                orders_dict[faction] = []
+                continue
+            budget_ms = max(0.0, float(bp.clock_ms))
+            if not bp._write_block(turn, _build_bot_events(faction, world, ledger, turn, events, bp), budget_ms, True):
+                bp.alive = False
+                try:
+                    bp.kill()
+                except Exception:
+                    pass
+                orders_dict[faction] = []
+                continue
+            writes[faction] = (bp, budget_ms, time.perf_counter())
+        # One multiplexed read for the whole turn.
+        deadlines = {}
+        by_fd: dict[int, int] = {}
+        for faction, (bp, budget_ms, _t) in writes.items():
             try:
-                events = step(world, config, ledger, turn=turn, orders=orders_dict)
-                if events is None:
-                    events = []
-            except Exception as e:
-                # Step should not crash; but if it does, log and continue with empty events
-                import traceback
-                print(f"step failed at turn {turn}: {e}", file=sys.stderr)
-                traceback.print_exc()
+                fd = mux._fd(bp)
+                by_fd[fd] = faction
+                deadlines[fd] = time.perf_counter() + budget_ms / 1000.0
+            except Exception:
+                pass
+        results = mux.read_turns(deadlines)
+        done: dict[int, list[str]] = {}
+        for fd, (lines, t_end) in results.items():
+            faction = by_fd.get(fd)
+            if faction is None:
+                continue
+            bp, budget_ms, t_w = writes[faction]
+            elapsed_ms = (t_end - t_w) * 1000.0
+            if lines is None:
+                done[faction] = bp._finish_block(None, True, False, 0.0, True, cap, inc, budget_ms)
+                continue
+            try:
+                exited = bp.proc.poll() is not None
+            except Exception:
+                exited = False
+            if exited:
+                done[faction] = bp._finish_block([], False, True, 0.0, True, cap, inc, budget_ms)
+            else:
+                done[faction] = bp._finish_block(lines, False, False, elapsed_ms, True, cap, inc, budget_ms)
+        for faction in bot_processes.keys():
+            if faction in done:
+                orders_dict[faction] = done[faction]
+
+        # Execute step
+        try:
+            events = step(world, config, ledger, turn=turn, orders=orders_dict)
+            if events is None:
                 events = []
+        except Exception as e:
+            # Step should not crash; but if it does, log and continue with empty events
+            import traceback
+            print(f"step failed at turn {turn}: {e}", file=sys.stderr)
+            traceback.print_exc()
+            events = []
 
-            # Check faction death: capital destroyed or viceroy killed while in flight
-            for faction in list(bot_processes.keys()):
-                bp = bot_processes[faction]
-                if not bp.alive:
-                    continue
-                capital = world.faction_capital(faction)
-                has_viceroy = any(a.is_viceroy and a.faction == faction for a in world.armies)
-                if capital is None and not has_viceroy:
-                    # Faction has no capital and no viceroy in flight — dead
-                    bp.alive = False
-                    try:
-                        bp.kill()
-                    except Exception:
-                        pass
+        # Check faction death: capital destroyed or viceroy killed while in flight
+        for faction in list(bot_processes.keys()):
+            bp = bot_processes[faction]
+            if not bp.alive:
+                continue
+            capital = world.faction_capital(faction)
+            has_viceroy = any(a.is_viceroy and a.faction == faction for a in world.armies)
+            if capital is None and not has_viceroy:
+                # Faction has no capital and no viceroy in flight — dead
+                bp.alive = False
+                try:
+                    bp.kill()
+                except Exception:
+                    pass
 
-            # Write turn record
-            if record_path is not None:
-                write_turn_line(turn, world, events, record_path)
-    finally:
-        pool.shutdown()
+        # Write turn record
+        if record_path is not None:
+            write_turn_line(turn, world, events, record_path)
 
 
 
