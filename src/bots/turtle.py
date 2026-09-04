@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, find_build_site, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, drop_dead_notes, order_move, find_build_site, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -11,6 +11,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     if state.should_yield():
         return out
+    drop_dead_notes(state)  # unstrand armies whose orders died in flight
     own_t = state.own_towns()
 
     # T1: threat-responsive threshold. Nearest inbound enemy ETA sets the
@@ -155,8 +156,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # waves, 1v1 only trades — every home army counts). Skipped when
         # hopeless: the settler lineages instead.
         if threatened and not hopeless and cap is not None and state.army_has_target(p.id) and not state.has_pending_build(p.id):
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {cap.x:.1f} {cap.y:.1f}")
-            state.note_move(p.id, cap.x, cap.y)
+            out.extend(order_move(state, config, p, cap.x, cap.y))
             continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
@@ -173,7 +173,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if need_garrison and cap is not None:
             # closest idle army becomes the garrison instead of a builder
             if math.hypot(p.x - cap.x, p.y - cap.y) > 20:
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {cap.x:.1f} {cap.y:.1f}")
+                out.extend(order_move(state, config, p, cap.x, cap.y))
             need_garrison = False
             built = True
             continue
@@ -184,7 +184,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             biggest = max(own_t, key=lambda t: t.population)
             site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13)
             if site:
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {site[0]:.1f} {site[1]:.1f}")
+                out.extend(order_move(state, config, p, site[0], site[1]))
                 built = True
         # garrison remainder
         if not built or state.army_has_target(p.id):
@@ -192,7 +192,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if own_t:
             nearest = min(own_t, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
             if math.hypot(p.x - nearest.x, p.y - nearest.y) > 20:
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")
+                out.extend(order_move(state, config, p, nearest.x, nearest.y))
     return out
 
 

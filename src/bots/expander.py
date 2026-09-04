@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, find_build_site, inbound_eta, note_wave_watch, should_hold_home, towns_by_train_priority
+from .common import BotState, bot_main, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home, towns_by_train_priority
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -11,6 +11,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     if state.should_yield():
         return out
+    drop_dead_notes(state)  # unstrand armies whose orders died in flight
     own_t = state.own_towns()
 
     for t in towns_by_train_priority(state, conservative=False):
@@ -25,6 +26,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             break
         if p.is_viceroy and state.army_has_target(p.id):
             continue
+        sc = drive_scout(state, config, p)
+        if sc is not None:
+            out.extend(sc)
+            continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
                 continue
@@ -38,11 +43,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # E1: guard — keep >=1 home vs inbound/second wave (shared).
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
+        # S0: no-contact scout first (Step 2 prereq) — probe deep before
+        # founding; falls back to settling below.
+        if maybe_assign_scout(state, config, p):
+            out.extend(drive_scout(state, config, p) or [])
+            continue
         site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11)
         if site:
             sx, sy = site
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {sx:.1f} {sy:.1f}")
-            state.note_move(p.id, sx, sy)
+            out.extend(order_move(state, config, p, sx, sy))
     return out
 
 

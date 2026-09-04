@@ -289,3 +289,44 @@ score lead). Per-scenario goal triage before bot work: pair/trap/viable/
 skip_thin/raid_hold goal-FAIL (dissipate into foundings, no take);
 guard/settle goal-PASS (re-baseline); recycle marginal (1 idler at
 horizon — check +10t before touching logic).
+
+### Engine fix: movement updates strangled (dedup without position)
+Void-settle repro: settler marched 260km, arrived ~t10, sat to t79 — bot
+mirror frozen at spawn. Root cause (both delivery shapes): send-state
+dedup compared payload dicts only, army payloads carry no position —
+every move after the first snapshot read "same value". Fix: dedup on
+(payload, x, y). Tests: TestMovementStreams. E1 follow-through FIXED by
+this (settlers were fine). void_settle 1->4 towns immediately.
+
+### S0 no-contact scout (Step 2 prerequisite, shipped)
+First settler probes before founding for greedy/aggressive/expander.
+Found mid-build: (1) 250km legs can't mid-course correct (2-turn intel
+lag vs 1-step messenger projection + 10km tolerance = structurally dead;
+proven with order logs showing detour messengers dying) -> 50km hops,
+arrival-gated, replotted only while stationary. Hop endpoints sit inside
+observed ground -> safe with known-town avoidance. (2) Unmark-on-rubble
+blundered into decoys (trap scout captured 900-rubble) -> stay out on
+rubble-only, bend hops; unmark only for viable/armies. (3) Kept hop note
+hijacked post-contact armies into founding next to prizes -> drop note
+on contact unmark. (4) Builds stages founded on scout waypoints
+(quiescence wait exposed the race) -> scouts excluded from builds.
+Support: drop_dead_notes (trail-freshness vs expected delay + 2;
+first version used trail-stillness — wrong, static armies go silent so
+trails freeze mid-march-shape; production trace caught it), order_move
+quiescence gate (all 19 MOVE_TO sites; mid-march retargets wait for
+convergence — fixes drunk-walk + site-steal families), aggressive
+expand note_move fix (zigzag class). Tests: test_scout.py (18).
+Results: all raid takes restored (pair/viable/raid_hold/trap/skip_thin
+goal-PASS, decoys skipped), void_contact takes (2910), void_settle 3
+towns, Elo resolved (greedy 1544/aggressive 1543 take; holders hold —
+old all-hold was attacker-passivity, Step 5 verdict delivered),
+empty_3000 a real game (8 foundings, 1 take, exile-lineage; pro still
+sits — last blind bot, recon owed). Costs: scout tax in sprints
+(outsettle 2687->1796, timing not shape), ~3 turns/50km probe pace,
+recall latency (waits quiescence — noted tradeoff). recycle 30->60t
+(scout founds far ~t55; doctrine is probe-then-found now).
+False alarm logged: scoreboard wobble mid-session was uncommitted-tree
+comparison, not nondeterminism (seed-sweep + hash checks identical).
+Open next: Step 2 demand gates + trade evaluator; pro recon; turtle
+pickets; far-defended raid guard (outsettle scout would donate vs
+pickets — meeting forecast territory).

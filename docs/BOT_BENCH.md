@@ -100,24 +100,30 @@ aggressive 1500 / turtle 1499 / expander 1499 — nobody concedes anything.
 ## Fog era (EVENT_REWORK landed — BINDING table, current tree)
 
 New work is judged against this table (live scoreboard: BOT_PLAN.md).
-Fast suite: raid_hold 3066 / recycle 6052 / skip_thin 2151 / settle 3066 /
-chain 5250 / guard 3088 / viable 3088 / pair 5105 / trap 3165 / defend 3207 /
+Fast suite: raid_hold 3657 (take) / recycle 3678 (60t, probe-then-found) /
+skip_thin 3446 (take, decoy skipped) / settle 2589 / chain 4783 /
+guard 2620 (holds) / viable 4238 (take) / pair 4791 (take) / trap 4481
+(take, decoy skipped) / defend 2747 (holds, both sides expand now) /
 wake 2121 / cluster 5465 / opening 3242 / defense 3305 / endgame 8804.
-Moved vs delayed-intel: defense 0→3305 and wake 0→2121 (the old since-hole
-starved them; re-observation under S fixed it for free), defend 1109→3207,
-cluster 2182→5465, recycle 4086→6052, endgame 4928→8804, guard 1624→3088.
-Down: viable 3768→3088, skip_thin 3467→2151, trap 4040→3165,
-opening 4316→3242 (raid judgment under fog — funnel for Step 2 trade
-evaluator). Unchanged: raid_hold ~3066.
+Since landing: movement streams fixed (bots see own armies — foundings
+work, E1 done), scout-first probing restored all raid takes (pair/viable/
+raid_hold/trap/skip_thin goal-PASS), quiescence gating steadied orders.
+Founding costs show at <=100t horizons (~-500 + lost compounding each);
+raid numbers read takes, not sits. recycle horizon 30→60 (idle army
+probes first, founds far ~t55).
 Strategic (focal pro): attrition 14552 / comeback 821 / endurance 7752 /
-_outsettle 2687 / guard_duty 2360 / longpeace 5254 / opening 1391 /
-siege 5324 / snowball 4851 / staleness 4007 / succession 1826; self-play
-symmetric (endgame 8804-8804, defense 4402-4402 — determinism holds through
-the new pipeline); Elo all-hold (20/20 defenses stand — noted, doctrine
-work decides whether that matchup is broken or just defense-favored).
-empty_3000 rematch (3000 turns): pro 9156 / greedy 3089 / aggressive 3376 /
-expander 3376 / turtle 5232 — pro dominates where greedy took it pre-fog
-(4992); fog changes everything, judged by Steps not scores.
+_outsettle 1796 (3v1 towns — scout tax in a 200t sprint, timing not shape) /
+guard_duty 2963 (capital holds 300t vs 8000-aggressive) / longpeace 5254 /
+opening 1391 / siege 5324 / snowball 4851 / staleness 4007 / succession 1826;
+void_contact 5135 (take: scout finds B, raids, +founding) / void_settle 2936
+(3 towns); self-play symmetric; Elo RESOLVED (was all-hold): greedy 1544 /
+aggressive 1543 / pro 1473 / expander 1470 / turtle 1470 — raiders take,
+holders hold. Verdict for Step 5: the old all-hold was attacker-passivity
+(no contact, no takes), not defense-favored mechanics; with contact the
+takes come. empty_3000 rematch: pro 9156 (still sits — last blind bot) /
+turtle 6637 / expander 4227 / aggressive 3766 (took greedy's capital!) /
+greedy 3136 (exiled north, 2 towns — lineage via scouting). 8 foundings,
+11 deaths, first contact t2750. A real game now: found, meet, take.
 This is the table new work is judged against (live scoreboard: BOT_PLAN.md).
 Next bot work (ordered, see BOT_PLAN.md): Step 2 trade evaluator scoped by
 the selectivity bleed (skip_thin/trap/viable), then the Elo all-hold

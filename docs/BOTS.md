@@ -17,9 +17,11 @@ furniture for scenarios, not a personality. There is no `random` bot
 - Attacks nearest *viable* town: `pop × 0.5 > 700`, i.e. target pop > 1400
   (captured-half must clear the death floor + margin). Duel-only gating —
   in multi-faction wars every town is viable (denial-raids pay there).
-- No foes → expand (sites 80–300 km from the army); no site → march home
-  for the +500 pop-add recycle. Holds one home vs inbound/second-wave
-  (shared defense trio, below — ungated, unlike pro's duel-only hold).
+- No actionable contact → first settler probes (S0 scout: 50 km hops,
+  rubble-avoiding, found-fallback); later settlers expand (sites 80–300
+  km); no site → march home for the +500 pop-add recycle. Holds one home
+  vs inbound/second-wave (shared defense trio, below — ungated, unlike
+  pro's duel-only hold).
 
 ### aggressive — The Conqueror
 - Trains via `can_train_here` non-conservative (peak preserved except
@@ -31,14 +33,17 @@ furniture for scenarios, not a personality. There is no `random` bot
   trickles vs undefended targets. Arrival-sync was tried and failed
   (1-turn decision + 1-turn messenger lag vs 50 km/turn) — sync departures,
   never arrivals.
-- No viable targets → chase foe armies at forecast positions; else expand
-  (sites 120–340 km). Keeps one home army vs inbound/second-wave like
+- No actionable contact → scout-first like greedy (faction-ray sweep);
+  no viable targets → chase foe armies at forecast positions; else expand
+  (sites 120–340 km, moves now noted — the old branch forgot, causing
+  zigzag re-dispatches). Keeps one home army vs inbound/second-wave like
   greedy (ungated), but never hoards beyond that: all-out is the character.
 
 ### expander — The Colonist
 - Trains via `can_train_here` non-conservative. Guard rule keeps one home
   vs inbound/second-wave; otherwise every army is a settler, outward
-  120–350 km. No evac by design — accepts decapitation, wins by spread.
+  120–350 km (first probes as S0 scout). No evac by design — accepts
+  decapitation, wins by spread.
 - Chain behavior (each established town owes a settler) is emergent and
   kept as policy. Loses to early raids (proven), out-settles turtles
   (proven territorially, score lags: new towns start at 500).
@@ -83,6 +88,13 @@ furniture for scenarios, not a personality. There is no `random` bot
   memoized `stale_turns` (dist-to-capital/info_speed), fingerprint-gated
   standing-order replay + plan queue + clock effort (see `BOT_TIME.md`).
   `is_quiet`: any update breaks sleep.
+- S0 scout (`_scout_id/_scout_leg`, hop notes in `_army_targets`): probe
+  before founding, rubble-avoiding, viable/army contact hands to normal
+  logic (stale hop note dropped); builds stages never found on scout
+  waypoints. `drop_dead_notes` clears trail-stale notes (messenger-died
+  orders strand otherwise). `order_move` quiescence gate: MOVE_TO only
+  from converged intel (mid-course retargets of movers are structurally
+  dead) — all 19 dispatch sites route through it.
 - Defense trio (greedy/aggressive/expander/pro): `inbound_eta` (per-town
   inbound ETAs ≤ 8 turns; stationary foe guards excluded),
   `note_wave_watch` (vanished own army → hold one home 6 turns),

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, find_build_site, inbound_eta, note_wave_watch, should_hold_home
+from .common import BotForecast, BotState, bot_main, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home
 
 
 def _can_train_greedy(state: BotState, town) -> bool:
@@ -41,6 +41,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     for p in state.own_armies():
         if state.should_yield():
             break
+        sc = drive_scout(state, config, p)
+        if sc is not None:
+            out.extend(sc)
+            continue
         if state.army_has_target(p.id):
             continue  # handled by the builds stage
         # G-defense: keep >=1 home vs inbound/second wave (viability-gating
@@ -59,24 +63,26 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             viable = list(enemy_towns)
         if viable:
             nearest = min(viable, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")
-            state.note_move(p.id, nearest.x, nearest.y)
+            out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             fc = BotForecast(state, config)
             forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {fx:.1f} {fy:.1f}")
+            out.extend(order_move(state, config, p, fx, fy))
         else:
+            # S0: no-contact scout first (Step 2 prereq) — probe deep
+            # before founding; falls back to settling below.
+            if maybe_assign_scout(state, config, p):
+                out.extend(drive_scout(state, config, p) or [])
+                continue
             # G2: recycle — no foes and no site: march home for +500 pop-add
             # (builds stage BUILDs on arrival since target is an own town).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11)
             if site:
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {site[0]:.1f} {site[1]:.1f}")
-                state.note_move(p.id, site[0], site[1])
+                out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():
                 home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {home.x:.1f} {home.y:.1f}")
-                state.note_move(p.id, home.x, home.y)
+                out.extend(order_move(state, config, p, home.x, home.y))
     return out
 
 
@@ -91,6 +97,8 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
             continue
         if not state.army_has_target(p.id):
             continue
+        if state._scout_id == p.id:
+            continue  # scout waypoints are not destinations: drive owns them
         if state.has_pending_build(p.id):
             continue
         tgt = state.army_target(p.id)
@@ -114,6 +122,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     if state.should_yield():
         return out
+    drop_dead_notes(state)  # unstrand armies whose orders died in flight
     # Idea 2: lazy stages — an expired clock skips later stages entirely
     # instead of paying their compute, keeping the important prefix.
     # Idea 6: low bank skips straight to trains-only (no moves/builds cost).

@@ -38,9 +38,11 @@ wake and defense fixed themselves via re-observation under S; endgame
 attribution (beheading vs intel timing) left open — bisect only if it
 matters for a later step.
 
-**Step 1 — survive floor.** No TRAIN may leave a town below the death
-floor unless last-stand-doomed (turtle's relaxed 1200-trains still
-suicide today). Smallest open fix; owed.
+**Step 1 — survive floor.** DONE: relaxed TRAIN needs pop − cost ≥
+floor unless per-town last-stand (threat imputed HERE, ETA ≤ 3). Pre-work
+found the global `doomed` defined-but-never-wired; shared bars already
+safe, turtle-only fix. Decide-level pins (map scenario infeasible —
+score-neutral training + capture-halving erase the delta); suite 15/15.
 
 **Step 2 — demand-gated trains + trade evaluator.** Keep affordability
 floors exactly as coded; add demand per personality before any TRAIN:
@@ -56,9 +58,22 @@ profitability proof. Evaluator rules: sums gate on KNOWN foes only (the
 mirror holds observed entities — never-observed forces are absent by
 construction, not zero); `last_seen` staleness scales the risk posture;
 all force counts from delivered trails, never intent; parse finished
-battles for force counts to calibrate. Scouting doctrine (when to spend
-an army to look) is prerequisite — first scout policy ships inside this
-step, not before it.
+battles for force counts to calibrate. Scouting prerequisite SHIPPED
+(S0 no-contact protocol, below) — demand gates + evaluator remain open.
+
+**S0 — no-contact scout (shipped).** First settler probes before
+founding: 50km hops (arrival-gated; mid-course retargeting is
+structurally dead — 2-turn intel lag vs 1-step projection), faction-ray
+direction, avoidance of known towns, found-fallback at hop 12.
+Contact rules: viable town / foe army hands to raid/defense (stale hop
+note dropped); rubble-only stays out. Support: `drop_dead_notes`
+(trail-freshness unstranding), `order_move` quiescence gate (orders only
+from converged intel — fixes the drunk-walk + site-steal families),
+builds stages never found on scout waypoints. Evidence: all raid takes
+restored, void_contact takes, trap/skip_thin skip decoys and take
+prizes. Costs: scout tax in sprint races (outsettle), slower probes
+(~3 turns/50km at range). Pro recon NOT done (pro still blind — owes
+before Step 5/6 need eyes); turtle pickets NOT done.
 
 **Step 3 — meeting forecast + computed arrival-sync.** Deterministic
 meeting prediction from known speeds (path-blocking auto-intercepts, so
@@ -76,10 +91,9 @@ starvation window.
 **Step 5 — evac v2 + capital game.** Earlier-and-stricter evac gates
 (1-turn lead now required; failure beheads permanently); viceroy routing
 around known armies; leader-targeting with capital-sniping weight;
-Pre-step verdict owed: Elo all-hold (20/20 defenses stand on the raid
-map) — decide whether the matchup is defense-favored by mechanics (then
-stop raiding it) or attacker-passive under fog (then fix the approach)
-before building capital-sniping on top;
+Pre-step verdict OWED-AND-DELIVERED: Elo resolved (greedy 1544 /
+aggressive 1543 take; holders hold) — old all-hold was attacker-passivity,
+not mechanics. Sniping work unblocked when Steps 2–4 land;
 settler-hunting (kill unescorted movers when nothing is worth taking);
 buffer-settling toward spent foes (turtle-true offense).
 
@@ -108,29 +122,26 @@ and no recall (the 42 moves are nearly all march-outs). Town pops at
 t2999: pro 9156 vs greedy 1089 / aggressive+expander 1376 / turtle 2232
 — early spending with zero return is catastrophic at these growth rates.
 
-- **pro — scheduled reconnaissance.** Hold-and-compound is optimal *if
-alone*, but pro cannot distinguish alone from far. Zero observations by
-turn T → spend one army on an expanding sweep. Cost ~1000 once; unlocks
-everything currently dead code in a void (departure-sync,
-leader-targeting, counter-punch). (Feeds Step 2 scouting, Step 5 eyes.)
-- **greedy — idle-army watchdog + no-contact raiding.** Army 5 sat 1850
-turns on a site: no BUILD, no recycle, no orders. Any army stationary
->K turns with no mission and no observed foes → found, recycle home,
-or scout. And a raider that sees nobody should sweep, not settle by
-default. (Step 2.)
-- **aggressive — conqueror's search.** Same watchdog (army 6 sat ~1800
-turns); its foe-chase defaults to sitting when nothing is observed.
-No-contact → personality-distinct sweep direction, so void-mirrors
-diverge by character instead of coinciding. (Steps 2–3.)
-- **expander — settler follow-through (highest value).** ZERO founds in
-3000 turns is a core character failure. Diagnose why BUILD never fires
-at reached sites, then fix; plus settle-as-scout (each founding extends
-LOS and resets delays — spread *is* intel). (Steps 2, 4.)
-- **turtle — picket expiry + conditioned pickets.** Three 1000-pop
-pickets sat ≤150 km from home the whole game. No contact in K turns →
-recycle home via BUILD pop-add; and train the blind picket only after
-first observation or a turn threshold — turtle's late training won among
-spenders, so make last-responsible-moment policy. (Steps 1–2.)
+- **pro — scheduled reconnaissance (STILL OPEN).** Hold-and-compound is
+optimal *if alone*, but pro cannot distinguish alone from far — the
+rematch proves it (pro sits while four founders collide). Zero
+observations by turn T → spend one army on hop-probing (reuse S0).
+Cost ~1000 once; unlocks everything dead in a void (departure-sync,
+leader-targeting, counter-punch). Owed before Steps 5–6 need eyes.
+- **greedy — DONE (scout + unstranding).** Hop-probing + drop_dead_notes
++ quiescence closed the 1850-turn sits; raid_hold/skip_thin/void_contact
+take. Demand gates (Step 2 core) remain.
+- **aggressive — DONE (scout + note_move fix + unstranding).** Sweep
+probes (faction-ray diverges void-mirrors); pair/viable/trap take.
+Also fixed: expand branch never noted moves (zigzag class). (Steps 2–3
+core: demand + forecast remain.)
+- **expander — DONE (follow-through was engine blindness).** The
+settlers were fine; movement streams were strangled (delivery dedup
+without position). void_settle 1→3 towns, chain/settle pass. (Steps 2,
+4 core remain.)
+- **turtle — picket expiry + conditioned pickets (STILL OPEN).** Step 1
+floor done; order_move now notes (settlers actually settle). Expiry (no
+contact → recycle) and observation-conditioned pickets remain. (Step 2.)
 - **Shared — no-contact protocol.** Zero foe observations by turn T →
 all personalities switch from economy/hoard scripts to search scripts.
 This is the Step 2 scouting prerequisite with hard evidence behind it.
@@ -150,14 +161,16 @@ coverage).
 
 ## Scoreboard to beat (current tree, fog era)
 
-Fast: raid_hold 3066 / recycle 6052 / skip_thin 2151 / settle 3066 /
-chain 5250 / guard 3088 / viable 3088 / pair 5105 / trap 3165 /
-defend 3207 / wake 2121 / cluster 5465 / opening 3242 / defense 3305 /
-endgame 8804. Strategic (focal pro): attrition 14552 / comeback 821 /
-endurance 7752 / outsettle 2687 / guard_duty 2360 / longpeace 5254 /
-opening 1391 / siege 5324 / snowball 4851 / staleness 4007 /
-succession 1826; self-play symmetric; Elo all-hold. empty_3000 rematch:
-pro 9156 / greedy 3089 / aggressive 3376 / expander 3376 / turtle 5232.
-Next milestones in order: Step 2 stops the selectivity bleed
-(skip_thin/trap/viable back up without defense regressing); Elo verdict
-lands; then Steps 3–6 in sequence.
+Fast: raid_hold 3657 / recycle 3678 / skip_thin 3446 / settle 2589 /
+chain 4783 / guard 2620 / viable 4238 / pair 4791 / trap 4481 /
+defend 2747 / wake 2121 / cluster 5465 / opening 3242 / defense 3305 /
+endgame 8804 (all raid goals PASS). Strategic (focal pro):
+attrition 14552 / comeback 821 / endurance 7752 / outsettle 1796 /
+guard_duty 2963 / longpeace 5254 / opening 1391 / siege 5324 /
+snowball 4851 / staleness 4007 / succession 1826;
+void_contact 5135 (take) / void_settle 2936 (3 towns); self-play
+symmetric; Elo greedy 1544 / aggressive 1543 / pro 1473 / expander 1470 /
+turtle 1470. empty_3000 rematch: pro 9156 / turtle 6637 / expander 4227 /
+aggressive 3766 / greedy 3136 (8 foundings, 1 take, exile-lineage).
+Next milestones in order: Step 2 demand gates + trade evaluator; then
+Steps 3–6 in sequence (Elo verdict delivered; pro recon owed).

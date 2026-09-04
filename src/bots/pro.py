@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, find_build_site, inbound_eta, note_wave_watch, should_hold_home
+from .common import BotForecast, BotState, bot_main, drop_dead_notes, order_move, find_build_site, inbound_eta, note_wave_watch, should_hold_home
 
 
 def _can_train_pro(state: BotState, town) -> bool:
@@ -122,24 +122,21 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y), default=None)
                 if home is not None and home.population >= 2 * config.army_cost:
                     continue  # solo vs peer with empty field: wait for pack
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")
-            state.note_move(p.id, nearest.x, nearest.y)
+            out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             fc = BotForecast(state, config)
             forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {fx:.1f} {fy:.1f}")
+            out.extend(order_move(state, config, p, fx, fy))
         else:
             # G2: recycle — no foes and no site: march home for +500 pop-add
             # (builds stage BUILDs on arrival since target is an own town).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11)
             if site:
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {site[0]:.1f} {site[1]:.1f}")
-                state.note_move(p.id, site[0], site[1])
+                out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():
                 home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {home.x:.1f} {home.y:.1f}")
-                state.note_move(p.id, home.x, home.y)
+                out.extend(order_move(state, config, p, home.x, home.y))
     return out
 
 
@@ -177,6 +174,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     if state.should_yield():
         return out
+    drop_dead_notes(state)  # unstrand armies whose orders died in flight
     # P4: evac (turtle doctrine) — hopeless + 2x cost: fly the commander
     # out to coords away from the threat. Covers naked-home 3-pack marches.
     cap = state.world.faction_capital(state.faction)

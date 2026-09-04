@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, find_build_site, inbound_eta, note_wave_watch, should_hold_home, towns_by_train_priority
+from .common import BotForecast, BotState, bot_main, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home, towns_by_train_priority
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -11,6 +11,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     if state.should_yield():
         return out
+    drop_dead_notes(state)  # unstrand armies whose orders died in flight
 
     for t in towns_by_train_priority(state, conservative=False):
         if state.should_yield():
@@ -38,6 +39,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if state.should_yield():
             break
         if p.is_viceroy and state.army_has_target(p.id):
+            continue
+        sc = drive_scout(state, config, p)
+        if sc is not None:
+            out.extend(sc)
             continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
@@ -71,17 +76,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y), default=None)
                 if home is not None and home.population >= 2 * config.army_cost:
                     continue  # wait for the pack; march together next turns
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")
-            state.note_move(p.id, nearest.x, nearest.y)
+            out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             fc = BotForecast(state, config)
             forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
-            out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {fx:.1f} {fy:.1f}")
+            out.extend(order_move(state, config, p, fx, fy))
         else:
+            # S0: no-contact scout first (Step 2 prereq) — probe deep
+            # before founding; falls back to settling below.
+            if maybe_assign_scout(state, config, p):
+                out.extend(drive_scout(state, config, p) or [])
+                continue
             site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11)
             if site:
-                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {site[0]:.1f} {site[1]:.1f}")
+                out.extend(order_move(state, config, p, site[0], site[1]))
     return out
 
 

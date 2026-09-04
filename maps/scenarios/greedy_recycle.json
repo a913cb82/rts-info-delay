@@ -4,7 +4,7 @@
   1000,
   1000
  ],
- "max_turns": 30,
+ "max_turns": 60,
  "turn_time_ms": 1000,
  "info_speed": 150.0,
  "army_speed": 50.0,
@@ -22,6 +22,7 @@
  "focal": 0,
  "goal": {
   "type": "armies_zero",
-  "faction": 0
+  "faction": 0,
+  "note": "horizon 60: idle army probes first (scout), founds far ~t55 \u2014 probe-then-found chain, not instant disband"
  }
 }
