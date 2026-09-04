@@ -123,7 +123,7 @@ class BotState:
         self.world: World = World()
         self.turn: int = 0
         self._army_targets: dict[int, tuple[float, float]] = {}
-        self._pending_trains: dict[int, int] = {}  # town_id -> expiry turn (when pop_change expected)
+        self._pending_trains: dict[int, int] = {}  # town_id -> expiry turn (when town_update pop drop expected)
         self._pending_builds: dict[int, int] = {}  # army_id -> expiry turn
         self._prev_pop: dict[int, float] = {}
         self._growth: dict[int, float] = {}

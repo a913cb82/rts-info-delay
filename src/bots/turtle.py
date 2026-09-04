@@ -100,9 +100,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"MOVE_CAPITAL {ex:.1f} {ey:.1f}")
             return out
 
-    # T3: last-stand — enemy at the gates and town still standing:
-    # train whatever is affordable, rules be damned.
-    doomed = threat_eta <= 3 and any(t.population >= config.army_cost + 200 for t in own_t)
+    # T3: last-stand — a threat imputed to THIS town arriving in <=3 and
+    # the town still standing: train whatever is affordable, rules be
+    # damned (the town falls anyway; convert pop to force). Deliberately
+    # per-town, not global: a distant/passing threat must not draft a thin
+    # town to death (Step 1 survive floor). Unused-global `doomed` removed.
+    def last_stand(t) -> bool:
+        return (town_eta.get(t.id, float("inf")) <= 3
+                and t.population >= config.army_cost + 200)
 
     # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is
@@ -118,6 +123,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         cands = sorted((t for t in own_t
                         if t.id in relaxed_ids
                         and t.population >= min(town_bar(t), config.army_cost + 200)
+                        and (t.population - config.army_cost >= config.death_threshold - 1e-9
+                             or last_stand(t))
                         and t.id not in state._pending_trains),
                        key=lambda t: -t.population)
     else:

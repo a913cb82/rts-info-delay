@@ -253,3 +253,16 @@ locations corrected. Verified by grep: _by_turn/turn_events/.visible all
 gone; Phase-4 machinery (upsert, alive-False removal, pop-drop confirm,
 wave fields, note_orders, trails) present in-tree. Nothing open in the
 plan except future combat/movement phases (explicitly not this rework).
+
+### Step 1 — survive floor (turtle)
+Rule: relaxed TRAIN needs pop - cost >= death floor (500), unless
+per-town last-stand (threat imputed to THIS town, ETA <= 3, affordable).
+Found pre-work: global `doomed` was defined but never wired (no exception
+existed); shared `can_train_here` (1600) + greedy (1500) already safe —
+turtle-only fix. Benchmark note: map-level scenario infeasible — score
+counts armies at cost (training score-neutral) + capture halves, so
+suicide+army always beats hold+captured; and any bar-firing single-town
+threat is inside 150km (ETA <= 3, doomed-coverage). Pinned decide-level
+instead (tests/bots/test_turtle_floor.py: hold/last-stand/fat/control).
+Fast suite: 15/15 byte-identical (no suite scenario parks a threatened
+town in [1200, 1500)).
