@@ -46,7 +46,7 @@
 - Old bot wipe trigger (unknown-capital spawn) — replaced by order-flag amnesia (below); spawn-guard special cases collapse into upsert.
 - `visible_events` audibility filter → tag+delay+S delivery (rewrite; vectorized release check retained).
 - Bot `town_capture` / `battle` branches; engine `apply_events` stays for record/mirror use.
-- Ledger leaves the game loop (step still returns event dicts for the record file; `Ledger` class deleted after audit — see Phase 0). Ledger eviction goes with it (nothing accumulates bot-visible history anymore).
+- ~~Ledger leaves the game loop (`Ledger` class deleted after audit)~~ — SUPERSEDED by D3 KEEP (ledger stays as the windowed tagged generation log). What left: the audibility filter, since-filter, histories, reseeds (see Phase 0 findings). Step still returns event dicts for the record file.
 - `town_history` + `delayed_town` deleted (no horizon lookups; side win: ~170 MB/game freed).
 - `_last_sent_pop/_last_sent_status` + the pop loop + B16 pop-carried status (takeovers arrive as ordinary `town_update` faction changes; the since-hole B16 patched no longer exists). B15 seq machinery STAYS (delivery still needs sent-once tracking per faction — now joined by snapshot compare).
 
@@ -86,7 +86,7 @@
 - No-reseed proof: post-S payload for a landed faction contains nothing with generation turn < S (property test over a scripted flight — the S-filter holding).
 - Counter-intel preserved: foe in path observes the marching viceroy (`is_viceroy` en route); observers of a founding get `is_capital True` on the birth update.
 - First-turn payload: measured on **real turn-1 `full.json` geometry**, not the heavy rig (own capital + LOS neighborhood — fog-visible subset). Enormous is acceptable: the 1 s initial bank (`main_time_ms`) covers it. Bench asserts builder + serialize + a reference parse fit comfortably inside it; no chunking.
-- **Spike first**: LOS shapes (numpy broadcast / numba pairs / hash queries) AND delivery shapes (flat window scan vs per-faction indexed deques) against the heavy fixture, pick by paired numbers, delete the losers. No guessing (house rule). Per-faction index is the expected winner over naive scan (34k entries × 5 factions flat is the cost to beat) — expectation, not decision.
+- **Spike first**: LOS shapes (numpy broadcast / numba pairs / hash queries) AND delivery shapes (flat window scan vs per-faction indexed deques) against the heavy fixture, pick by paired numbers, delete the losers. (Outcome: indexed deques lost; columnar+numba won. The scan reference `build_updates_scan` + differential test were KEPT as the exactness oracle — 20 lines justifying themselves every run.) No guessing (house rule). Per-faction index is the expected winner over naive scan (34k entries × 5 factions flat is the cost to beat) — expectation, not decision.
 - **Perf budget test**: `bench_builder_full` (heavy fixture + real turn-20 capture) must beat current `_build_bot_events` paired same-box — mean/p99 ms/turn and payload bytes; fail loudly otherwise. See Performance.
 
 **Phase 3 — wire-up.**
@@ -133,7 +133,7 @@ House rules (from `docs/optimization_log.md`, all binding here):
 - No fine-grained threading (opt17/18: overhead exceeds work); no GC games (opt16).
 - Equivalence standard adapts: byte-identical JSON can't apply (semantics change) — instead spec tests + hand-checked scenario diffs.
 
-Memory (measured, not assumed): today's `town_history` costs ~170 MB at 415 towns × 3000 turns — deleted outright (no horizon lookups). In its place: windowed ledger (~10 turns × observed-entity entries; worst case everything observed ≈ 34k live entries ≈ 5 MB) + per-faction send-state (last-delivered per observed entity) + tombstones (tiny, pruned past window). Nothing grows with game length.
+Memory (measured, not assumed): today's `town_history` costs ~170 MB at 415 towns × 3000 turns — deleted outright (no horizon lookups). In its place: windowed ledger (~10 turns × observed-entity entries; measured ~750 B/entry Python overhead — worst case everything observed ≈ 34k live entries ≈ 25 MB on the pathological rig, single-digit MB in real games) + per-faction send-state (~3.5k rows/faction heavy) + tombstones (tiny, pruned past window). Nothing grows with game length. (The 5 MB pre-landing estimate was wrong; corrected post-measurement.)
 
 Wire discipline (opt19: 278→198 B/bot-turn today): delivery-on-change is mandatory, not polite (generation is every-turn; sending would be ~3400 × ~60 B × 5 ≈ 1 MB/turn — a 5000× blowup plus JSON serialization dominating the turn). Generation churn itself (appends worst ~3400/turn, less with skip-untagged) is knowledge-phase cost — inside `bench_builder_full` and the heavy-step bench, measured not assumed.
 
@@ -144,7 +144,7 @@ Builder cost anatomy at heavy scale (budget: ≤ today's ~5ms — 2.3ms vectoriz
 3. Send-state compares (dict reads), delay hypot via vectorized release check as today, serialize proportional to sent (diffs). Canonical order free (ledger order).
 4. Serialize proportional to sent (diffs). Canonical order free (ledger turn order).
 
-Bench: `bench_builder_full` in `benchmarks/bench_suite.py` on the existing heavy fixture + real turn-20 capture — mean/p99 builder ms/turn and payload bytes/faction, reported every run, paired old-vs-new during migration.
+Bench: `bench_builder_full` in `benchmarks/bench_suite.py` on the existing heavy fixture + real turn-20 capture — median builder ms/turn and payload bytes/faction (cold full re-announce + warm steady diff), reported every run. Failing gates live in `tests/engine/test_perf_budget.py` (heavy 30 ms / full20 5 ms / delivery-5 3 ms).
 
 ## Decisions for ratification
 

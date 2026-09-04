@@ -189,10 +189,65 @@ def bench_heavy_snapshot():
     bench("weakness 1000 armies", fn_weak, repeat=7)
 
 # 5. ledger visibility 500 turns
-def bench_ledger():
-    # skip ledger bench - API mismatch, not critical for engine perf
-    # will add proper ledger bench later
-    pass
+def bench_builder_full():
+    """EVENT_REWORK pipeline bench (reporting; gates live in tests/engine/test_perf_budget.py).
+
+    Heavy rig + real turn-20 full.json capture: generate ms, delivery ms
+    (5 factions, warmed send-states), wire bytes/faction cold (first
+    contact, full re-announce) and warm (steady diff), ledger memory.
+    """
+    import gc, json, sys
+    from engine.ledger import Ledger
+    from engine.delivery import SendState, build_updates
+    # --- heavy rig ---
+    w = World(); w.map_size = [1000, 1000]
+    rng = np.random.default_rng(3)
+    towns = make_towns(207, seed=7)
+    for i, t in enumerate(towns): t.faction = i % 5; t.is_capital = (i < 5)
+    w.towns = towns
+    for i in range(3036):
+        t = rng.choice(towns)
+        w.armies.append(Army(id=i, faction=i % 5, x=t.x + float(rng.uniform(-8, 8)),
+                             y=t.y + float(rng.uniform(-8, 8))))
+    lg = Ledger(CFG.info_speed, math.hypot(1000, 1000))
+    lg.generate(w, 20, line_of_sight=150.0)
+    bench("builder heavy generate 207t+3036a", lambda: lg.generate(w, 21, line_of_sight=150.0), repeat=5)
+    caps = {}
+    for f in range(5):
+        c = next(t for t in w.towns if t.faction == f and t.is_capital)
+        caps[f] = (c.x, c.y)
+    cold = [build_updates(lg, f, SendState(), 0, caps[f], 21.0) for f in range(5)]
+    states = {f: SendState() for f in range(5)}
+    for f in range(5):
+        build_updates(lg, f, states[f], 0, caps[f], 21.0)
+    bench("builder heavy delivery x5 warm", lambda: [build_updates(lg, f, states[f], 0, caps[f], 21.0) for f in range(5)], repeat=5)
+    cold_b = [len(json.dumps(u).encode()) for u in cold]
+    warm = [build_updates(lg, f, states[f], 0, caps[f], 21.0) for f in range(5)]
+    warm_b = [len(json.dumps(u).encode()) for u in warm]
+    print(f"builder heavy wire/faction cold {sum(cold_b)//5} B (n={[len(u) for u in cold]}) "
+          f"warm {sum(warm_b)//5} B (n={[len(u) for u in warm]})")
+    # --- memory spot-check (Phase 1 requirement) ---
+    evs = list(lg.events)
+    sample = evs[::max(1, len(evs) // 200)][:200]
+    per = sum(sys.getsizeof(e) + sys.getsizeof(e.payload) + sys.getsizeof(e.visible_to) for e in sample) / max(1, len(sample))
+    col_b = sum(len(a) * a.itemsize for a in
+                (lg._c_turn, lg._c_x, lg._c_y, lg._c_row, lg._c_tag, lg._c_seq))
+    print(f"builder heavy ledger entries {len(evs)} (~{per * len(evs) / 1e6:.1f} MB events, "
+          f"{col_b / 1e6:.1f} MB columns) + send-state/faction ~{len(states[0].snaps) + len(states[0].deliv)} rows")
+    # --- real turn-20 full.json capture ---
+    data = json.load(open("maps/full.json"))
+    cfg2 = GameConfig.from_dict(data)
+    w2 = World(); w2.map_size = data.get("map_size", [1000, 1000])
+    w2.parse_map(data["map"])
+    lg2 = Ledger(cfg2.info_speed, math.hypot(*w2.map_size))
+    for turn in range(1, 21):
+        orders = {}
+        for t in w2.towns:
+            if t.is_capital:
+                orders.setdefault(t.faction, []).append(f"TRAIN {t.id}")
+        step.step(w2, cfg2, lg2, turn, orders)
+    bench("builder full20 generate 415t+100a", lambda: (lg2.generate(w2, 21, line_of_sight=cfg2.line_of_sight), lg2.evict(21.0)), repeat=5)
+    gc.collect()
 
 if __name__=="__main__":
     print("=== bench suite ===")
@@ -201,7 +256,7 @@ if __name__=="__main__":
     bench_movement()
     bench_combat()
     bench_heavy_snapshot()
-    bench_ledger()
+    bench_builder_full()
     print("\n--- summary sorted ---")
     for n,ms in sorted(RESULTS, key=lambda x: -x[1]):
         print(f"{ms:7.2f} ms  {n}")

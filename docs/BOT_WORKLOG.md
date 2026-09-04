@@ -237,3 +237,18 @@ house rules) vs knowledge ~25 (was ~63). Combat's stacked-weakness search
 is the next fat and belongs to its own phase, not the rework.
 Latent bug fixed: bench_suite Ledger(cfg) (swallowed by the deleted
 fallback; now canonical construction).
+
+## EVENT_REWORK close-out: reporting bench + doc truth
+
+bench_builder_full now lives in benchmarks/bench_suite.py (reporting:
+generate/delivery ms, wire bytes cold+warm, ledger memory) with failing
+gates in tests/engine/test_perf_budget.py. Measured: cold wire ~35KB/
+faction (~260 updates, full re-announce), warm steady-state 2B (`[]` —
+the diff discipline proves itself); ledger ~750B/entry Python overhead
+(25MB worst-case pathological, single-digit real games — the plan's 5MB
+estimate corrected in-doc). Doc inconsistencies fixed: Ledger-deletion
+bullet marked superseded by D3, scan-oracle retention noted, budget
+locations corrected. Verified by grep: _by_turn/turn_events/.visible all
+gone; Phase-4 machinery (upsert, alive-False removal, pop-drop confirm,
+wave fields, note_orders, trails) present in-tree. Nothing open in the
+plan except future combat/movement phases (explicitly not this rework).
