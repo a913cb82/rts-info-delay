@@ -165,28 +165,61 @@ NOTE on absolutes: this box measured ~1.8× slower than the runs behind the tabl
 
 ---
 
-## Remaining (opt11-13, not started)
+## opt11 and on
 
-### opt11: Movement batch hash query
-- Instead of per-army `query_radius`, iterate cells once and check all pairs within cell+neighbors
-- O(cells × k²) vs O(armies × query_result) where k=armies_per_cell
-- Expected: movement heavy 217→~100ms, total heavy step ~800ms
+### opt11: Movement batch cell-pair + town batch — DONE (`1223ae5`)
+- Army contacts: iterate hash cells once with a forward-half 13-stencil (Chebyshev ≤ 2 covers the 110 query disc at cell 60); each unordered pair evaluated once per moving direction with the same disc cutoff (`110²+2e-9`) and scalar math. Eliminates ~2400 `query_radius` calls + result lists per step
+- Town contacts: per town, walk army-hash 3×3 stencil (covers 60 disc) instead of per-army town queries; separate town hash deleted
+- Detour (reverted): numpy-vectorized closest-approach — byte-identical but a wash end-to-end (query overhead, not math, dominated); small cases regressed on vector setup cost. Reverted to scalar
+- Equivalence: heavy-step events byte-identical before/after (448KB JSON diff clean); full suite green
 
-### opt12: Ants-inspired early exit (try if blocked)
-- `do_attack_support` pre-filter: if friends ≥ enemies for all, skip weakness entirely
-- `kill_ant` dict removal O(1) by loc vs our O(n) list scan — applies to captures `armies×towns`
+| Benchmark (paired, same box) | Before | After | Change |
+|---|---|---|---|
+| movement heavy 3036a | 361 | 177 | 2.04× |
+| movement 1k | 195 | 73 | 2.67× |
+| movement 200 | 11.9 | 8.2 | 1.45× |
+| step heavy 207t+3036a | 1,477 | 1,374 | 1.07× (movement is only part of step) |
 
-### opt13: Record/world incremental pop_total
-- `record.py`: maintain `pop_total[faction]`/`army_count[faction]` incrementally on growth/conquest/spawn/death instead of full scan
+### opt12: Combat event-building + batch removal — DONE (`9e9db31`)
+- Phase profile showed combat at 977ms min (70% of step) AFTER opt8: the weakness itself was fast, but event building did O(n) linear `next()` scans per member (~4 sites) and `remove_army` rebuilt both lists per dead army — O(n²) + O(dead×A)
+- `combat.py`: single `by_id` dict for all lookups; `world.remove_armies(ids)` batch single-pass removal (kept `remove_army` as delegating wrapper for other callers)
+- `combat.py`: same-faction fast path (the sound core of the ants `do_attack_support` idea adapted to our rule — full weakness is still required for mixed factions, so a broader pre-filter is unsound here)
+- Equivalence: heavy-step events byte-identical; full suite green
 
-### opt14 (untried): Shared army hash per step
-- Build the army SpatialHash once per step and share across movement, combat weakness, and captures instead of 3× O(A) rebuilds per turn
+| Benchmark (phase profile, min of 3) | Before | After | Change |
+|---|---|---|---|
+| combat phase 207t+3036a | 977 | 170 | 5.75× |
+| movement phase | 154 | 170 | — (noise) |
+| economy phase | 1.1 | 1.1 | — |
 
-### opt15 (untried): Ledger visibility, properly profiled
-- `visible_events`/`turn_events` run per faction per turn in the runner; earlier claimed numbers were noise. Re-profile first — gain may be zero
+### opt13: Cached faction queries + hoisted capture bookkeeping — DONE (`0ca4d50`)
+- Premise correction: `record.py` only serializes on save (no per-step scan), so "incremental pop_total" was based on a false premise. The real per-step faction cost was 169 `faction_capital` O(T) calls + per-capture `any()` scans (~5-10ms total, <1% of step)
+- `world.py`: `faction_capital`/`towns_for_faction`/`armies_for_faction` now use the (previously built-but-unused) faction caches; first-capital-wins order preserved to match old linear scan
+- Correctness: every in-place faction/is_capital mutation site marks dirty (combat captures ×3 branches via end-of-phase mark, step viceroy ×2, events replay ×1); appends/removals already invalidated via len/dirty flag
+- `combat.py`: triplicated capture-application blocks → single `_apply_capture` helper over a hoisted book (capital dict + town counts + viceroy set), eliminating all per-capture scans
+- Verdict: back-to-back paired heavy step 441→478ms = neutral (noise). Kept for the cleanup + query-heavy paths (runner/bots). Full suite + byte-identical heavy events
 
-### opt16 (untried): Hot-loop allocation pressure
-- Hot loops allocate thousands of small numpy arrays/tuples/dicts per turn (contacts, neighbor arrays, events). Buffer reuse would help single-digit % at significant complexity cost — deliberately deferred
+### opt14: Shared army hash per step — EVALUATED, REJECTED (measured)
+- Measured hash builds on heavy scale: army c60 10.1ms + combat c10 6.7ms ≈ 17ms/step total
+- True sharing is impossible movement→combat: armies move between phases, so a pre-movement grid is stale post-movement; incremental updates touch ~80% of armies ≈ full rebuild cost
+- Only shareable portion (combat→captures, ~7ms) needs cross-phase grid plumbing with index-remapping (combat hash indexes a fresh-filtered subset list) — staleness hazard for <2% of step
+- Verdict: rejected. Batch iteration (opt11) already removed the per-query costs that made sharing attractive; remaining builds are O(A) inserts, not O(n²)
+
+### opt15: Ledger visibility — DONE (`004f4f3`)
+- Measured first: 6395 events after 10 heavy turns; 5× `visible_events` = 27ms/turn, `turn_events` = 1.2ms (paired; earlier claimed numbers were noise)
+- `ledger.py`: `_version` counter bumped on log/evict + cached (xs, ys, ts) arrays shared across the 5 per-turn faction queries (one build ≈ 1ms + 5× 0.2ms vector math); `_by_turn` index with evict-sync for O(1) `turn_events` (int-turn fast path + scan fallback)
+- Ledger + bot-side tests green; runner-side cost, so engine-step bench is unaffected by design
+
+| Benchmark (paired ledger bench) | Before | After | Change |
+|---|---|---|---|
+| 5× visible_events @6395 evts | 27 | 2.3 | 11.7× |
+| turn_events | 1.2 | ~0.0 | →0 |
+
+### opt16: Allocation/GC pressure — EVALUATED, REJECTED (measured)
+- gc-off-vs-on single-step test suggested spikes (1501ms max vs 367ms), but that was a bench artifact: fresh 3k-army world per rep + dead-world garbage forced full collections
+- Real-game simulation (world reused, 20 turns): turn1 1204ms one-off (cold caches + setup-garbage collection), then 65→15ms declining as armies die — zero GC pauses across 20 turns, gen counts stay flat
+- Verdict: no production GC problem, no code change. (`gc.disable` was considered and rejected: unbounded growth in long-lived bot/runner processes for zero steady-state gain.)
+- Side finding: steady-state steps are 15–65ms, far below the fixed heavy-snapshot bench (~366ms) — the bench replays a full 3036-army turn that combat eliminates by turn 2–3, so it overstates real per-turn cost ~10×
 
 ---
 

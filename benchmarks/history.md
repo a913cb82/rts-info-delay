@@ -59,13 +59,16 @@ captures                        2.7 ms
 - opt7 `4845603`: step economy batch crowding (heavy 3336→3330, negligible as predicted)
 - opt8 `4e2575f`: combat single-pass weakness+adjacency (heavy 3336→975, 3.42x — the real win)
 - opt9 `c0a78fe`: movement simplified velocities + inlined closest-approach (heavy 975→956, noise)
-- opt10 (pending): economy cache soundness (identity-validated) + unified stacked rule + per-town numba row + combat dedup; fixes cross-test cache pollution found during review
+- opt10 `cee293c`: economy cache soundness (identity-validated) + unified stacked rule + per-town numba row + combat dedup + numba pre-compile (crowding 500 97.7→49.8 same-box; heavy neutral)
+- opt11 `1223ae5`: movement batch cell-pair + town batch, town hash deleted (movement heavy 361→177, 1k 195→73; heavy-step events byte-identical; vectorized-closest-approach detour tried, wash, reverted)
+- opt12 `9e9db31`: combat id-dict lookups + batch army removal + same-faction skip (combat phase 977→170ms min-of-3)
+- opt13 `0ca4d50`: cached faction queries + hoisted capture bookkeeping via `_apply_capture` (paired heavy neutral 441→478 noise; kept for cleanup + query-heavy paths)
+- opt14: shared army hash — EVALUATED, REJECTED (builds total ~17ms; movement→combat sharing impossible, positions change; only ~7ms shareable at staleness risk)
 
 ## Next planned
 
-- opt11: movement batch hash query (iterate cells once instead of per-army query_radius)
-- opt12: ants-inspired early exit (support pre-filter) — try if blocked
-- opt13: record/world incremental pop_total + army_count
+- opt15 (in progress): ledger visibility — 5× visible_events measured 27ms/turn at 6395 events, vectorize with versioned array cache + turn index
+- opt16: hot-loop allocation pressure (deferred: small gain, high complexity)
 - opt14 (untried): shared army hash built once per step (movement+combat+captures)
 - opt15 (untried): ledger visibility, properly profiled (earlier numbers were noise)
 - opt16 (untried): hot-loop allocation pressure (deferred: small gain, high complexity)
