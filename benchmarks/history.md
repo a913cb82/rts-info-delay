@@ -69,7 +69,7 @@ captures                        2.7 ms
 
 - opt15 `004f4f3`: ledger versioned array cache + turn index (5× visible 27→2.3ms, turn_events →0)
 - opt16: allocation/GC — EVALUATED, REJECTED (spikes were bench artifacts; real 20-turn game shows zero GC pauses, steady 15–65ms/turn)
-- opt17: parallel bot queries — TRIED, 2× SLOWER (6.4→12.9s), REVERTED (see docs/optimization_log.md)
+- opt17 `0f1979f`: parallel bot queries — KEPT (slow-bot turns 244→84ms; fast-bot wall 6.4→9.1s) + fixed broken turn timeout (was 5018ms, now 101ms)
 - opt18: engine threads — EVALUATED, NOT ATTEMPTED (0.11ms steps vs ~2ms fan-out overhead)
 - opt14 (untried): shared army hash built once per step (movement+combat+captures)
 - opt15 (untried): ledger visibility, properly profiled (earlier numbers were noise)

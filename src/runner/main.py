@@ -30,6 +30,7 @@ class BotProcess:
         self.config = config
         self.alive = True
         self.cmd = cmd
+        self._reader = None
         try:
             import os
             env = os.environ.copy()
@@ -53,6 +54,14 @@ class BotProcess:
             self.proc = None  # type: ignore
             self.alive = False
             return
+
+        # Persistent single-thread reader: fire-and-forget readline with a
+        # real timeout. (A per-read `with ThreadPoolExecutor` block hangs in
+        # shutdown(wait=True) on a silent bot, defeating the timeout.)
+        try:
+            self._reader = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        except Exception:
+            self._reader = None  # type: ignore
 
         # Send startup: config, faction, go
         try:
@@ -120,9 +129,13 @@ class BotProcess:
                 remaining = timeout_sec - (time.time() - start_time)
                 if remaining <= 0:
                     raise TimeoutError("turn timeout")
-                # Use ThreadPool to implement timeout for readline
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(self.proc.stdout.readline)
+                # Fire-and-forget read on the persistent reader: result()
+                # bounds the wait; a silent bot's worker stays blocked until
+                # kill() EOFs the pipe, and never blocks this thread.
+                if self._reader is None:
+                    line = self.proc.stdout.readline()
+                else:
+                    future = self._reader.submit(self.proc.stdout.readline)
                     try:
                         line = future.result(timeout=remaining)
                     except concurrent.futures.TimeoutError as e:
@@ -215,6 +228,57 @@ class BotProcess:
             self.proc.wait(timeout=0.1)
         except Exception:
             pass
+        # Drop the reader without waiting: a timed-out read may still be
+        # blocked until the kill above EOFs the pipe; it then exits alone.
+        try:
+            if self._reader is not None:
+                self._reader.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+        self._reader = None
+
+
+def _build_bot_events(faction: int, world: World, ledger: Ledger, turn: int, events: list[dict]) -> list[dict]:
+    """Build one faction's event payload (serial; GIL-bound numpy/JSON work)."""
+    # Determine visible events for this faction
+    capital = world.faction_capital(faction)
+    if capital is None:
+        cap_x, cap_y = 0.0, 0.0
+        is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
+        # If no capital, still need to handle is_in_flight? No capital means no visibility?
+        # For factions with no towns, they see nothing?
+    else:
+        cap_x, cap_y = capital.x, capital.y
+        # Check if faction has viceroy in flight -> blind
+        is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
+    visible_events = ledger.visible_events(faction=faction, capital_x=cap_x, capital_y=cap_y, now=float(turn), is_in_flight=is_in_flight)
+    # When MOVE_CAPITAL completes (new capital spawned), send ALL events
+    # so bot can fully rebuild BotState from new capital's perspective
+    move_cap_complete = any(
+        hasattr(ev, 'payload') and isinstance(ev.payload, dict)
+        and ev.kind.value == "town_spawn" and ev.payload.get("is_capital")
+        for ev in visible_events
+    )
+    if move_cap_complete:
+        visible_events = ledger.turn_events(turn)
+    # Convert to dict list for bot
+    bot_events: list[dict] = []
+    for ev in visible_events:
+        d: dict = {
+            "kind": ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind),
+            "x": ev.x,
+            "y": ev.y,
+            "turn": ev.turn,
+        }
+        if isinstance(ev.payload, dict):
+            d.update(ev.payload)
+        bot_events.append(d)
+    # Append pop_change events from previous step (not in ledger)
+    if events:
+        for ev in events:
+            if isinstance(ev, dict) and ev.get("kind") == "pop_change":
+                bot_events.append(ev)
+    return bot_events
 
 
 def run_game(
@@ -271,86 +335,66 @@ def run_game(
             pass
         write_config_line(config, record_path)
 
-    # Game loop
+    # Game loop. Bots are independent processes sharing one turn window:
+    # all factions are queried concurrently, so N bots using the full
+    # turn_time_ms budget cost ~1 window, not N. Event-payload building
+    # stays serial (GIL-bound numpy/JSON thrashes under threads); only the
+    # blocking pipe round-trips fan out. Orders merge by faction key, so
+    # the game stays deterministic regardless of thread scheduling.
     events: list[dict] = []
-    for turn in range(1, config.max_turns + 1):
-        orders_dict: dict[int, list[str]] = {}
-        for faction, bp in bot_processes.items():
-            if not bp.alive:
-                orders_dict[faction] = []
-                continue
-            # Determine visible events for this faction
-            capital = world.faction_capital(faction)
-            if capital is None:
-                cap_x, cap_y = 0.0, 0.0
-                is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
-                # If no capital, still need to handle is_in_flight? No capital means no visibility?
-                # For factions with no towns, they see nothing?
-            else:
-                cap_x, cap_y = capital.x, capital.y
-                # Check if faction has viceroy in flight -> blind
-                is_in_flight = any(a.is_viceroy and a.faction == faction for a in world.armies)
-            visible_events = ledger.visible_events(faction=faction, capital_x=cap_x, capital_y=cap_y, now=float(turn), is_in_flight=is_in_flight)
-            # When MOVE_CAPITAL completes (new capital spawned), send ALL events
-            # so bot can fully rebuild BotState from new capital's perspective
-            move_cap_complete = any(
-                hasattr(ev, 'payload') and isinstance(ev.payload, dict)
-                and ev.kind.value == "town_spawn" and ev.payload.get("is_capital")
-                for ev in visible_events
-            )
-            if move_cap_complete:
-                visible_events = ledger.turn_events(turn)
-            # Convert to dict list for bot
-            bot_events: list[dict] = []
-            for ev in visible_events:
-                d: dict = {
-                    "kind": ev.kind.value if hasattr(ev.kind, 'value') else str(ev.kind),
-                    "x": ev.x,
-                    "y": ev.y,
-                    "turn": ev.turn,
-                }
-                if isinstance(ev.payload, dict):
-                    d.update(ev.payload)
-                bot_events.append(d)
-            # Append pop_change events from previous step (not in ledger)
-            if events:
-                for ev in events:
-                    if isinstance(ev, dict) and ev.get("kind") == "pop_change":
-                        bot_events.append(ev)
-            # Send turn and get orders
-            faction_orders = bp.send_turn(turn=turn, events=bot_events)
-            orders_dict[faction] = faction_orders
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(bot_processes)))
+    try:
+        for turn in range(1, config.max_turns + 1):
+            orders_dict: dict[int, list[str]] = {}
+            futs = {}
+            for faction, bp in bot_processes.items():
+                if not bp.alive:
+                    orders_dict[faction] = []
+                    continue
+                bot_events = _build_bot_events(faction, world, ledger, turn, events)
+                futs[pool.submit(bp.send_turn, turn=turn, events=bot_events)] = faction
+            # Merge in bot_processes order (not completion order): step()
+            # allocates IDs in dict order, so this keeps bit-identical
+            # behavior with the old sequential loop.
+            done: dict[int, list[str]] = {}
+            for fut in concurrent.futures.as_completed(futs):
+                done[futs[fut]] = fut.result()
+            for faction in bot_processes.keys():
+                if faction in done:
+                    orders_dict[faction] = done[faction]
 
-        # Execute step
-        try:
-            events = step(world, config, ledger, turn=turn, orders=orders_dict)
-            if events is None:
+            # Execute step
+            try:
+                events = step(world, config, ledger, turn=turn, orders=orders_dict)
+                if events is None:
+                    events = []
+            except Exception as e:
+                # Step should not crash; but if it does, log and continue with empty events
+                import traceback
+                print(f"step failed at turn {turn}: {e}", file=sys.stderr)
+                traceback.print_exc()
                 events = []
-        except Exception as e:
-            # Step should not crash; but if it does, log and continue with empty events
-            import traceback
-            print(f"step failed at turn {turn}: {e}", file=sys.stderr)
-            traceback.print_exc()
-            events = []
 
-        # Check faction death: capital destroyed or viceroy killed while in flight
-        for faction in list(bot_processes.keys()):
-            bp = bot_processes[faction]
-            if not bp.alive:
-                continue
-            capital = world.faction_capital(faction)
-            has_viceroy = any(a.is_viceroy and a.faction == faction for a in world.armies)
-            if capital is None and not has_viceroy:
-                # Faction has no capital and no viceroy in flight — dead
-                bp.alive = False
-                try:
-                    bp.kill()
-                except Exception:
-                    pass
+            # Check faction death: capital destroyed or viceroy killed while in flight
+            for faction in list(bot_processes.keys()):
+                bp = bot_processes[faction]
+                if not bp.alive:
+                    continue
+                capital = world.faction_capital(faction)
+                has_viceroy = any(a.is_viceroy and a.faction == faction for a in world.armies)
+                if capital is None and not has_viceroy:
+                    # Faction has no capital and no viceroy in flight — dead
+                    bp.alive = False
+                    try:
+                        bp.kill()
+                    except Exception:
+                        pass
 
-        # Write turn record
-        if record_path is not None:
-            write_turn_line(turn, world, events, record_path)
+            # Write turn record
+            if record_path is not None:
+                write_turn_line(turn, world, events, record_path)
+    finally:
+        pool.shutdown()
 
 
 
