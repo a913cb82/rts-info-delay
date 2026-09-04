@@ -42,6 +42,29 @@ export function computeSidebar(
   return result;
 }
 
+/** Toggle faction selection (mutually exclusive; clicking the selected one deselects). */
+export function toggleFactionSelection(current: number | null, clicked: number): number | null {
+  return current === clicked ? null : clicked;
+}
+
+/** One live entity as a fog-of-war observer. */
+export interface FogEntity {
+  faction: number;
+  x: number;
+  y: number;
+  dead: boolean;
+}
+
+/** Observer discs (radius = line_of_sight) for one faction's live entities. */
+export function fogDiscs(entities: FogEntity[], faction: number, los: number): { x: number; y: number; r: number }[] {
+  const discs: { x: number; y: number; r: number }[] = [];
+  for (const e of entities) {
+    if (e.faction !== faction || e.dead) continue;
+    discs.push({ x: e.x, y: e.y, r: los });
+  }
+  return discs;
+}
+
 /** Battle helpers — not drawing, just data. */
 export function battleParticipants(battle: AnimBattle): string {
   return `${battle.combatants.length} combatants, ${battle.killed.length} killed`;

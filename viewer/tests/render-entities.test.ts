@@ -215,3 +215,36 @@ describe("tooltips", () => {
     expect(text).toBe("2 combatants, 1 killed");
   });
 });
+
+/* ── Faction selection + fog of war ── */
+
+import { toggleFactionSelection, fogDiscs } from "../src/render-entities";
+
+describe("toggleFactionSelection", () => {
+  it("none selected + click → selects", () => {
+    expect(toggleFactionSelection(null, 2)).toBe(2);
+  });
+  it("click selected → deselects (none selected)", () => {
+    expect(toggleFactionSelection(2, 2)).toBeNull();
+  });
+  it("click other → switches (mutually exclusive)", () => {
+    expect(toggleFactionSelection(2, 4)).toBe(4);
+  });
+});
+
+describe("fogDiscs", () => {
+  const ents = [
+    { faction: 1, x: 100, y: 100, dead: false },
+    { faction: 1, x: 400, y: 400, dead: true },
+    { faction: 2, x: 700, y: 700, dead: false },
+  ];
+  it("only live entities of the selected faction, radius = los", () => {
+    expect(fogDiscs(ents, 1, 150)).toEqual([{ x: 100, y: 100, r: 150 }]);
+  });
+  it("other faction's entities excluded", () => {
+    expect(fogDiscs(ents, 2, 150)).toEqual([{ x: 700, y: 700, r: 150 }]);
+  });
+  it("faction with no live entities → no discs (whole map fogged)", () => {
+    expect(fogDiscs(ents, 3, 150)).toEqual([]);
+  });
+});

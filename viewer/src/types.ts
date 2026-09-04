@@ -8,6 +8,7 @@ export interface Config {
   army_speed: number;
   army_cost: number;
   interact_radius: number;
+  line_of_sight?: number;
   population_cap: number;
   population_growth: number;
   build_efficiency: number;

@@ -12,7 +12,7 @@ import type { PanZoom } from "./transform.js";
 import { factionColor } from "./color.js";
 import { parseJSONL, separateConfigTurns } from "./loader.js";
 import { buildArmyAnim, buildTownAnim } from "./animation.js";
-import { townRadius } from "./render-entities.js";
+import { townRadius, toggleFactionSelection, fogDiscs } from "./render-entities.js";
 
 /* ── State ── */
 
@@ -21,6 +21,9 @@ let turns: TurnRecord[] = [];
 let factionCount = 0;
 let turn = 0;
 let playing = false;
+// fog-of-war faction selection (null = none selected, full map bright)
+let selectedFaction: number | null = null;
+let fogCanvas: HTMLCanvasElement | null = null;
 let speed = 1;
 let panZoom: PanZoom = { scale: 1, tx: 0, ty: 0 };
 let fitScale = 1;
@@ -133,7 +136,14 @@ function renderFactionNames(): void {
     span.className = "faction-name";
     span.style.color = factionColor(f, factionCount);
     span.textContent = custom && custom[f] ? custom[f]! : `Faction ${f}`;
-    span.title = `Faction ${f}`;
+    span.title = `Faction ${f} — click to view fog of war`;
+    span.setAttribute("role", "button");
+    span.classList.toggle("selected", selectedFaction === f);
+    span.addEventListener("click", () => {
+      selectedFaction = toggleFactionSelection(selectedFaction, f);
+      renderFactionNames();
+      draw();
+    });
     factionNamesEl.appendChild(span);
   }
 }
@@ -147,6 +157,7 @@ function loadRecord(records: GameRecord[]): void {
     mapSize[1] = config.map_size[1];
     factionCount = getFactions().length || 1;
   }
+  selectedFaction = null;
   renderFactionNames();
   turn = 0;
   animFromTurn = 0;
@@ -159,6 +170,54 @@ function loadRecord(records: GameRecord[]): void {
 }
 
 /* ── Drawing ── */
+
+/* ── Fog of war ──
+   Darkens all land outside the selected faction's line-of-sight discs.
+   Position truth (no info_speed delay); entities stay fully visible. */
+function drawFog(): void {
+  if (selectedFaction === null || !config || !ctx) return;
+  const los = config.line_of_sight ?? 150;
+  const { towns, armies } = getAnimState();
+  const eased = animProgress >= 1 ? 1 : animProgress;
+  const entities: { faction: number; x: number; y: number; dead: boolean }[] = [];
+  for (const t of towns) {
+    entities.push({
+      faction: t.toFaction,
+      x: lerp(t.fromX, t.toX, eased),
+      y: lerp(t.fromY, t.toY, eased),
+      dead: t.dies,
+    });
+  }
+  for (const a of armies) {
+    const p = stagedArmyPos(a, animProgress >= 1 ? 1 : animProgress);
+    entities.push({ faction: a.faction, x: p.x, y: p.y, dead: a.dies });
+  }
+  const discs = fogDiscs(entities, selectedFaction, los);
+  if (!fogCanvas) fogCanvas = document.createElement("canvas");
+  if (fogCanvas.width !== canvas.width || fogCanvas.height !== canvas.height) {
+    fogCanvas.width = canvas.width;
+    fogCanvas.height = canvas.height;
+  }
+  const fctx = fogCanvas.getContext("2d")!;
+  fctx.save();
+  fctx.setTransform(1, 0, 0, 1, 0, 0);
+  fctx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+  fctx.setTransform(panZoom.scale, 0, 0, panZoom.scale, panZoom.tx, panZoom.ty);
+  fctx.fillStyle = "rgba(75, 75, 75, 0.38)";
+  fctx.fillRect(0, 0, mapSize[0], mapSize[1]);
+  fctx.globalCompositeOperation = "destination-out";
+  for (const d of discs) {
+    fctx.beginPath();
+    fctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+    fctx.fill();
+  }
+  fctx.restore();
+  // blit over the map background, under the SVG entities
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(fogCanvas, 0, 0);
+  ctx.restore();
+}
 
 function draw(): void {
   if (!config || !ctx) return;
@@ -185,6 +244,7 @@ function draw(): void {
   ctx.strokeStyle = "rgba(46, 125, 50, 0.35)";
   ctx.lineWidth = 2 / panZoom.scale;
   ctx.strokeRect(0, 0, mapSize[0], mapSize[1]);
+  drawFog();
   ctx.restore();
 
   // SVG entities

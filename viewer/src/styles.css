@@ -61,6 +61,21 @@ header {
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.4rem;
+}
+
+.faction-name:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.faction-name.selected {
+  background: rgba(0, 0, 0, 0.08);
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
 }
 
 /* ── Score bar ── */
