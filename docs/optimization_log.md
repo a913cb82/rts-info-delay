@@ -221,6 +221,15 @@ NOTE on absolutes: this box measured ~1.8× slower than the runs behind the tabl
 - Verdict: no production GC problem, no code change. (`gc.disable` was considered and rejected: unbounded growth in long-lived bot/runner processes for zero steady-state gain.)
 - Side finding: steady-state steps are 15–65ms, far below the fixed heavy-snapshot bench (~366ms) — the bench replays a full 3036-army turn that combat eliminates by turn 2–3, so it overstates real per-turn cost ~10×
 
+### opt17: Parallel bot queries — TRIED, MEASURED, REVERTED
+- Bots are already separate processes; tried fanning out the per-turn round-trips with `ThreadPoolExecutor(5)`: 3000-turn game wall **6.4s → 12.9s (2× slower)**, sys CPU 2.6s → 8.6s
+- Suspected GIL thrash (numpy/JSON bursts), so split serial-CPU + parallel-I/O-only: still **12.1s**. Isolated micro-test (bare round-trips, no game): sequential 2.20ms/turn vs 2 workers 3.72 vs 5 workers 4.80 — worse than the serial *sum*, i.e. scheduling/wakeup contention, not pool overhead
+- Verdict: reverted to sequential. At 0.35ms/turn/bot the work units are far below the concurrency breakeven; threads only pay off with blocking-heavy or much coarser tasks. Recordings byte-identical throughout (determinism unaffected either way)
+
+### opt18: Engine thread-level parallelism — EVALUATED, NOT ATTEMPTED (measured)
+- Median engine step is **0.11ms**; measured thread fan-out overhead alone is ~2ms/turn (opt17) — overhead would exceed the work ~20×. The engine already exploits parallelism where it pays: SIMD/vectorized numpy ops and serial-njit kernels (threading those would also risk FP-order quant diffs)
+- Verdict: no code change. Coarse-grained parallelism (whole games, parameter sweeps via multiprocessing) is the level that would pay off, when needed
+
 ---
 
 ## Cumulative Performance
