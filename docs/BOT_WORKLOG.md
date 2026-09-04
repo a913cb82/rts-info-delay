@@ -266,3 +266,26 @@ threat is inside 150km (ETA <= 3, doomed-coverage). Pinned decide-level
 instead (tests/bots/test_turtle_floor.py: hold/last-stand/fat/control).
 Fast suite: 15/15 byte-identical (no suite scenario parks a threatened
 town in [1200, 1500)).
+
+### Engine fix: movement updates were strangled (dedup without position)
+Void-settle repro: expander settler marched 260km, arrived ~t10, sat to
+t79 — bot mirror frozen at spawn the whole game. Root cause in
+delivery.py (both shapes): send-state dedup compared payload dicts only,
+and army payloads carry no position — every move after the first
+delivered snapshot read as "same value". First snapshot sent, then
+silence forever. Fix: dedup on (payload, x, y). Tests:
+TestMovementStreams (marching streams each turn, stationary stays
+silent). Differential scan-vs-fast still bit-identical.
+Fallout triage (all movement, all expected — bots now see own armies):
+void_settle 1 -> 4 towns (E1 settler follow-through FIXED by this, no bot
+change needed); void_contact 1 -> 3 towns (foundings work; B untouched —
+scouting still missing, benchmark stands). Fast suite moves are the same
+mechanism viewed through score: founding (~-500 + lost compounding at
+<=100t horizons) replaced sitting (score-neutral). Raid scenarios didn't
+raid before either (frozen probes sat; takes depended on frozen-mirror
+dynamics) — takes need scout-first probing (Step 2 prerequisite, next).
+turtle_defend 3207 -> 2747 HOLDS* (*both sides found now; capital held +
+score lead). Per-scenario goal triage before bot work: pair/trap/viable/
+skip_thin/raid_hold goal-FAIL (dissipate into foundings, no take);
+guard/settle goal-PASS (re-baseline); recycle marginal (1 idler at
+horizon — check +10t before touching logic).

@@ -92,9 +92,10 @@ def build_updates_scan(ledger, faction: int, send_state: dict, s: int,
     for k in reversed(keys):
         ev = chosen[k]
         snap = dict(ev.payload)
-        if send_state.get(k) == snap:
+        cur = (snap, ev.x, ev.y)
+        if send_state.get(k) == cur:
             continue
-        send_state[k] = snap
+        send_state[k] = cur
         d = {"kind": "town_update" if ev.kind is _TOWN else "army_update",
              "id": ev.payload["id"], "x": ev.x, "y": ev.y}
         d.update(snap)
@@ -105,7 +106,7 @@ def build_updates_scan(ledger, faction: int, send_state: dict, s: int,
 class SendState:
     """Per-faction last-delivered snapshots (runner-owned, reset at S).
 
-    snaps maps entity key -> last payload; deliv parallels the ledger's
+    snaps maps entity key -> last (payload, x, y); deliv parallels the ledger's
     dense entity rows with the last-delivered column seq (-1 = nothing).
     Seqs identify immutable log entries, so the vectorized seq compare is
     exact; the payload compare on the changed subset keeps static entities
@@ -154,10 +155,14 @@ def build_updates(ledger, faction: int, send_state: SendState, s: int,
         i = int(best_idx[r])
         key = keys_of[r]
         snap = pays[i]
-        if snaps.get(key) == snap:
+        # Payloads carry no position (armies especially) — dedup on
+        # (payload, x, y), or every move after the first delivered
+        # snapshot reads as "same value" and movement goes silent.
+        cur = (snap, float(xs[i]), float(ys[i]))
+        if snaps.get(key) == cur:
             deliv[r] = int(seqs[i])  # same value, newer entry: advance
             continue
-        snaps[key] = dict(snap)
+        snaps[key] = (dict(snap), float(xs[i]), float(ys[i]))
         deliv[r] = int(seqs[i])
         picked.append((i, key, snap))
     # Column order == ledger order for update entries: generate() logs with

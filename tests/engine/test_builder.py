@@ -346,3 +346,42 @@ class TestDifferential:
             a = json.dumps(build_updates_scan(lg, faction, {}, S, capital, now), sort_keys=True)
             b = json.dumps(_build(lg, faction, SendState(), S, capital, now), sort_keys=True)
             assert a == b, (faction, S, capital, now)
+
+
+class TestMovementStreams:
+    def test_marching_army_streams_positions(self) -> None:
+        # REGRESSION (void_settle): dedup compared payloads only, and
+        # army payloads carry no position — every move after the first
+        # delivered snapshot was swallowed as "same value". Marching
+        # armies must stream (x, y); arrival must arrive.
+        w = _world(towns=[_town(1, 200, 500, cap=True)],
+                   armies=[_army(7, 200, 500)])
+        lg = Ledger(CFG.info_speed, 1414)
+        st = SendState()
+        seen: list[tuple] = []
+        a = w.armies[0]
+        for t in range(1, 8):
+            a.x += 10.0  # 10km/turn march east (stays near capital: delay 1)
+            _gen(lg, w, t)
+            lg.evict(float(t))
+            for u in _build(lg, 0, st, 0, (200.0, 500.0), float(t)):
+                if u["kind"] == "army_update":
+                    seen.append((round(u["x"]), round(u["y"])))
+        # Six, not seven: exact-delay release means the now-turn's own
+        # snapshot (270 at t7: 7 + 70/150 > 7) is never yet due — the
+        # stream trails truth by the delay, it must not gap.
+        assert seen == [(210, 500), (220, 500), (230, 500), (240, 500),
+                        (250, 500), (260, 500)]
+
+    def test_stationary_army_stays_silent(self) -> None:
+        # The dedup fix must not re-break slim wire: static entities send
+        # once, then silence (warm steady-state ~empty).
+        w = _world(towns=[_town(1, 0, 0, cap=True)],
+                   armies=[_army(7, 10, 0)])
+        lg = Ledger(CFG.info_speed, 1414)
+        st = SendState()
+        _gen(lg, w, 5)
+        n1 = len(_build(lg, 0, st, 0, (0.0, 0.0), 6.0))
+        _gen(lg, w, 6)
+        n2 = len(_build(lg, 0, st, 0, (0.0, 0.0), 7.0))
+        assert (n1, n2) == (2, 0)

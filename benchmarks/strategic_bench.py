@@ -33,6 +33,14 @@ def final_score(record, faction):
             1000 * sum(1 for x in world["armies"] if x["faction"] == faction))
 
 
+def final_holdings(record, faction):
+    """(towns, armies) held — score alone can't see founding/scouting."""
+    lines = Path(record).read_text().splitlines()
+    world = json.loads(lines[-1])["world"]
+    return (sum(1 for x in world["towns"] if x["faction"] == faction),
+            sum(1 for x in world["armies"] if x["faction"] == faction))
+
+
 def section_maps():
     print("== strategic maps (focal pro, score) ==")
     total = 0.0
@@ -41,7 +49,8 @@ def section_maps():
         rec = "/tmp/strat_record.jsonl"
         ms = play(d, d["teams"], rec)
         total += ms
-        print(f"{path.stem:16} score {final_score(rec, d['focal']):7.0f}  {ms:7.0f}ms")
+        t, a = final_holdings(rec, d["focal"])
+        print(f"{path.stem:16} score {final_score(rec, d['focal']):7.0f}  towns {t} armies {a}  {ms:7.0f}ms")
     print(f"-- maps total {total / 1000:.1f}s --")
     return total
 
