@@ -11,9 +11,10 @@ discriminate each personality's weaknesses. Used to score the 5 bots
   scenario needs a live enemy (`aggressive` as raider).
 - 2 factions per scenario (fast spawns), 30–100 turns, starting pops at or
   above train thresholds so action starts by turn ~5 (no 1000-turn waits).
-- Each scenario: `{map, bots, turns, focal, goal}`. Goal types: `own_town`,
-  `towns_ge`, `survive_capital`, `score_ge`, `enemy_owns` (restraint),
-  `armies_zero` (no idlers).
+- Each scenario: `{map, bots, turns, focal, goal}`. Scoring is final
+  focal-faction score only (pop + 1000×armies, same as game score).
+  Scenario `goal` fields are retained in the JSON as documentation of
+  what each map was built to test, but the number that counts is score.
 - Runner: `benchmarks/scenario_bench.py`. Full sweep target < 60s.
 
 ## Suites (3 maps each, disjoint)
@@ -60,25 +61,30 @@ discriminate each personality's weaknesses. Used to score the 5 bots
 3. `endgame` — symmetric 2v2 towns 4000 each, 100 turns. Goal: higher
    score / eliminate B. Tests full combined game.
 
-## Baselines (2026-09-04, current code — 8/15 in 2.1s)
+## Baselines (score = final focal-faction score; full sweep 1.7s, ~110ms/map)
 
-| Bot | Scenario | Result | Key stat |
-|---|---|---|---|
-| greedy | raid_hold | PASS | holds B capital |
-| greedy | recycle | PASS | 0 idle |
-| greedy | skip_thin | FAIL | captures thin town, it starves (town gone) |
-| expander | settle | PASS | 3 towns |
-| expander | chain | PASS | 4 towns |
-| expander | guard | FAIL | capital LOST (settler marched out undefended) |
-| aggressive | viable | PASS | holds fat town |
-| aggressive | pair | PASS | 2nd wave takes it after 1v1 trade (not stacking!) |
-| aggressive | starve_trap | FAIL | captures 900 town, it starves |
-| turtle | defend | FAIL | capital LOST (no garrison) |
-| turtle | wake | FAIL | never trains (2000 < 2600 rule; aggressive kills t9) |
-| turtle | cluster | FAIL | holds 1/2 (exclave undefended) |
-| pro | opening | PASS | 4 towns (raid + 2 settles) |
-| pro | defense | PASS | capital held |
-| pro | endgame | FAIL | 2245–2245 mirror tie vs greedy (no symmetry-break) |
+| Scenario | Score | Notes |
+|---|---|---|
+| greedy_raid_hold | 3176 | holds B capital |
+| greedy_recycle | 3592 | no idlers |
+| greedy_skip_thin | 2116 | captures thin town, it starves (wasted army) |
+| expander_settle | 2114 | 3 towns |
+| expander_chain | 4319 | 4 towns |
+| expander_guard | 2000 | capital LOST, headless town regrows |
+| aggressive_viable | 3771 | holds fat town |
+| aggressive_pair | 3782 | 2nd wave takes it after 1v1 trade (not stacking!) |
+| aggressive_starve_trap | 2159 | captures 900 town, it starves |
+| turtle_defend | 548 | capital LOST |
+| turtle_wake | 0 | never trains; killed t9 |
+| turtle_cluster | 2733 | holds 1/2 |
+| pro_opening | 3240 | 4 towns (raid + 2 settles) |
+| pro_defense | 1109 | survives, barely |
+| pro_endgame | 2245 | mirror tie vs greedy |
+
+Reading the gaps: selectivity costs greedy ~1000 (3176→2116) and
+aggressive ~1600 (3771→2159); guard failure costs expander ~2300
+(chain 4319 → guard 2000); turtle's three maps span 0–2733 (highest
+variance, most headroom); pro ties its mirror (nothing learned yet).
 
 ## Per-bot improvement ideas (tailored to the failures above)
 
