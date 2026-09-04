@@ -44,6 +44,37 @@ def _site(turn, i, cfg, own_towns, salt=0, rmin=80.0, rmax=250.0, around=None):
         min(th - SITE_MARGIN, max(SITE_MARGIN, c["y"])),
     )
 
+def _touched_ids(world, events) -> tuple[set, set]:
+    """Idea 1: town/army ids a batch names (for dirty-set sync).
+
+    TRAIN pop deducts match towns by coords, so army_spawn also resolves
+    its town by position (spawns are rare; the scan is bounded by them).
+    """
+    towns: set = set()
+    armies: set = set()
+    spawns: list = []
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        kind = ev.get("kind")
+        eid = ev.get("id")
+        if kind in ("pop_change", "town_spawn", "town_death", "town_capture"):
+            if eid is not None:
+                towns.add(eid)
+        elif kind in ("army_spawn", "army_move", "army_death"):
+            if eid is not None:
+                armies.add(eid)
+            if kind == "army_spawn":
+                spawns.append(ev)
+    for ev in spawns:
+        ex, ey = ev.get("x", 0), ev.get("y", 0)
+        for tw in world.towns:
+            if abs(tw.x - ex) < 1 and abs(tw.y - ey) < 1:
+                towns.add(tw.id)
+                break
+    return towns, armies
+
+
 def _forecast_pos(army: dict, delta_turns: float, cfg) -> tuple[float, float]:
     if not army.get("has_target") or army.get("target_x") is None:
         return army["x"], army["y"]
@@ -131,6 +162,8 @@ class BotState:
         self._cluster_cache: tuple[int, list[list[Town]]] | None = None
         self.deadline: float | None = None  # set per turn by bot_main
         self._pending_events: list = []  # unapplied backlog carried into next turn
+        self._stale_cache: dict = {}  # idea 3: (x, y) -> turns-stale, valid for _stale_key
+        self._stale_key = None
 
     def init(self, config: GameConfig, faction: int):
         self.config = config
@@ -140,12 +173,18 @@ class BotState:
             self.world.parse_map(config.map)
 
     def update(self, turn: int, events: list[dict]):
+        # Idea 1: growth is folded per applied event and reset on turn
+        # advance, so one batched update == several chunked updates.
+        if turn != self.turn:
+            self._growth = {}
         self.turn = turn
         # Oldest first: finish last turn's backlog before this turn's events.
         if self._pending_events:
             events = self._pending_events + list(events)
             self._pending_events = []
-        prev = {t.id: t.population for t in self.world.towns}
+        # Idea 1: dirty set — snapshot/sync only entities this batch names.
+        touched_towns, touched_armies = _touched_ids(self.world, events)
+        prev = {t.id: t.population for t in self.world.towns if t.id in touched_towns}
         from engine.events import apply_events
         # Chunked so a huge backlog can't blow the clock before decide runs;
         # whatever doesn't fit carries over to next turn (order preserved).
@@ -155,23 +194,19 @@ class BotState:
             if i + CHUNK < len(events) and self.should_yield():
                 self._pending_events = events[i + CHUNK:]
                 break
-        self._growth = {}
-        for t in self.world.towns:
-            if t.id in prev:
-                self._growth[t.id] = t.population - prev[t.id]
+        for tid in touched_towns:
+            t = self.world.get_town(tid)
+            if t is None:
+                self._growth.pop(tid, None)
+                continue
+            if tid in prev:
+                self._growth[tid] = self._growth.get(tid, 0.0) + (t.population - prev[tid])
             else:
-                self._growth[t.id] = 0.0
+                self._growth.setdefault(tid, 0.0)
         self._prev_pop = prev
-        # sync local target tracker with engine has_target
-        for a in list(self.world.armies):
-            if not a.has_target and a.id in self._army_targets:
-                # engine says no target but we thought it had one — delivered move arrived or was cancelled
-                # keep until army actually arrives? remove if army is idle
-                pass
-        # remove dead armies from tracker
-        alive = {a.id for a in self.world.armies}
+        # remove dead armies from tracker (only touched ones can have died)
         for aid in list(self._army_targets.keys()):
-            if aid not in alive:
+            if aid in touched_armies and self.world.get_army(aid) is None:
                 del self._army_targets[aid]
         # expire pending trains whose pop_change has arrived (pop dropped) or timed out
         for tid in list(self._pending_trains.keys()):
@@ -182,10 +217,13 @@ class BotState:
                 # pop dropped, train confirmed
                 del self._pending_trains[tid]
         for aid in list(self._pending_builds.keys()):
-            if aid not in alive or self.turn > self._pending_builds[aid]:
+            if self.world.get_army(aid) is None or self.turn > self._pending_builds[aid]:
                 self._pending_builds.pop(aid, None)
-        # if engine now has has_target true, mirror it
-        for a in self.world.armies:
+        # if engine now has has_target true, mirror it (touched only)
+        for aid in touched_armies:
+            a = self.world.get_army(aid)
+            if a is None:
+                continue
             if a.has_target:
                 self._army_targets[a.id] = (a.target_x, a.target_y)
             elif a.id in self._army_targets:
@@ -221,6 +259,29 @@ class BotState:
             delay = 1
         self._pending_trains[town_id] = self.turn + delay + 1
 
+    def stale_turns(self, x: float, y: float) -> float:
+        """Idea 3: memoized dist-to-capital/info_speed.
+
+        Towns never move, so per-turn answers repeat; the cache is keyed
+        by (turn, capital id+pos) and cleared whenever any of those change.
+        """
+        cap = self.world.faction_capital(self.faction)
+        key = (self.turn,
+               cap.id if cap else -1,
+               cap.x if cap else 0.0,
+               cap.y if cap else 0.0)
+        if key != self._stale_key:
+            self._stale_key = key
+            self._stale_cache = {}
+        ck = (x, y)
+        v = self._stale_cache.get(ck)
+        if v is None:
+            speed = (self.config.info_speed if self.config else 150) or 150
+            cx, cy = (cap.x, cap.y) if cap else (500.0, 500.0)
+            v = math.hypot(x - cx, y - cy) / max(1, speed)
+            self._stale_cache[ck] = v
+        return v
+
     def can_train_here(self, town: Town, conservative: bool = False) -> bool:
         if not can_train_safely(town, conservative):
             return False
@@ -228,7 +289,7 @@ class BotState:
         cap = self.world.faction_capital(self.faction)
         if cap:
             dist = math.hypot(cap.x - town.x, cap.y - town.y)
-            turns_behind = dist / (self.config.info_speed if self.config else 150)
+            turns_behind = self.stale_turns(town.x, town.y)
             # require extra 400 pop per turn of staleness (growth ~3/turn at 5k, but TRAIN costs 1000)
             extra = int(turns_behind * 400)
             if town.population < (2600 if conservative else 1600) + extra:
@@ -335,7 +396,17 @@ class BotForecast:
         self.army_speed = (config.army_speed if config else 50) or 50
 
     def _turns_stale(self, x: float, y: float) -> float:
-        return math.hypot(x - self.cap_x, y - self.cap_y) / max(1, self.info_speed)
+        # Idea 3: same memo shape as BotState (per-instance, positions repeat
+        # within one forecast pass).
+        ck = (x, y)
+        v = self.__dict__.get("_stale_memo")
+        if v is None:
+            v = self.__dict__["_stale_memo"] = {}
+        hit = v.get(ck)
+        if hit is None:
+            hit = math.hypot(x - self.cap_x, y - self.cap_y) / max(1, self.info_speed)
+            v[ck] = hit
+        return hit
 
     def forecast_army_pos(self, army: Army | dict, turns_ahead: float | None = None) -> tuple[float, float]:
         if isinstance(army, dict):
