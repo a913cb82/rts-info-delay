@@ -21,12 +21,11 @@ def _state():
 
 
 def test_idea4_quiet_detection():
-    """Idea 4: only military kinds break quiet."""
+    """Idea 4: empty payload is quiet; any update breaks sleep."""
     st = _state()
-    assert st.is_quiet([{"kind": "pop_change", "id": 0, "population": 1.0}]) is True
     assert st.is_quiet([]) is True
-    for kind in MILITARY:
-        assert st.is_quiet([{"kind": kind, "id": 9, "x": 0.0, "y": 0.0}]) is False
+    assert st.is_quiet([{"kind": "town_update", "id": 9, "x": 0.0, "y": 0.0}]) is False
+    assert st.is_quiet([{"kind": "army_update", "id": 9, "x": 0.0, "y": 0.0}]) is False
 
 
 def test_idea4_quiet_turn_replays_standing_orders():

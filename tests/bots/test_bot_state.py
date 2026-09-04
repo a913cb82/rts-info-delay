@@ -63,24 +63,14 @@ def _events_to_dicts(events: list[dict]) -> list[dict]:
 
 
 def test_initial_state_matches():
-    """BotState init from map matches engine."""
-    csv = "100,100,A,5000\n200,200,B,3000\n"
-    engine = _make_world()
-    engine.parse_map(csv)
-
+    """BotState init starts empty (no map pre-seed); dims set."""
     bot = BotState()
     cfg = GameConfig()
-    cfg.map = csv
+    cfg.map = "100,100,A,5000\n"
     cfg.map_size = [1000, 1000]
     bot.init(cfg, 0)
-    assert len(bot.world.towns) == len(engine.towns)
-    assert len(bot.world.armies) == len(engine.armies)
-    for t in bot.world.towns:
-        et = next((x for x in engine.towns if x.id == t.id), None)
-        assert et is not None
-        assert t.population == et.population
-        assert t.faction == et.faction
-
+    assert bot.world.towns == [] and bot.world.armies == []
+    assert bot.world.map_size == [1000, 1000]
 
 def test_town_death_removes_from_bot():
     """Town dying in engine → removed from BotState after event."""
@@ -637,133 +627,3 @@ def test_bot_handles_duplicate_events():
     ])
     # Only one town in bot
     assert len([t for t in bot.world.towns if t.id == 1]) == 1
-
-
-def test_landing_replay_repairs_stale_world():
-    """Replayed backlog + full pops repair a blind-flight world in place."""
-    cfg = GameConfig()
-    st = BotState()
-    st.init(cfg, 0)
-    # Pre-flight state: ghost town 5, stale pop on 7, flipped town 6,
-    # stale pos on army 9.
-    st.world.towns.append(Town(id=5, faction=0, x=300, y=0, population=800, is_capital=False))
-    st.world.towns.append(Town(id=7, faction=0, x=0, y=0, population=999, is_capital=False))
-    st.world.towns.append(Town(id=6, faction=0, x=100, y=100, population=2000, is_capital=False))
-    st.world.armies.append(Army(id=9, faction=1, x=0, y=0))
-    replay = [{"kind": "town_death", "id": 5, "x": 300, "y": 0},
-              {"kind": "town_capture", "id": 6, "new_faction": 1, "population": 900},
-              {"kind": "army_move", "id": 9, "x": 300, "y": 0,
-               "has_target": True, "target_x": 0.0, "target_y": 0.0},
-              {"kind": "pop_change", "id": 7, "population": 1234},
-              {"kind": "pop_change", "id": 2, "population": 500}]
-    st.update(20, replay)
-    assert st.world.get_town(5) is None  # death applied
-    t6 = st.world.get_town(6)
-    assert t6 is not None and t6.faction == 1 and t6.population == 900
-    assert st.world.get_town(7).population == 1234
-    a9 = st.world.get_army(9)
-    assert (a9.x, a9.y) == (300, 0) and a9.has_target
-    assert st.turn == 20
-
-
-def _landing_batch():
-    """Full-truth landing payload: every town/army spawned + horizon moves."""
-    return [
-        {"kind": "town_spawn", "id": 2, "faction": 0, "x": 500, "y": 0,
-         "population": 500, "is_capital": True},
-        {"kind": "town_spawn", "id": 3, "faction": 1, "x": 100, "y": 100,
-         "population": 2000, "is_capital": False},
-        {"kind": "army_spawn", "id": 9, "faction": 1, "x": 300, "y": 0},
-        {"kind": "army_move", "id": 9, "x": 300, "y": 0,
-         "has_target": True, "target_x": 500.0, "target_y": 0.0},
-    ]
-
-
-def test_landing_wipes_ghosts_and_rebuilds():
-    """Unknown own-capital spawn wipes stale world; batch rebuilds truth."""
-    cfg = GameConfig()
-    st = BotState()
-    st.init(cfg, 0)
-    # Pre-flight ghosts + live trackers.
-    st.world.towns.append(Town(id=1, faction=0, x=0, y=0, population=9999, is_capital=True))
-    st.world.armies.append(Army(id=5, faction=0, x=1, y=1))
-    st.note_move(5, 500.0, 500.0)
-    st._pending_trains[1] = 999
-    st._wave_ids = {5}
-    st._wave_hold_until = 999
-    st.push_plan(["TRAIN 1"], 999)
-    # Stale backlog: move for an army the fresh batch spawns elsewhere.
-    st._pending_events = [{"kind": "army_move", "id": 9, "x": 0, "y": 0}]
-    st.update(22, _landing_batch())
-    # Ghosts gone (stale backlog was a no-op on the wiped world).
-    assert st.world.get_town(1) is None
-    assert st.world.get_army(5) is None
-    t2 = st.world.get_town(2)
-    assert t2 is not None and (t2.faction, t2.population, t2.is_capital) == (0, 500, True)
-    assert st.world.get_town(3) is not None
-    a9 = st.world.get_army(9)
-    assert a9 is not None and (a9.x, a9.y) == (300, 0)
-    assert st._army_targets.get(9) == (500.0, 0.0)
-    # Trackers, caches and plans cleared; only capital is town 2.
-    assert st._pending_trains == {} and st._pending_builds == {}
-    assert st._pending_events == [] and st._standing_orders is None and st._plan is None
-    assert not hasattr(st, "_wave_ids")
-    caps = [t.id for t in st.world.towns if t.faction == 0 and t.is_capital]
-    assert caps == [2]
-    assert st.turn == 22
-
-
-def test_landing_batch_redelivered_without_wipe():
-    """Second delivery finds ids known: no wipe, live trackers survive."""
-    cfg = GameConfig()
-    st = BotState()
-    st.init(cfg, 0)
-    st.update(22, _landing_batch())
-    st.note_move(9, 111.0, 222.0)
-    st.push_plan(["TRAIN 2"], 99)
-    st.update(23, _landing_batch())
-    assert st.world.get_town(2) is not None
-    # No wipe (world intact, plan survives); engine mirror reasserts over
-    # the local note, same as normal play.
-    assert st._army_targets.get(9) == (500.0, 0.0)
-    assert st._plan is not None
-
-
-def test_late_death_clears_ghost_and_trackers():
-    """A delayed death still fully cleans: ghost removed, trackers dropped."""
-    cfg = GameConfig()
-    st = BotState()
-    st.init(cfg, 0)
-    st.world.towns.append(Town(id=1, faction=0, x=0, y=0, population=3000, is_capital=True))
-    st.world.armies.append(Army(id=9, faction=1, x=500, y=0))
-    st.note_move(9, 0.0, 0.0)
-    assert st._army_targets.get(9) == (0.0, 0.0)
-    st.update(10, [{"kind": "army_death", "id": 9, "x": 500, "y": 0}])
-    assert st.world.get_army(9) is None
-    assert 9 not in st._army_targets
-
-
-def test_pop_change_carries_faction_flip():
-    """pop_change with faction/is_capital updates status; plain ones don't."""
-    cfg = GameConfig()
-    st = BotState()
-    st.init(cfg, 0)
-    st.world.towns.append(Town(id=1, faction=0, x=0, y=0, population=3000, is_capital=True))
-    st.world.towns.append(Town(id=10, faction=0, x=310, y=0, population=1735, is_capital=False))
-    st.update(12, [{"kind": "pop_change", "id": 10, "population": 900,
-                    "faction": 1, "is_capital": False}])
-    t = st.world.get_town(10)
-    assert (t.population, t.faction, t.is_capital) == (900, 1, False)
-    st.update(13, [{"kind": "pop_change", "id": 10, "population": 905}])
-    t = st.world.get_town(10)
-    assert (t.population, t.faction) == (905, 1)
-
-
-def test_pop_flip_breaks_quiet():
-    """Takeover news via pop wakes standing-cache sleep like a capture."""
-    cfg = GameConfig()
-    st = BotState()
-    st.init(cfg, 0)
-    assert st.is_quiet([{"kind": "pop_change", "id": 10, "population": 900}])
-    assert not st.is_quiet([{"kind": "pop_change", "id": 10, "population": 900,
-                              "faction": 1, "is_capital": False}])

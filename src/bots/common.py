@@ -44,53 +44,21 @@ def _site(turn, i, cfg, own_towns, salt=0, rmin=80.0, rmax=250.0, around=None):
         min(th - SITE_MARGIN, max(SITE_MARGIN, c["y"])),
     )
 
-def _touched_ids(world, events) -> tuple[set, set]:
-    """Idea 1: town/army ids a batch names (for dirty-set sync).
-
-    TRAIN pop deducts match towns by coords, so army_spawn also resolves
-    its town by position (spawns are rare; the scan is bounded by them).
-    """
+def _batch_ids(events) -> tuple[set, set]:
+    """Town/army ids a batch names (growth bookkeeping scope)."""
     towns: set = set()
     armies: set = set()
-    spawns: list = []
     for ev in events:
         if not isinstance(ev, dict):
             continue
-        kind = ev.get("kind")
         eid = ev.get("id")
-        if kind in ("pop_change", "town_spawn", "town_death", "town_capture"):
-            if eid is not None:
-                towns.add(eid)
-        elif kind in ("army_spawn", "army_move", "army_death"):
-            if eid is not None:
-                armies.add(eid)
-            if kind == "army_spawn":
-                spawns.append(ev)
-    for ev in spawns:
-        ex, ey = ev.get("x", 0), ev.get("y", 0)
-        for tw in world.towns:
-            if abs(tw.x - ex) < 1 and abs(tw.y - ey) < 1:
-                towns.add(tw.id)
-                break
+        if eid is None:
+            continue
+        if ev.get("kind") == "town_update":
+            towns.add(eid)
+        elif ev.get("kind") == "army_update":
+            armies.add(eid)
     return towns, armies
-
-
-def _forecast_pos(army: dict, delta_turns: float, cfg) -> tuple[float, float]:
-    if not army.get("has_target") or army.get("target_x") is None:
-        return army["x"], army["y"]
-    dx = army["target_x"] - army["x"]
-    dy = army["target_y"] - army["y"]
-    dist = math.hypot(dx, dy)
-    if dist < 1e-9:
-        return army["x"], army["y"]
-    travel = cfg.army_speed * delta_turns
-    if travel >= dist:
-        return army["target_x"], army["target_y"]
-    s = travel / dist
-    return army["x"] + dx * s, army["y"] + dy * s
-
-def _eta(from_pos: dict, to_pos: dict, cfg) -> float:
-    return math.hypot(from_pos["x"] - to_pos["x"], from_pos["y"] - to_pos["y"]) / max(1.0, cfg.army_speed)
 
 # ── Shared build-site finder ──
 
@@ -161,8 +129,13 @@ class BotState:
         self._growth: dict[int, float] = {}
         self._cluster_cache: tuple[int, list[list[Town]]] | None = None
         self.deadline: float | None = None  # set per turn by bot_main
-        self._pending_events: list = []  # unapplied backlog carried into next turn
         self._stale_cache: dict = {}  # idea 3: (x, y) -> turns-stale, valid for _stale_key
+        self.evac_ordered: bool = False  # own MOVE_CAPITAL issued, flight unconfirmed
+        self._last_turn: int | None = None  # last payload turn (jump detector)
+        self._last_seen: dict = {}  # (kind, id) -> delivery turn (staleness)
+        self._trails: dict = {}  # army_id -> deque[(turn, x, y)] (velocity)
+        self._wave_ids: set = set()
+        self._wave_hold_until: int = -1
         self._stale_key = None
         self._standing_orders: tuple | None = None  # idea 4: (orders, fingerprint)
         self._plan: tuple | None = None  # idea 5: (orders, valid_until_turn)
@@ -172,18 +145,15 @@ class BotState:
         self.config = config
         self.faction = faction
         self.world.map_size = config.map_size
-        if config.map:
-            self.world.parse_map(config.map)
+        # No map pre-seed (bots never receive geography): empty start, the
+        # first payload creates the own capital.
 
-    def _wipe_for_landing(self) -> None:
-        """Drop stale world + all trackers ahead of a landing rebuild.
+    def _wipe_for_amnesia(self) -> None:
+        """Forget EVERYTHING on a confirmed landing (order-flag amnesia).
 
-        Fired by an unknown own-capital spawn (a viceroy landing while we
-        were blind — capitals spawn no other way). The batch carries full
-        truth, so merge would keep ghosts and shadowed capitals; wipe first.
-        Safe against stale backlog: the merge below applies backlog (stale)
-        before the fresh batch, and stale events on an empty world are
-        harmless no-ops (unknown ids ignored or skipped by spawn guards).
+        Fired when the stream jumps with evac_ordered set: the flight
+        happened. World mirror plus all trackers go; config, faction, and
+        turn bookkeeping survive (the caller sets them after).
         """
         w = World()
         w.map_size = list(self.config.map_size) if self.config and self.config.map_size else [1000, 1000]
@@ -194,50 +164,125 @@ class BotState:
         self._prev_pop = {}
         self._growth = {}
         self._cluster_cache = None
-        self._pending_events = []
         self._stale_cache = {}
         self._stale_key = None
         self._standing_orders = None
         self._plan = None
-        for attr in ("_wave_ids", "_wave_hold_until"):
-            if hasattr(self, attr):
-                try:
-                    delattr(self, attr)
-                except Exception:
-                    pass
+        self._last_seen = {}
+        self._trails = {}
+        self._wave_ids = set()
+        self._wave_hold_until = -1
+
+    def _apply_update(self, ev: dict) -> None:
+        """Upsert one state update (absolute). Unknown kinds ignored."""
+        from collections import deque
+        kind = ev.get("kind")
+        eid = ev.get("id")
+        if eid is None:
+            return
+        if kind == "town_update":
+            if not ev.get("population"):
+                self._remove_town(eid)
+            else:
+                t = self.world.get_town(eid)
+                if t is None:
+                    t = Town(id=eid, faction=int(ev.get("faction", -1)),
+                             x=float(ev.get("x", 0.0)), y=float(ev.get("y", 0.0)),
+                             population=float(ev.get("population", 0.0)),
+                             is_capital=bool(ev.get("is_capital", False)))
+                    self.world.towns.append(t)
+                else:
+                    t.faction = int(ev.get("faction", t.faction))
+                    t.x = float(ev.get("x", t.x))
+                    t.y = float(ev.get("y", t.y))
+                    t.population = float(ev.get("population", t.population))
+                    t.is_capital = bool(ev.get("is_capital", t.is_capital))
+            self._last_seen[("town", eid)] = self.turn
+        elif kind == "army_update":
+            if ev.get("alive") is False:
+                self._remove_army(eid)
+            else:
+                a = self.world.get_army(eid)
+                if a is None:
+                    a = Army(id=eid, faction=int(ev.get("faction", -1)),
+                             x=float(ev.get("x", 0.0)), y=float(ev.get("y", 0.0)),
+                             is_viceroy=bool(ev.get("is_viceroy", False)))
+                    self.world.armies.append(a)
+                else:
+                    a.faction = int(ev.get("faction", a.faction))
+                    a.x = float(ev.get("x", a.x))
+                    a.y = float(ev.get("y", a.y))
+                    a.is_viceroy = bool(ev.get("is_viceroy", a.is_viceroy))
+                tr = self._trails.get(eid)
+                if tr is None:
+                    tr = self._trails[eid] = deque(maxlen=4)
+                tr.append((self.turn, a.x, a.y))
+            self._last_seen[("army", eid)] = self.turn
+        # else: tolerant — battles are gone, unknown kinds ignored.
+
+    def _remove_town(self, tid: int) -> None:
+        self.world.remove_town(tid)
+        self._pending_trains.pop(tid, None)
+        self._growth.pop(tid, None)
+        self._prev_pop.pop(tid, None)
+
+    def _remove_army(self, aid: int) -> None:
+        self.world.remove_army(aid)
+        self._army_targets.pop(aid, None)
+        self._trails.pop(aid, None)
+
+    def note_orders(self, orders: list[str]) -> None:
+        """Track issued orders locally (delay-aware decisions + evac flag)."""
+        for o in orders:
+            if not isinstance(o, str):
+                continue
+            try:
+                if o.startswith("MOVE_TO"):
+                    parts = o.split()
+                    if len(parts) == 6:
+                        self.note_move(int(parts[1]), float(parts[4]), float(parts[5]))
+                    elif len(parts) == 4:
+                        self.note_move(int(parts[1]), float(parts[2]), float(parts[3]))
+                elif o.startswith("BUILD"):
+                    self.note_build(int(o.split()[1]))
+                elif o.startswith("TRAIN"):
+                    self.note_train(int(o.split()[1]))
+                elif o.startswith("MOVE_CAPITAL"):
+                    self.evac_ordered = True
+            except Exception:
+                pass
 
     def update(self, turn: int, events: list[dict]):
-        # Idea 1: growth is folded per applied event and reset on turn
-        # advance, so one batched update == several chunked updates.
+        events = [ev for ev in (events or []) if isinstance(ev, dict)]
+        # Order-flag amnesia: a jump with evac_ordered set means the flight
+        # happened → wipe everything and rebuild from this batch. Sequential
+        # means the order FAILED → clear the flag, no wipe. The flag is
+        # consumed either way; config/faction/turn bookkeeping survive.
+        jumped = self._last_turn is not None and turn > self._last_turn + 1
+        if self.evac_ordered:
+            if jumped:
+                self._wipe_for_amnesia()
+            self.evac_ordered = False
+        # Idea 1: growth is folded per applied update and reset on turn
+        # advance.
         if turn != self.turn:
             self._growth = {}
         self.turn = turn
-        # Oldest first: finish last turn's backlog before this turn's events.
-        if self._pending_events:
-            events = self._pending_events + list(events)
-            self._pending_events = []
-        # Landing wipe (two passes so payload order can't matter): an unknown
-        # own-capital spawn means a blind-flight landing with full truth in
-        # this batch. Redeliveries find the id known and skip the wipe.
+        self._last_turn = turn
+        # Snapshot prev pops for towns this batch names, then apply absolutely.
+        touched_towns, _ = _batch_ids(events)
+        prev = {}
+        for tid in touched_towns:
+            t = self.world.get_town(tid)
+            if t is not None:
+                prev[tid] = t.population
         for ev in events:
-            if (isinstance(ev, dict) and ev.get("kind") == "town_spawn"
-                    and ev.get("is_capital") and ev.get("faction") == self.faction
-                    and ev.get("id") is not None
-                    and self.world.get_town(ev.get("id")) is None):
-                self._wipe_for_landing()
-                break
-        # Idea 1: dirty set — snapshot/sync only entities this batch names.
-        touched_towns, touched_armies = _touched_ids(self.world, events)
-        prev = {t.id: t.population for t in self.world.towns if t.id in touched_towns}
-        from engine.events import apply_events
-        # Chunked so a huge backlog can't blow the clock before decide runs;
-        # whatever doesn't fit carries over to next turn (order preserved).
-        CHUNK = 64
-        for i in range(0, len(events), CHUNK):
-            apply_events(self.world, events[i:i + CHUNK], self.config)
-            if i + CHUNK < len(events) and self.should_yield():
-                self._pending_events = events[i + CHUNK:]
-                break
+            self._apply_update(ev)
+        if events:
+            # Field flips (faction/flag) don't change list lengths, so the
+            # world's index wouldn't rebuild without this (mark_dirty
+            # contract: production mutation sites all mark).
+            self.world.mark_dirty()
         for tid in touched_towns:
             t = self.world.get_town(tid)
             if t is None:
@@ -248,11 +293,8 @@ class BotState:
             else:
                 self._growth.setdefault(tid, 0.0)
         self._prev_pop = prev
-        # remove dead armies from tracker (only touched ones can have died)
-        for aid in list(self._army_targets.keys()):
-            if aid in touched_armies and self.world.get_army(aid) is None:
-                del self._army_targets[aid]
-        # expire pending trains whose pop_change has arrived (pop dropped) or timed out
+        # Dead-army tracker cleanup happens in _remove_army at apply time.
+        # expire pending trains whose pop drop has arrived or timed out
         for tid in list(self._pending_trains.keys()):
             t = self.world.get_town(tid)
             if t is None or self.turn > self._pending_trains[tid]:
@@ -263,18 +305,9 @@ class BotState:
         for aid in list(self._pending_builds.keys()):
             if self.world.get_army(aid) is None or self.turn > self._pending_builds[aid]:
                 self._pending_builds.pop(aid, None)
-        # if engine now has has_target true, mirror it (touched only)
-        for aid in touched_armies:
-            a = self.world.get_army(aid)
-            if a is None:
-                continue
-            if a.has_target:
-                self._army_targets[a.id] = (a.target_x, a.target_y)
-            elif a.id in self._army_targets:
-                # engine says idle but we have a pending target — it may be that
-                # the MOVE_TO messenger has not yet been delivered (1 turn delay).
-                # keep tracking; will sync next turn when army_move arrives
-                pass
+        # No engine intent mirror (D1: destinations never go over the wire).
+        # Own intent lives in _army_targets via note_move; foe intent is
+        # inferred from position trails by BotForecast.
         self.world._turn = turn
 
     def note_move(self, army_id: int, tx: float, ty: float):
@@ -304,18 +337,10 @@ class BotState:
         self._pending_trains[town_id] = self.turn + delay + 1
 
     # Ideas 4+5: quiet-turn skip and plan queue.
-    MILITARY_KINDS = frozenset(("army_spawn", "army_death", "town_spawn",
-                                 "town_death", "town_capture", "battle"))
-
     def is_quiet(self, events) -> bool:
-        """Idea 4: a turn is quiet if nothing military happened."""
-        for ev in events:
-            if not isinstance(ev, dict):
-                continue
-            if ev.get("kind") in self.MILITARY_KINDS:
-                return False
-            # Takeover news rides pop_change: a faction/flag flip wakes too.
-            if ev.get("kind") == "pop_change" and ("faction" in ev or "is_capital" in ev):
+        """Idea 4: quiet iff the payload is empty — any update breaks sleep."""
+        for ev in events or []:
+            if isinstance(ev, dict):
                 return False
         return True
 
@@ -335,14 +360,15 @@ class BotState:
 
     def _fingerprint(self):
         """Idea 4: decide-relevant state summary. Replay is valid only while
-        this is stable: quantized pops/positions (growth/marches re-decide),
-        membership (ids/factions), pending trackers, and a 25-turn heartbeat
-        bounding all other staleness (e.g. pending-train expiry)."""
+        this is stable: membership (ids/factions), quantized pops, exact-ish
+        positions (any real move invalidates), own noted targets, pending
+        trackers, and a 25-turn heartbeat bounding all other staleness."""
         fp = (
             tuple(sorted((t.id, t.faction, int(t.population) // 100) for t in self.world.towns)),
-            tuple(sorted((a.id, a.faction, int(a.x) // 50, int(a.y) // 50, a.has_target) for a in self.world.armies)),
+            tuple(sorted((a.id, a.faction, int(a.x), int(a.y)) for a in self.world.armies)),
             tuple(sorted(self._pending_trains.items())),
             tuple(sorted(self._pending_builds.items())),
+            tuple(sorted(self._army_targets.items())),
             self.turn // 25,
         )
         return fp
@@ -360,12 +386,14 @@ class BotState:
             return list(plan)
         quiet = self.is_quiet(events)
         fp = self._fingerprint()
-        if quiet and not self._pending_events and self._standing_orders is not None:
+        if quiet and self._standing_orders is not None:
             if self._standing_orders[1] == fp:
                 return list(self._standing_orders[0])
         orders = decide_fn(self, config)
-        if quiet and not self._pending_events:
-            self._standing_orders = (list(orders), fp)
+        if quiet:
+            # Fingerprint AFTER decide: personalities note moves/trains
+            # mid-decide, and replay must compare against that post-state.
+            self._standing_orders = (list(orders), self._fingerprint())
         else:
             self._standing_orders = None
         return orders
@@ -529,27 +557,33 @@ class BotForecast:
         return hit
 
     def forecast_army_pos(self, army: Army | dict, turns_ahead: float | None = None) -> tuple[float, float]:
+        """Intent-free forecast: own noted targets are exact; foe motion
+        extrapolates the bot-kept position trail by mail lag."""
         if isinstance(army, dict):
-            x, y = army["x"], army["y"]
-            has_target = army.get("has_target")
-            tx, ty = army.get("target_x"), army.get("target_y")
+            aid, x, y = army["id"], army["x"], army["y"]
         else:
-            x, y = army.x, army.y
-            has_target = army.has_target
-            tx, ty = army.target_x, army.target_y
-        if not has_target or tx is None:
-            return x, y
+            aid, x, y = army.id, army.x, army.y
         if turns_ahead is None:
             turns_ahead = self._turns_stale(x, y)
-        dx, dy = tx - x, ty - y
-        dist = math.hypot(dx, dy)
-        if dist < 1e-9:
-            return x, y
-        travel = self.army_speed * turns_ahead
-        if travel >= dist:
-            return tx, ty
-        s = travel / dist
-        return x + dx * s, y + dy * s
+        tgt = self.state._army_targets.get(aid)
+        if tgt is not None:
+            dx, dy = tgt[0] - x, tgt[1] - y
+            dist = math.hypot(dx, dy)
+            if dist < 1e-9:
+                return x, y
+            travel = self.army_speed * turns_ahead
+            if travel >= dist:
+                return tgt[0], tgt[1]
+            s = travel / dist
+            return x + dx * s, y + dy * s
+        trail = self.state._trails.get(aid) or ()
+        if len(trail) >= 2:
+            (t0, x0, y0), (t1, x1, y1) = trail[-2], trail[-1]
+            dt = t1 - t0
+            if dt > 0 and (x1 != x0 or y1 != y0):
+                vx, vy = (x1 - x0) / dt, (y1 - y0) / dt
+                return x + vx * turns_ahead, y + vy * turns_ahead
+        return x, y
 
     def forecast_all_armies(self) -> dict[int, tuple[float, float]]:
         out: dict[int, tuple[float, float]] = {}
@@ -659,12 +693,10 @@ def note_wave_watch(state: "BotState") -> bool:
     BUILD) died in battle — foes double-train, so hold one home for 6 turns.
     Call once per decide; returns whether the watch is active."""
     cur_ids = {a.id for a in state.own_armies()}
-    known = getattr(state, "_wave_ids", set())
-    pending_b = set(getattr(state, "_pending_builds", {}))
-    if known and (known - cur_ids - pending_b):
+    if state._wave_ids and (state._wave_ids - cur_ids - set(state._pending_builds)):
         state._wave_hold_until = state.turn + 6
     state._wave_ids = set(cur_ids)
-    return state.turn <= getattr(state, "_wave_hold_until", -1)
+    return state.turn <= state._wave_hold_until
 
 
 def should_hold_home(state: "BotState", config: "GameConfig", army,
@@ -782,31 +814,9 @@ def bot_main(decide_fn):
         state.clock_budget_ms = clock  # idea 6: effort level for this turn
         # Ideas 4+5: replay plans/standing orders on quiet turns.
         orders = state.cached_or_decide(decide_fn, cfg, events)
+        # Track issued orders locally (delay-aware decisions + evac flag).
+        state.note_orders(orders)
         for o in orders:
-            # track MOVE_TO / TRAIN / BUILD locally for delay-aware decisions
-            if o.startswith("MOVE_TO"):
-                try:
-                    parts = o.split()
-                    if len(parts) == 6:
-                        aid = int(parts[1]); tx = float(parts[4]); ty = float(parts[5])
-                        state.note_move(aid, tx, ty)
-                    elif len(parts) == 4:
-                        aid = int(parts[1]); tx = float(parts[2]); ty = float(parts[3])
-                        state.note_move(aid, tx, ty)
-                except Exception:
-                    pass
-            elif o.startswith("BUILD"):
-                try:
-                    aid = int(o.split()[1])
-                    state.note_build(aid)
-                except Exception:
-                    pass
-            elif o.startswith("TRAIN"):
-                try:
-                    tid = int(o.split()[1])
-                    state.note_train(tid)
-                except Exception:
-                    pass
             sys.stdout.write(o + "\n")
         sys.stdout.write("go\n")
         sys.stdout.flush()

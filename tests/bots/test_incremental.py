@@ -17,16 +17,24 @@ def _state():
 
 
 def _scripted_events():
+    """Update-language script: absolute upserts, takeovers, deaths."""
     return [
-        {"kind": "pop_change", "id": 0, "population": 20100.0},
-        {"kind": "army_spawn", "id": 11, "faction": 0, "x": 100.0, "y": 100.0},
-        {"kind": "army_move", "id": 11, "x": 200.0, "y": 200.0},
-        {"kind": "town_capture", "id": 1, "old_faction": 1, "new_faction": 0,
-         "was_capital": True, "population": 7500.0, "x": 800.0, "y": 800.0},
-        {"kind": "army_death", "id": 10, "x": 120.0, "y": 100.0},
-        {"kind": "town_spawn", "id": 2, "faction": 0, "x": 300.0, "y": 300.0, "population": 500.0},
-        {"kind": "town_death", "id": 2, "faction": 0, "x": 300.0, "y": 300.0},
-        {"kind": "pop_change", "id": 1, "population": 7600.0},
+        {"kind": "town_update", "id": 0, "x": 100.0, "y": 100.0,
+         "faction": 0, "population": 20100.0, "is_capital": True},
+        {"kind": "army_update", "id": 11, "x": 100.0, "y": 100.0,
+         "faction": 0, "alive": True, "is_viceroy": False},
+        {"kind": "army_update", "id": 11, "x": 200.0, "y": 200.0,
+         "faction": 0, "alive": True, "is_viceroy": False},
+        {"kind": "town_update", "id": 1, "x": 800.0, "y": 800.0,
+         "faction": 0, "population": 7500.0, "is_capital": True},
+        {"kind": "army_update", "id": 10, "x": 120.0, "y": 100.0,
+         "faction": 0, "alive": False, "is_viceroy": False},
+        {"kind": "town_update", "id": 2, "x": 300.0, "y": 300.0,
+         "faction": 0, "population": 500.0, "is_capital": False},
+        {"kind": "town_update", "id": 2, "x": 300.0, "y": 300.0,
+         "faction": 0, "population": 0, "is_capital": False},
+        {"kind": "town_update", "id": 1, "x": 800.0, "y": 800.0,
+         "faction": 0, "population": 7600.0, "is_capital": True},
     ]
 
 
@@ -37,7 +45,7 @@ def _snap(st):
 
 
 def test_idea1_incremental_matches_full_replay():
-    """Idea 1: one batched update == three chunked updates (order preserved)."""
+    """Idea 1: one batched update == split same-turn updates (order preserved)."""
     a = _state()
     a.deadline = time.time() + 60
     a.update(1, _scripted_events())
@@ -76,13 +84,10 @@ def test_idea3_cache_busts_on_capital_move():
     st.update(1, [])
     before = st.stale_turns(800.0, 800.0)
     # capital relocates: answers must change, not serve stale cache
-    st.update(2, [{"kind": "town_capture", "id": 1, "old_faction": 1,
-                   "new_faction": 0, "was_capital": True,
-                   "population": 7500.0, "x": 800.0, "y": 800.0}])
-    st.world.get_town(1).is_capital = True
-    st.world.get_town(0).is_capital = False
-    # production mutation sites mark the world dirty; mirror that contract
-    st.world.mark_dirty()
+    st.update(2, [{"kind": "town_update", "id": 1, "x": 800.0, "y": 800.0,
+                   "faction": 0, "population": 7500.0, "is_capital": True},
+                  {"kind": "town_update", "id": 0, "x": 100.0, "y": 100.0,
+                   "faction": 0, "population": 20000.0, "is_capital": False}])
     after = st.stale_turns(800.0, 800.0)
     assert after == 0.0
     assert before != after
