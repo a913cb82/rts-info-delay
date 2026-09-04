@@ -152,10 +152,11 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
 
     contacts: list[tuple[float, int, int, str, float]] = []
     town_list = list(world.towns)
-    # --- spatial cull: build hashes for start positions (cell 50) ---
+    # --- spatial cull: army hash for start positions (cell 60) ---
+    # Town contacts reuse the army hash cells (town batch walks them), so
+    # no separate town hash is built.
     use_hash = False
     sh_army = None
-    sh_town = None
     try:
         from engine.spatial import SpatialHash
         # army hash — all armies (stationary can block moving)
@@ -172,52 +173,133 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
         for idx, (x, y) in enumerate(pos_a):
             key = (int(math.floor(x / sh_army.cell_size)), int(math.floor(y / sh_army.cell_size)))
             sh_army.cells.setdefault(key, []).append(idx)
-        # town hash (static, build once)
-        sh_town = SpatialHash.__new__(SpatialHash)
-        sh_town.config = config
-        sh_town.cell_size = 60.0
-        sh_town.width = sh_army.width; sh_town.height = sh_army.height
-        sh_town.cells = {}
-        if town_list:
-            pos_t = np.array([[t.x, t.y] for t in town_list], dtype=np.float64)
-            sh_town.positions = pos_t
-            for idx, (x, y) in enumerate(pos_t):
-                key = (int(math.floor(x / sh_town.cell_size)), int(math.floor(y / sh_town.cell_size)))
-                sh_town.cells.setdefault(key, []).append(idx)
-        else:
-            sh_town.positions = np.zeros((0,2))
         use_hash = True
     except Exception:
         use_hash = False
 
+    moving_set = set(moving_indices)
+    # == query_radius disc cutoffs (radius*radius + 1e-9, plus 1e-9 tolerance)
+    RQ2_ARMY = 110.0 * 110.0 + 2e-9
+    RQ2_TOWN = 60.0 * 60.0 + 2e-9
+    if use_hash:
+        # Batch cell-pair evaluation: each unordered army pair whose cells
+        # are within Chebyshev 2 (covers the 110 query disc at cell 60) is
+        # visited once; both move directions are evaluated inline. Same
+        # candidate multiset as per-army query_radius; the downstream sort
+        # makes insertion order irrelevant. Saves ~2400 query calls + lists.
+        cells = sh_army.cells
+        for cx_cy, members in cells.items():
+            cx, cy = cx_cy
+            for dx in range(-2, 3):
+                for dy in range(-2, 3):
+                    if dx < 0 or (dx == 0 and dy < 0):
+                        continue
+                    other = cells.get((cx + dx, cy + dy))
+                    if not other:
+                        continue
+                    same_cell = (dx == 0 and dy == 0)
+                    for ii in range(len(members)):
+                        a = members[ii]
+                        js = range(ii + 1, len(members)) if same_cell else range(len(other))
+                        for jj in js:
+                            b = other[jj]
+                            a_moves = a in moving_set
+                            b_moves = b in moving_set
+                            if not (a_moves or b_moves):
+                                continue
+                            qx = start_x[b] - start_x[a]; qy = start_y[b] - start_y[a]
+                            if qx * qx + qy * qy > RQ2_ARMY:
+                                continue
+                            if a_moves and not is_fresh[b] and factions[a] != factions[b]:
+                                ax = start_x[a]; ay = start_y[a]; vx = vel_x[a]; vy = vel_y[a]
+                                bx = start_x[b]; by = start_y[b]; wx = vel_x[b]; wy = vel_y[b]
+                                ddx = bx - ax; ddy = by - ay
+                                eex = wx - vx; eey = wy - vy
+                                denom = eex * eex + eey * eey
+                                if denom < 1e-12:
+                                    min_dist = math.hypot(ddx, ddy)
+                                    t_s = 0.0
+                                else:
+                                    dot = ddx * eex + ddy * eey
+                                    t_s = -dot / denom
+                                    if t_s < 0.0: t_s = 0.0
+                                    elif t_s > 1.0: t_s = 1.0
+                                    rx = ddx + t_s * eex
+                                    ry = ddy + t_s * eey
+                                    min_dist = math.hypot(rx, ry)
+                                if min_dist <= radius + 1e-9:
+                                    contacts.append((t_s, a, b, "army", min_dist))
+                            if b_moves and not is_fresh[a] and factions[a] != factions[b]:
+                                ax = start_x[b]; ay = start_y[b]; vx = vel_x[b]; vy = vel_y[b]
+                                bx = start_x[a]; by = start_y[a]; wx = vel_x[a]; wy = vel_y[a]
+                                ddx = bx - ax; ddy = by - ay
+                                eex = wx - vx; eey = wy - vy
+                                denom = eex * eex + eey * eey
+                                if denom < 1e-12:
+                                    min_dist = math.hypot(ddx, ddy)
+                                    t_s = 0.0
+                                else:
+                                    dot = ddx * eex + ddy * eey
+                                    t_s = -dot / denom
+                                    if t_s < 0.0: t_s = 0.0
+                                    elif t_s > 1.0: t_s = 1.0
+                                    rx = ddx + t_s * eex
+                                    ry = ddy + t_s * eey
+                                    min_dist = math.hypot(rx, ry)
+                                if min_dist <= radius + 1e-9:
+                                    contacts.append((t_s, b, a, "army", min_dist))
+    else:
+        for mi in moving_indices:
+            if is_fresh[mi]: continue
+            ax = start_x[mi]; ay = start_y[mi]; vx = vel_x[mi]; vy = vel_y[mi]; m_faction = factions[mi]
+            for bi in range(n):
+                if bi == mi: continue
+                if is_fresh[bi]: continue
+                if factions[bi] == m_faction: continue
+                t_s, min_dist = _closest_approach(ax, ay, vx, vy, start_x[bi], start_y[bi], vel_x[bi], vel_y[bi])
+                if min_dist <= radius + 1e-9:
+                    contacts.append((t_s, mi, bi, "army", min_dist))
+    if use_hash and town_list:
+        # Batch town evaluation: per town, walk army-hash cells in the 3x3
+        # stencil (covers the 60 query disc at cell 60) and evaluate moving
+        # enemy armies. Same pair multiset as per-army town queries.
+        for ti, town in enumerate(town_list):
+            tcx = int(math.floor(town.x / 60.0)); tcy = int(math.floor(town.y / 60.0))
+            for dx in range(-1, 2):
+                for dy in range(-1, 2):
+                    members = cells.get((tcx + dx, tcy + dy))
+                    if not members:
+                        continue
+                    for bi in members:
+                        if bi not in moving_set: continue
+                        if is_fresh[bi]: continue
+                        if factions[bi] == town.faction: continue
+                        qx = start_x[bi] - town.x; qy = start_y[bi] - town.y
+                        if qx * qx + qy * qy > RQ2_TOWN:
+                            continue
+                        ax = start_x[bi]; ay = start_y[bi]; vx = vel_x[bi]; vy = vel_y[bi]
+                        # closest approach vs stationary town
+                        ddx = town.x - ax; ddy = town.y - ay
+                        eex = -vx; eey = -vy
+                        denom = eex * eex + eey * eey
+                        if denom < 1e-12:
+                            min_dist = math.hypot(ddx, ddy)
+                            t_s = 0.0
+                        else:
+                            dot = ddx * eex + ddy * eey
+                            t_s = -dot / denom
+                            if t_s < 0.0: t_s = 0.0
+                            elif t_s > 1.0: t_s = 1.0
+                            rx = ddx + t_s * eex
+                            ry = ddy + t_s * eey
+                            min_dist = math.hypot(rx, ry)
+                        if min_dist <= radius + 1e-9:
+                            contacts.append((t_s, bi, ti, "town", min_dist))
     for mi in moving_indices:
         if is_fresh[mi]: continue
         ax = start_x[mi]; ay = start_y[mi]; vx = vel_x[mi]; vy = vel_y[mi]; m_faction = factions[mi]
-        # candidates via hash (110 for armies (both moving), 60 for towns)
-        cand_armies = range(n) if not use_hash else sh_army.query_radius(float(ax), float(ay), 110.0)
-        for bi in cand_armies:
-            if bi == mi: continue
-            if is_fresh[bi]: continue
-            if factions[bi] == m_faction: continue
-            bx = start_x[bi]; by = start_y[bi]; wx = vel_x[bi]; wy = vel_y[bi]
-            # inline closest approach (avoids Python function call overhead)
-            ddx = bx - ax; ddy = by - ay
-            eex = wx - vx; eey = wy - vy
-            denom = eex * eex + eey * eey
-            if denom < 1e-12:
-                min_dist = math.hypot(ddx, ddy)
-                t_s = 0.0
-            else:
-                dot = ddx * eex + ddy * eey
-                t_s = -dot / denom
-                if t_s < 0.0: t_s = 0.0
-                elif t_s > 1.0: t_s = 1.0
-                rx = ddx + t_s * eex
-                ry = ddy + t_s * eey
-                min_dist = math.hypot(rx, ry)
-            if min_dist <= radius + 1e-9:
-                contacts.append((t_s, mi, bi, "army", min_dist))
-        cand_towns = range(len(town_list)) if not use_hash else sh_town.query_radius(float(ax), float(ay), 60.0)
+        # candidates via hash (60 for towns)
+        cand_towns = range(len(town_list)) if not use_hash else []
         for ti in cand_towns:
             town = town_list[ti]
             if town.faction == m_faction: continue
