@@ -19,6 +19,27 @@ Self-play diffs 0.
 
 ## Log
 
+### Pro — best-of-all assembly (2026-09-04)
+Fast: endgame 2245→3249 (counter-punch breaks mirror), opening 3240→4316,
+defense 1109 (holds). Slow: efficiency 59%→100% (P3b empty-field hold =
+policy optimum exactly), succession 0→611, snowball 3748→5681,
+attrition/endurance restored to 4226/3089 after P5-P7 scares.
+Elo: all-draws (structural at 3000/60t); pro concedes nothing.
+Doctrine learned:
+- P2 counter-punch (hold-all vs peer field armies, counter the spent foe)
+  breaks mirrors; marching the pack out naked re-loses the race (1647).
+- Rope is duel-only (P5): in big wars release never fires → slow death
+  (attrition 4226→1900); there, departure-sync/pressure.
+- Home defense is duel-only (P6): holding one home bleeds long wars
+  (endurance 6424→904); there, all-out.
+- Viability gate is duel-only (P7, biggest save): denial-raids erase foe
+  production in big wars; gating cost 2185 (endurance 904→3089). Ported
+  to greedy + aggressive.
+- Endurance 6424-baseline vs 3089-now conflates pro + opponent improvements
+  (foes are tougher); honest pro-delta is 3089→3089 with better duels.
+- Takes in symmetric endgames still missing (out-settles 3v4 but doesn't
+  crack); needs siege craft (future).
+
 ### Expander — guard + working settlers (2026-09-04)
 Fast: guard 1000→1624 (capital HELD + settle), settle/chain flat (correct).
 Elo: expander now holds vs greedy+aggressive (was: taken) — see doctrine.

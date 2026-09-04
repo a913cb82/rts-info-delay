@@ -48,10 +48,15 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # intercept wave 2 mid-field).
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
-        # G1: viability gate (same halve-vs-floor doctrine as aggressive).
-        viable = [t for t in enemy_towns
-                  if t.population * (1.0 - config.build_efficiency)
-                  > config.army_cost * config.build_efficiency + 200]
+        # G1: viability gate — duel-only (P7: in big wars denial-raids on
+        # small towns erase foe production; gating cost pro 2185).
+        war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
+        if len(war_foes) <= 1:
+            viable = [t for t in enemy_towns
+                      if t.population * (1.0 - config.build_efficiency)
+                      > config.army_cost * config.build_efficiency + 200]
+        else:
+            viable = list(enemy_towns)
         if viable:
             nearest = min(viable, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
             out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")

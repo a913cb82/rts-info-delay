@@ -26,9 +26,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # pop (halved) must clear the death floor + margin, else the raid
     # buys a starvation (starve_trap lesson). Computed once (used by idle
     # march below AND the arrival-sync check above).
-    viable = [t for t in enemy_towns
-              if t.population * (1.0 - config.build_efficiency)
-              > config.army_cost * config.build_efficiency + 200]
+    war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
+    if len(war_foes) <= 1:
+        viable = [t for t in enemy_towns
+                  if t.population * (1.0 - config.build_efficiency)
+                  > config.army_cost * config.build_efficiency + 200]
+    else:
+        viable = list(enemy_towns)
 
     for p in state.own_armies():
         if state.should_yield():
