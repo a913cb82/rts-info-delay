@@ -21,8 +21,10 @@ from engine.world import Army, Town, World
 CFG = GameConfig()
 
 # Measured bests (2026-09, numba observer kernel): heavy ~25ms,
-# full20 ~3.4ms, delivery-5 ~1ms.
-HEAVY_BUDGET_MS = 30.0
+# full20 ~3.4ms, delivery-5 ~1ms. Heavy budget carries +10ms headroom:
+# the gate catches 2x regressions (the 63ms double loop), not suite-load
+# noise (one 30ms-flake observed under a full-suite run).
+HEAVY_BUDGET_MS = 35.0
 FULL20_BUDGET_MS = 5.0
 DELIVERY_BUDGET_MS = 3.0
 
