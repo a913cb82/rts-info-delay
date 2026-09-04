@@ -177,7 +177,8 @@ class BotProcess:
                 if time.time() - start_time > timeout_sec:
                     raise TimeoutError("turn timeout")
         except TimeoutError:
-            return self._finish_block(None, True, False, 0.0, use_clock, cap, inc, budget_ms)
+            elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+            return self._finish_block(None, True, False, elapsed_ms, use_clock, cap, inc, budget_ms)
         except Exception:
             # Any other exception, treat as dead but not necessarily timeout
             # For mocked tests that raise TimeoutError directly from readline, we already handle
@@ -581,7 +582,7 @@ def run_game(
             bp, budget_ms, t_w = writes[faction]
             elapsed_ms = (t_end - t_w) * 1000.0
             if lines is None:
-                done[faction] = bp._finish_block(None, True, False, 0.0, True, cap, inc, budget_ms)
+                done[faction] = bp._finish_block(None, True, False, elapsed_ms, True, cap, inc, budget_ms)
                 continue
             try:
                 exited = bp.proc.poll() is not None
