@@ -164,6 +164,9 @@ class BotState:
         self._pending_events: list = []  # unapplied backlog carried into next turn
         self._stale_cache: dict = {}  # idea 3: (x, y) -> turns-stale, valid for _stale_key
         self._stale_key = None
+        self._standing_orders: list | None = None  # idea 4: replay while quiet
+        self._plan: tuple | None = None  # idea 5: (orders, valid_until_turn)
+        self.clock_budget_ms: float | None = None  # idea 6: set by bot_main
 
     def init(self, config: GameConfig, faction: int):
         self.config = config
@@ -258,6 +261,59 @@ class BotState:
         else:
             delay = 1
         self._pending_trains[town_id] = self.turn + delay + 1
+
+    # Ideas 4+5: quiet-turn skip and plan queue.
+    MILITARY_KINDS = frozenset(("army_spawn", "army_death", "town_spawn",
+                                 "town_death", "town_capture", "battle"))
+
+    def is_quiet(self, events) -> bool:
+        """Idea 4: a turn is quiet if nothing military happened."""
+        for ev in events:
+            if isinstance(ev, dict) and ev.get("kind") in self.MILITARY_KINDS:
+                return False
+        return True
+
+    def push_plan(self, orders, valid_until_turn: int) -> None:
+        """Idea 5: precomputed orders to issue verbatim until expiry/intel."""
+        self._plan = (list(orders), valid_until_turn)
+
+    def _live_plan(self, events):
+        p = self._plan
+        if not p:
+            return None
+        orders, valid_until = p
+        if self.turn > valid_until or not self.is_quiet(events):
+            self._plan = None
+            return None
+        return orders
+
+    def cached_or_decide(self, decide_fn, config, events):
+        """Ideas 4+5: plan > quiet-cache > fresh decide.
+
+        Fresh results are cached only on fully-applied quiet turns, so the
+        cache never serves state computed from a partial backlog.
+        """
+        plan = self._live_plan(events)
+        if plan is not None:
+            return list(plan)
+        quiet = self.is_quiet(events)
+        if quiet and not self._pending_events and self._standing_orders is not None:
+            return list(self._standing_orders)
+        orders = decide_fn(self, config)
+        if quiet and not self._pending_events:
+            self._standing_orders = list(orders)
+        else:
+            self._standing_orders = None
+        return orders
+
+    def effort(self, clock_ms) -> str:
+        """Idea 6: None -> full, under 25ms -> low, else full."""
+        if clock_ms is None:
+            return "full"
+        try:
+            return "low" if float(clock_ms) < 25 else "full"
+        except Exception:
+            return "full"
 
     def stale_turns(self, x: float, y: float) -> float:
         """Idea 3: memoized dist-to-capital/info_speed.
@@ -600,7 +656,9 @@ def bot_main(decide_fn):
         else:
             state.deadline = t_start + max(0.005, clock / 1000 - BotState.FLUSH_MARGIN_MS / 1000)
         state.update(turn, events)
-        orders = decide_fn(state, cfg)
+        state.clock_budget_ms = clock  # idea 6: effort level for this turn
+        # Ideas 4+5: replay plans/standing orders on quiet turns.
+        orders = state.cached_or_decide(decide_fn, cfg, events)
         for o in orders:
             # track MOVE_TO / TRAIN / BUILD locally for delay-aware decisions
             if o.startswith("MOVE_TO"):

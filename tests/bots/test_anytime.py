@@ -36,9 +36,10 @@ def test_idea2_prefix_property_under_abort():
     st = _rich_state()
     stages = greedy.decide_stages(st, CFG)
     trains = stages[0][1]
-    # simulate abort right after the trains stage
+    # script the clock to die right after the trains stage
     st2 = _rich_state()
-    st2.deadline = time.time() - 1  # already expired
+    script = iter([False, True])
+    st2.should_yield = lambda: next(script, True)
     partial = greedy.decide_orders(st2, CFG)
     assert partial == trains
 
