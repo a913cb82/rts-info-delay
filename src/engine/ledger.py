@@ -13,13 +13,8 @@ from numba import njit
 
 
 class EventKind(Enum):
-    ARMY_SPAWN = "army_spawn"
-    TOWN_SPAWN = "town_spawn"
-    TOWN_CAPTURE = "town_capture"
-    TOWN_DEATH = "town_death"
-    ARMY_MOVE = "army_move"
-    ARMY_DEATH = "army_death"
-    BATTLE = "battle"
+    # Wire carries only state updates. Step/record dicts use plain kind
+    # strings (never this enum); nothing else logs ledger entries.
     TOWN_UPDATE = "town_update"
     ARMY_UPDATE = "army_update"
 
@@ -29,46 +24,21 @@ class Event:
     turn: int = 0
     x: float = 0.0
     y: float = 0.0
-    kind: EventKind = EventKind.BATTLE
+    kind: EventKind = EventKind.ARMY_UPDATE
     payload: dict = None  # type: ignore
-    # Allow alias 't' for turn and flexible construction
-    def __init__(self, turn: int | None = None, t: int | None = None, x: float = 0.0, y: float = 0.0, kind: EventKind | str = EventKind.BATTLE, payload: dict | None = None, **kw) -> None:
-        # Handle t alias
-        if turn is None and t is not None:
-            turn = t
-        if turn is None:
-            turn = kw.pop("turn", kw.pop("t", 0))
-        # Ensure x,y
-        if "x" in kw:
-            x = kw.pop("x")
-        if "y" in kw:
-            y = kw.pop("y")
-        if "kind" in kw:
-            kind = kw.pop("kind")
-        if "payload" in kw:
-            payload = kw.pop("payload")
-        # Normalize kind
-        if isinstance(kind, str):
-            try:
-                kind = EventKind(kind)
-            except ValueError:
-                # Map string like "army_spawn" to enum
-                kind = EventKind.BATTLE
-        self.turn = int(turn) if turn is not None else 0
+    def __init__(self, turn: int = 0, x: float = 0.0, y: float = 0.0,
+                 kind: EventKind = EventKind.ARMY_UPDATE,
+                 payload: dict | None = None,
+                 visible_to=None) -> None:
+        self.turn = int(turn)
         self.x = float(x)
         self.y = float(y)
-        self.kind = kind  # type: ignore
+        self.kind = kind
         self.payload = payload if payload is not None else {}
-        # Tagging (Phase 1): factions observing this entry at generation.
+        # Tagging: factions observing this entry at generation.
         # Ledger-internal only — never serialized to bots (seer lists leak
         # other factions' positions).
-        vis = kw.pop("visible_to", None)
-        self.visible_to: set = set(vis) if vis else set()
-        # Also store t alias for compatibility
-        self.t = self.turn
-        # Handle extra payload from kw if any
-        if kw:
-            self.payload.update(kw)
+        self.visible_to: set = set(visible_to) if visible_to else set()
 
 
 class Ledger:
@@ -83,26 +53,9 @@ class Ledger:
     events: deque[Event]
     eviction_ptr: int  # pointer into sorted events for O(1) amortised eviction
 
-    def __init__(self, info_speed: float = 150.0, map_diagonal: float = 1414.0, **kwargs) -> None:
-        # Support alternative construction Ledger(window=...)
-        if "window" in kwargs:
-            # window supplied directly (used by medium tests)
-            window_val = kwargs.pop("window")
-            # info_speed and map_diagonal may be mis-supplied; fallback
-            try:
-                info_speed = float(info_speed)
-            except Exception:
-                info_speed = 150.0
-            # Use info_speed as given, map_diagonal as window*info_speed
-            map_diagonal = window_val * info_speed if isinstance(window_val, (int, float)) else 1414.0
-        # Also handle case where info_speed is actually window (if called with single arg window)
-        # Not needed as stub signature is two args
-        if isinstance(info_speed, (int, float)) and isinstance(map_diagonal, (int, float)):
-            self.info_speed = float(info_speed)
-            self.map_diagonal = float(map_diagonal)
-        else:
-            self.info_speed = 150.0
-            self.map_diagonal = 1414.0
+    def __init__(self, info_speed: float = 150.0, map_diagonal: float = 1414.0) -> None:
+        self.info_speed = float(info_speed)
+        self.map_diagonal = float(map_diagonal)
         self.events = deque()
         self.eviction_ptr = 0
         self._next_seq = 0  # dedup key: every logged event gets one
@@ -139,35 +92,9 @@ class Ledger:
         self._col_cache = None
 
     def log(self, event: Event) -> None:
-        """Append an event."""
+        """Append an entry (sorted by turn). Assigns the entry its seq."""
         event.seq = self._next_seq  # type: ignore[attr-defined]
         self._next_seq += 1
-        # Handle flexible Event construction: allow t instead of turn, kind as string
-        # If event is not proper EventKind, convert
-        if not isinstance(event.kind, EventKind):
-            # Try to convert string to EventKind
-            try:
-                # event.kind may be string like "army_spawn"
-                if isinstance(event.kind, str):
-                    event.kind = EventKind(event.kind)
-                else:
-                    # Unknown, keep as is or default to BATTLE
-                    event.kind = EventKind.BATTLE
-            except Exception:
-                event.kind = EventKind.BATTLE
-        # Ensure turn attribute exists (support t alias)
-        if not hasattr(event, "turn"):
-            if hasattr(event, "t"):
-                event.turn = getattr(event, "t")  # type: ignore
-            else:
-                event.turn = 0  # fallback
-        # Ensure x,y are floats
-        try:
-            event.x = float(event.x)
-            event.y = float(event.y)
-        except Exception:
-            event.x = 0.0
-            event.y = 0.0
         # Insert sorted by turn to keep order
         # Use insertion sort: find position
         # Since events are mostly appended in order, we can check if last event turn <= new turn, append fast

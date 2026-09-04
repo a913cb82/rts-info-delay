@@ -196,3 +196,20 @@ note rewritten; fog-era table baselined (above); empty_3000 rematch
 (pro 9156 wins); viewer smoke 200 (record format unchanged).
 Doctrine funnel for Steps: selectivity regressions (skip_thin/trap/viable)
 want the Step-2 trade evaluator; Elo all-hold wants a doctrine verdict.
+
+## Post-rework cleanup + paired perf numbers (same box)
+
+Paired before(6ea9212)/after, single runs: heavy turn 302ms (272-332) ->
+273ms (268-283) — no regression; empty_3000 2.8s -> 3.7s, of which +0.66s
+is import-time numba precompile (0.80s vs 0.14s `import runner.main`,
+house rule opt10: pay once at startup), rest ~15us/turn. Delivery ~1ms
+for 5 factions on heavy (beats the old ~5ms budget); generation is the
+fat: 63ms heavy (3243 entities), 25ms full20-scale (515 entities).
+Cleanup: Ledger(window=)/Event(t=,kind=str)/log() string-conversion shims
+deleted (G9/I9/log-mechanics tests migrated to canonical construction);
+EventKind trimmed to TOWN_UPDATE/ARMY_UPDATE (step/record dicts use plain
+strings, never the enum); untagged-update tag-gate pinned in test_main.
+Doctrine funnel for BOT_PLAN Steps: selectivity bleed (skip_thin/trap/
+viable) -> Step 2 trade evaluator (known-foe sums, last_seen risk,
+trail counts, scouting inside the step, counter-intel parked after);
+Elo all-hold verdict pre-Step-5; scoreboard re-cut to fog era.

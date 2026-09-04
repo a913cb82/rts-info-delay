@@ -114,7 +114,7 @@ class TestTurnOrder:
         w = _world_with()
         ledger = Ledger(CFG.info_speed, 1414)
         # Log an old event manually
-        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={}))
+        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={}))
         step(w, CFG, ledger, turn=100, orders={})
         # Old event should be evicted (well past window)
         # The step function calls evict at the end

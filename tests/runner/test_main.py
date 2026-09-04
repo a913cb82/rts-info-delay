@@ -253,10 +253,10 @@ def test_deliver_ignores_old_kinds():
     w.map_size = [1000, 1000]
     w.towns.append(Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True))
     lg = Ledger(GameConfig().info_speed, 1414)
-    lg.log(Event(turn=1, x=0, y=0, kind=EventKind.BATTLE, payload={"a": 1}))
+    lg.log(Event(turn=1, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={"id": 99}))
     lg.generate(w, turn=1, line_of_sight=150.0)
     out = deliver(0, w, lg, 1, SendState())
-    assert [u for u in out if u.get("kind") == "battle"] == []
+    assert 99 not in [u["id"] for u in out]  # untagged: tag gate withholds
     assert [u["id"] for u in out if u.get("kind") == "town_update"] == [1]
 
 

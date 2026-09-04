@@ -2,7 +2,7 @@
 
 from engine.config import GameConfig
 from engine.world import World, Town, Army, StandingOrder, CommandType
-from engine.ledger import Ledger, Event
+from engine.ledger import Ledger, Event, EventKind
 from engine.economy import apply_growth, apply_train, apply_build
 
 CFG = GameConfig()
@@ -53,11 +53,11 @@ class TestLedgerMedium:
 
     def test_G9_sorted_by_time(self) -> None:
         """G9: Events sorted by time."""
-        ledger = Ledger(window=100)
-        ledger.log(Event(t=3, x=0, y=0, kind="army_spawn", payload={}))
-        ledger.log(Event(t=1, x=0, y=0, kind="army_spawn", payload={}))
-        ledger.log(Event(t=2, x=0, y=0, kind="army_spawn", payload={}))
-        times = [e.t for e in ledger.events]
+        ledger = Ledger(150.0, 1414.0)
+        ledger.log(Event(turn=3, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={}))
+        ledger.log(Event(turn=1, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={}))
+        ledger.log(Event(turn=2, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={}))
+        times = [e.turn for e in ledger.events]
         assert times == sorted(times)
 
 
@@ -250,11 +250,11 @@ class TestInfoDelayMedium:
 
     def test_I9_ledger_window_holds(self) -> None:
         """I9: Ledger window holds events."""
-        from engine.ledger import Ledger, Event
+        from engine.ledger import Ledger, Event, EventKind
 
-        ledger = Ledger(window=20)
+        ledger = Ledger(150.0, 1414.0)
         for t in range(15):
-            ledger.log(Event(t=t, x=0, y=0, kind="army_spawn", payload={}))
+            ledger.log(Event(turn=t, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={}))
         # Events from turn 1 should still be in ledger
         assert len(ledger.events) > 0
 

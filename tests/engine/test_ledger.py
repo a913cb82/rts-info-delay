@@ -11,7 +11,7 @@ def _event(
     turn: int, x: float, y: float, kind: EventKind | None = None, payload: dict | None = None
 ) -> Event:
     """Helper: create an Event."""
-    return Event(turn=turn, x=x, y=y, kind=kind or EventKind.BATTLE, payload=payload or {})
+    return Event(turn=turn, x=x, y=y, kind=kind or EventKind.ARMY_UPDATE, payload=payload or {})
 
 
 def _tagged(turn: int, x: float, y: float, vis: set, payload: dict | None = None) -> Event:
@@ -26,23 +26,23 @@ class TestLedgerLogging:
     def test_log_event(self) -> None:
         """G1: Logged with correct tuple fields."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ev = _event(turn=1, x=100, y=200, kind=EventKind.ARMY_SPAWN, payload={"id": 1})
+        ev = _event(turn=1, x=100, y=200, kind=EventKind.ARMY_UPDATE, payload={"id": 1})
         ledger.log(ev)
         assert len(ledger.events) == 1
         stored = ledger.events[0]
         assert stored.turn == 1
         assert stored.x == 100
         assert stored.y == 200
-        assert stored.kind == EventKind.ARMY_SPAWN
+        assert stored.kind == EventKind.ARMY_UPDATE
         assert stored.payload == {"id": 1}
 
     def test_event_tuple_fields(self) -> None:
         """G1b: Event has all required fields."""
-        ev = _event(turn=5, x=50, y=60, kind=EventKind.BATTLE, payload={"killed": [1, 2]})
+        ev = _event(turn=5, x=50, y=60, kind=EventKind.ARMY_UPDATE, payload={"killed": [1, 2]})
         assert ev.turn == 5
         assert ev.x == 50
         assert ev.y == 60
-        assert ev.kind == EventKind.BATTLE
+        assert ev.kind == EventKind.ARMY_UPDATE
         assert ev.payload["killed"] == [1, 2]
 
     def test_events_sorted_by_time(self) -> None:
@@ -130,7 +130,7 @@ class TestLedgerVisibility:
     def test_event_kind_fields(self) -> None:
         """I5d: Event has turn, x, y, kind, payload."""
         ledger = Ledger(info_speed=150, map_diagonal=1414)
-        ev = Event(turn=3, x=10, y=20, kind=EventKind.ARMY_DEATH, payload={"id": 5})
+        ev = Event(turn=3, x=10, y=20, kind=EventKind.ARMY_UPDATE, payload={"id": 5})
         ledger.log(ev)
         stored = ledger.events[0]
         assert hasattr(stored, "turn")

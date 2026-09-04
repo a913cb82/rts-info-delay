@@ -117,6 +117,10 @@ empty_3000 rematch (3000 turns): pro 9156 / greedy 3089 / aggressive 3376 /
 expander 3376 / turtle 5232 — pro dominates where greedy took it pre-fog
 (4992); fog changes everything, judged by Steps not scores.
 This is the table new work is judged against (live scoreboard: BOT_PLAN.md).
+Next bot work (ordered, see BOT_PLAN.md): Step 2 trade evaluator scoped by
+the selectivity bleed (skip_thin/trap/viable), then the Elo all-hold
+verdict, then Steps 3–6; scouting ships inside Step 2, counter-intel
+parked after the evaluator.
 
 ## Delayed-intel era (post-campaign engine changes, current tree)
 
