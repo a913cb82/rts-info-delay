@@ -18,7 +18,7 @@ import bots.greedy as greedy
 import bots.expander as expander
 import bots.aggressive as aggressive
 import bots.turtle as turtle
-import bots.random as random_mod
+import bots.pro as pro_mod
 
 CFG = GameConfig()
 TIERS = {
@@ -26,7 +26,7 @@ TIERS = {
     "expander": expander.decide_orders,
     "aggressive": aggressive.decide_orders,
     "turtle": turtle.decide_orders,
-    "random": random_mod.decide_orders,
+    "pro": pro_mod.decide_orders,
 }
 
 
