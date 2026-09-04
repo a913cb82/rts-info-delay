@@ -258,7 +258,7 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | B4 | Per turn — header | each turn | `turn <n>` line followed by events (incremental, ledger-filtered for that faction), then `go` |
 | B5 | Bot response parsed | bot prints `MOVE_TO 1 0 0 100 100` + `go` | runner delivers to propagation |
 | B5b | All command types parsed (NEW) | bot prints one of each: MOVE_TO/TRAIN/BUILD/MOVE_CAPITAL | each routed correctly |
-| B6 | Timeout kills | bot sleeps > turn_time_ms | process killed, no orders this turn, **and all future turns** (dead) |
+| B6 | Timeout kills | bot overruns its Fischer clock (cap turn_time_ms, +time_increment_ms/turn) | process killed, no orders this turn, **and all future turns** (dead) |
 | B6b | Timeout mid-game permanence (NEW) | bot times out turn 5, game continues to 10 | turns 6..10 receive no orders from that faction |
 | B7 | Go terminator required (NEW) | bot prints orders without `go` then timeout | orders ignored for that turn |
 | B8 | Incremental updates only (NEW) | turn 10 | bot receives only events since last turn (ledger-visible), not full world — bot must track state |

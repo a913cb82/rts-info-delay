@@ -31,6 +31,11 @@ class BotProcess:
         self.alive = True
         self.cmd = cmd
         self._reader = None
+        # Fischer clock: starts full (cap), engine-authoritative.
+        try:
+            self.clock_ms = float(getattr(config, "turn_time_ms", 100) or 100)
+        except Exception:
+            self.clock_ms = 100.0
         try:
             import os
             env = os.environ.copy()
@@ -77,9 +82,12 @@ class BotProcess:
             except Exception:
                 pass
 
-    def send_turn(self, turn: int, events: list[dict]) -> list[str]:
-        """Send turn header + events, read orders until 'go'.
+    def send_turn(self, turn: int, events: list[dict], time_ms: float | None = None) -> list[str]:
+        """Send turn header + clock + events, read orders until 'go'.
 
+        time_ms is this turn's Fischer budget (None = legacy: no clock
+        line, fixed turn_time_ms budget). Elapsed round-trip time is
+        deducted and the increment credited back (capped) for next turn.
         Returns list of order strings (without 'go').
         Returns [] on timeout or crash (marks bot dead).
         """
@@ -95,10 +103,23 @@ class BotProcess:
                 return []
         except Exception:
             pass
+        try:
+            cap = float(getattr(self.config, "turn_time_ms", 100) or 100)
+        except Exception:
+            cap = 100.0
+        try:
+            inc = float(getattr(self.config, "time_increment_ms", 10.0) or 0.0)
+        except Exception:
+            inc = 10.0
+        use_clock = time_ms is not None
+        budget_ms = max(0.0, float(time_ms)) if use_clock else cap
 
         # Send turn data
+        t_start = time.perf_counter()
         try:
             self.proc.stdin.write(f"turn {turn}\n")
+            if use_clock:
+                self.proc.stdin.write(f"clock {budget_ms:.2f}\n")
             for ev in events:
                 # ev is dict, write as json line
                 if isinstance(ev, dict):
@@ -119,7 +140,7 @@ class BotProcess:
 
         # Read orders until go
         orders: list[str] = []
-        timeout_sec = self.config.turn_time_ms / 1000.0 if hasattr(self.config, "turn_time_ms") else 1.0
+        timeout_sec = budget_ms / 1000.0
         start_time = time.time()
 
         # Use executor for timeout handling
@@ -160,6 +181,8 @@ class BotProcess:
                 if time.time() - start_time > timeout_sec:
                     raise TimeoutError("turn timeout")
         except TimeoutError:
+            if use_clock:
+                self.clock_ms = 0.0
             self.alive = False
             self.kill()
             return []
@@ -176,6 +199,11 @@ class BotProcess:
 
         # Validate orders via parse_orders
         validated = parse_orders(orders)
+        if use_clock:
+            elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+            self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
+            if self.clock_ms < 0.0:
+                self.clock_ms = 0.0
         return validated
 
     def send_end(self, scores: dict[int, int]) -> None:
@@ -352,7 +380,7 @@ def run_game(
                     orders_dict[faction] = []
                     continue
                 bot_events = _build_bot_events(faction, world, ledger, turn, events)
-                futs[pool.submit(bp.send_turn, turn=turn, events=bot_events)] = faction
+                futs[pool.submit(bp.send_turn, turn=turn, events=bot_events, time_ms=bp.clock_ms)] = faction
             # Merge in bot_processes order (not completion order): step()
             # allocates IDs in dict order, so this keeps bit-identical
             # behavior with the old sequential loop.

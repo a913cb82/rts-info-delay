@@ -453,6 +453,7 @@ def _read_startup():
 def _read_turn():
     turn = None
     ev = []
+    clock = None
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -462,11 +463,16 @@ def _read_turn():
                 turn = int(line.split()[1])
             except Exception:
                 turn = 0
+        elif line.startswith("clock "):
+            try:
+                clock = float(line.split()[1])
+            except Exception:
+                pass
         elif line == "go":
             if turn is not None:
-                return turn, ev
+                return turn, ev, clock
         elif line.startswith("end "):
-            return -1, []
+            return -1, [], None
         elif line.startswith("{"):
             try:
                 ev.append(json.loads(line))
@@ -487,16 +493,20 @@ def bot_main(decide_fn):
         r = _read_turn()
         if r is None:
             break
-        turn, events = r
+        turn, events, clock = r
         if turn == -1:
             break
+        t_start = time.time()
         state.update(turn, events)
-        # deadline for this turn: turn_time_ms minus margin; runner kills at turn_time_ms
-        try:
-            ms = int(getattr(cfg, "turn_time_ms", 100))
-        except Exception:
-            ms = 100
-        state.deadline = time.time() + max(0.02, ms / 1000 - 0.015)
+        # deadline: Fischer clock from engine when sent, else legacy fixed budget
+        if clock is None:
+            try:
+                ms = int(getattr(cfg, "turn_time_ms", 100))
+            except Exception:
+                ms = 100
+            state.deadline = t_start + max(0.02, ms / 1000 - 0.015)
+        else:
+            state.deadline = t_start + max(0.005, clock / 1000 - 0.015)
         orders = decide_fn(state, cfg)
         for o in orders:
             # track MOVE_TO / TRAIN / BUILD locally for delay-aware decisions
