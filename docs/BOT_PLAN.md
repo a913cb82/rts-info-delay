@@ -94,6 +94,50 @@ discs on purpose — needs the evaluator first so we know what secrecy is
 worth). Retired from this list: per-faction sent-tracking for landing
 fog — the rework's send-state + S + amnesia solved it in the engine.
 
+## empty_3000 findings → per-bot items (3000t rematch evidence)
+
+The whole game: 15000 pop_changes, 9 spawns, 42 moves, **0 battles, 0
+captures, 0 ownership changes**. All five towns sit 329 km from their
+nearest neighbor against LOS 150 — a geometrically blind universe, and
+no bot ever looked: 5 bots × 3000 turns × 0 contacts. Spawn turns
+cluster (1175, 2165) because identical economies cross bars together;
+aggressive and expander score byte-identical at every checkpoint
+(mirror-by-void: same thresholds + same empty intel → same actions).
+Settlers march ~260 km in ~6 turns, then sit ~1800 turns with no BUILD
+and no recall (the 42 moves are nearly all march-outs). Town pops at
+t2999: pro 9156 vs greedy 1089 / aggressive+expander 1376 / turtle 2232
+— early spending with zero return is catastrophic at these growth rates.
+
+- **pro — scheduled reconnaissance.** Hold-and-compound is optimal *if
+alone*, but pro cannot distinguish alone from far. Zero observations by
+turn T → spend one army on an expanding sweep. Cost ~1000 once; unlocks
+everything currently dead code in a void (departure-sync,
+leader-targeting, counter-punch). (Feeds Step 2 scouting, Step 5 eyes.)
+- **greedy — idle-army watchdog + no-contact raiding.** Army 5 sat 1850
+turns on a site: no BUILD, no recycle, no orders. Any army stationary
+>K turns with no mission and no observed foes → found, recycle home,
+or scout. And a raider that sees nobody should sweep, not settle by
+default. (Step 2.)
+- **aggressive — conqueror's search.** Same watchdog (army 6 sat ~1800
+turns); its foe-chase defaults to sitting when nothing is observed.
+No-contact → personality-distinct sweep direction, so void-mirrors
+diverge by character instead of coinciding. (Steps 2–3.)
+- **expander — settler follow-through (highest value).** ZERO founds in
+3000 turns is a core character failure. Diagnose why BUILD never fires
+at reached sites, then fix; plus settle-as-scout (each founding extends
+LOS and resets delays — spread *is* intel). (Steps 2, 4.)
+- **turtle — picket expiry + conditioned pickets.** Three 1000-pop
+pickets sat ≤150 km from home the whole game. No contact in K turns →
+recycle home via BUILD pop-add; and train the blind picket only after
+first observation or a turn threshold — turtle's late training won among
+spenders, so make last-responsible-moment policy. (Steps 1–2.)
+- **Shared — no-contact protocol.** Zero foe observations by turn T →
+all personalities switch from economy/hoard scripts to search scripts.
+This is the Step 2 scouting prerequisite with hard evidence behind it.
+Also check site-search edge pull (two of six excursion endpoints hug map
+edges; the max-dist-from-towns scorer pulls outward — verify interior
+coverage).
+
 ## Metrics (read every bench as these, not just score)
 
 - Voluntary equal-number engagements → 0 (parse battles for force counts).
