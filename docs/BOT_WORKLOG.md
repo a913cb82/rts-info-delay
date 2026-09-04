@@ -163,3 +163,36 @@ reference delivery (TAG+DELAY+S), S storage, windowed memory proof,
 knowledge phase; old delivery ignores new kinds (test-pinned). Two test
 fixes were test bugs (foe at exactly LOS sees; battle inaudible at t1).
 Suite green, 15 scenario scores byte-identical.
+
+## EVENT_REWORK Phase 2-5 (engine + bots + baseline)
+
+Phase 2 (TDD): build_updates pure fn + 24 tests + differential
+(scan reference vs columnar+numba, bit-identical on messy fixture).
+Spike verdicts (paired, same box): indexed deques lose (heavy-warm 122ms
+— tagged-subset still 26k); columnar+numba wins but honest steady-state
+measurement needed (cold/catch-up numbers mislead; live-loop warm is the
+real cost). Perf tuning DEFERRED by decision — working first.
+Phase 3: deliver/note_landing/startup-strip in run_game; turn-0 pre-game
+generation (first payload observes own capital); ledger surgery
+(visible_events/_by_turn/turn_events/capital_since/old logging gone);
+knowledge = generate + evict. E2E flight (mute 1→6 stream jump, S=5,
+capture-as-update, mid-flight deaths + transient never arrive, viceroy
+consumption tombstone delivers-and-ignored, uniform rule asserted) +
+stationary/purity/reset/E2E pins + record tripwire (sha pinned, stable).
+Migrated or deleted: InfoDelay/MoveCapitalLedger/ViceroyFlight classes,
+ledger/medium/bot_state/integration visibility tests (kept IDs where the
+intent survived). Live loop verified with real bots (blind, no crash).
+Phase 4: upsert parser (absolute; unknown kinds ignored; deaths clear
+trackers; mark_dirty per mirror contract — caught by stale-cache test),
+order-flag amnesia (jump wipes incl. last_seen/trails/wave/plan; sequential
+clears; consumed either way), last_seen + trails, intent-free forecast
+(own notes exact, foe by trail velocity), no map pre-seed, quiet = any
+update, fingerprint over full state (post-decide snapshot — in-decide
+note_move broke replay until then), note_orders extracted, backlog dropped.
+24 bot tests; incremental/sync/time suites migrated (13 event-arithmetic
+tests deleted as obsolete); all 5 decides tolerate empty worlds.
+Phase 5: TESTS B-section/I/G rows + PLAN intel model + BOT_PLAN scouting
+note rewritten; fog-era table baselined (above); empty_3000 rematch
+(pro 9156 wins); viewer smoke 200 (record format unchanged).
+Doctrine funnel for Steps: selectivity regressions (skip_thin/trap/viable)
+want the Step-2 trade evaluator; Elo all-hold wants a doctrine verdict.

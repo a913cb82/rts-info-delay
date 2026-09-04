@@ -96,19 +96,35 @@ After all movement resolves. For each army, weakness = number of enemy armies wi
 
 Deaths computed simultaneously from final positions.
 
-## Information delay
+## Information delay (eyes instant, mail slow)
 
-Events logged to ledger with (t, x, y, kind, payload). Faction observes events where `t + dist(event, capital) / info_speed ≤ now`. During MOVE_CAPITAL flight: no events delivered.
+Observation uses current positions: faction F observes entity E at turn t
+iff any F entity is within `line_of_sight` of E (own entities always,
+dist 0). Reporting uses distance to the *current* capital: F receives a
+ledger entry iff (1) F observed it that turn (tag), (2) exact delay
+`t + dist(entry, capital)/info_speed ≤ now` (not floor), (3) generation
+turn ≥ S (last landing turn, 0 if never landed). At most one update per
+entity per payload (newest passing wins); re-delivery only on snapshot
+change (slim wire). Bots never receive the map — empty start, first
+payload creates the own capital.
 
-Town state (pop, faction, capital flags) is delayed by the same rule: each
-town reports values as of `now − dist(town, capital) / info_speed` (floored
-to a recorded turn, never future; clamped to birth values). The runner keeps
-per-turn town snapshots as the single source; bots assign the absolute ints.
-No instant intel anywhere — own capital (dist 0) is the only fresh reading.
+The ledger is a windowed (`diag/info_speed` turns) tagged generation log:
+every observed entity gets an entry every turn (unobserved cost nothing);
+vanished ids yield one death entry tagged with site observers, pruned past
+the window. Deaths pass all three gates like everything else. No instant
+intel anywhere — own capital (dist 0) is the only fresh reading.
+
+Landing: engine sets nothing but the world (founding is economy's
+BUILD-step); the runner detects own-capital founding in step events,
+sets S, and resets send-state — without the reset, entities unchanged
+since before the flight would compare equal and stay silent to a bot
+that forgot them. Bot side: amnesia on its own remembered MOVE_CAPITAL
+order (stream jump confirms success, sequential means failure). Mute is
+the I/O skip; flight tags die in the S-filter unobserved.
 
 ## Order lag
 
-All orders travel via messenger at info_speed. Delivered when messenger reaches target. FIFO per entity. Dead letters if target destroyed. MOVE_CAPITAL is a normal command whose target is the capital itself (distance 0, so delivered the same turn); it executes in economy as a pre-programmed TRAIN (deduct, demote old capital, spawn viceroy with its march target), and the viceroy marches and founds via the normal movement/arrival machinery. No capital exists during the flight; a failed evac (viceroy dies) beheads permanently.
+All orders travel via messenger at info_speed. Delivered when messenger reaches target. FIFO per entity. Dead letters if target destroyed. MOVE_CAPITAL is a normal command whose target is the capital itself (distance 0, so delivered the same turn); it executes in economy as a pre-programmed TRAIN (deduct, demote old capital, spawn viceroy with its march target). The viceroy marches under normal movement and founds as the BUILD-step in economy (BUILD tolerance, consumed on success) — so it lives through combat: evacuating into contact means an interception battle first. No capital exists during the flight; a failed evac (viceroy dies) beheads permanently.
 
 ## Commands
 
@@ -117,7 +133,7 @@ All orders travel via messenger at info_speed. Delivered when messenger reaches 
 | `MOVE_TO <army_id> <from_x> <from_y> <to_x> <to_y>` | Army | Walk toward (to_x,to_y). Standing order. |
 | `TRAIN <town_id>` | Town | Population -= army_cost. Army spawns at town. Standing order. |
 | `BUILD <army_id> <x> <y>` | Location | Army consumed. Found town (pop = army_cost × build_efficiency) or boost existing town (+ army_cost × build_efficiency pop). |
-| `MOVE_CAPITAL <x> <y>` | Viceroy | Pre-programmed TRAIN (costs army_cost pop, demotes old capital at train time) + march to (x,y) + BUILD. On arrival: founds town, becomes capital. Faction blind during flight. |
+| `MOVE_CAPITAL <x> <y>` | Viceroy | Pre-programmed TRAIN (costs army_cost pop, demotes old capital at train time) + march to (x,y) + BUILD-step in economy. Founding consumes the viceroy; faction blind during flight. |
 
 All commands are valid only if the commander faction owns the target. `BUILD` and `MOVE_TO` require the army to be within `interact_radius` of the command target when the command arrives — otherwise the command has no effect. `TRAIN` is sent to the town at (x,y) via messenger and executes on arrival. `MOVE_CAPITAL` is sent to the capital via messenger (distance 0, delivered same turn) and executes in economy like TRAIN; if the capital falls before economy, the order drops.
 
@@ -127,8 +143,8 @@ All commands are valid only if the commander faction owns the target. `BUILD` an
 2. **Propagation**: messengers advance. Deliveries resolve.
 3. **Movement**: armies move toward targets. Path contacts stop armies early.
 4. **Combat**: weakness kills. All deaths simultaneous.
-5. **Economy**: population growth (logistic minus crowding). TRAIN spawns. BUILD consumes.
-6. **Knowledge**: log events. Evict old ledger entries.
+5. **Economy**: population growth (logistic minus crowding). TRAIN spawns. BUILD consumes. Viceroy founding (the MOVE_CAPITAL BUILD-step).
+6. **Knowledge**: generate tagged state updates for every observed entity. Evict old ledger entries.
 
 ## Game record format (JSONL)
 
@@ -187,21 +203,15 @@ viceroy's death while headless kills the faction (no capital and no viceroy
 in flight → dead); if the old capital falls mid-flight the escaped viceroy
 still founds and the bot survives.
 
-On the first turn after landing, the payload leads with a rebuild in
-existing event shapes — `town_spawn` for every town with delay-consistent
-(pop, faction, capital) from the same horizon rule (takeovers and demotions
-land exactly when the news could have arrived), `army_spawn` + one move per
-live army (latest audible move; nothing when inaudible (stale-or-ignorant beats future intel; later audible moves restore tracking)), then
-audible flight battles — followed by the normal events. The bot wipes on
-its unknown landing capital (capitals spawn no other way; redeliveries find
-the id known and skip the wipe) and applies the batch onto the empty world,
-so ghosts, stale capitals and stale trackers all die in one move. Spawn positions
-anchor at birth pos when known (evicted births are old enough that any
-position was long audible), else current. Stale
-backlog is harmless: it applies first onto the empty world, where unknown
-ids are ignored or skipped. Known tradeoff: existence of everything is
-revealed at once (any faction can earn it, rarely, by suffering decapitation
-+ blindness first).
+On landing the runner sets S (last landing turn) and resets the faction's
+send-state; the bot wipes on its own remembered MOVE_CAPITAL order (stream
+jump confirms success, sequential means failure). Post-S payloads
+re-announce survivors paced naturally by delay releases — no batch dump,
+no backlog: takeovers and demotions arrive as ordinary faction changes,
+deaths as `alive False` / pop 0, all filtered by tag+delay+S like
+everything else. A transient seen at S−1 but gone by S is never known.
+Ghosts are impossible a different way: the wiped bot has no memory for a
+corpse to haunt.
 
 ### Game end
 ```

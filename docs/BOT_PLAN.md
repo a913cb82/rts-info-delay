@@ -64,7 +64,11 @@ starvation window.
 
 **Step 5 — evac v2 + capital game.** Earlier-and-stricter evac gates
 (1-turn lead now required; failure beheads permanently); viceroy routing
-around known armies; leader-targeting with capital-sniping weight;
+around known armies; leader-targeting with capital-sniping weight (sums
+gate on KNOWN foes only — the mirror holds observed entities, so distant
+never-observed forces are absent by construction; `last_seen` staleness
+scales risk posture, and scouting doctrine is prerequisite to the trade
+evaluator);
 settler-hunting (kill unescorted movers when nothing is worth taking);
 buffer-settling toward spent foes (turtle-true offense).
 

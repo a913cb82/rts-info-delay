@@ -163,19 +163,26 @@ PLAN: `weakness = #enemy armies within interact_radius`; army dies if **any** en
 | C9b | 2v2 (NEW) | 2 vs 2 within 10 | all die (each w=2, enemy w=2 → 2≤2 true) — **important: even numbers annihilate** |
 | C9c | Combat uses final positions after movement stops (NEW) | armies blocked at 10 apart vs would have met | weakness checked at stop positions, not intended targets |
 
-## 10. Information delay
+## 10. Information delay (eyes instant, mail slow)
+
+Observation uses current positions (line-of-sight discs, `line_of_sight`
+knob, default 150 km); reporting uses distance to the *current* capital at
+`info_speed`. Bots never receive the map. Wire has two updates:
+`town_update{id,x,y,faction,population,is_capital}` (pop 0 = dead) and
+`army_update{id,x,y,faction,alive,is_viceroy}` (alive False = dead) — no
+intent fields, no battle events, no seer lists.
 
 | # | Test | Input | Expected |
 |---|---|---|---|
-| I1 | Near event same turn | event dist 50, info_speed 150 → arrival 0.33 turns | visible at now ≥0.33 → turn 1's `turn` message includes it (if now is integer turn) |
-| I2 | Far event delayed | dist 300 → 2.0 turns | visible 2 turns later |
-| I3 | At capital immediate | dist 0 | visible next propagation step |
-| I4 | Independent delays | 3 events at 10, 150, 300 km | visible at turns now+0, +1, +2 respectively |
-| I5 | Ledger window retain | event at dist 800, max map ≈1414, info_speed 150 → window ≥ 9.4 turns | ledger retains ≥10 turns |
-| I5b | Blind + mute during MOVE_CAPITAL flight | capital flight turn 5→8 | no turns sent, no orders read, clock frozen; landing rebuilds (see B13) |
-| I5c | Capital move changes dist (NEW) | event at (0,0), old capital (0,0) vs new capital (500,0) | after move, dist for old events recomputed? Actually ledger stores (t,x,y) so new capital distance matters for still-undelivered events |
-| I5d | Event kind fields (NEW) | any event logged | has t (turn), x, y, kind, payload; dist uses event x,y |
-| I5e | Faction-specific visibility (NEW) | 2 factions, event near F_A capital, far from F_B | F_A sees early, F_B late |
+| I1 | Near update same turn | army dist 50, info_speed 150 → release 0.33 turns | delivered once now ≥ t+0.33 |
+| I2 | Far update delayed | dist 300 → 2.0 turns | delivered 2 turns later |
+| I3 | At capital immediate | dist 0 | delivered same turn |
+| I4 | Independent delays | 3 entries at 10, 150, 300 km | delivered at now+0, +1, +2 respectively |
+| I5 | Ledger window retain | entry at dist 800, max map ≈1414, info_speed 150 → window ≥ 9.4 turns | ledger retains ≥10 turns |
+| I5b | Blind + mute during MOVE_CAPITAL flight | capital flight turn 5→8 | no turns sent, no orders read, clock frozen; S-filter + re-announcement (see B13) |
+| I5c | Capital move changes dist | entry at (0,0), old capital (0,0) vs new capital (500,0) | delay basis re-evaluated per check from the current capital |
+| I5d | Update shapes | generated entries | town/army field sets above; delay uses entry x,y; generation turn recorded |
+| I5e | Faction-specific delivery | 2 factions, entry tagged both, near F_A capital, far from F_B | F_A early, F_B late; untagged faction never |
 
 ## 11. Order lag
 
@@ -268,11 +275,16 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | B9b | End after timeout still sent? (NEW) | timed-out bot | still receives `end` before SIGKILL? or not — pin choice |
 | B10 | Malformed bot line ignored (NEW) | bot prints `MOVE_TO garbage` | no crash, line skipped |
 | B11 | Unknown faction id in bot output (NEW) | bot orders enemy army | ignored (ownership check) |
-| B12 | In-flight faction muted (NEW) | viceroy airborne for faction | payload builder returns []; game loop skips write+read, orders empty |
-| B13 | Landing rebuild (NEW) | first post-landing payload | full spawns + delay-consistent moves + audible battles; bot wipes on unknown own-capital spawn, redelivery skips wipe (known id) |
-| B14 | Delayed town state (NEW) | town 600 km out, pop/faction changed recently | bot sees values as of now − dist/info (floored, never future); own capital always fresh |
-| B15 | No event resends (NEW) | same audible battle across two turns | sent once (per-faction seq sets); second payload omits it, new events still flow |
-| B16 | Faction/flag rides pop_change (NEW) | pre-landing capture (since-hidden) | landing seeds old faction; delayed pop stream adds `faction`/`is_capital` on change only; wakes sleep |
+| B12 | In-flight faction muted | viceroy airborne for faction | deliver returns []; game loop skips write+read, orders empty |
+| B13 | Landing: S + reset + amnesia | own-capital founding in step events | runner sets S + resets send-state; bot already wiped on its remembered order (jump confirms success, sequential means failure); post-S payloads re-announce survivors paced by delay |
+| B14 | Delayed everything, exact comparison | town 600 km out, changed recently | bot sees newest entry with t + dist/info ≤ now (exact, not floor); own capital always fresh |
+| B15 | Send-once + latest-only | same entity passing across two turns | one update per entity per payload (newest passing wins); second call silent unless the snapshot changed |
+| B16 | Takeovers arrive as updates | capture during blind flight | pre-S entries filtered; post-S faction change delivers as ordinary town_update; stagnant towns re-announce once after reset |
+| B17 | Deaths uniform (NEW) | known army dies mid-flight | death entry S-filtered like everything; wiped bot never knew it; unknown removals ignored by parser |
+| B18 | Transient loss (NEW) | entity watched at S−1, gone by S | never appears post-S (pinned 160 km case) |
+| B19 | Stationary appearance (NEW) | armies unmoved 100 turns | each appears at exactly S+ceil(dist/info) — proves every-turn generation |
+| B20 | Order-flag amnesia (NEW) | own MOVE_CAPITAL then jump vs sequential | jump wipes world + all trackers (flag consumed); sequential clears flag, no wipe; config/faction survive |
+| B21 | No map to bots (NEW) | startup config JSON | rules + map_size present, `map` absent; bot starts empty, first payload creates own capital |
 
 ## 16. Score
 
@@ -296,17 +308,20 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | H4b | Crowding sum via hash vs brute (NEW) | 20 towns random positions | hash-accelerated Σ (filter within info_speed) equals brute Σ to 1e-9 |
 | H4c | Performance not O(n²) (NEW) | 500 towns | crowding step < 100 ms (sanity, not strict) |
 
-## 18. Ledger
+## 18. Ledger (windowed tagged generation log)
 
 | # | Test | Input | Expected |
 |---|---|---|---|
-| G1 | Logged with correct tuple | any event | stored as (t,x,y,kind,payload) |
-| G2 | Visible within delay | event dist 10, speed 150, now=t+1 | included in faction's `turn` events |
-| G3 | Not yet visible if far | event dist 300, now=t+1 | excluded |
-| G4 | Evicted when undeliverable to anyone | event older than max_dist/info_speed + grace | removed from deque |
-| G5 | Window = max_delay × info_speed (NEW) | max_dist = diagonal ≈1414, info_speed 150 → window ≈10 | stored window ≥10, no premature eviction |
-| G5b | Sorted by time (NEW) | log 3 events out-of-order delivery attempts | ledger iterates in t order |
-| G5c | Eviction O(1) pointer (NEW) | advance 100 turns | eviction loop advances pointer, not full scan |
+| G1 | Logged with correct tuple | any entry | stored as (t,x,y,kind,payload) + seq |
+| G2 | Delivers within delay | tagged entry dist 10, speed 150, now=t+1 | included in query |
+| G3 | Not yet delivered if far | tagged entry dist 300, now=t+1 | excluded |
+| G4 | Evicted when undeliverable to anyone | entry older than max_dist/info_speed + grace | removed from deque |
+| G5 | Window = max_delay × info_speed | max_dist = diagonal ≈1414, info_speed 150 → window ≈10 | stored window ≥10, no premature eviction |
+| G5b | Sorted by time | log 3 entries out-of-order delivery attempts | ledger iterates in t order |
+| G5c | Eviction O(1) pointer | advance 100 turns | eviction loop advances pointer, not full scan |
+| G5d | Every observed entity every turn (NEW) | static world, 2 turns | 2 entries per entity; unobserved entities cost nothing |
+| G5e | Tombstones (NEW) | id vanishes, site watched/unwatched | one death entry (last-known pos) iff watched; pruned past window |
+| G5f | S-filter (NEW) | entries across a landing turn | nothing with generation turn < S delivers post-S |
 
 ## 19. Determinism
 
@@ -421,7 +436,7 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | # | Test | Input | Expected |
 |---|---|---|
 | G6 | Ledger accumulates over 10 steps | world with 2 towns, run step() 10 times | ledger.events has entries from multiple turns |
-| G7 | Events visible after correct delay | event at (0,0), faction capital at (50,0), info_speed 150 | event visible at turn t+1 (dist 50, 50/150 = 0.33 turns) |
+| G7 | Updates delivered after correct delay | own army at (0,0), capital at (50,0), info_speed 150 | army_update delivered at turn t+1 (dist 50, 50/150 = 0.33 turns) |
 | G8 | Old events evicted after window | run 20 steps, check ledger size | ledger doesn't grow unboundedly |
 | G9 | Events sorted by time | log events from turns 1,3,2 (out of order), iterate | ledger.events sorted by turn number |
 
@@ -450,8 +465,8 @@ PLAN: 1 Command → 2 Propagation → 3 Movement → 4 Combat → 5 Economy → 
 | # | Test | Input | Expected |
 |---|---|---|
 | I6 | Event visible after 1 turn if close | event at (0,0), capital at (10,0), info_speed 150, run step() | event visible in next step's turn message |
-| I7 | Event delayed 2 turns if far | event at (0,0), capital at (300,0), info_speed 150, run step() | event not visible until turn+2 |
-| I8 | Capital blind during MOVE_CAPITAL | MOVE_CAPITAL in flight, events logged | events not delivered until arrival |
+| I7 | Update delayed 2 turns if far | own army at (0,0), capital at (300,0), info_speed 150, run step() | army_update not delivered until turn+2 |
+| I8 | Capital blind during MOVE_CAPITAL | MOVE_CAPITAL in flight | deliver returns []; flight E2E (mute→land→resume, S-rule, transient, uniform rule) |
 | I9 | Ledger window holds events | run 15 turns, max map diagonal ~1414, info_speed 150 | events from turn 1 still in ledger at turn 10 |
 
 ### Order lag — full step interaction (L)

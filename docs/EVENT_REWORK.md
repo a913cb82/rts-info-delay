@@ -1,5 +1,20 @@
 # Event rework — state updates with line-of-sight fog
 
+> **STATUS: LANDED (Phases 0–5).** Deviations from the plan below Dispatch:
+> - Spike verdict: per-faction indexed deques LOSE (heavy-warm 122 ms — the
+>   tagged subset is still ~26k); columnar store + numba gate kernel wins.
+>   Honest measurement needs live-loop warm (cold/catch-up mislead).
+> - Perf tuning deferred post-landing by decision (working first, fast
+>   later): builder carries its instrumentation (`bench_builder_full`
+>   still to be written) and the delivery fast path is in place but the
+>   generation observer search is still the double loop.
+> - `SendState` is an object (snapshots dict + dense delivered-turn array),
+>   not a bare dict; reset() clears both.
+> - S is set runner-side (`note_landing` detects own-capital founding in
+>   step events); the engine never filters.
+> - Viceroy-consumption tombstones deliver post-S (uniform rule, no
+>   exception) and are ignored by the parser (unknown id).
+
 ## Design (agreed direction, sharpened)
 
 **Wire.** Two update kinds, generated from world state in the knowledge phase:
@@ -134,6 +149,6 @@ Bench: `bench_builder_full` in `benchmarks/bench_suite.py` on the existing heavy
 
 - **D1: decided NO** (intent stays out; bots infer velocity from position trails).
 - **D2: decided DROP** (no battle events; `alive` suffices; trade inference bot-side).
-- **D3 (recommend: keep):** the ledger stays — windowed, tagged, as the shared generation log. Audit only migrates its tests.
+- **D3: decided KEEP** (ledger stays — windowed, tagged, as the shared generation log).
 - **D4: decided TWO KNOBS** (`line_of_sight` separate GameConfig field, default 150 — tuned independently of `info_speed`).
 - **D5: decided yes** (entailed by no-map-to-bots: with no pre-seed geography, seen-tracking is load-bearing — targeting/scoring gate on it).
