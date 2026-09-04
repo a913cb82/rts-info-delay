@@ -65,10 +65,10 @@ captures                        2.7 ms
 - opt13 `0ca4d50`: cached faction queries + hoisted capture bookkeeping via `_apply_capture` (paired heavy neutral 441→478 noise; kept for cleanup + query-heavy paths)
 - opt14: shared army hash — EVALUATED, REJECTED (builds total ~17ms; movement→combat sharing impossible, positions change; only ~7ms shareable at staleness risk)
 
-## Next planned
+## Actuals opt15–16 (see docs/optimization_log.md for detail)
 
-- opt15 (in progress): ledger visibility — 5× visible_events measured 27ms/turn at 6395 events, vectorize with versioned array cache + turn index
-- opt16: hot-loop allocation pressure (deferred: small gain, high complexity)
+- opt15 `004f4f3`: ledger versioned array cache + turn index (5× visible 27→2.3ms, turn_events →0)
+- opt16: allocation/GC — EVALUATED, REJECTED (spikes were bench artifacts; real 20-turn game shows zero GC pauses, steady 15–65ms/turn)
 - opt14 (untried): shared army hash built once per step (movement+combat+captures)
 - opt15 (untried): ledger visibility, properly profiled (earlier numbers were noise)
 - opt16 (untried): hot-loop allocation pressure (deferred: small gain, high complexity)
