@@ -578,6 +578,65 @@ def towns_by_train_priority(state: "BotState", conservative: bool = False) -> li
     return cands
 
 
+def inbound_eta(state: "BotState", config: "GameConfig",
+                max_eta: float = 8.0) -> dict[int, float]:
+    """Per-own-town inbound threat ETA (nearest-own-town prediction).
+
+    An enemy army counts toward the own town nearest to IT. Stationary
+    guards sitting on their own towns are excluded (they are not inbound).
+    Returns {town_id: min_eta} for towns with eta <= max_eta."""
+    import math as _math
+    faction = state.faction
+    own_t = state.own_towns()
+    foe_towns = [t for t in state.world.towns if t.faction != faction]
+    out: dict[int, float] = {}
+    for t in own_t:
+        best = float("inf")
+        for a in state.world.armies:
+            if a.faction == faction:
+                continue
+            if any(_math.hypot(a.x - u.x, a.y - u.y) <= 15
+                   for u in foe_towns if u.faction == a.faction):
+                continue
+            if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
+                continue
+            eta = _math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
+            if eta < best:
+                best = eta
+        if best <= max_eta:
+            out[t.id] = best
+    return out
+
+
+def note_wave_watch(state: "BotState") -> bool:
+    """Second-wave watch: a known own army that vanished (not via noted
+    BUILD) died in battle — foes double-train, so hold one home for 6 turns.
+    Call once per decide; returns whether the watch is active."""
+    cur_ids = {a.id for a in state.own_armies()}
+    known = getattr(state, "_wave_ids", set())
+    pending_b = set(getattr(state, "_pending_builds", {}))
+    if known and (known - cur_ids - pending_b):
+        state._wave_hold_until = state.turn + 6
+    state._wave_ids = set(cur_ids)
+    return state.turn <= getattr(state, "_wave_hold_until", -1)
+
+
+def should_hold_home(state: "BotState", config: "GameConfig", army,
+                     inbound: dict[int, float], wave_watch: bool) -> bool:
+    """Keep >=1 army on a threatened town (inbound seen, or second wave
+    expected). Extras march."""
+    import math as _math
+    home_t = next((t for t in state.own_towns()
+                   if _math.hypot(army.x - t.x, army.y - t.y) <= 20), None)
+    if home_t is None:
+        return False
+    if home_t.id not in inbound and not wave_watch:
+        return False
+    others = sum(1 for a in state.own_armies()
+                 if a.id != army.id and _math.hypot(a.x - home_t.x, a.y - home_t.y) <= 20)
+    return others == 0
+
+
 def can_train_safely(town: Town, conservative: bool = False) -> bool:
     if town.population < 1600:
         return False

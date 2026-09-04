@@ -1,11 +1,11 @@
 {
- "map": "x,y,type,population\n200.0,500.0,A,3000\n450.0,500.0,B,800",
+ "map": "x,y,type,population\n200.0,500.0,A,2000\n300.0,500.0,B,800\n600.0,500.0,B,3000",
  "map_size": [
   1000,
   1000
  ],
- "max_turns": 60,
- "turn_time_ms": 1000,
+ "max_turns": 150,
+ "turn_time_ms": 100,
  "info_speed": 150.0,
  "army_speed": 50.0,
  "army_cost": 1000,
@@ -22,7 +22,8 @@
  },
  "focal": 0,
  "goal": {
-  "type": "enemy_owns",
-  "town": 1
- }
+  "type": "own_town",
+  "town": 2
+ },
+ "note": "one army, near decoy, far prize: scarcity prices restraint"
 }

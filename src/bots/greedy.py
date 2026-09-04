@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, find_build_site
+from .common import BotForecast, BotState, bot_main, find_build_site, inbound_eta, note_wave_watch, should_hold_home
 
 
 def _can_train_greedy(state: BotState, town) -> bool:
@@ -36,23 +36,42 @@ def _army_targets(state: BotState, config: GameConfig):
 def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     enemy_towns, enemy_armies = _army_targets(state, config)
+    hold_second = note_wave_watch(state)
+    inbound = inbound_eta(state, config)
     for p in state.own_armies():
         if state.should_yield():
             break
         if state.army_has_target(p.id):
             continue  # handled by the builds stage
-        if enemy_towns:
-            nearest = min(enemy_towns, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
+        # G-defense: keep >=1 home vs inbound/second wave (viability-gating
+        # the attack removed the accidental counter-march that used to
+        # intercept wave 2 mid-field).
+        if should_hold_home(state, config, p, inbound, hold_second):
+            continue
+        # G1: viability gate (same halve-vs-floor doctrine as aggressive).
+        viable = [t for t in enemy_towns
+                  if t.population * (1.0 - config.build_efficiency)
+                  > config.army_cost * config.build_efficiency + 200]
+        if viable:
+            nearest = min(viable, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
             out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {nearest.x:.1f} {nearest.y:.1f}")
+            state.note_move(p.id, nearest.x, nearest.y)
         elif enemy_armies:
             fc = BotForecast(state, config)
             forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
             out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {fx:.1f} {fy:.1f}")
         else:
+            # G2: recycle — no foes and no site: march home for +500 pop-add
+            # (builds stage BUILDs on arrival since target is an own town).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11)
             if site:
                 out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {site[0]:.1f} {site[1]:.1f}")
+                state.note_move(p.id, site[0], site[1])
+            elif state.own_towns():
+                home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
+                out.append(f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {home.x:.1f} {home.y:.1f}")
+                state.note_move(p.id, home.x, home.y)
     return out
 
 

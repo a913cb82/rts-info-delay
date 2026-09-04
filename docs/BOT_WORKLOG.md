@@ -19,6 +19,24 @@ Self-play diffs 0.
 
 ## Log
 
+### Greedy — viability, recycle, shared home defense (2026-09-04)
+Fast: skip_thin 2116→3467 (map redesigned twice: timing alone can't price
+restraint — scarcity can: one army, near decoy, far prize; baseline wastes
+the only army on rubble 1727), recycle 3592→4086 (latent bug: moves stage
+never called note_move so settlers sat on sites — now they BUILD),
+raid_hold 3176 (~flat, correct).
+Elo: tie cluster intact (greedy 1515); only-vs-expander takes everywhere.
+Doctrine learned:
+- Single-thin-town maps can't separate (all options ~2100-2300 at any
+horizon: denial value offsets; post-starve settling catches up).
+- Viability-gating attacks removes accidental defense (t4 counter-march
+intercepted wave 2 mid-field; gated version settles and dies t8) — every
+raider needs home-hold + second-wave watch to compensate.
+- Shared defense factored into common.py: inbound_eta (nearest-own-town
+prediction, guards excluded), note_wave_watch (vanished-army memory),
+should_hold_home (keep >=1). Ported to aggressive (replacing its inline
+version, same numbers).
+
 ### Aggressive — viability, departure-sync, home defense (2026-09-04)
 Fast: pair 3782→4317 (clean 2v1, guard dies alone), trap 2306→4039
 (map redesigned: thin decoy + fat prize; gate skips rubble, takes 4000),
