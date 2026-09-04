@@ -148,29 +148,40 @@ Fast suite: 15 maps, 1.7s total (budget <5s).
 
 ## Per-bot improvement ideas (tailored to the failures above)
 
-### Greedy — learn selectivity, recycle idlers
+Build order (each step must move its suite numbers before the next
+starts): turtle defense → aggressive viability → greedy selectivity →
+expander guard → pro tie-break. Rationale: turtle's garrison closes the
+T>A triangle edge everything else assumes; viability gating is shared
+doctrine for both raiders; pro integrates last.
+Shared foundations already landed (see `BOT_TIME.md`): incremental
+update, staged decide, memoized staleness, quiet replay, plan queue,
+clock effort, slim wire, measured margins. Bots also have carryover
+backlogs, Fischer/byo-yomi clocks, and the ideas-1–6 test files.
+
+### Greedy — learn selectivity, recycle idlers (triangle: outside, pure raid economics)
 - `skip_thin` fix: pre-compute `target.pop × (1 − build_efficiency) > death_threshold + margin` before marching; skip (or denial-raid deliberately) otherwise.
 - `recycle` already passes; extend to mid-game idlers (armies 17/18 in empty3000 stood down the war): no enemy in range → BUILD pop-add into nearest own town.
 - Raid commitment plans (idea 5): lock target, re-evaluate only on military intel (cuts the 11-turn dither seen on long marches).
 
-### Expander — guard the homeland, pipeline settlers
+### Expander — guard the homeland, pipeline settlers (triangle: beats turtle by out-settling 3v2; loses to aggressive raids)
 - `guard` fix: never leave capital empty while forecast shows enemy inside N-turn march; settler waits or escorts.
 - Score build sites (enemy distance × growth room × own support), not first-fit.
 - Chain rule: each town past 1500 owes one settler (already emergent in `chain`, make it policy).
 - Pre-issued succession marches: lineage survives decapitation by design (commander rule makes this the expander's signature mechanic).
 
-### Aggressive — viability gating, real stacking
+### Aggressive — viability gating, real stacking (triangle: beats expander by raiding first; loses to turtle garrisons once they exist)
 - `starve_trap` fix: same halve-vs-floor check as greedy, inverted into doctrine — never take rubble without a settler-army one march behind (two-wave plan).
 - `pair` passes via waves today; true 2v1 arrival-sync should show in `viable` margins and `pro_endgame`: pair arrivals, don't trickle.
 - Target selection: weight by leader score (dent greedy), not just nearest (farming irrelevance while the leader compounds).
 - Forecast-gated offensives: don't leave home empty while a raid is plausibly inbound (no garrison — character stays all-out).
 
-### Turtle — wake up, garrison, cluster
+### Turtle — wake up, garrison, cluster (triangle: beats aggressive by making raids fail; loses to expander's spread. HIGHEST priority — closes the triangle)
 - `wake` fix: threat-responsive threshold (2600 peace → ~1200 as inbound ETA shrinks).
 - `defend` fix: one home army after first contact; a garrison forces a real battle instead of a free capture.
 - `cluster` fix: settle within mutual-support range; emergency last-turn train when the capital is about to fall (rules be damned, it's falling anyway).
 
-### Pro — combine everything, break symmetry
+### Pro — combine everything, break symmetry (triangle: beats all)
 - Starts as greedy copy: passes `opening`/`defense` by inheritance.
 - `endgame` tie-break: needs what no tier has — combined arms (raid + settle + guard in one game), multi-wave planning, and leader-targeting. Build by porting each tier's fixed behavior behind a situation selector: defend when threatened (turtle), expand when safe (expander), raid when profitable (greedy), kill when advantageous (aggressive).
 - Pro is the only bot allowed to ignore personality; judge it solely on the suite + full-game score.
+- Scoreboard to beat: Elo tie cluster 1531/1529/1527, endgame 2245–2245, efficiency 59% (longpeace 3124/5254). First milestone: take a side-game off greedy.
