@@ -42,7 +42,11 @@ estimates keyed by (town_id, turn); recompute only on new info.
 ## 4. Skip stable turns — DONE
 `cached_or_decide` replays standing orders on quiet turns (~1.4µs vs ~0.2ms
 decide); military kinds bust, partial-backlog turns never cache. Wired into
-`bot_main`, so all five tiers get it.
+`bot_main`, so all five tiers get it. Caught live: the first version cached
+`[]` on turn 1 and replayed it for 3000 turns (idle game — growth never
+busted the cache). Fixed with a decide-relevant fingerprint (quantized
+pops/positions, membership, pending trackers, 25-turn heartbeat): replay
+requires fingerprint stability, so affordability changes force fresh decides.
 If a turn brings only `pop_change` (no military/capture/spawn/death
 events), re-issue standing orders without running decide; bank the +10ms.
 - Tests: quiet-turn replay (orders identical to full decide across 50 idle

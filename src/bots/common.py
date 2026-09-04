@@ -164,7 +164,7 @@ class BotState:
         self._pending_events: list = []  # unapplied backlog carried into next turn
         self._stale_cache: dict = {}  # idea 3: (x, y) -> turns-stale, valid for _stale_key
         self._stale_key = None
-        self._standing_orders: list | None = None  # idea 4: replay while quiet
+        self._standing_orders: tuple | None = None  # idea 4: (orders, fingerprint)
         self._plan: tuple | None = None  # idea 5: (orders, valid_until_turn)
         self.clock_budget_ms: float | None = None  # idea 6: set by bot_main
 
@@ -287,21 +287,39 @@ class BotState:
             return None
         return orders
 
+    def _fingerprint(self):
+        """Idea 4: decide-relevant state summary. Replay is valid only while
+        this is stable: quantized pops/positions (growth/marches re-decide),
+        membership (ids/factions), pending trackers, and a 25-turn heartbeat
+        bounding all other staleness (e.g. pending-train expiry)."""
+        fp = (
+            tuple(sorted((t.id, t.faction, int(t.population) // 100) for t in self.world.towns)),
+            tuple(sorted((a.id, a.faction, int(a.x) // 50, int(a.y) // 50, a.has_target) for a in self.world.armies)),
+            tuple(sorted(self._pending_trains.items())),
+            tuple(sorted(self._pending_builds.items())),
+            self.turn // 25,
+        )
+        return fp
+
     def cached_or_decide(self, decide_fn, config, events):
         """Ideas 4+5: plan > quiet-cache > fresh decide.
 
         Fresh results are cached only on fully-applied quiet turns, so the
-        cache never serves state computed from a partial backlog.
+        cache never serves state computed from a partial backlog; and replay
+        requires a stable fingerprint, so affordability/growth/marches force
+        a fresh decide even with no military events.
         """
         plan = self._live_plan(events)
         if plan is not None:
             return list(plan)
         quiet = self.is_quiet(events)
+        fp = self._fingerprint()
         if quiet and not self._pending_events and self._standing_orders is not None:
-            return list(self._standing_orders)
+            if self._standing_orders[1] == fp:
+                return list(self._standing_orders[0])
         orders = decide_fn(self, config)
         if quiet and not self._pending_events:
-            self._standing_orders = list(orders)
+            self._standing_orders = (list(orders), fp)
         else:
             self._standing_orders = None
         return orders

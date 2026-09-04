@@ -39,6 +39,23 @@ def test_idea4_quiet_turn_replays_standing_orders():
     assert orders1 == greedy.decide_orders(_state(), CFG)
 
 
+def test_idea4_affordability_change_forces_decide():
+    """Idea 4: growth crossing a quantum re-decides even with no events."""
+    st = _state()
+    st.cached_or_decide(greedy.decide_orders, CFG, [])
+    calls = []
+    def spy(state, cfg):
+        calls.append(1)
+        return []
+    # same quiet turn: replay, no decide
+    assert st.cached_or_decide(spy, CFG, []) == st._standing_orders[0]
+    assert calls == []
+    # town grows across a 100-quantum: fingerprint shifts, decide runs
+    st.world.get_town(0).population += 500.0
+    st.cached_or_decide(spy, CFG, [])
+    assert len(calls) == 1
+
+
 def test_idea4_military_busts_cache():
     """Idea 4: any military event forces a fresh decide."""
     st = _state()
