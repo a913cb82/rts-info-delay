@@ -4,10 +4,11 @@
 > - Spike verdict: per-faction indexed deques LOSE (heavy-warm 122 ms — the
 >   tagged subset is still ~26k); columnar store + numba gate kernel wins.
 >   Honest measurement needs live-loop warm (cold/catch-up mislead).
-> - Perf tuning deferred post-landing by decision (working first, fast
->   later): builder carries its instrumentation (`bench_builder_full`
->   still to be written) and the delivery fast path is in place but the
->   generation observer search is still the double loop.
+> - Perf phase 1 landed: generation uses a numba observer kernel
+>   (heavy 63→25 ms, full20 25→3.4 ms) with budget gates in
+>   `tests/engine/test_perf_budget.py`. Delivery was already ~1 ms.
+>   Remaining fat is pre-existing combat/movement (its own phase, not
+>   this rework); skip-model deliberately rejected (worklog).
 > - `SendState` is an object (snapshots dict + dense delivered-turn array),
 >   not a bare dict; reset() clears both.
 > - S is set runner-side (`note_landing` detects own-capital founding in
