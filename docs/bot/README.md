@@ -10,7 +10,7 @@ is one iteration of it, plus logs.
 Repeat forever:
 1. **Run** a real game (`empty_10000` ~30s, quiet box — the interesting
    one; `empty_3000` retired, too short for wars/scouting to matter).
-2. **Analyse** (ACJSON quartiles + ascii_view): per-bot story — what did
+2. **Analyse** (`benchmarks/ascii_view.py` — how: `VIEWER.md`): per-bot story — what did
    each do well/badly? War forensics (who attacked what, trade math).
    Intel gaps (what did the winner never see?). Write the report card.
 3. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md §9
@@ -67,6 +67,7 @@ Per-iteration gates (every loop through step 5):
 - `BOT_PLAN.md` — this iteration's backlog (doctrine + open work).
 - `BOT_BENCH.md` — this iteration's numbers (binding table + suites).
 - `BOT_WORKLOG.md` — iteration log (append-only — do not rewrite old entries).
+- `VIEWER.md` — how we analyze (ascii_view tool: modes, ACJSON, recipes).
 - `EMPTY_10000.md` — old game report (superseded by latest report card).
 - `GTO.md` — strategy reference (doctrine companion, living).
 - `BOTS.md` — implementation guide (code as it is).

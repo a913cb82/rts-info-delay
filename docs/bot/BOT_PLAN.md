@@ -66,7 +66,7 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 **The loop (how bots improve).** Repeat forever, in order:
 1. **Run** a real game (`empty_10000` full read ~30s, quiet box —
    the interesting one; `empty_3000` retired). Recordings are the ground truth.
-2. **Analyse** (ACJSON quartiles 2500/5000/7500/10000 + ascii_view):
+2. **Analyse** (`benchmarks/ascii_view.py` — how: `VIEWER.md`):
    per-bot story (what did each do well/badly?), war forensics (who
    attacked what with what, trade math), intel gaps (what did the
    winner never see?). Encode as a worklog entry + report card.
