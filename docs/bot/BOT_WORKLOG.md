@@ -962,3 +962,10 @@ REMATCH r18/r19: bitwise r17 line (153 deaths / 131 battles) — both
 mechanisms verified present-but-silent on the calm line (pin needs
 fog-view, next loop). All five survive, no timeouts. GENERATED: r19
 -> recordings/ + viewer/public/ (canonical matches tree).
+
+## Viewer freshness (loop support fix)
+
+USER: UI not fresh after generate. Files WERE fresh (same md5 16:57)
+-> culprit was HTTP cache (30MB JSONL, same filename). FIX
+(viewer/src/main.ts): cache-busting fetch (`?fresh=Date.now()`).
+Loop step 5 now mandates md5sum verification of both copies.

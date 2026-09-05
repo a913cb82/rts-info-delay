@@ -78,7 +78,8 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 5. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
    into BOTH viewer locations (`recordings/empty_10000.jsonl` +
    `viewer/public/empty_10000.jsonl` — the web UI serves its own copy!)
-   — the loop ends where the next begins. (`empty_3000` retired.)
+   Verify with `md5sum` (both match) — the loop ends where the next
+   begins. (`empty_3000` retired.)
 
 **Step 0 — housekeeping.** DONE (fog era): EVENT_REWORK landed, both
 suites re-baselined as the binding table (BOT_BENCH.md fog-era section);

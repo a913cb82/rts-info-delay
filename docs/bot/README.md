@@ -22,8 +22,9 @@ Repeat forever:
 5. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
    and write it to BOTH viewer locations (`recordings/empty_10000.jsonl`
    for ascii_view + `viewer/public/empty_10000.jsonl` for the web UI —
-   the UI serves its own bundled copy, stale copies lie!)
-   — the loop ends where the next begins. (`empty_3000` retired.)
+   the UI serves its own bundled copy, stale copies lie!). Verify:
+   `md5sum` both match. The UI cache-busts fetches, but hard-refresh
+   once if in doubt. (`empty_3000` retired.)
 
 Per-iteration gates (every loop through step 4): fast suite per change (~1.5s); strategic at milestones
 (~10s); `pytest` green; judge vs fog-era table with margin; worklog entry

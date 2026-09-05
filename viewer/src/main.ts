@@ -898,7 +898,11 @@ function boot(): void {
   const params = new URLSearchParams(location.search);
   const gamePath = params.get("game");
   if (gamePath) {
-    fetch(gamePath).then((r) => r.text()).then((text) => loadRecord(parseJSONL(text))).catch(console.error);
+    // cache-bust: regenerated recordings share filenames, and a 30MB
+    // JSONL sits in HTTP cache for ages (stale-game reports). PINNED to
+    // ?fresh= epoch (loops regenerate; viewers always want the newest).
+    const busted = gamePath + (gamePath.includes("?") ? "&" : "?") + "fresh=" + Date.now();
+    fetch(busted).then((r) => r.text()).then((text) => loadRecord(parseJSONL(text))).catch(console.error);
   }
 }
 
