@@ -293,3 +293,11 @@ judge memory-dependence.
 `bash -c` (pipes, env, any executable — verified with a shell camper
 bot playing 50 turns). Protocol is line-based over stdio (config /
 faction / go, then turn frames); see `src/runner/main.py`.
+
+## FFA Elo (`benchmarks/elo.py [N]`, default 6)
+
+No 1v1s (different game than FFA). Each 5-player game yields 10
+pairwise results from placements (1st beats 4, 2nd beats 3...),
+K=16 with margin weight (blowouts to 1.5x). Ratings per faction
+slot (F0-pro vs F1-pro tracked separately — positional!). 6 games
+≈ 60 pairs ≈ 5 min (≈10x the data rate of 1v1s).
