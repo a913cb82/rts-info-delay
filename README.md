@@ -31,7 +31,7 @@ cd viewer && npx vite --port 5173 --strictPort
 
 ### Overview
 
-Turn based. Each turn consists of phases:
+Turn-based. Each turn consists of phases:
 
 #### Command
 - Bot receives newly visible events
@@ -43,20 +43,20 @@ Turn based. Each turn consists of phases:
 
 #### Movement
 - Armies move in ordered direction
-- Armies and Towns block enemy armies
+- Armies and towns block enemy armies
 
 #### Combat
 - Armies fight each other
-- Weakness = # enemy armies within 10km
-- If Army weakness <= weakness of any enemy within 10km, Army dies
+- Weakness = #enemies within 10km
+- An army dies if any enemy in range has weakness <= its own
 
 #### Captures
-- Enemy Army near Town changes ownership and halves population
+- Enemy army near town changes ownership and halves population
 
 #### Economy
-- Towns grow logistically, with crowding effect from other nearby towns
+- Towns grow logistically, with crowding from nearby towns
 - Towns under 500 population die
-- Armies with build orders build new Towns or boost existing Towns
+- Armies with build orders found new towns or boost existing towns
 
 #### Knowledge
 - Events generated for every Army and Town and tagged by timestamp and faction visibility
@@ -64,13 +64,16 @@ Turn based. Each turn consists of phases:
 ### Details
 
 - Score = town population + 1000 per army. Highest score at max turns wins.
-- Eliminated with no capital and no viceroy in flight.
-- Orders: `TRAIN <town>` (costs 1000 pop), `MOVE_TO <army> <fx> <fy> <tx> <ty>`,
-  `BUILD <army> <x> <y>` (founds a pop-500 town, or adds pop to own town),
-  `MOVE_CAPITAL <x> <y>` (commander marches out, founds on arrival).
-- Only `BUILD` founds towns. Captures never promote. Beheading is permanent.
-- Bots see delayed reports only: 150km sight, mail travels 150km/turn to
-  the capital, nothing from before the last landing.
+- Eliminated when no capital and no viceroy in flight.
+
+| Order | Syntax | Effect |
+|---|---|---|
+| `TRAIN` | `TRAIN <town>` | −1000 pop, spawn an army |
+| `MOVE_TO` | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)` |
+| `BUILD` | `BUILD <army> <x> <y>` | consume the army: found a pop-500 town, or +500 own-town pop |
+| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>` | viceroy marches out, founds a new capital on arrival |
+- Bots see delayed reports only: armies and towns have 150km line of sight, mail travels 150km/turn to
+  the capital.
 
 ## Bots
 
@@ -91,22 +94,19 @@ go
 ```
 
 Events: `town_update` (`id,x,y,faction,population,is_capital`, pop 0 =
-dead) and `army_update` (`id,x,y,faction,alive,is_viceroy`). No positions
-for unseen things, no destinations, no battles. `end` instead of a block
-means the game is over (or you are muted mid-flight: no block at all).
+dead) and `army_update` (`id,x,y,faction,alive,is_viceroy`).
+`end` instead of a block means the game is over (or you are muted mid-flight: no block at all).
 
 ### Output Format
 
-One order per line (see Details), then `go`. Unknown commands and bad
-numbers are ignored. Missing `go` past the clock budget kills the bot
-(timeout counts as dead, orders dropped).
+One order per line (see Details), then `go`. Missing `go` past the clock budget kills the bot.
 
 ## Layout
 
 - `src/engine/` — game rules.
 - `src/runner/` — game loop.
 - `src/bots/` — demo bots.
-- `maps/` — game maps
+- `maps/` — game maps.
 - `benchmarks/` — bot performance and runtime performance benchmarks.
 - `viewer/` — replay UI.
 - `tests/` — engine, runner, and bot tests.
