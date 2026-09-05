@@ -106,6 +106,12 @@ def tip_safe(state: "BotState", config, tx: float, ty: float) -> bool:
         pass
     if min(tx, th - tx, ty, th - ty) < 100.0:
         return False
+    # Own-spacing floor (GTO pairs): tips bypassed the 65km floor and
+    # stacked at 38km (pro east cluster) — same rule, both paths.
+    for t in state.world.towns:
+        if t.faction == state.faction:
+            if _math.hypot(tx - t.x, ty - t.y) < 65.0:
+                return False
     return True
 
 
@@ -915,6 +921,18 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
         # to war): re-assigning steals the tip every hop-12 unmark and
         # the probe loops forever, never founding (0 foundings/3000t).
         return False
+    # Settle-first (void): the first army founds near home (65-150km,
+    # supported) instead of scout-tipping 350km out — far tips + same-ray
+    # repeats stacked pro's east cluster (38km pairs, 350km from capital).
+    # Needs demand + site (else scout as before — intel not lost).
+    if (len(state.own_armies()) <= 1 and state._scout_id is None
+            and not state._foe_first_seen
+            and not any(t.faction != state.faction for t in state.world.towns)
+            and not any(a.faction != state.faction for a in state.world.armies)
+            and expansion_demand(state, config)
+            and find_build_site(state, config, p.x, p.y, rmin=80, rmax=300,
+                                salt=11, who=p.id) is not None):
+        return False
     # No stay-behind block here (REVERTED): the first print must scout
     # (S0 contract, test-pinned) — and t1495's deny-convert was CORRECT
     # (1096 pop can't print a guard vs N=1 inbound anyway; convert
@@ -1354,6 +1372,20 @@ def inbound_armies(state: "BotState", config, tid: int) -> list:
             continue
         out.append(a)
     return out
+
+
+def committed_raid(state: "BotState", aid: int) -> bool:
+    """Army noted at a foe town (committed raid: don't re-task!).
+    Chase/strike/recall branches steal raiders mid-march (ping-pong:
+    expander army 133 raided, got re-tasked home, re-raided — 30-army
+    shuttle fleet). Committed raids stick until arrival/outcome."""
+    import math as _math
+    tgt = state.army_target(aid)
+    if tgt is None:
+        return False
+    return any(t.faction != state.faction
+               and _math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20
+               for t in state.world.towns)
 
 
 def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
@@ -2046,7 +2078,8 @@ def recall_deficit(state: "BotState", config) -> list:
         for a in state.own_armies():
             if not a.is_viceroy and state.army_has_target(a.id) \
                     and not state.has_pending_build(a.id) \
-                    and a.id != state._scout_id:
+                    and a.id != state._scout_id \
+                    and not committed_raid(state, a.id):
                 home = min(state.own_towns(),
                            key=lambda t: math.hypot(a.x - t.x, a.y - t.y),
                            default=None)
@@ -2070,6 +2103,7 @@ def recall_deficit(state: "BotState", config) -> list:
                         if not a.is_viceroy and state.army_has_target(a.id)
                         and not state.has_pending_build(a.id)
                         and a.id != state._scout_id
+                        and not committed_raid(state, a.id)
                         and a.id not in recalled),
                        key=lambda a: math.hypot(a.x - town.x, a.y - town.y))
         for a in cands[:need]:

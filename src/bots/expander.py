@@ -45,6 +45,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out.extend(recall_deficit(state, config))
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
+    packets: dict = {}  # tgt id -> (tgt, need, [aids]) JIT flush
     _sk = strike_target(state, config, margin=300.0)
     _sk_foes = [a for a in state.world.armies if a.faction != faction]
     sk_march = _sk if _sk is not None and not _sk_foes else None
@@ -115,10 +116,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                     or en_route(state, probe_tgt.x, probe_tgt.y) \
                     or math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
                 continue
-        # Counter-raid: march the priced take when ready.
+        # Counter-raid: march the priced take when ready — JIT packets
+        # (collect; full packets flush post-loop). Staggered onesies
+        # arrive piecemeal, wait, get recalled, re-raid (30-army shuttle
+        # fleet) — mass or hold.
         if sel is not None and not pack_building:
-            nearest, _, _ = sel
-            out.extend(order_move(state, config, p, nearest.x, nearest.y))
+            nearest, need, _ = sel
+            packets.setdefault(nearest.id, (nearest, need, []))[2].append(p.id)
             continue
         # Buzzer (Step 6): no settling (never repays) — hold instead.
         if buzzer_active(state, config):
@@ -141,6 +145,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if site:
             sx, sy = site
             out.extend(dispatch_settler(state, config, p, sx, sy))
+    # JIT packet flush: only full packets march.
+    by_id = {a.id: a for a in state.own_armies()}
+    for tgt_id, (tgt, tneed, members) in packets.items():
+        if len(members) >= tneed or jit_ready(state, config, tgt, tneed, members, tgt.faction):
+            for aid in members:
+                a = by_id.get(aid)
+                if a is not None:
+                    out.extend(order_move(state, config, a, tgt.x, tgt.y))
     return out
 
 
