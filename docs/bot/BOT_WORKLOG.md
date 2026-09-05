@@ -819,3 +819,20 @@ FILED (loop step 3): expander deep-scout + capital-rush trigger;
 pro snipe-interdiction + counter-raid vs dispersed swarm; turtle
 breakout distance-or-escort; recall-radius/scout-timing (empty-home
 deaths); chain/settle re-baseline (-9/-16%).
+
+## Report card, 11-snapshot sweep (loop iteration)
+
+t0-1000 sit (all 1347). t1536 greedy dies (contact). t2000-6000:
+pro compounds east (2->6 towns, cap 2k->20k), expander sprawls south
+(2->14, thin). t3456 aggressive dies. t7000: pro 70k (cap 40k) vs
+expander 31k/19 towns, zero armies both. t7000-8300 THE WAR (47
+battles, 6 captures, 9 deaths): turtle breaks out (1->4) then pro
+eats two (t7729/8167); pro towns die (7686/7729/8166/8301) holding
+vs expander swarm. t9000+: both print (18/37), pro 103k (cap 88k)
+wins on compounding. F1 ghost drifts all game.
+Per-bot: pro (settlement+compounding elite, defense vacant — 88k/18
+idle, never raids); expander (sprawl perfect, vision zero — 9
+clusters all inward, 37 unused); turtle (bold breakout, no cover);
+greedy/aggressive (positioned wrong, denied right). Nobody scouts
+foes (all views[] own). FILED: expander deep-scout+rush; pro
+interdiction+counter-raid; turtle cover; recall-radius; re-baseline.
