@@ -276,3 +276,13 @@ home defense and viability + empty-field hold + evac.
 Open work: `BOT_PLAN.md` Steps 1–6. Shared foundations landed (see
 `BOT_TIME.md`): incremental update, staged decide, memoized staleness,
 quiet replay, plan queue, clock effort, slim wire, measured margins.
+
+## cut_scenario (issue-targeted repro)
+
+`cut_scenario.py REC --turn T --before N --focal F --teams ... --goal ...
+--out maps/scenarios/x.json`: snapshots truth N turns before an issue
+into a runnable scenario (towns/armies as map CSV, engine config from
+header). Run it via scenario_bench (single file) pre/post-fix to
+confirm. Limitation: bot mirrors start empty (positions replay, minds
+don't — blood/trails/notes lost). Pair with fog (what did it see?) to
+judge memory-dependence.
