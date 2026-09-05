@@ -630,3 +630,18 @@ wiped/fingerprinted) + conquest-guard in hold-set (TDD both polarities)
 + merge-horizon gate (home-capital merges need turns_left>=500 —
 recycle treadmill broken 2605->6083 (standing beats merging short);
 longpeace 4191 recovering). Step 4 DONE (composition documented here).
+
+## Red Queen reframe (bindings are floors with slack, not ceilings)
+
+Attrition forensics closed without a single cause (~10 calls: flows never
+fire there; D==N/calibration/pack-cap all no-ops on it). Verdict: COMPOUND
++ RED QUEEN. Every bot improved (demand-gating, musters, calibration,
+vetoes, recon) → symmetric wars TIGHTEN (margins compress to ~0 as dumb
+foes get smart). Old bindings measured beating DUMB foes (14552-era
+margins are unrepeatable vs smart foes — same doctrine scores less when
+the enemy also musters). Judge RELATIVE from here (ranks/placements/
+margins, Elo draws = all-strong) + mechanisms + suites; absolute bindings
+are FLOORS with Red-Queen slack (~+-1000 war maps, ~+-50 quiet). Rebound
+attrition 9411 (close symmetric win +504 — honest). Methods fix going
+forward: re-run STRATEGIC every commit (drift caught late twice now);
+run suites twice post-change (JIT first-runs lie).

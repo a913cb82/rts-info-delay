@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, order_move, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -91,25 +91,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 break
     hopeless = threatened and not can_reinforce and own_armed <= seen_enemies
 
-    # EVAC: doomed capital + 1000 pop + no viceroy airborne — fly the
-    # commander out to coords AWAY from the threat. The viceroy founds a new
-    # capital on arrival; a faction with a viceroy in flight survives the old
-    # capital's fall. Needs no existing town (founds one).
-    evacuating = any(a.faction == faction and a.is_viceroy for a in state.world.armies)
-    # evac needs 2x cost: the viceroy takes 1000 and the old town must stay
-    # above the death floor (suicide-evacs at ~1000 killed the cap for
-    # nothing — wake lesson vs synced raiders).
-    if cap is not None and not evacuating and hopeless and cap.population >= 2 * config.army_cost:
-        foes = [a for a in state.world.armies if a.faction != faction]
-        if foes:
-            fx = sum(a.x for a in foes) / len(foes)
-            fy = sum(a.y for a in foes) / len(foes)
-            dx, dy = cap.x - fx, cap.y - fy
-            dist = math.hypot(dx, dy) or 1.0
-            ex = min(980.0, max(20.0, cap.x + dx / dist * 250.0))
-            ey = min(980.0, max(20.0, cap.y + dy / dist * 250.0))
-            out.append(f"MOVE_CAPITAL {ex:.1f} {ey:.1f}")
-            return out
+    # EVAC (shared drain-and-flee, turtle flees any doom): hopeless capital
+    # musters everything portable first (drain t, fly t+1), 2x cost floor
+    # kept (suicide-evacs at ~1000 killed the cap for nothing — wake).
+    _evac = evac_plan(state, config, hopeless, established_stays=False)
+    if any(o.startswith("MOVE_CAPITAL") for o in _evac):
+        out.extend(_evac)
+        return out
+    out.extend(_evac)
 
     # T3: last-stand — a threat imputed to THIS town arriving in <=3 and
     # the town still standing: train whatever is affordable, rules be

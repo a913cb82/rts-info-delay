@@ -92,14 +92,34 @@ def exam_muster():
     check("muster", "1v1_short_cleans", o, lambda o: len(_trains(o)) >= 1,
           f"takes the mutual on a short horizon; orders={o}")
     # 1v1 long-horizon: mutual is cheaper (spend static, keep compounding).
+    # (Two feeds: single-feed army credits pollute growth (spawn-credit);
+    # history wipes it and measures true growth.)
     long_cfg = GameConfig()
     long_cfg.max_turns = 10000
     b = _state([(1, 300, 500, 0, 5000, True)], [(200, 400, 500, 1),
                                                 (201, 300, 500, 0)], turn=1)
     b.config = long_cfg
+    b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                   "faction": 0, "population": 5003, "alive": True,
+                   "is_capital": True},
+                 {"kind": "army_update", "id": 200, "x": 400, "y": 500,
+                   "faction": 1, "alive": True, "is_viceroy": False},
+                 {"kind": "army_update", "id": 201, "x": 300, "y": 500,
+                   "faction": 0, "alive": True, "is_viceroy": False}])
     o = decide_orders(b, long_cfg)
     check("muster", "1v1_long_holds", o, lambda o: not _trains(o),
           f"buys clean on a long horizon; orders={o}")
+    # Standing guard: D==0 vs a LONE distant raider (ETA 10) trains early
+    # (deterrence posture — visible guards price in +1).
+    o = decide_orders(cap_state(
+        5000, foe_armies=[(800, 500, 1)]), CFG)
+    check("muster", "guard_distant_lone", o, lambda o: len(_trains(o)) >= 1,
+          f"no deterrent vs lone raider; orders={o}")
+    # ...but not vs a pair (hopeless — don't donate).
+    o = decide_orders(cap_state(
+        5000, foe_armies=[(800, 500, 1), (820, 520, 1)]), CFG)
+    check("muster", "guard_distant_pair_holds", o, lambda o: not _trains(o),
+          f"donates a guard into hopeless; orders={o}")
 
 
 # ── Pricing: expand iff payback-positive (Step 2; expect FAIL) ──
@@ -158,6 +178,16 @@ def exam_selectivity():
     check("selectivity", "thin_skipped", o,
           lambda o: not any("400" in m for m in _moves(o)),
           f"raids a starving decoy; orders={o}")
+    # Snipe premium: equal prizes at equal distance, one a capital —
+    # behead (permanent). (Tempo still beats sniping at unequal range —
+    # near-first chains faster; premium is a tie-break, not a trump.)
+    o = decide_orders(cap_state(
+        20000, foe_towns=[(450, 500, 1, 3000, False),
+                           (150, 500, 1, 3000, True)],
+        own_armies=[(300, 500)]), CFG)
+    check("selectivity", "capital_sniped", o,
+          lambda o: any("150" in m for m in _moves(o)),
+          f"doesn't prefer the capital; orders={o}")
     # Rich PASSIVE prize (3000, sterile-observed 24 turns, zero prints):
     # W calibrates to zero — the lone army takes it (need 1, not 2).
     b = _state(

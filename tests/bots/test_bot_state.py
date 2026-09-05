@@ -1243,3 +1243,52 @@ class TestMergeHorizon:
         b = self._bot(long_cfg, 1)
         out = _stage_builds(b, long_cfg)
         assert any(o.startswith("BUILD 7 ") for o in out), out
+
+
+class TestEvacPlan:
+    """Drain-and-flee (Step 5): hopeless + time drains (strip to husk),
+    hopeless + urgent flies, established endures (pro)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _doomed(self, turn=1, cap_pop=3000, dist=100.0):
+        b = self._bot()
+        b.update(turn, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                         "faction": 0, "population": cap_pop, "alive": True,
+                         "is_capital": True},
+                        {"kind": "army_update", "id": 9, "x": 300 + dist,
+                         "y": 500, "faction": 1, "alive": True,
+                         "is_viceroy": False}])
+        return b
+
+    def test_drain_first(self) -> None:
+        from bots.common import evac_plan
+        b = self._doomed(turn=1, cap_pop=3000, dist=100.0)  # ETA 2
+        out = evac_plan(b, CFG, hopeless=True, established_stays=True)
+        assert out == ["TRAIN 1"]
+        assert b._draining is True
+
+    def test_fly_when_urgent(self) -> None:
+        from bots.common import evac_plan
+        b = self._doomed(turn=1, cap_pop=3000, dist=40.0)  # ETA <1
+        out = evac_plan(b, CFG, hopeless=True, established_stays=True)
+        assert any(o.startswith("MOVE_CAPITAL") for o in out)
+        assert b._draining is False
+
+    def test_established_endures(self) -> None:
+        from bots.common import evac_plan
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 40000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 100, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 9, "x": 350, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        out = evac_plan(b, CFG, hopeless=True, established_stays=True)
+        assert out == []

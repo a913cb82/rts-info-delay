@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
+from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -34,7 +34,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
     pack_building = sel is not None and sel[1] > free_n \
-        and not jit_ready(state, config, sel[0], sel[1], free_ids)
+        and not jit_ready(state, config, sel[0], sel[1], free_ids,
+        sel[0].faction)
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
@@ -89,7 +90,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # peace-only (war-footing holds; disbanding feeds merges).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
                 if expansion_demand(state, config, DemandParams(payback_mult=2.0)) else None
-            if site is not None and not site_pays(state, config, site[0], site[1]):
+            if site is not None and not war_print_need(state, config) \
+                    and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))

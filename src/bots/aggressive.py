@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home, site_pays
+from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home, site_pays
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -42,7 +42,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
     pack_building = sel is not None and sel[1] > free_n \
-        and not jit_ready(state, config, sel[0], sel[1], free_ids)
+        and not jit_ready(state, config, sel[0], sel[1], free_ids,
+        sel[0].faction)
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
@@ -148,7 +149,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11, who=p.id)
             # Site veto for economic foundings (staging bypasses: its value
             # is position, not pop).
-            if site is not None and not staged \
+            if site is not None and not staged and not war_print_need(state, config) \
                     and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:

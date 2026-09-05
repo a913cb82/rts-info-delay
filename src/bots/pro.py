@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, jit_ready, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -75,7 +75,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
     pack_building = sel is not None and sel[1] > free_n \
-        and not jit_ready(state, config, sel[0], sel[1], free_ids)
+        and not jit_ready(state, config, sel[0], sel[1], free_ids,
+        sel[0].faction)
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # ONE nearby free army (recon by fire — bounded risk, gains intel +
     # takes vs passive; prints observed calibrate the follow-on). One
@@ -177,7 +178,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 if expansion_demand(state, config) else None
             # Site veto (fratricide): even a demanded colony must clear
             # growth>margin at its site (shared empty_3000 lesson).
-            if site is not None and not site_pays(state, config, site[0], site[1]):
+            if site is not None and not war_print_need(state, config) \
+                    and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
@@ -258,21 +260,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
-    # P4: evac (turtle doctrine) — hopeless + 2x cost: fly the commander
-    # out to coords away from the threat. Covers naked-home 3-pack marches.
-    cap = state.world.faction_capital(state.faction)
-    evacuating = any(a.faction == state.faction and a.is_viceroy for a in state.world.armies)
-    if cap is not None and not evacuating and cap.population >= 2 * config.army_cost \
-            and _pro_hopeless(state, config, 1700):
-        foes = [a for a in state.world.armies if a.faction != state.faction]
-        if foes:
-            fx = sum(a.x for a in foes) / len(foes)
-            fy = sum(a.y for a in foes) / len(foes)
-            dx, dy = cap.x - fx, cap.y - fy
-            dist = math.hypot(dx, dy) or 1.0
-            ex = min(980.0, max(20.0, cap.x + dx / dist * 250.0))
-            ey = min(980.0, max(20.0, cap.y + dy / dist * 250.0))
-            return [f"MOVE_CAPITAL {ex:.1f} {ey:.1f}"]
+    # P4: evac (shared drain-and-flee, computed: endure established).
+    # Covers naked-home 3-pack marches.
+    _evac = evac_plan(state, config, _pro_hopeless(state, config, 1700),
+                      established_stays=True)
+    if any(o.startswith("MOVE_CAPITAL") for o in _evac):
+        return _evac
     # Idea 2: lazy stages — an expired clock skips later stages entirely
     # instead of paying their compute, keeping the important prefix.
     # Idea 6: low bank skips straight to trains-only (no moves/builds cost).

@@ -36,7 +36,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
     pack_building = sel is not None and sel[1] > free_n \
-        and not jit_ready(state, config, sel[0], sel[1], free_ids)
+        and not jit_ready(state, config, sel[0], sel[1], free_ids,
+        sel[0].faction)
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)

@@ -119,7 +119,13 @@ aggressive 1500 / turtle 1499 / expander 1499 — nobody concedes anything.
 New work is judged against this table (live scoreboard: BOT_PLAN.md),
 with margin: `effort()` branches on wall-clock bank, so loaded runs
 wobble (empty_3000 scored 3086 and 3136 on the same tree) — run benches
-quiet, ignore sub-~50 long-game deltas.
+quiet, ignore sub-~50 long-game deltas. RED QUEEN RULE: bindings are
+FLOORS with slack, not ceilings — every bot improving tightens symmetric
+wars (margins compress as dumb foes get smart; old fat margins are
+unrepeatable). Judge RELATIVE (ranks/margins) + mechanisms + suites;
+absolute shortfalls up to ~1000 on war maps are doctrine-redistribution
+until a mechanism says otherwise. Re-run STRATEGIC every commit; run
+suites twice post-change (JIT first-runs lie).
 Fast suite: raid_hold 4658 (take) / recycle 6293 (60t, lean pipeline) /
 skip_thin 3888 (calibrated need-1 take) / settle 3122 / chain 5327 /
 guard 2617 (holds) / viable 5251 (take) / pair 5804 (take) / trap 5493

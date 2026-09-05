@@ -147,6 +147,7 @@ class BotState:
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
         self._scout_leg: int = 0
         self._picket: tuple | None = None  # turtle forward tripwire (army_id, since_turn)
+        self._draining: bool = False  # Step 5: drain turn done, fly next
         self._stale_key = None
         self._standing_orders: tuple | None = None  # idea 4: (orders, fingerprint)
         self._plan: tuple | None = None  # idea 5: (orders, valid_until_turn)
@@ -187,6 +188,7 @@ class BotState:
         self._foe_first_seen = {}
         self._foe_prints = {}
         self._picket = None
+        self._draining = False
         self._scout_id = None
         self._scout_leg = 0
         self._wave_hold_until = -1
@@ -434,6 +436,7 @@ class BotState:
             tuple(sorted(self._foe_prints.items())),
             tuple(sorted(self._first_seen.items())),
             tuple(sorted(self._taken_at.items())),
+            self._draining,
             self._picket,
             self._scout_id,
             self.turn // 25,
@@ -587,7 +590,9 @@ class BotState:
         for cluster in self.overcrowded_clusters():
             if town.id not in {t.id for t in cluster}:
                 continue
-            rep = min(cluster, key=lambda t: (t.population, self._growth.get(t.id, 0), _hash(self.turn, t.id, 99)))
+            # Stable rep (id-seeded tie-break, never the turn — turn-keyed
+            # reps flap cluster targeting nightly (same disease as sites).
+            rep = min(cluster, key=lambda t: (t.population, self._growth.get(t.id, 0), _hash(t.id, t.id, 99)))
             return rep.id == town.id
         return False
 
@@ -1265,9 +1270,12 @@ def raid_target(state: "BotState", config, priced: bool = True,
         elif prize > margin:
             # Bird-in-hand: an executable take now beats a bigger prize
             # after print-turns (opportunity cost + compounding). Pipeline
-            # targets discount by turns-to-ready.
+            # targets discount by turns-to-ready. Capitals carry a
+            # beheading premium (permanent; universal GTO).
             score = prize / (1.0 + dist / 300.0) / (1.0 + s + w) \
                 / (1.0 + max(0, need - len(fieldable)))
+            if u.is_capital:
+                score *= 1.5
             if best is None or score > best[0]:
                 best = (score, u, need, s)
     if best is None:
@@ -1331,6 +1339,10 @@ def expansion_demand(state: "BotState", config,
             pass  # fall through to contested caution below
         else:
             return config.max_turns - state.turn >= vhor
+    # War-print (fortress-phase): threatened with horizon prints towns
+    # for capacity (military, bypasses veto downstream).
+    if war_print_need(state, config):
+        return True
     if params.serial and void_note_busy(state):
         return False
     turns_left = config.max_turns - state.turn
@@ -1391,18 +1403,25 @@ def demand_trains(state: "BotState", config, can_train,
     out: list[str] = []
     cost = config.army_cost
     floor = config.death_threshold
+    # Standing guard (deterrence posture, Step 2 remainder): D==0 vs a
+    # LONE inbound (N==1) within 12 trains early (visible guards make
+    # raids price +1). Hopeless (N>=2) holds (don't donate); outcome-rule
+    # owns ETA<=4; this extends to 4<ETA<=12.
     # No strip-mine muster: converting compounding pop to idle armies is
     # self-tax without strikes (empty_3000: -1000 with zero battles).
     # Muster stays demand-gated; the buzzer contributes holds (shared
     # hold-set), arrival caps, and no-settle. Strikes filed (Step 6+).
     force = inbound_force(state, config)
+    guard_force = inbound_force(state, config, max_eta=12.0)
     home = {t.id: home_count(state, t) for t in state.own_towns()}
     sel = raid_target(state, config, margin=params.raid_margin)
     if sel is not None:
         _, need, _ = sel
         fieldable = sum(1 for a in state.own_armies()
                         if not state.army_has_target(a.id))
-        deficit = [max(0, need - fieldable)]
+        # Pack cap 6 (pre-siege): beyond-need races decline (don't chase
+        # receding needs into treadmills; siege raises the cap later).
+        deficit = [max(0, min(need, 6) - fieldable)]
     else:
         deficit = [0]
     expand = expansion_demand(state, config, params)
@@ -1418,6 +1437,11 @@ def demand_trains(state: "BotState", config, can_train,
         eta_n = force.get(t.id)
         want = False
         bare = False
+        if eta_n is None:
+            _g = guard_force.get(t.id)
+            if _g is not None and home.get(t.id, 0) == 0 and _g[1] == 1 \
+                    and _overmatch(state, 1.5):
+                want = True
         if eta_n is not None:
             eta, n = eta_n
             if defense_train_ok(t.population, cost, floor + params.depth_extra, eta,
@@ -1599,11 +1623,15 @@ def reinforce_orders(state: "BotState", config) -> list:
     return out
 
 
-def jit_ready(state: "BotState", config, target, need: int, free_ids: list) -> bool:
+def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
+              foe_faction: int | None = None) -> bool:
     """Just-in-time packs (Step 3 tempo): march iff the pack is complete
     (need <= free) or completes en route (arrival >= print-deficit at
     own-town print rate). Long marches leave now and build on the way;
-    short marches wait and dash complete."""
+    short marches wait and dash complete. Symmetric print keeps the gap
+    roughly constant (march-now >= wait); out-printed races are declined
+    by the pack cap (demand_trains), not here. foe_faction reserved for
+    reactive calibration (currently unused — gap-stable default)."""
     if need <= len(free_ids):
         return True
     towns = state.own_towns()
@@ -1619,6 +1647,83 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list) -> b
     # Strict: ties hold (print can lag a turn; arriving exactly-even is
     # a coin flip on intel delay, and flips favor the defender).
     return arrival > print_turns
+
+
+def evac_plan(state: "BotState", config, hopeless: bool, established_stays: bool = True) -> list:
+    """Drain-and-flee (shared Step 5): hopeless capital flies to
+    max-separation, mustering everything portable first (drain t, fly
+    t+1 via _draining flag; ETA<=1 flies now, no time to drain).
+    Established empires endure (brain > hub) unless established_stays
+    is False (turtle/expander flee any doom)."""
+    out: list = []
+    cap = state.world.faction_capital(state.faction)
+    if cap is None:
+        state._draining = False
+        return out
+    evacuating = any(a.faction == state.faction and a.is_viceroy
+                     for a in state.world.armies)
+    if evacuating:
+        state._draining = False
+        return out
+    towns = state.own_towns()
+    established = len(towns) >= 3 or max((t.population for t in towns), default=0) >= 20000
+    if not hopeless or (established and established_stays):
+        state._draining = False
+        return out
+    if cap.population < 2 * config.army_cost:
+        state._draining = False
+        return out
+    foes = [a for a in state.world.armies if a.faction != state.faction]
+    if not foes:
+        state._draining = False
+        return out
+    eta = min(math.hypot(a.x - cap.x, a.y - cap.y) for a in foes) / max(1.0, config.army_speed)
+    if eta > 1.0 and not state._draining:
+        # Drain turn: strip every town to husk (pop >= cost, no floor —
+        # leaving!) into the exodus convoy; fly next turn.
+        state._draining = True
+        for t in towns:
+            if t.population >= config.army_cost \
+                    and not (t.id in state._pending_trains
+                             and state.turn <= state._pending_trains[t.id]):
+                out.append(f"TRAIN {t.id}")
+                state.note_train(t.id)
+        return out
+    state._draining = False
+    fx = sum(a.x for a in foes) / len(foes)
+    fy = sum(a.y for a in foes) / len(foes)
+    dx, dy = cap.x - fx, cap.y - fy
+    dist = math.hypot(dx, dy) or 1.0
+    ex = min(980.0, max(20.0, cap.x + dx / dist * 250.0))
+    ey = min(980.0, max(20.0, cap.y + dy / dist * 250.0))
+    return [f"MOVE_CAPITAL {ex:.1f} {ey:.1f}"]
+
+
+def war_print_need(state: "BotState", config) -> bool:
+    """Fortress-phase print-towns (Step 2 remainder): MULTI-raider
+    pressure (max inbound N >= 2 — a lone probe is mustered, not
+    out-printed) with horizon to amortize (>=500) — print capacity,
+    not pop. Bypasses the site veto (military value); rear-area safety
+    comes from max-min-dist siting (far from towns incl. foes)."""
+    force = inbound_force(state, config)
+    if not force or max(n for _, n in force.values()) < 2:
+        return False
+    return (getattr(config, "max_turns", 3000) or 3000) - state.turn >= 500
+
+
+def _overmatch(state: "BotState", ratio: float = 1.5) -> bool:
+    """Deterrence needs overmatch (Step 2 remainder): guard-early only
+    when my score >= ratio x the strongest foe (weaker foes decline +EV
+    raids vs visible guards; peers mutual-accept anyway (early-muster is
+    pure timing-tax — wait for last-moment))."""
+    fscore: dict = {}
+    for t in state.world.towns:
+        fscore[t.faction] = fscore.get(t.faction, 0.0) + t.population
+    for a in state.world.armies:
+        fscore[a.faction] = fscore.get(a.faction, 0.0) + 1000.0
+    my = fscore.get(state.faction, 0.0)
+    foe_best = max((v for f, v in fscore.items() if f != state.faction), default=0.0)
+    return my >= ratio * foe_best if foe_best > 0 else True
 
 
 def hold_defenders(state: "BotState", config, force: dict) -> set:
