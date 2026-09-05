@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home, towns_by_train_priority
+from .common import BotState, bot_main, buzzer_active, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home, towns_by_train_priority
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -21,9 +21,22 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
+    # Buzzer blind guards (Step 6): one home per rich town. (Normal holds
+    # stay on should_hold_home until the Step 2 expander rollout.)
+    buzz_held: set = set()
+    if buzzer_active(state, config):
+        for t in state.own_towns():
+            if t.population >= 2 * config.army_cost:
+                here = [a for a in state.own_armies()
+                        if a.id not in buzz_held
+                        and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
+                if here:
+                    buzz_held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
     for p in state.own_armies():
         if state.should_yield():
             break
+        if p.id in buzz_held:
+            continue
         if p.is_viceroy and state.army_has_target(p.id):
             continue
         sc = drive_scout(state, config, p)
@@ -42,6 +55,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         # E1: guard — keep >=1 home vs inbound/second wave (shared).
         if should_hold_home(state, config, p, inbound, hold_second):
+            continue
+        # Buzzer (Step 6): no settling (never repays) — hold instead.
+        # Rich towns get their blind guard via hold_defenders below.
+        if buzzer_active(state, config):
             continue
         # S0: no-contact scout first (Step 2 prereq) — probe deep before
         # founding; falls back to settling below.

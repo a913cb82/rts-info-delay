@@ -969,6 +969,15 @@ def foe_print_factor(state: "BotState", faction: int, grace: int = 20) -> float:
     return 1.0 if state.turn - first < grace else 0.0
 
 
+def buzzer_active(state: "BotState", config) -> bool:
+    """Strip-mine flip (Step 6): retaliation time has run out — guards
+    are free (no forgone growth) and raids are cheap. Last 10% (min 20
+    turns): founding/pipelines die, pop becomes force, everything
+    unguarded is taken."""
+    max_turns = getattr(config, "max_turns", 3000) or 3000
+    return max_turns - state.turn <= max(20, max_turns // 10)
+
+
 def inbound_force(state: "BotState", config: "GameConfig",
                   max_eta: float = 8.0) -> dict[int, tuple[float, int]]:
     """Per-own-town inbound threat (ETA, force) by nearest-own-town.
@@ -1221,6 +1230,11 @@ def raid_target(state: "BotState", config, priced: bool = True,
         arrival_t = min((math.hypot(a.x - u.x, a.y - u.y)
                          for a in fieldable),
                         default=float("inf")) / max(1.0, config.army_speed)
+        # Can't land after the buzzer: pointless march. (W collapses
+        # naturally as turns_left -> 0 — retaliation becomes impossible.)
+        turns_left = (getattr(config, "max_turns", 3000) or 3000) - state.turn
+        if arrival_t > turns_left:
+            continue
         w = min(printable, arrival_t) * foe_print_factor(state, u.faction)
         need = int(s + w + 1)
         prize = u.population * (1.0 - eff)
@@ -1269,7 +1283,12 @@ def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
     foe_known = any(t.faction != state.faction for t in state.world.towns) \
         or any(a.faction != state.faction for a in state.world.armies)
     if not foe_known:
-        return config.max_turns - state.turn >= void_horizon
+        # True void (never seen) expands; eviction-void (seen, stale) is
+        # NOT peace (empty t2780: stale intel must not read as void).
+        if state._foe_first_seen:
+            pass  # fall through to contested caution below
+        else:
+            return config.max_turns - state.turn >= void_horizon
     if void_note_busy(state):
         return False
     turns_left = config.max_turns - state.turn
@@ -1310,6 +1329,10 @@ def demand_trains(state: "BotState", config, can_train,
     out: list[str] = []
     cost = config.army_cost
     floor = config.death_threshold
+    # No strip-mine muster: converting compounding pop to idle armies is
+    # self-tax without strikes (empty_3000: -1000 with zero battles).
+    # Muster stays demand-gated; the buzzer contributes holds (shared
+    # hold-set), arrival caps, and no-settle. Strikes filed (Step 6+).
     force = inbound_force(state, config)
     home = {t.id: home_count(state, t) for t in state.own_towns()}
     sel = raid_target(state, config, margin=raid_margin)
@@ -1364,7 +1387,8 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
     """Hold-set (shared Step 2 core): per threatened town keep
     min(home, N+1) — the +1th is highest-leverage; beyond it extras are
     free. Hopeless towns (D <= N-2) keep none — defenders retreat via
-    normal logic instead of annihilating in place."""
+    normal logic instead of annihilating in place. Buzzer adds a blind
+    guard (one home per rich town — cheap now, snipers come)."""
     held: set = set()
     for t in state.own_towns():
         if t.id not in force:
@@ -1377,4 +1401,12 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
             continue  # hopeless: retreat, don't annihilate
         for a in here[:min(len(here), n + 1)]:
             held.add(a.id)
+    if buzzer_active(state, config):
+        for t in state.own_towns():
+            if t.population >= 2 * config.army_cost:
+                here = [a for a in state.own_armies()
+                        if a.id not in held
+                        and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
+                if here:
+                    held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
     return held

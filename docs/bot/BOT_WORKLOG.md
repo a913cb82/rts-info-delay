@@ -526,3 +526,23 @@ Step 6 next, highest leverage. Filed: site-starvation veto (id7 crowded
 out; picker needs a growth>0 veto), aggressive early-raid window urgency
 (guard_duty t20-60 window unexploited — Step 3 timing), S0 probe tempo
 (march-blind-fast — Step 2 scout followup).
+
+## Step 6 minimal: buzzer defense (no own-goals); strikes filed
+
+Buzzer = last 10% (min 20 turns): retaliation time shrinks. Shipped the
+defensive flip shared: blind guards (1 home per rich town via
+hold-set), arrival capped by turns_left (no pointless marches), no
+settling (payback/horizon die naturally), turtle/expander/aggressive
+settle branches gated. REVERTED strip-mine muster before committing:
+converting compounding pop to idle armies is self-tax without strikes
+(empty: turtle -1009/greedy -745, zero battles — the armies stood
+around while home compounding died). Muster stays demand-gated.
+Filed (Step 6+): first-strike logic (turns_left<=~15 outnumber-strikes;
+needs its own instrument + timing thought). Also fixed eviction-void
+foundings (stale intel read as peace → late luxury foundings): void
+branch requires never-seen (dark-spring correct, eviction-void goes
+contested-caution). Equilibrium stands (zero battles: deterrence holds
+everywhere; pro 9156 control). Scores recovered exactly (greedy 4835,
+turtle 7055). Remain: pro recon (unlocks Step 5), Step 5 (hopeless D<N),
+expander/turtle Step 2 (race-slots rule for expander), Steps 3-4, filed
+strikes/tempo/vetoes.

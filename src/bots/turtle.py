@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, drop_dead_notes, defense_train_ok, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -132,7 +132,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is
     # per-town: only threatened towns spend below 2600.
-    threatened = threat_eta <= 10
+    # No buzzer strip-mine: self-tax without strikes (shared verdict).
     relaxed_ids = {t.id for t in own_t if town_bar(t) < 2600}
     # peacetime picket: with no threat visible, a single army is enough for
     # an enemy you can't see (stops the t1+t2 double-tap with zero intel).
@@ -196,7 +196,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             need_garrison = False
             built = True
             continue
-        if not built and own_t:
+        if not built and own_t and not buzzer_active(state, config):
             # threatened home armies hold position — never dispatch them out
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
                 continue
