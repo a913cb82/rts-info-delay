@@ -1236,3 +1236,13 @@ expander 16/4, captures to t5000, foundings to t6000, zero onesies,
 2 stale-idle. Snowball persists (128k vs ~0) but taxed.
 GENERATED r66 (per-loop regen).
 NEXT: turtle passivity (5 prints, never sprawls) + patrol churn.
+
+## Turtle wake + r67 (per-loop regen)
+
+SHIPPED (turtle.py, green): train bar 2600/2000 -> 2200/1600
+(fortress, not coma; all five gates re-pinned). R67: pro 38
+foundings/4 captures/11 battles (snowball 245k again); turtle still
+flat (eliminated early — wake never tested). 95 pro noted-idle
+(new form: static + noted + unthreatened; type TBD via traces).
+GENERATED r67 (per-loop regen).
+NEXT: idle-note typing (traced) + snowball structure.

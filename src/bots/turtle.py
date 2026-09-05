@@ -18,7 +18,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     own_t = state.own_towns()
 
     # T1: threat-responsive threshold. Nearest inbound enemy ETA sets the
-    # train bar: 2600 in peace, down to 1200 as contact approaches.
+    # train bar: 2200 in peace (1600 sleep-light), down to 1200 as
+    # contact approaches.
     cap = state.world.faction_capital(faction)
     threat_eta = float("inf")
     for a in state.world.armies:
@@ -62,7 +63,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # Sleep lightly (2000) only while NO threat is visible anywhere: the
     # danger is then unseen/distant (wake). Once a threat shows, unthreatened
-    # towns hoard at 2600 (cluster cap) while threatened ones spend.
+    # towns hoard at 2200 (cluster cap) while threatened ones spend.
     any_threat = any(e <= 10 for e in town_eta.values())
 
     def town_bar(t) -> int:
@@ -71,11 +72,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             return 1200
         if e <= 10:
             return 1700
+        # Wakes early (r66: turtle hoarded to 2000+, first print t1500,
+        # 5 prints/game — fortress, not coma). Sleep-light 1600 in
+        # peace; threatened towns spend, hoard cap 2200.
         if any_enemy and not any_threat:
-            return 2000
-        return 2600
+            return 1600
+        return 2200
 
-    bar = min((town_bar(t) for t in own_t), default=2600)
+    bar = min((town_bar(t) for t in own_t), default=2200)
 
     all_calm = all(t.population >= town_bar(t) and not (PEAK_LOW <= t.population <= PEAK_HIGH) for t in own_t) if own_t else False
 
@@ -122,11 +126,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                                 window=3.0,
                                 turns_left=config.max_turns - state.turn)
 
-    # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
+    # Sub-2200 bars bypass can_train_here (its 2200 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is
-    # per-town: only threatened towns spend below 2600.
+    # per-town: only threatened towns spend below 2200.
     # No buzzer strip-mine: self-tax without strikes (shared verdict).
-    relaxed_ids = {t.id for t in own_t if town_bar(t) < 2600}
+    relaxed_ids = {t.id for t in own_t if town_bar(t) < 2200}
     # peacetime picket: with no threat visible, a single army is enough for
     # an enemy you can't see (stops the t1+t2 double-tap with zero intel).
     # Single-town factions always picket (their only production); multi-town
