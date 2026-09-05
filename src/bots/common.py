@@ -1378,9 +1378,14 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     def _ecell(x, y):
         return (min(en - 1, max(0, int(x / size[0] * en))),
                 min(en - 1, max(0, int(y / size[1] * en))))
+    # Meatgrinder exclusion (r106: patrols walked through town12's 2-guard
+    # 9 times — coverage centroids ignore towns. Cells holding foe towns
+    # are unclaimable (packs assault towns; patrols never stroll in).
+    foe_cells = {_ecell(u.x, u.y) for u in state.world.towns
+                 if u.faction != state.faction}
     def _estale(cx, cy):
         return state._explore_at((cx + 0.5) / en * size[0], (cy + 0.5) / en * size[1])
-    claimed: set = set()
+    claimed: set = set(foe_cells)
     for p in list(free):
         cx, cy = _ecell(p.x, p.y)
         for _ in range(3):

@@ -1457,3 +1457,14 @@ pheromone: observed splats 0 (sinks), +0.5/10t evaporate to cap 10
 Probe attempt-cap 1/target/1000t (packs keep 2; ledger once per flush).
 R104: ZERO pure-1v1s, 0 onesies/suicides/train-deaths, 2 early dead-
 peace quiets; captures t3000, foundings to t6000. GENERATED r104.
+
+## Meatgrinder exclusion + r107 (per-loop regen)
+
+DIAGNOSE (r106 flip audit): 9-feed meatgrinder at town12 — patrols
+walked through a 2-guard town (coverage centroids ignore towns).
+SHIPPED (common.py, green): foe-town cells unclaimable in coverage
+descent (packs assault towns; patrols never stroll in). LOOP FIX:
+capture harness stderr every rematch (r104's "freeze" was 4 silent
+ghosts hidden by tail-cut).
+R107 health: watch (0/0/0 errors, 2 dead-peace quiets); F3+F4 ghosts
+t1660/1888 (harness). GENERATED r107.
