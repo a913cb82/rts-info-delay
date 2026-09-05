@@ -66,12 +66,12 @@ Turn-based. Each turn consists of phases:
 - Score = town population + 1000 per army. Highest score at max turns wins.
 - Eliminated when no capital and no viceroy in flight.
 
-| Order | Syntax | Effect |
-|---|---|---|
-| `TRAIN` | `TRAIN <town>` | −1000 pop, spawn an army |
-| `MOVE_TO` | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)` |
-| `BUILD` | `BUILD <army> <x> <y>` | consume the army: found a pop-500 town, or +500 own-town pop |
-| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>` | viceroy marches out, founds a new capital on arrival |
+| Order         | Syntax                                  | Effect                                                        |
+|---------------|-----------------------------------------|---------------------------------------------------------------|
+| `TRAIN`       | `TRAIN <town>`                          | −1000 pop, spawn an army                                      |
+| `MOVE_TO`     | `MOVE_TO <army> <fx> <fy> <tx> <ty>`    | march to `(tx, ty)`                                           |
+| `BUILD`       | `BUILD <army> <x> <y>`                  | consume the army: found a pop-500 town, or +500 own-town pop  |
+| `MOVE_CAPITAL`| `MOVE_CAPITAL <x> <y>`                 | viceroy marches out, founds a new capital on arrival          |
 - Bots see delayed reports only: armies and towns have 150km line of sight, mail travels 150km/turn to
   the capital.
 
