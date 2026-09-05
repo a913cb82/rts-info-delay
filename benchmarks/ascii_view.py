@@ -100,7 +100,7 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
                         row.append(col(f, f"{f}{CAPITAL}"))
                     else:
                         row.append(col(f, f"{f}{pop_bucket(t['population'])}"))
-                elif mode == "pop" and not t.get("is_capital"):
+                elif mode == "pop":
                     row.append(col(f, str(pop_bucket(t["population"]))))
                 elif mode == "faction":
                     row.append(col(f, str(f)))
@@ -147,7 +147,8 @@ def footer(world: dict, header: dict, turn: int, color: bool = True, mode: str =
         pop = sum(t["population"] for t in world["towns"] if t["faction"] == f)
         nt = sum(1 for t in world["towns"] if t["faction"] == f)
         na = sum(1 for a in world["armies"] if a["faction"] == f)
-        label = f"F{f} pop={pop:.0f} towns={nt} armies={na}"
+        cap = next((t for t in world["towns"] if t["faction"] == f and t.get("is_capital")), None)
+        label = f"F{f} pop={pop:.0f} towns={nt} armies={na}" + (f" cap={cap['population']:.0f}" if cap else "")
         parts.append(f"{COLORS[f % len(COLORS)]}{label}{RESET}" if color else label)
     if mode == "all":
         legend = (f"F+T cells: 0-4 faction + type (▲ army, F9 stack of 9+, "
