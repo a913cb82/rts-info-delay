@@ -808,6 +808,167 @@ class TestSiteStability:
         assert s7 is not None and s8 is not None and s7 != s8
 
 
+class TestSensibleSites:
+    """Sensible placement (empty_10000 lesson): max-min_dist picked
+    rmax, ratcheted to the edge, clamped and stacked (all four
+    settlers founded at x/y = 20/980). Floor (65km own-spacing) +
+    ceiling (reinforcement reach) + guns + room + hub."""
+
+    def _bot(self, towns):
+        from bots.common import BotState
+        from bots import common as C
+        C._build_site_cache.clear()
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 3, [
+            {"kind": "town_update", "id": i, "x": x, "y": y,
+             "faction": f, "population": p, "alive": True,
+             "is_capital": c}
+            for i, (x, y, f, p, c) in enumerate(towns)
+        ])
+        return b
+
+    def test_floor_rejects_crowded(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        s = find_build_site(b, CFG, 500.0, 500.0, salt=11, who=7)
+        assert s is not None
+        assert math.hypot(s[0] - 500.0, s[1] - 500.0) >= 65.0
+
+    def test_guns_push_away(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot([(500.0, 500.0, 0, 5000, True),
+                       (620.0, 500.0, 1, 20000, False)])
+        s = find_build_site(b, CFG, 500.0, 500.0, salt=11, who=7)
+        assert s is not None
+        assert s[0] < 500.0  # foe at +x: sensible site goes the other way
+
+    def test_respin_finds_interior(self) -> None:
+        from bots.common import BotState, respin_tip
+        from bots import common as C
+        C._build_site_cache.clear()
+        b = BotState()
+        b.init(CFG, 1)
+        _sync_bot(b, None, 3, [
+            {"kind": "town_update", "id": 0, "x": 233.7, "y": 586.5,
+             "faction": 1, "population": 2500, "alive": True,
+             "is_capital": True},
+        ])
+        old_mt, CFG.max_turns = CFG.max_turns, 3000
+        try:
+            s = respin_tip(b, CFG, 388.7, 980.0)
+        finally:
+            CFG.max_turns = old_mt
+        assert s is not None
+        assert min(s[0], 1000 - s[0], s[1], 1000 - s[1]) >= 100.0
+
+    def test_drop_dead_spares_scout_and_grace(self) -> None:
+        from bots.common import drop_dead_notes
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        _sync_bot(b, None, 4, [
+            {"kind": "army_update", "id": 5, "x": 900.0, "y": 900.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b._scout_id = 5
+        b.note_move(5, 950.0, 950.0)
+        # force stale trail (old turn, far off)
+        from collections import deque
+        b._trails[5] = deque([(0, 500.0, 500.0)], maxlen=4)
+        drop_dead_notes(b)
+        assert b.army_target(5) is not None  # scout immune
+        b._scout_id = None
+        b._tip_grace[5] = 99
+        drop_dead_notes(b)
+        assert b.army_target(5) is not None  # grace immune
+        del b._tip_grace[5]
+        drop_dead_notes(b)
+        assert b.army_target(5) is None  # grace lapsed: popped
+
+    def test_queue_schedule_fire_cancel(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 10, [
+            {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+             "faction": 0, "population": 5000, "alive": True,
+             "is_capital": True},
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b.queue_order(12, "MOVE_TO 5 500.0 500.0 600.0 500.0", "patrol5")
+        assert b.pop_due_orders(CFG) == []
+        _sync_bot(b, None, 12, [])
+        assert b.pop_due_orders(CFG) == ["MOVE_TO 5 500.0 500.0 600.0 500.0"]
+        assert b.pop_due_orders(CFG) == []
+        b.queue_order(20, "MOVE_TO 5 500.0 500.0 600.0 500.0", "patrol5")
+        b.cancel_queued("patrol5")
+        _sync_bot(b, None, 25, [])
+        assert b.pop_due_orders(CFG) == []
+
+    def test_queue_retask_drops(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 10, [
+            {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+             "faction": 0, "population": 5000, "alive": True,
+             "is_capital": True},
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b.queue_order(12, "MOVE_TO 5 500.0 500.0 600.0 500.0", "patrol5")
+        b.note_move(5, 100.0, 100.0)
+        _sync_bot(b, None, 12, [])
+        assert b.pop_due_orders(CFG) == []
+
+    def test_queue_build_defers_when_late(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 10, [
+            {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+             "faction": 0, "population": 5000, "alive": True,
+             "is_capital": True},
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b.queue_order(10, "BUILD 5 900.0 900.0", "settle5")
+        assert b.pop_due_orders(CFG) == []
+        assert len(b.__dict__["_queue"]) == 1
+        _sync_bot(b, None, 13, [
+            {"kind": "army_update", "id": 5, "x": 900.0, "y": 900.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        assert b.pop_due_orders(CFG) == ["BUILD 5 900.0 900.0"]
+
+    def test_no_reassign_tasked(self) -> None:
+        from bots.common import maybe_assign_scout
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        _sync_bot(b, None, 4, [
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        p = b.world.get_army(5)
+        b.note_move(5, 900.0, 900.0)
+        assert not maybe_assign_scout(b, CFG, p)  # tasked: builds owns it
+
+    def test_tip_foe_gate(self) -> None:
+        from bots.common import tip_safe
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        assert tip_safe(b, CFG, 100.0, 100.0)  # void: far is fine
+        b2 = self._bot([(500.0, 500.0, 0, 5000, True),
+                        (200.0, 100.0, 1, 20000, False)])
+        assert not tip_safe(b2, CFG, 100.0, 100.0)  # guns-hot: recycle
+
+    def test_room_prefers_interior(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot([(900.0, 500.0, 0, 5000, True)])
+        s = find_build_site(b, CFG, 900.0, 500.0, salt=11, who=7)
+        assert s is not None
+        edge = min(s[0], 1000 - s[0], s[1], 1000 - s[1])
+        assert edge >= 150.0  # room bonus beats edge-clamp
+
+
 class TestStagingEta:
     """A known foe town inside striking distance (150km) of an own town
     is staging, i.e. positioning-threat — ETA = dist/army_speed (upper

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -216,6 +216,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 # of disbanding into a town about to be attacked
                 if threatened and any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) <= 20 for t in own_t):
                     continue
+                own_home = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in own_t)
+                if not own_home and not tip_safe(state, config, tgt[0], tgt[1]):
+                    # Persist the re-task as a note FIRST (order_move is
+                    # quiescence-gated and may emit [] — a popped-without-note
+                    # army gets S0-stolen into an infinite probe loop).
+                    rs = respin_tip(state, config, tgt[0], tgt[1])
+                    dest = rs if rs is not None else (
+                        (cap.x, cap.y) if cap is not None else None)
+                    if dest is not None:
+                        out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
+                    continue
                 out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
                 built = True
             continue
@@ -233,7 +244,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             biggest = max(own_t, key=lambda t: t.population)
             site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13, who=p.id)
             if site:
-                out.extend(order_move(state, config, p, site[0], site[1]))
+                out.extend(dispatch_settler(state, config, p, site[0], site[1]))
                 built = True
         # garrison remainder
         if not built or state.army_has_target(p.id):

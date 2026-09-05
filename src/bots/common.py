@@ -58,6 +58,57 @@ def _memoized(state: "BotState", key, compute):
     return d[key]
 
 
+def respin_tip(state: "BotState", config, tx: float, ty: float):
+    """Re-spin a bad scout tip through the sensible-site optimizer
+    (near-tip range): the tip region is virgin void (room max, guns
+    usually cold) — the optimizer finds the best site NEAR the tip
+    instead of founding at the ray-clamped endpoint. Returns a gated
+    site or None (then march home)."""
+    for salt, rmax in ((77, 250), (78, 250), (79, 150)):
+        site = find_build_site(state, config, tx, ty, rmin=40, rmax=rmax,
+                               salt=salt, who=int(tx + ty) & 0xFFFF)
+        if site is None:
+            continue
+        if not tip_safe(state, config, site[0], site[1]):
+            continue
+        if not site_pays(state, config, site[0], site[1]):
+            continue
+        return site
+    return None
+
+
+def tip_safe(state: "BotState", config, tx: float, ty: float) -> bool:
+    """Foe-gate for foundings (both paths: scout-tip + normal settle):
+    the site must be guns-cold (no foe towns/armies within strike
+    range). Void sites found at ANY distance (first colonies live 600km
+    out, safe while nothing is out there — a distance ceiling killed ALL
+    expansion: 0 foundings/3000t). Contested tips recycle home instead
+    (aggressive's edge colonies died under foe guns, not from distance)."""
+    import math as _math
+    los = getattr(config, "line_of_sight", None) or 150.0
+    for t in state.world.towns:
+        if t.faction == state.faction:
+            continue
+        if _math.hypot(tx - t.x, ty - t.y) < los:
+            return False
+    for a in state.world.armies:
+        if a.faction == state.faction:
+            continue
+        if _math.hypot(tx - a.x, ty - a.y) < los:
+            return False
+    # Room: ray tips clamp at the map edge (all four settlers founded
+    # at x/y = 20/980) — edge tips re-spin, interior tips found.
+    th = 1000.0
+    try:
+        ms = config.map_size
+        th = ms[0] if isinstance(ms, (list, tuple)) else float(ms)
+    except Exception:
+        pass
+    if min(tx, th - tx, ty, th - ty) < 100.0:
+        return False
+    return True
+
+
 def _batch_ids(events) -> tuple[set, set]:
     """Town/army ids a batch names (growth bookkeeping scope)."""
     towns: set = set()
@@ -112,22 +163,73 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
                     break
         if min_dist < config.interact_radius + 10:
             continue
+        # Sensible placement (empty_10000 lesson: max-min_dist picked
+        # rmax, ratcheted to the map edge, clamped and stacked there).
+        # Floor: no founding within 65km of an own town (GTO pairs —
+        # fratricide). NO hard ceiling: void expansion must reach far
+        # (first colonies live 600km out, safe while guns-cold) — distance
+        # is a soft preference (nearest support wins ties) and foe
+        # proximity gates at arrival (tip_supported there is foe-gated).
+        # Headless bots (no own towns) keep farthest-escape behavior.
+        own = [t for t in state.world.towns if t.faction == state.faction]
+        d_own = min((math.hypot(x - t.x, y - t.y) for t in own), default=0.0)
+        if own and d_own < 65.0:
+            continue
         crowding = 0.0
+        guns = 0.0
         for t in nearby_towns:
             dist = math.hypot(x - t.x, y - t.y)
             if 1 < dist < 150:
                 d_eq = 0.1 * math.sqrt(max(0.0, min(t.population, 500)))
                 crowding += (d_eq / dist) ** 0.8
-        cands.append((x, y, min_dist, crowding))
-        if len(cands) >= 6:
-            break
+        # GTO placement: don't found under foe guns (pro t4655 colony
+        # died in 5 turns — founded in greedy's face). Penalty ∝ foe
+        # towns + armies within strike range (LOS), same shape as
+        # crowding so the two trade off in one currency.
+        los = getattr(config, "line_of_sight", None) or 150.0
+        for t in state.world.towns:
+            if t.faction == state.faction:
+                continue
+            dist = math.hypot(x - t.x, y - t.y)
+            if 1 < dist < los:
+                d_eq = 0.1 * math.sqrt(max(0.0, min(t.population, 500)))
+                guns += (d_eq / dist) ** 0.8
+        for a in state.world.armies:
+            if a.faction == state.faction:
+                continue
+            dist = math.hypot(x - a.x, y - a.y)
+            if 1 < dist < los:
+                guns += (0.5 / dist) ** 0.8
+        # Growth room (option value): interior sites keep 360° of future
+        # slots, edge sites halve them. Penalize the edge deficit (150km
+        # room ideal) in crowding currency.
+        edge = min(x, th - x, y, th - y)
+        room = max(0.0, (150.0 - edge) / 150.0)
+        # Near-support (GTO crowding strategy: settle as close to existing
+        # towns as the 65km floor allows — closer = cheaper march +
+        # reinforcement; the floor + crowding price the packing, distance
+        # beyond 150km pays a soft support penalty (far colonies die
+        # unsupported). More smaller towns compound faster, but each pays
+        # full sunk (army_cost) and needs its own 65km+ of land.
+        far = max(0.0, (d_own - 150.0) / 150.0) if own else 0.0
+        cands.append((x, y, min_dist, crowding + guns + room + far, d_own))
+        # No early break: the first spins are not the best (room-passing
+        # spins hide late in the sequence — collect all 16, sort picks).
     if not cands:
         _build_site_cache[key] = None
         # prune cache
         if len(_build_site_cache) > 2000:
             _build_site_cache.clear()
         return None
-    cands.sort(key=lambda c: (-c[2], c[3]))
+    if own:
+        # GTO order: lowest total cost (crowding + guns + edge-room),
+        # then nearest support, then nearest the capital hub (short
+        # reinforcement chains beat deep ones).
+        cap = state.world.faction_capital(state.faction)
+        cx, cy = (cap.x, cap.y) if cap else (th / 2, th / 2)
+        cands.sort(key=lambda c: (c[3], c[4], math.hypot(c[0] - cx, c[1] - cy)))
+    else:
+        cands.sort(key=lambda c: (-c[2], c[3]))  # headless escape: farthest
     res = (cands[0][0], cands[0][1])
     _build_site_cache[key] = res
     if len(_build_site_cache) > 2000:
@@ -163,6 +265,7 @@ class BotState:
         self._foe_first_seen: dict[int, int] = {}  # faction -> turn first observed
         self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
+        self._tip_grace: dict = {}  # army_id -> turn until which drop_dead spares its note
         self._scout_leg: int = 0
         self._picket: tuple | None = None  # turtle forward tripwire (army_id, since_turn)
         self._draining: bool = False  # Step 5: drain turn done, fly next
@@ -203,6 +306,8 @@ class BotState:
         self._first_seen = {}
         self._taken_at = {}
         self._trails = {}
+        self._tip_grace = {}
+        self.__dict__.pop("_queue", None)
         self._wave_ids = set()
         self._foe_first_seen = {}
         self._foe_prints = {}
@@ -440,6 +545,87 @@ class BotState:
             return None
         return orders
 
+    def queue_order(self, fire_turn: int, order: str, tag: str | None = None) -> None:
+        """Schedule a command for a future turn (bot-side command queue).
+        Fired by bot_main after the fresh decide (fresh re-tasks win:
+        MOVE_TO validates the note still matches, TRAIN re-checks
+        affordability, BUILD re-checks arrival (defers if late)). Uses:
+        scout-patrol legs (pre-programmed paths, timed to arrive as the
+        army does) and settler MOVE_TO -> BUILD chains (the BUILD fires
+        on schedule even if arrival notes die). Turn-based (no
+        wall-clock) — fully deterministic."""
+        q = self.__dict__.setdefault("_queue", [])
+        q.append([int(fire_turn), str(order), tag])
+        try:
+            parts = str(order).split()
+            if parts[0] == "MOVE_TO" and len(parts) >= 6:
+                self.note_move(int(parts[1]), float(parts[4]), float(parts[5]))
+        except Exception:
+            pass
+
+    def cancel_queued(self, tag: str) -> None:
+        """Drop all queued commands with tag (re-tasked armies cancel
+        their scheduled legs/chains)."""
+        q = self.__dict__.get("_queue")
+        if q:
+            self.__dict__["_queue"] = [e for e in q if e[2] != tag]
+
+    def pop_due_orders(self, config) -> list[str]:
+        """Fire due queued commands (fire_turn <= turn) with validation.
+        Late settler BUILDs defer (re-queue +3) instead of dropping —
+        slow marches still found. MOVE_CAPITAL + unknown never auto-fire
+        (too final). Returns fired orders."""
+        q = self.__dict__.get("_queue", [])
+        out: list[str] = []
+        keep: list = []
+        for fire, order, tag in sorted(q):
+            if fire > self.turn:
+                keep.append([fire, order, tag])
+                continue
+            parts = order.split()
+            kind = parts[0] if parts else ""
+            if kind == "MOVE_TO" and len(parts) >= 6:
+                try:
+                    aid = int(parts[1])
+                    a = self.world.get_army(aid)
+                    if a is None:
+                        continue
+                    cur = self.army_target(aid)
+                    if cur is not None and (abs(cur[0] - float(parts[4])) > 1e-6
+                                           or abs(cur[1] - float(parts[5])) > 1e-6):
+                        continue
+                    out.append(order)
+                except Exception:
+                    continue
+            elif kind == "TRAIN" and len(parts) >= 2:
+                try:
+                    t = self.world.get_town(int(parts[1]))
+                    cost = getattr(config, "army_cost", 500) or 500
+                    thresh = getattr(config, "death_threshold", 500) or 500
+                    if t is None or t.faction != self.faction:
+                        continue
+                    if t.population - cost < thresh - 1e-9:
+                        continue
+                    out.append(order)
+                except Exception:
+                    continue
+            elif kind == "BUILD" and len(parts) >= 4:
+                try:
+                    aid = int(parts[1])
+                    a = self.world.get_army(aid)
+                    if a is None or self.has_pending_build(aid):
+                        continue
+                    bx, by = float(parts[2]), float(parts[3])
+                    ir = getattr(config, "interact_radius", 10.0) or 10.0
+                    if math.hypot(a.x - bx, a.y - by) > ir + 10:
+                        keep.append([self.turn + 3, order, tag])
+                        continue
+                    out.append(order)
+                except Exception:
+                    continue
+        self.__dict__["_queue"] = keep
+        return out
+
     def _fingerprint(self):
         """Idea 4: decide-relevant state summary. Replay is valid only while
         this is stable: membership (ids/factions), quantized pops, exact-ish
@@ -451,6 +637,7 @@ class BotState:
             tuple(sorted(self._pending_trains.items())),
             tuple(sorted(self._pending_builds.items())),
             tuple(sorted(self._army_targets.items())),
+            tuple(sorted((e[0], e[1], e[2]) for e in self.__dict__.get("_queue", []))),
             tuple(sorted(self._foe_first_seen.items())),
             tuple(sorted(self._foe_prints.items())),
             tuple(sorted(self._first_seen.items())),
@@ -692,6 +879,15 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
         return False
     if p.is_viceroy or _scout_contact(state, config):
         return False
+    if state.army_has_target(p.id):
+        # Tasked armies are owned (kept scout tips go to builds, packs
+        # to war): re-assigning steals the tip every hop-12 unmark and
+        # the probe loops forever, never founding (0 foundings/3000t).
+        return False
+    # No stay-behind block here (REVERTED): the first print must scout
+    # (S0 contract, test-pinned) — and t1495's deny-convert was CORRECT
+    # (1096 pop can't print a guard vs N=1 inbound anyway; convert
+    # denies). Stay-behind lives in settled play (2+ armies), not probe.
     state._scout_id = p.id
     state._scout_leg = 0
     return True
@@ -737,6 +933,38 @@ def order_move(state: "BotState", config, p, tx: float, ty: float) -> list[str]:
     return [f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {float(tx):.1f} {float(ty):.1f}"]
 
 
+def dispatch_settler(state: "BotState", config, p, sx: float, sy: float) -> list[str]:
+    """Settler MOVE_TO -> BUILD chain via the command queue: march now,
+    BUILD scheduled for arrival (march time + messenger delay + slack).
+    The BUILD fires on schedule even if arrival notes die (tip-loss saga)
+    and defers if the march runs late; arrival detection stays as backup.
+    Tag per army (re-tasks cancel the chain)."""
+    import math as _math
+    speed = max(1.0, config.army_speed)
+    info = (config.info_speed if config is not None else 150.0) or 150.0
+    march = _math.hypot(p.x - sx, p.y - sy) / speed
+    delay = _math.ceil(_math.hypot(p.x - sx, p.y - sy) / info)
+    fire = state.turn + int(_math.ceil(march)) + delay + 2
+    tag = f"settle{p.id}"
+    state.cancel_queued(tag)
+    out = order_march_exact(state, config, p, sx, sy)
+    state.queue_order(fire, f"BUILD {p.id} {sx:.1f} {sy:.1f}", tag)
+    return out
+
+
+def order_march_exact(state: "BotState", config, p, tx: float, ty: float) -> list[str]:
+    """Unconditional noted march (bypasses quiescence): for own armies
+    re-tasking from a hold (tip respins, recycle-home). Quiescence
+    deadlocks there — a stationary army goes delivery-silent, its trail
+    never converges, ready stays false forever, no orders flow, it never
+    moves (army 5 held 24 turns at its tip). The from-risk is nil (army
+    stationary: botpos error << messenger tolerance). Marching armies
+    keep the gated order_move."""
+    state.note_move(p.id, float(tx), float(ty))
+    state._tip_grace[p.id] = state.turn + 30
+    return [f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {float(tx):.1f} {float(ty):.1f}"]
+
+
 def _dispatch_leg(state: "BotState", config, p, tx: float, ty: float) -> list[str]:
     return order_move(state, config, p, tx, ty)
 
@@ -772,6 +1000,13 @@ def drop_dead_notes(state: "BotState") -> None:
         a = state.world.get_army(aid)
         if a is None or getattr(a, "is_viceroy", False):
             continue
+        if aid == state._scout_id:
+            continue  # scout notes are drive-managed (hop legs re-note
+            # constantly; trail-staleness misreads march holds as stranded
+            # and pops the tip every few turns — the infinite probe loop)
+        if aid in state._tip_grace and state.turn <= state._tip_grace[aid]:
+            continue  # kept-tip grace (unmark/respin notes survive the
+            # delivery lag + quiescence holds that fake strandedness)
         tr = state._trails.get(aid)
         if not tr:
             continue
@@ -782,6 +1017,9 @@ def drop_dead_notes(state: "BotState") -> None:
             exp_delay = 1
         if state.turn - t_new < exp_delay + 2:
             continue  # intel still flowing
+        if math.hypot(x - tgt[0], y - tgt[1]) <= 20:
+            continue  # trail shows arrival (freshest intel, not lagging
+            # botpos — kept scout tips wait for builds here, never pop)
         if math.hypot(x - tgt[0], y - tgt[1]) > 20:
             del state._army_targets[aid]
 
@@ -832,6 +1070,10 @@ def drive_scout(state: "BotState", config, p):
             if any(t.faction == state.faction and math.hypot(t.x - tgt[0], t.y - tgt[1]) <= interact + 10.0
                    for t in state.world.towns):
                 state._army_targets.pop(p.id, None)
+            else:
+                # Kept tip: grace vs drop_dead (delivery lag + arrival
+                # holds fake strandedness the next turns).
+                state._tip_grace[p.id] = state.turn + 20
         return []
     return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
 
@@ -1234,6 +1476,12 @@ def bot_main(decide_fn):
         state.clock_budget_ms = clock  # idea 6: effort level for this turn
         # Ideas 4+5: replay plans/standing orders on quiet turns.
         orders = state.cached_or_decide(decide_fn, cfg, events)
+        # Command queue: fresh decide first (re-tasks win), then fire due
+        # scheduled commands (validated: notes/af prevalence/arrival).
+        try:
+            orders = list(orders) + state.pop_due_orders(cfg)
+        except Exception:
+            pass
         # Track issued orders locally (delay-aware decisions + evac flag).
         state.note_orders(orders)
         for o in orders:
@@ -1417,17 +1665,33 @@ def expansion_demand(state: "BotState", config,
     return 0.75 > home_rate
 
 
+def train_floor(state: "BotState", config) -> float:
+    """Cost-aware train floor: cost + death-threshold + half-cost growth
+    buffer (a train must leave the town alive AND viable: greedy t1701,
+    ~1300 pop, one 1000-train left 322 < 500 threshold — dead. The old
+    hardcoded 1500 assumed cost-500)."""
+    cost = getattr(config, "army_cost", 500) or 500
+    thresh = getattr(config, "death_threshold", 500) or 500
+    foe_known = any(t.faction != state.faction for t in state.world.towns) \
+        or any(a.faction != state.faction for a in state.world.armies)
+    if not foe_known and not state._foe_first_seen:
+        return cost + thresh  # true void: regrow is safe, legacy floor
+    return cost + thresh + cost / 2.0
+
+
 def can_train_standard(state: "BotState", town) -> bool:
-    """Comfort gates (pro/greedy shared): 1500-90000, no double-order,
+    """Comfort gates (pro/greedy shared): floor-90000, no double-order,
     far towns need proportionally more (messenger+muster depth)."""
-    if town.population < 1500 or town.population > 90000:
+    config = state.config
+    floor = train_floor(state, config) if config else 1500
+    if town.population < floor or town.population > 90000:
         return False
     if town.id in state._pending_trains and state.turn <= state._pending_trains[town.id]:
         return False
     cap = state.world.faction_capital(state.faction)
     if cap:
         dist = math.hypot(cap.x - town.x, cap.y - town.y)
-        if dist > 100 and town.population < 1500 + int(dist / 150 * 400):
+        if dist > 100 and town.population < floor + int(dist / 150 * 400):
             return False
     return True
 
@@ -1587,7 +1851,11 @@ def site_pays(state: "BotState", config, x: float, y: float) -> bool:
         net += base * (1.0 - s1) - base * (1.0 - s0)
     s_new = _crowd_sigma(state, config, x, y, 500.0)
     net += growth * 500.0 * (1.0 - 500.0 / cap) * (1.0 - s_new)
-    amort = 500.0 / max(1, max_turns - state.turn) + 0.1
+    # Sunk = full settler price (army_cost to print; the 500-pop town is
+    # what's gained, counted in net above — not the cost). Cost-aware
+    # (was hardcoded 500, half the true 1000 price: over-founded).
+    cost = getattr(config, "army_cost", 500) or 500
+    amort = cost / max(1, max_turns - state.turn) + 0.1
     return net > amort
 
 
@@ -1850,6 +2118,22 @@ def en_route(state: "BotState", x: float, y: float, radius: float = 20.0) -> boo
     for a in state.own_armies():
         tgt = state.army_target(a.id)
         if tgt is not None and math.hypot(tgt[0] - x, tgt[1] - y) <= radius:
+            return True
+    return False
+
+
+def stay_behind_hold(state: "BotState", config, p, force, window: float = 4.0) -> bool:
+    """Stay-behind vs live threat: the last home guard holds (no offense)
+    while inbound sits inside the outcome window. Offense pulled the only
+    guard with N=1 at ETA 2.9 (aggressive t1807: home 1->0, bare-convert
+    fired, capital suicided). Threat-gated (void S0 unaffected — contact
+    stops scouting anyway)."""
+    import math as _math
+    for t in state.own_towns():
+        if _math.hypot(p.x - t.x, p.y - t.y) > 20:
+            continue
+        e = force.get(t.id)
+        if e is not None and e[0] <= window and home_count(state, t) <= 1:
             return True
     return False
 

@@ -3,12 +3,13 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target
+from .common import BotState, DemandParams, bot_main, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _can_train_expander(state: BotState, town) -> bool:
     """Floor only + pending guard (sprawl prints everywhere affordable)."""
-    return town.population >= 1500
+    from .common import train_floor
+    return town.population >= train_floor(state, state.config)
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -58,6 +59,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if sc is not None:
             out.extend(sc)
             continue
+        # Stay-behind vs live threat (shared): last home guard holds.
+        if stay_behind_hold(state, config, p, force):
+            continue
         # Strike (windows close!): clear-field blitz/buzzer mass march —
         # unless one is already en route (per-target singularity).
         if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
@@ -87,6 +91,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                         state, config, DemandParams(payback_mult=0.3, void_horizon=100,
                                                   rates=False, serial=False)):
                     state._army_targets.pop(p.id, None)
+                    continue
+                if not own_home and not tip_safe(state, config, tx, ty):
+                    # Persist the re-task as a note FIRST (order_move is
+                    # quiescence-gated and may emit [] — a popped-without-note
+                    # army gets S0-stolen into an infinite probe loop).
+                    rs = respin_tip(state, config, tx, ty)
+                    dest = rs if rs is not None else (
+                        (cap.x, cap.y) if cap is not None else None)
+                    if dest is not None:
+                        out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
                     continue
                 out.append(f"BUILD {p.id} {tx:.1f} {ty:.1f}")
             continue
@@ -125,7 +139,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             site = None
         if site:
             sx, sy = site
-            out.extend(order_move(state, config, p, sx, sy))
+            out.extend(dispatch_settler(state, config, p, sx, sy))
     return out
 
 

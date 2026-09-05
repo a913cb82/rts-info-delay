@@ -3,13 +3,14 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target
+from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
     """Thin cushion (fights): floor only + pending guard. Forward towns
     must print (raid logistics) — no distance rule, no peak cap."""
-    return town.population >= 1500
+    from .common import train_floor
+    return town.population >= train_floor(state, state.config)
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -93,11 +94,24 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 if not own_home and not site_pays(state, config, tgt[0], tgt[1]):
                     state._army_targets.pop(p.id, None)
                     continue
+                if not own_home and not tip_safe(state, config, tgt[0], tgt[1]):
+                    # Persist the re-task as a note FIRST (order_move is
+                    # quiescence-gated and may emit [] — a popped-without-note
+                    # army gets S0-stolen into an infinite probe loop).
+                    rs = respin_tip(state, config, tgt[0], tgt[1])
+                    dest = rs if rs is not None else (
+                        (cap.x, cap.y) if cap is not None else None)
+                    if dest is not None:
+                        out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
+                    continue
                 out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
             continue
         if p.id in held:
             continue
         if should_hold_home(state, config, p, inbound, hold_second):
+            continue
+        # Stay-behind vs live threat (shared): last home guard holds.
+        if stay_behind_hold(state, config, p, force):
             continue
         # Strike (windows close!): clear-field blitz/buzzer mass march —
         # unless one is already en route (per-target singularity).
@@ -152,7 +166,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                     and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:
-                out.extend(order_move(state, config, p, site[0], site[1]))
+                out.extend(dispatch_settler(state, config, p, site[0], site[1]))
     return out
 
 

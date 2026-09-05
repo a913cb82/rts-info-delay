@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -109,6 +109,9 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue
+        # Stay-behind vs live threat (shared): last home guard holds.
+        if stay_behind_hold(state, config, p, force):
+            continue
         # Strike (windows close!): clear-field blitz/buzzer takes march
         # immediately (mass) — unless one is already en route (per-target
         # singularity: notes are live, no flags). Fielded foes route to
@@ -182,7 +185,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:
-                out.extend(order_move(state, config, p, site[0], site[1]))
+                out.extend(dispatch_settler(state, config, p, site[0], site[1]))
             elif state.own_towns():
                 foe_known = any(t.faction != state.faction for t in state.world.towns) \
                     or any(a.faction != state.faction for a in state.world.armies)
@@ -242,6 +245,18 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
             # veto even for kept notes (true-void crowded own-colonies too).
             if not own_home and not site_pays(state, config, tgt[0], tgt[1]):
                 state._army_targets.pop(p.id, None)
+                continue
+            # Foe-gate (both founding paths): guns-hot tips recycle
+            # home instead of founding (void tips found at any distance).
+            if not own_home and not tip_safe(state, config, tgt[0], tgt[1]):
+                # Persist the re-task as a note FIRST (order_move is
+                # quiescence-gated and may emit [] — a popped-without-note
+                # army gets S0-stolen into an infinite probe loop).
+                rs = respin_tip(state, config, tgt[0], tgt[1])
+                dest = rs if rs is not None else (
+                    (cap.x, cap.y) if cap is not None else None)
+                if dest is not None:
+                    out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
                 continue
             out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
     return out

@@ -717,3 +717,39 @@ in EMPTY_10000.md (pro stay-behind/provocation/revenge-price;
 greedy guard-formula + cheap guard; aggressive revenge-price/colony-
 guards/expansion-floor; expander density/suicide-breaker/routing;
 turtle velocity/guard-budget/stand-down).
+
+## Sensible settlement + command queue (empty_10000 regen)
+
+Edge-spam root causes (all four settlers founded at x/y=20/980): (1)
+find_build_site sorted max-min_dist (gradient max at boundary —
+rmax ratchet + clamp); (2) scout-tips bypassed scoring (hop-12 tip =
+ray endpoint = edge). Fixes: floor 65km (GTO pairs), guns penalty
+(don't found under foe guns), room bonus (interior option value),
+capital-hub tiebreak, far soft-penalty (settle CLOSE: 65-150km band —
+support + cheap march; crowding prices packing), cost-aware sunk
+(army_cost/H, was 500/H half-price), tip foe+room gate + respin
+(re-spin bad tips through the optimizer near-tip; multi-salt, no
+early-break), settler MOVE_TO->BUILD chains via new command queue.
+Regen: 23 foundings 0/23 edge (was 6/6, 14/14). Expander sprawls
+(19 towns, wins 95k), pro fights (31k), greedy sits (30k, 1 town),
+aggressive convert-dies t1807, turtle taken t2635. 49s wall (bigger
+game: 158 spawns, wars).
+Tip-loss saga (why 0 foundings for 6 regens): hop-12 unmark kept tip
+-> drop_dead ate it (stale-trail fake stranded) -> S0 re-stole army
+(infinite probe loop); then quiescence deadlock (stationary-silent
+trails never converge, order_move [] forever); then respin room-gate
++ early-break hid good spins. Fixed: scout-note immunity + tip grace
+(20t) + arrival-trail exemption + order_march_exact (unconditional
+re-task) + note-persist + multi-salt respin + collect-all-16.
+Command queue (both user uses): queue_order/cancel_queued/
+pop_due_orders (MOVE_TO note-match, TRAIN affordability, BUILD
+arrival+defer, no auto-MOVE_CAPITAL) + fingerprint + wipe +
+bot_main emit-after-fresh. Settler chains via dispatch_settler (all
+5). Patrol legs filed (mechanism ready, needs doctrine: routes).
+Train-death forensics: t1495/t1807 are CORRECT deny-converts (N=1
+inbound, home 0, unopposed-capture real) — the sin is empty home,
+not the convert. Stay-behind vs live threat (stay_behind_hold,
+threat-gated so S0 safe) pins the last guard; out-of-position losses
+(army away when threat comes) need recall-radius doctrine (filed).
+Cost-500 illusion: bots assumed 500 everywhere, true cost 1000 —
+train_floor cost-aware (void cost+thresh, contested +buffer).
