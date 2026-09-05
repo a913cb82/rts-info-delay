@@ -627,6 +627,10 @@ class BotState:
         """Record a grave (blood + last-known position). Positions let
         later notes match dead towns (mirror only holds the living)."""
         self._bloodied[tid] = self.turn
+        # Fortress learning (r110: meatgrinders repeat at the SAME town.
+        # Each death doubles the avoid window: 150, 300, 600... cap 2400t).
+        _bc = self.__dict__.setdefault("_blood_count", {})
+        _bc[tid] = _bc.get(tid, 0) + 1
         self.__dict__.setdefault("_grave_pos", {})[tid] = (x, y)
 
     def _remove_army(self, aid: int) -> None:
@@ -2567,7 +2571,9 @@ def foe_garrison(state: "BotState", u) -> int:
     intel is unconfirmed — assume muster-3 (never raid blind-small).
     Fresh s=0 (observed empty under send-all) still takes at need 1."""
     s = garrison_map(state).get(u.id, 0)
-    if state.__dict__.get("_bloodied", {}).get(u.id, -10**9) >= state.turn - 150:
+    _bt = state.__dict__.get("_bloodied", {}).get(u.id, -10**9)
+    _bc = state.__dict__.get("_blood_count", {}).get(u.id, 0)
+    if _bt >= state.turn - min(2400, 150 * (2 ** max(0, min(_bc, 5) - 1))):
         s = max(s, 1)
     if s == 0 and state.turn - state._last_seen.get(("town", u.id), -10**9) > 150:
         s = 3
@@ -3421,6 +3427,19 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     # Strict: ties hold (print can lag a turn; arriving exactly-even is
     # a coin flip on intel delay, and flips favor the defender).
     return arrival > print_turns
+
+
+def bloodlust(state: "BotState", config) -> bool:
+    """Killer instinct (r110: SICK endgame stall — snowball decided at
+    t4000 then coasts 6000t. A 3x population lead drops every brake:
+    no verify windows, no overkill caps, no stale premiums — end it.
+    Believed pops via world towns (mirror holds the living)."""
+    pops: dict[int, float] = {}
+    for t in state.world.towns:
+        pops[t.faction] = pops.get(t.faction, 0.0) + t.population
+    mine = pops.get(state.faction, 0.0)
+    foes = [v for k, v in pops.items() if k != state.faction]
+    return bool(foes) and mine >= 3.0 * max(foes)
 
 
 def second_wind(state: "BotState", config) -> list[str]:

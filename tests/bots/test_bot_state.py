@@ -3019,3 +3019,56 @@ class TestSecondWind:
                      {"kind": "town_update", "id": 3, "x": 200, "y": 500,
                       "faction": 1, "population": 900, "is_capital": False}])
         assert second_wind(b, CFG) == []
+
+
+class TestFortressLearning:
+    """Repeat deaths at one town escalate the avoid window."""
+
+    def test_window_doubles(self) -> None:
+        from bots.common import BotState, foe_garrison
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 3000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 900, "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        u = next(t for t in b.world.towns if t.id == 2)
+        assert foe_garrison(b, u) >= 0
+        # two deaths at town 2 -> window 600t
+        b._note_grave(2, 600, 500)
+        b.turn = 100
+        b._note_grave(2, 600, 500)
+        b.turn = 500
+        assert b.__dict__["_blood_count"][2] == 2
+        # 400t after last death: still inside 600t window
+        b.turn = 500
+        assert foe_garrison(b, u) >= 1
+
+
+class TestBloodlust:
+    """3x lead drops the brakes."""
+
+    def test_leader_blooded(self) -> None:
+        from bots.common import BotState, bloodlust
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 9000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 2000, "is_capital": False}])
+        assert bloodlust(b, CFG) is True
+
+    def test_close_game_calm(self) -> None:
+        from bots.common import BotState, bloodlust
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 4000, "is_capital": False}])
+        assert bloodlust(b, CFG) is False

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind
+from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -131,7 +131,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                        if state.army_has_target(a.id) and state.army_target(a.id) is not None
                        and abs(state.army_target(a.id)[0] - sk_march[0].x) < 15
                        and abs(state.army_target(a.id)[1] - sk_march[0].y) < 15)
-            if _skm < sk_march[1] + 2:
+            if bloodlust(state, config) or _skm < sk_march[1] + 2:
                 out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
                 continue
         if pack_building:
@@ -228,7 +228,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # turn's recompute — trickling dies in detail).
     by_id = {a.id: a for a in state.own_armies()}
     for tgt_id, (tgt, tneed, members) in packets.items():
-        if (len(members) >= tneed and assault_verified(state, tgt)) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
+        if (len(members) >= tneed and (bloodlust(state, config) or assault_verified(state, tgt))) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
             held = sync_hold(state, config, tgt.x, tgt.y, members)
             # Follow-on queue (user: take then fan out — pre-plan the
             # second wave: 2 nearest other foe towns. Fired on arrival
@@ -241,7 +241,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             for aid in members:
                 if aid in held:
                     continue  # near armies wait: land together
-                if sent >= tneed + 1:
+                if not bloodlust(state, config) and sent >= tneed + 1:
                     break
                 a = by_id.get(aid)
                 if a is not None:
