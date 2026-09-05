@@ -1370,3 +1370,15 @@ idle threshold 500t->100t); assault-verify 300->800t (r88 endgame
 freeze); S0-guard (coverage lone-army holds capital).
 R90: F2 snowball (early bloodbath t4000-5000 persists as the open
 item). NO GENERATE (r86 twin-giants stands).
+
+## Suicide-march + ex-own verify (r86 stands)
+
+DIAGNOSE (user: loser-moved-last?): r86 pure-1v1s all mutual (0
+suicides). Pack-scale: r90's 5-fed vs real-2 garrison = sync-hold
+defeat-in-detail (far arrives a turn early, dies alone) + unseen-
+death re-feed (no blood, re-probe). SHIPPED: sync 1.0->0.5 (same-
+turn landings), assault attempt-cap (<=2/target/1000t), ex-own
+verify (<150t for _lost_towns; tracked on seen mine->foe).
+R92 ~= R91 (seed-stable): same 8-fratricide = UNKNOWABLE fast flip
+(retaken unseen in 56t; even 150t stale kills). Accepted as the
+bound (perfect intel impossible). NO GENERATE (r86 stands).

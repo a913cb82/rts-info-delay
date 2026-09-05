@@ -2777,3 +2777,27 @@ class TestSyncHold:
         b.turn = 100
         held = sync_hold(b, cfg, 900.0, 500.0, [7, 8])
         assert held == {8}, held  # near (800) waits for far (300)
+
+
+class TestLostTowns:
+    """r91: 8-fratricide vs an ex-own town that flipped back unseen.
+    Ex-own assaults need fresh (<150t) belief."""
+
+    def test_exown_needs_fresh(self) -> None:
+        from bots.common import assault_verified
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 0, "population": 8000, "alive": True,
+                      "is_capital": False}])
+        b.update(2, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False}])
+        assert 2 in b.__dict__.get("_lost_towns", set())
+        b.turn = 100
+        assert assault_verified(b, b.world.get_town(2)) is True  # 98t fresh
+        b.turn = 500
+        assert assault_verified(b, b.world.get_town(2)) is False  # stale ex-own

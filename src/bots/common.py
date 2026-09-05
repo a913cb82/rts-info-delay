@@ -388,6 +388,10 @@ class BotState:
                              is_capital=bool(ev.get("is_capital", False)))
                     self.world.towns.append(t)
                 else:
+                    if t.faction == self.faction and int(ev.get("faction", t.faction)) != self.faction:
+                        # Lost a town (seen mine, now foe): ex-own assaults
+                        # need fresh intel (r91 fratricide).
+                        self.__dict__.setdefault("_lost_towns", set()).add(eid)
                     t.faction = int(ev.get("faction", t.faction))
                     t.x = float(ev.get("x", t.x))
                     t.y = float(ev.get("y", t.y))
@@ -2913,9 +2917,13 @@ def assault_verified(state: "BotState", target) -> bool:
     the pack (approach re-scouts: observers near refresh or FoW-erase
     clears); fresh intel assaults. Never-seen (constructed) counts.
     Window 800t (r88: 300t froze the endgame — stale intel + verify =
-    peace; fratricide needs ancient ghosts, not fresh-ish intel)."""
+    peace; fratricide needs ancient ghosts, not fresh-ish intel).
+    Ex-own towns (r91: 8-fratricide vs a town that flipped back unseen
+    — I should KNOW my own): assault needs fresh (<150t) belief."""
     if ("town", target.id) not in state._last_seen:
         return True
+    if target.id in state.__dict__.get("_lost_towns", set()):
+        return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 150
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
 
 
@@ -2941,7 +2949,9 @@ def sync_hold(state: "BotState", config, tx: float, ty: float,
     if not arrs:
         return set()
     latest = max(arrs.values())
-    return {aid for aid, arr in arrs.items() if latest - arr > 1.0}
+    # Tight 0.5 (r90: 1.0 let far arrive a full turn early and die
+    # alone — defeat in detail. Everyone lands the same turn).
+    return {aid for aid, arr in arrs.items() if latest - arr > 0.5}
 
 
 def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
@@ -2969,10 +2979,15 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     # premium blocks fair fights (real S often 0-2). Short by <=2 and
     # already there: attack, intel resolves on contact. Assault-once
     # (r69: 48 onesies vs real garrisons — re-assaults every 150t):
-    # fresh blood (< 1000t) vetoes.
+    # fresh blood (< 1000t) vetoes. Attempt-cap (r90: unseen deaths
+    # never blood — 5 fed in 24t): <=2 assaults per target per 1000t.
     if arrival < 1.0 and 0 < need - len(free_ids) <= 2 \
             and state.__dict__.get("_bloodied", {}).get(target.id, -10 ** 9) < state.turn - 1000:
-        return True
+        tries = [t for t in state.__dict__.get("_assaults", {}).get(target.id, [])
+                 if state.turn - t < 1000]
+        if len(tries) < 2:
+            state.__dict__.setdefault("_assaults", {}).setdefault(target.id, []).append(state.turn)
+            return True
     # Strict: ties hold (print can lag a turn; arriving exactly-even is
     # a coin flip on intel delay, and flips favor the defender).
     return arrival > print_turns
