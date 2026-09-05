@@ -64,8 +64,8 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 ## Iteration backlog (this loop's open work, in order)
 
 **The loop (how bots improve).** Repeat forever, in order:
-1. **Run** a real game (`empty_3000` fast ledger ~4s; `empty_10000`
-   full read ~30s, quiet box). Recordings are the ground truth.
+1. **Run** a real game (`empty_10000` full read ~30s, quiet box —
+   the interesting one; `empty_3000` retired). Recordings are the ground truth.
 2. **Analyse** (ACJSON quartiles 2500/5000/7500/10000 + ascii_view):
    per-bot story (what did each do well/badly?), war forensics (who
    attacked what with what, trade math), intel gaps (what did the
@@ -298,9 +298,10 @@ guard_duty 5227 (war-era, wobbles) / longpeace 4191 / opening 1391 /
 siege 5008 / snowball 6096 / staleness 5470 / succession 1826 /
 void_contact 5711 (take, wobbles); self-play symmetric;
 Elo all-draws ~1500 (needs contact-timing to discriminate).
-empty_3000: pro 6263 / greedy 5688 / aggressive 3089 / expander 5200 /
-turtle 2297 (equilibrium-tight, zero battles; sloshes ±2000 — judge
-mechanisms + suites, not empty-points).
+empty_10000 (the game): pro 121678 / expander 75768 / greedy 1000 /
+ aggressive 0 / turtle 0 (pro compounds east cluster, expander sprawls
+ thin, rest eliminated; judge mechanisms + suites, not empty-points).
+empty_3000 retired (equilibrium-tight, zero battles — too short).
 Next in order: ALL plan Steps substantially DONE (2 all-five, 3 meeting,
 4 compositional, 5 hopeless/evac/snipe/guards, 6 buzzer/strikes; recon +
 pickets shipped). empty_10000 war-verdict (see EMPTY_10000.md): P1 —

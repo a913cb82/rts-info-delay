@@ -8,8 +8,8 @@ is one iteration of it, plus logs.
 ## The loop (the main event)
 
 Repeat forever:
-1. **Run** a real game (`empty_3000` ~4s ledger; `empty_10000` ~30s,
-   quiet box). Recordings are the ground truth.
+1. **Run** a real game (`empty_10000` ~30s, quiet box — the interesting
+   one; `empty_3000` retired, too short for wars/scouting to matter).
 2. **Analyse** (ACJSON quartiles + ascii_view): per-bot story — what did
    each do well/badly? War forensics (who attacked what, trade math).
    Intel gaps (what did the winner never see?). Write the report card.
@@ -44,12 +44,9 @@ per change (before → after numbers). Full detail: `BOT_PLAN.md` (The loop).
   harness furniture. No randomness anywhere, ever.
 - **Intel model:** snapshots, late — LOS 150km eyes, 150km/turn mail,
   three delivery gates (tagged + released + ≥ S). Bots never get the map.
-- **Scoreboard:** `BOT_PLAN.md` (live) — empty_3000: pro 6263 / greedy
-  5688 / expander 5200 / aggressive 3089 / turtle 2297 (equilibrium-tight;
-  sloshes — judge mechanisms + suites). empty_10000 (see
-  `EMPTY_10000.md` war-verdict): greedy 129706 / pro 107507 /
-  aggressive 98436 / expander 19368 / turtle 871 (three-way war
-  t4653–t5345; greedy won beheaded). Exam 23/23 all green.
+- **Scoreboard:** `BOT_PLAN.md` (live) — empty_10000: pro 121678 /
+  expander 75768 / greedy 1000 / aggressive 0 / turtle 0 (see latest
+  report card in worklog). empty_3000 retired. Exam 23/23 all green.
 - **Open milestones:** ALL plan Steps substantially done (2 all-five, 3
   meeting/tempo, 4 compositional, 5 hopeless/evac/snipe/guards, 6
   buzzer/strikes; recon + pickets shipped). Filed-futures in plan/GTO.
@@ -60,7 +57,7 @@ per change (before → after numbers). Full detail: `BOT_PLAN.md` (The loop).
 Per-iteration gates (every loop through step 5):
 1. Fast suite (`benchmarks/scenario_bench.py`, ~1.5s) per change.
 2. Strategic suite (`benchmarks/strategic_bench.py`, ~10s) at milestones.
-3. `empty_3000` rematch read as a trade ledger (~4s).
+3. `empty_10000` rematch read as war ledger (~30s, quiet).
 4. `pytest` green. Judge vs the fog-era table only, with margin
    (clock-driven order wobble ≈ ±50 on long games — run benches quiet).
 5. Worklog entry per change (before → after numbers).
