@@ -3,7 +3,13 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home, towns_by_train_priority
+from .common import BotForecast, BotState, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home
+
+
+def _can_train_aggressive(state: BotState, town) -> bool:
+    """Thin cushion (fights): floor only + pending guard. Forward towns
+    must print (raid logistics) — no distance rule, no peak cap."""
+    return town.population >= 1500
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -13,28 +19,33 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
 
-    for t in towns_by_train_priority(state, conservative=False):
-        if state.should_yield():
-            break
-        out.append(f"TRAIN {t.id}")
+    # Step 2, aggressive params (predator): thin cushion (depth 0),
+    # marginal+initiative raids (margin 100), economic expansion rare
+    # (payback x3 — foundings are military staging, below), 1 prober.
+    out.extend(demand_trains(state, config, _can_train_aggressive,
+                             depth_extra=0.0, raid_margin=100.0,
+                             payback_mult=3.0, probe_armies=1))
 
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
     enemy_armies = [a for a in state.world.armies if a.faction != faction]
     own_t = state.own_towns()
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
-    # A1: viability gate — only march at towns worth holding: captured
-    # pop (halved) must clear the death floor + margin, else the raid
-    # buys a starvation (starve_trap lesson). Computed once (used by idle
-    # march below AND the arrival-sync check above).
+    force = inbound_force(state, config)
+    held = hold_defenders(state, config, force)
+    # A1 lives inside raid_target now (duel-gated viability + priced
+    # selection, margin 100 for initiative). Priced for duels, pressure
+    # for big wars.
     war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
-    if len(war_foes) <= 1:
-        viable = [t for t in enemy_towns
-                  if t.population * (1.0 - config.build_efficiency)
-                  > config.army_cost * config.build_efficiency + 200]
-    else:
-        viable = list(enemy_towns)
-
+    duel_ctx = len(war_foes) <= 1
+    sel = raid_target(state, config, priced=duel_ctx, margin=100.0)
+    free_n = sum(1 for a in state.own_armies()
+                 if not state.army_has_target(a.id) and a.id not in held)
+    pack_building = sel is not None and sel[1] > free_n
+    probe_armed = pack_building and sel[2] == 0
+    probe_sent = False
+    probe_reach = 6.0 * max(1.0, config.army_speed)
+    probe_tgt = sel[0] if probe_armed else None
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -53,29 +64,31 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # only BUILD if target is not an enemy town (attack needs capture, not BUILD)
             is_enemy_target = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in enemy_towns)
             if not is_enemy_target and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
+                # War-footing: home-bound armies hold (shared guard_duty
+                # lesson) — merge only in true peace.
+                foe_known = bool(enemy_towns) or bool(enemy_armies)
+                own_home = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20
+                               for t in own_t)
+                if foe_known and own_home:
+                    continue
                 out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
+            continue
+        if p.id in held:
             continue
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
-        if viable:
-            # A3: leader-targeting — value towns by faction strength per km,
-            # not bare distance (dent the leader while it compounds).
-            fscore: dict[int, float] = {}
-            for t in state.world.towns:
-                fscore[t.faction] = fscore.get(t.faction, 0.0) + t.population
-            for a in state.world.armies:
-                fscore[a.faction] = fscore.get(a.faction, 0.0) + 1000.0
-            nearest = max(viable, key=lambda t: fscore.get(t.faction, 0.0) / (1.0 + math.hypot(t.x - p.x, t.y - p.y) / 300.0))
-            # A2: departure sync — hold a lone army at home when its target
-            # is defended and the home town can retrench (a packmate is one
-            # train away). Same-turn arrival kills clean; trickle trades.
-            # (Arrival-sync proved unworkable: 1-turn decision lag +
-            # 1-turn messenger lag + stale intel vs 50km/turn marches.)
-            defended = any(math.hypot(e.x - nearest.x, e.y - nearest.y) <= 10 for e in enemy_armies)
-            if defended and len(state.own_armies()) == 1:
-                home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y), default=None)
-                if home is not None and home.population >= 2 * config.army_cost:
-                    continue  # wait for the pack; march together next turns
+        # Pack gate subsumes A2 departure-sync (need covers defendedness;
+        # the old retrench-march trickled). Undersized packs hold, except
+        # one nearby probe vs visibly-empty (bounded recon by fire).
+        if pack_building:
+            if not probe_armed or probe_sent or probe_tgt is None or \
+                    math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
+                continue
+            probe_sent = True
+        if sel is not None:
+            # A3: leader-targeting survives inside raid_target's pressure
+            # branch (big wars); duels march the priced take at +1.
+            nearest, _, _ = sel
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             fc = BotForecast(state, config)
@@ -88,7 +101,25 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if maybe_assign_scout(state, config, p):
                 out.extend(drive_scout(state, config, p) or [])
                 continue
-            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11, who=p.id)
+            # Military staging (not economic settling): found toward the
+            # raid target while no own town stands within 150km of it —
+            # forward bases are raid infrastructure. Staging builds WITH
+            # the pack (a forward town prints locally: short arrival ->
+            # small W -> completable needs; without it packs chase
+            # receding needs forever). Marginal horizon 500 kills only
+            # late-war obsolete-before-arrival outposts (viable t32).
+            # Economic settling waits for pack completion (concentrate).
+            staged = False
+            if sel is not None \
+                    and config.max_turns - state.turn >= 500:
+                tgt, _, _ = sel
+                if not any(math.hypot(t.x - tgt.x, t.y - tgt.y) <= 150.0
+                           for t in own_t):
+                    staged = True
+            site = None
+            if staged or (expansion_demand(state, config, payback_mult=3.0, void_horizon=500)
+                          and not pack_building):
+                site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
     return out

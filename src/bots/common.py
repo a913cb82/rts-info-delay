@@ -772,13 +772,26 @@ def drive_scout(state: "BotState", config, p):
         # kept target (settle-as-scout); normal logic owns again. But a
         # kept target inside an own town's founding range is a duplicate
         # merge, not a founding — drop the note so builds don't fire on
-        # it (normal site choice or recycle owns instead).
+        # it (normal site choice or recycle owns instead). And fallback
+        # founding is for TRUE void (foe never seen — recycle's capability
+        # contract); with foe history the army recycles or raids instead
+        # (void_contact t328: -460 late luxury). expansion_demand covers
+        # the contested-payback remainder.
         state._scout_id = None
+        if tgt is not None and state._foe_first_seen:
+            # Foe history: fallback founding faces the same EV bar as any
+            # expansion (rates + horizon) — true void keeps the capability
+            # contract (recycle), history without demand recycles or raids.
+            if not expansion_demand(state, config, void_horizon=500):
+                state._army_targets.pop(p.id, None)
+                tgt = None
         if tgt is not None:
             interact = (config.interact_radius if config is not None
                         and getattr(config, "interact_radius", None) else 10.0)
             if any(t.faction == state.faction and math.hypot(t.x - tgt[0], t.y - tgt[1]) <= interact + 10.0
                    for t in state.world.towns):
+                state._army_targets.pop(p.id, None)
+            elif not expansion_demand(state, config):
                 state._army_targets.pop(p.id, None)
         return []
     return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
@@ -1216,7 +1229,7 @@ def raid_target(state: "BotState", config, priced: bool = True,
         if not priced:
             score = u.population / (1.0 + dist / 300.0)
             if best is None or score > best[0]:
-                best = (score, u, need)
+                best = (score, u, need, s)
         elif prize > margin:
             # Bird-in-hand: an executable take now beats a bigger prize
             # after print-turns (opportunity cost + compounding). Pipeline
@@ -1224,10 +1237,10 @@ def raid_target(state: "BotState", config, priced: bool = True,
             score = prize / (1.0 + dist / 300.0) / (1.0 + s + w) \
                 / (1.0 + max(0, need - len(fieldable)))
             if best is None or score > best[0]:
-                best = (score, u, need)
+                best = (score, u, need, s)
     if best is None:
         return None
-    return best[1], best[2]
+    return best[1], best[2], best[3]
 
 
 def void_note_busy(state: "BotState") -> bool:
@@ -1241,22 +1254,30 @@ def void_note_busy(state: "BotState") -> bool:
     return False
 
 
-def expansion_demand(state: "BotState", config, payback_mult: float = 1.0) -> bool:
-    """Settler pipeline demand: void expands on logistic merit — colonies
-    ARE the void economy, so no serialization (a scout's own hop note
-    must not block the settler pipeline); contested expands only past
-    the payback bar (1e8/P, scaled by personality patience) with one
-    expansion in flight at a time — darkness shields growers, contest
-    prices expansion. The buzzer falls out (turns_left -> 0)."""
+def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
+                     void_horizon: int = 0) -> bool:
+    """Settler pipeline demand. Void (no known foes): colonies ARE the
+    void economy (no serialization — a scout's hop note must not block
+    the pipeline), but a marginal colony still needs ~500 turns to repay
+    (-500 + ~1/turn): settle-branch passes void_horizon=500, S0-fallback
+    keeps 0 (capability contract: probe-then-found is recycle's goal).
+    Contested: expand iff the colony stream beats the home marginal
+    stream (rate comparison on TRUE spend-aware growth — a fresh site at
+    ~0.75/turn vs a crowded home at ~0.3) with horizon to amortize
+    (payback_mult scales patience) and one in flight at a time.
+    Darkness shields growers; the buzzer falls out."""
     foe_known = any(t.faction != state.faction for t in state.world.towns) \
         or any(a.faction != state.faction for a in state.world.armies)
     if not foe_known:
-        return True
+        return config.max_turns - state.turn >= void_horizon
     if void_note_busy(state):
         return False
     turns_left = config.max_turns - state.turn
-    payers = [t.population for t in state.own_towns()]
-    return bool(payers) and turns_left >= payback_mult * 1e8 / max(payers)
+    if turns_left < payback_mult * 500:
+        return False
+    home_rate = max((state.get_growth(t.id) or 3.0) for t in state.own_towns()) \
+        if state.own_towns() else 3.0
+    return 0.75 > home_rate
 
 
 def can_train_standard(state: "BotState", town) -> bool:
@@ -1277,7 +1298,7 @@ def can_train_standard(state: "BotState", town) -> bool:
 def demand_trains(state: "BotState", config, can_train,
                   *, depth_extra: float = 0.0, raid_margin: float = 200.0,
                   payback_mult: float = 1.0, threat_window: float = 4.0,
-                  probe_armies: int = 0) -> list[str]:
+                  probe_armies: int = 0, void_horizon: int = 500) -> list[str]:
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
     rule, raid pipeline (pack deficit for the priced target), expansion
     pipeline (void merit / contested payback), plus the prober pipeline
@@ -1293,13 +1314,13 @@ def demand_trains(state: "BotState", config, can_train,
     home = {t.id: home_count(state, t) for t in state.own_towns()}
     sel = raid_target(state, config, margin=raid_margin)
     if sel is not None:
-        _, need = sel
+        _, need, _ = sel
         fieldable = sum(1 for a in state.own_armies()
                         if not state.army_has_target(a.id))
         deficit = [max(0, need - fieldable)]
     else:
         deficit = [0]
-    expand = expansion_demand(state, config, payback_mult)
+    expand = expansion_demand(state, config, payback_mult, void_horizon)
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
                                   state.get_growth(t.id), t.population))

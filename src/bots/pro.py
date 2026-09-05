@@ -63,6 +63,14 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     free_n = sum(1 for a in state.own_armies()
                  if not state.army_has_target(a.id) and a.id not in held)
     pack_building = sel is not None and sel[1] > free_n
+    # Probe in force: pack-building vs visibly-empty (S==0) still sends
+    # the first NEARBY free army (recon by fire — bounded risk, gains
+    # intel + takes vs passive; prints observed calibrate the follow-on).
+    # Far unknowns hold for the pack (no 600km donations into printers).
+    probe_armed = pack_building and sel[2] == 0
+    probe_sent = False
+    probe_reach = 6.0 * max(1.0, config.army_speed)
+    probe_tgt = sel[0] if probe_armed else None
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -74,9 +82,12 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue
         if pack_building:
-            continue  # pack not ready: hold (trains are building it)
+            if not probe_armed or probe_sent or probe_tgt is None or \
+                    math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
+                continue  # pack not ready: hold (trains are building it)
+            probe_sent = True
         if sel is not None:
-            nearest, need = sel
+            nearest, need, _ = sel
             # P1: leader-targeting (A3) + departure-sync (A2) on the greedy base.
             fscore: dict[int, float] = {}
             for t in state.world.towns:
@@ -125,7 +136,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # just delivers defenders to the builds-merge (guard_duty t31).
             # In war-footing the army holds position (staying is the order).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
-                if expansion_demand(state, config) else None
+                if expansion_demand(state, config, void_horizon=500) else None
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():

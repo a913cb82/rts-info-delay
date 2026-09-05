@@ -27,15 +27,16 @@ furniture for scenarios, not a personality. There is no `random` bot
   recycle/merge peace-only (war-footing holds — shared guard_duty lesson).
 
 ### aggressive — The Conqueror
-- Trains via `can_train_here` non-conservative (peak preserved except
-  overcrowding emergencies).
-- Targets by faction strength per km (leader-targeting: dent the leader),
-  filtered through the same duel-only viability gate as greedy.
-- Departure-sync: a lone army holds home while its town can retrench
-  (pop ≥ 2× cost) when the target is defended, so packs arrive together;
-  trickles vs undefended targets. Arrival-sync was tried and failed
-  (1-turn decision + 1-turn messenger lag vs 50 km/turn) — sync departures,
-  never arrivals.
+- Step 2 on shared demand API (predator params): thin cushion (depth 0,
+  forward towns print — no distance rule, no peak cap), marginal +
+  initiative raids (margin 100), economic expansion rare (payback x3),
+  1 prober. Pack gate subsumes A2 departure-sync (need covers
+  defendedness; the retrench-march trickled).
+- Military staging (not economic settling): found toward the raid target
+  while no own town stands within 150km of it — forward bases print
+  locally (short arrival → completable needs). Staging builds WITH the
+  pack; marginal horizon 500 kills obsolete outposts (viable t32).
+  Probe in force (nearby, S==0, range-capped) + bird-in-hand shared.
 - No actionable contact → scout-first like greedy (faction-ray sweep);
   no viable targets → chase foe armies at forecast positions; else expand
   (sites 120–340 km, moves now noted — the old branch forgot, causing

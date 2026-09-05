@@ -496,3 +496,33 @@ Class-body scare: a module-level insert mid-class gutted BotState
 voids steady, Elo greedy top 1530 (aggressive 1529→1501 shuffles against
 the new holds — its rollout is next), empty greedy 4835 (+75, same
 lineage). Remain: aggressive/expander/turtle Step 2, recon, Steps 3-6.
+
+## Step 2 aggressive: predator on shared API (trio at binding, equilibrium found)
+
+Aggressive on demand_trains (thin cushion, margin 100, payback x3, 1
+prober) + military staging demand (found toward the raid target while no
+own town within 150km — forward print shortens arrival → completable
+needs) + pack gate (subsumes A2; the retrench-march trickled) + probe in
+force (S==0, range-capped 300km after the 600km-donation lesson) +
+war-footing merge gate. Trio collapsed -25% on the way — forensics:
+takes run on scout-cadence (t7-vs-t26 same code, timing-shifted waits;
+3x-stable-quiet per tree, JIT first-runs lie — run suites TWICE after
+changes, second is truth); late luxury settlers (viable t32: staging
+dispatched pre-take arrives post-take → founds; marginal horizon 500 on
+staging + S0-fallback foe-history gate (recycle's true-void capability
+kept) fixed it); void_horizon on trains saved recycle from overtraining
+(3673→5793: one prober is enough on 60t). Trio now 4794/4495/4250 (all
+at/above binding). Lesson log: pop_change carries ABSOLUTE pops (merges
+look like deaths in filtered reads — verify with absolutes); always
+regenerate records before reading (cross-version comparison faked an
+engine ghost twice); enumerate death paths before crying bug (all four
+army_death sites pair with events except merge-consume by design).
+empty_3000 aggressive 2926 (-1947): equilibrium, not bug — all five
+credible → zero battles game-wide → nobody raids (correct deterrence!).
+Baseline's takes were chaos-profits (mutuals made victims); the new
+equilibrium has no victims (poor colonies halve-below-500, correctly
+skipped). What breaks it is the BUZZER (retaliation time runs out) —
+Step 6 next, highest leverage. Filed: site-starvation veto (id7 crowded
+out; picker needs a growth>0 veto), aggressive early-raid window urgency
+(guard_duty t20-60 window unexploited — Step 3 timing), S0 probe tempo
+(march-blind-fast — Step 2 scout followup).

@@ -33,6 +33,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     free_n = sum(1 for a in state.own_armies()
                  if not state.army_has_target(a.id) and a.id not in held)
     pack_building = sel is not None and sel[1] > free_n
+    probe_armed = pack_building and sel[2] == 0
+    probe_sent = False
+    probe_reach = 6.0 * max(1.0, config.army_speed)
+    probe_tgt = sel[0] if probe_armed else None
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -51,9 +55,12 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # when the pack is ready, else hold while trains build it.
         # Viability lives inside raid_target (duel-gated).
         if pack_building:
-            continue
+            if not probe_armed or probe_sent or probe_tgt is None or \
+                    math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
+                continue
+            probe_sent = True
         if sel is not None:
-            nearest, _ = sel
+            nearest, _, _ = sel
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             fc = BotForecast(state, config)
@@ -69,7 +76,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # G2: settle on demand (cherry-pick x2) — else recycle home,
             # peace-only (war-footing holds; disbanding feeds merges).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
-                if expansion_demand(state, config, payback_mult=2.0) else None
+                if expansion_demand(state, config, payback_mult=2.0, void_horizon=500) else None
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():
