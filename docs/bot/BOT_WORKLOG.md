@@ -1024,3 +1024,20 @@ TIMING VERDICT (traced decides: 0.2ms med, 0.9 max — never compute):
 -> zero-recovery spiral). FILED (infra): warm subprocesses / bigger
 main / bank floor; pop_change is 99% of events (throttle candidate).
 GENERATED: r26 (current tree; turtle ghosts t1903+, caveat logged).
+
+## Affirmations + clock floor (user-ordered visibility loop)
+
+USER (right): absence-of-event must be signal — dedup hides
+"no longer visible". But full resend is wrong layer (10-50x payloads;
+silence semantics load-bearing; ghosts are unwitnessed-death, not
+dedup). SHIPPED CHEAP: per-turn `visible` affirmation (foe ids in LOS
++ own always; ~1% cost) in deliver(); bots refresh _last_seen on it;
+ghost-clean keys off seen-age (exact, not trail heuristics).
+Tests: flight affirm/blind + bot refresh/spared. Suites green.
+CLOCK: 0ms deaths every line traced by mechanism (single >110ms
+hiccup -> bank 0 -> budget-0 instant spiral, no recovery). Floor:
+bank never below one increment (hiccup recovery; gameplay-neutral).
+r30: only REAL overspends die now (exp 16>17ms @158k sprawl — the
+filed 8ms ceiling). REMATCHES: r27 (exp 319k), r28 (4-way), r29
+(4 competitive + exp-coast), r30 (exp wipe). GENERATED: r29.
+Caveat: expander ghosts t2713+ (coasting 99k).

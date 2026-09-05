@@ -344,6 +344,20 @@ class BotState:
         from collections import deque
         kind = ev.get("kind")
         eid = ev.get("id")
+        if kind == "visible":
+            # Presence affirmation (absence-as-signal): refresh last-seen
+            # for affirmed ids at the event's turn (send-time truth, mail
+            # lag applies — staleness math stays honest). Ids in mirror
+            # but long-unaffirmed are UNSEEN (not 'static').
+            vt = int(ev.get("turn", self.turn))
+            for aid in ev.get("armies", []) or []:
+                if self._last_seen.get(("army", aid), -10 ** 9) < vt:
+                    self._last_seen[("army", aid)] = vt
+            for tid in ev.get("towns", []) or []:
+                if self._last_seen.get(("town", tid), -10 ** 9) < vt:
+                    self._last_seen[("town", tid)] = vt
+            self.__dict__["_visible_turn"] = vt
+            return
         if eid is None:
             return
         if kind == "town_update":
@@ -1143,6 +1157,8 @@ def silence_watch(state: "BotState", config) -> None:
         org = state.__dict__.get("_march_origin", {}).get(aid)
         if org is not None:
             last_heard = max(last_heard, org[2])  # note birth: no trail yet
+        # Visibility affirmations (exact seen-age; trails lie by lag).
+        last_heard = max(last_heard, state._last_seen.get(("army", aid), -10 ** 9))
         mail = _math.hypot(cap.x - tgt[0], cap.y - tgt[1]) / info
         march = _math.hypot(cap.x - tgt[0], cap.y - tgt[1]) / speed
         if state.turn - last_heard <= 2 * (mail + march) + 20:

@@ -41,6 +41,8 @@ def _assert_uniform(updates, ledger, S):
     entries = [e for e in ledger.events
                if e.kind in (EventKind.TOWN_UPDATE, EventKind.ARMY_UPDATE)]
     for u in updates:
+        if u.get("kind") == "visible":
+            continue  # affirmation, not a ledger entry
         wire = {"id": u["id"]} | {k: v for k, v in u.items() if k not in ("kind", "id", "x", "y")}
         ok = any(e.payload == wire and e.turn >= S
                  and (("town" if e.kind == EventKind.TOWN_UPDATE else "army",
@@ -95,7 +97,7 @@ class TestFlightE2E:
         p6 = payloads(6)
         assert p6[0], "payload resumes after landing"
         assert seen[0] == [1, 6], f"success jumps 1->6, got {seen[0]}"
-        by_id = {u["id"]: u for u in p6[0]}
+        by_id = {u["id"]: u for u in p6[0] if u.get("kind") != "visible"}
         # New capital announced as capital.
         caps = [u for u in p6[0] if u.get("is_capital") and u["faction"] == 0]
         assert len(caps) == 1 and (caps[0]["x"], caps[0]["y"]) == (150.0, 100.0)
@@ -167,8 +169,10 @@ class TestLoopPins:
         st.reset()
         lg.generate(w, turn=50, line_of_sight=150.0)
         got = deliver(0, w, lg, 50, st)
-        assert [u["id"] for u in got] == [1]
-        assert deliver(0, w, lg, 50, st) == []
+        assert [u["id"] for u in got if u.get("kind") != "visible"] == [1]
+        again = deliver(0, w, lg, 50, st)
+        assert [u for u in again if u.get("kind") != "visible"] == []  # values deduped...
+        assert any(u.get("kind") == "visible" for u in again)  # ...but presence affirmed
 
     def test_stationary_appears_at_exact_release(self) -> None:
         # Armies unmoved for 100 turns appear at exactly S+ceil(dist/info).
@@ -182,13 +186,13 @@ class TestLoopPins:
         for t in range(10, 115):
             lg.generate(w, turn=t, line_of_sight=500.0)
         st = SendState()
-        assert 7 not in {u["id"] for u in deliver(0, w, lg, 11, st)}  # 160km: S+2
+        assert 7 not in {u["id"] for u in deliver(0, w, lg, 11, st) if u.get("kind") != "visible"}  # 160km: S+2
         st = SendState()
-        assert 7 in {u["id"] for u in deliver(0, w, lg, 12, st)}
+        assert 7 in {u["id"] for u in deliver(0, w, lg, 12, st) if u.get("kind") != "visible"}
         st = SendState()
-        assert 8 not in {u["id"] for u in deliver(0, w, lg, 12, st)}  # 310km: S+3
+        assert 8 not in {u["id"] for u in deliver(0, w, lg, 12, st) if u.get("kind") != "visible"}  # 310km: S+3
         st = SendState()
-        assert 8 in {u["id"] for u in deliver(0, w, lg, 13, st)}
+        assert 8 in {u["id"] for u in deliver(0, w, lg, 13, st) if u.get("kind") != "visible"}
 
     def test_fog_purity(self) -> None:
         # Never observed => never delivered, over a whole game.
@@ -202,7 +206,8 @@ class TestLoopPins:
         for t in range(1, 21):
             lg.generate(w, turn=t, line_of_sight=150.0)
             for u in deliver(0, w, lg, t, st):
-                seen.add(u["id"])
+                if u.get("kind") != "visible":
+                    seen.add(u["id"])
         assert 2 not in seen
         assert 1 in seen
 
@@ -225,3 +230,38 @@ class TestDeliver:
         lg.generate(w, turn=1, line_of_sight=150.0)
         got = deliver(0, w, lg, 2, SendState())
         assert [u["id"] for u in got if u["kind"] == "army_update"] == [7]
+
+
+class TestVisibleAffirm:
+    """Presence affirmations: every delivery names currently-visible foe
+    ids (absence-as-signal), own armies always (command net)."""
+
+    def test_affirms_visible_foes(self) -> None:
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True),
+                   Town(id=2, faction=1, x=100, y=0, population=2000, is_capital=True)]
+        w.armies = [Army(id=7, faction=1, x=100, y=0, is_viceroy=False),
+                    Army(id=8, faction=0, x=500, y=500, is_viceroy=False)]
+        lg = Ledger(CFG.info_speed, 1414)
+        st = SendState()
+        lg.generate(w, turn=1, line_of_sight=150.0)
+        got = [u for u in deliver(0, w, lg, 1, st) if u.get("kind") == "visible"]
+        assert len(got) == 1
+        assert 7 in got[0]["armies"]  # foe in LOS affirmed
+        assert 2 in got[0]["towns"]
+        assert 8 in got[0]["armies"]  # own affirmed (command net)
+
+    def test_silent_when_blind(self) -> None:
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True),
+                   Town(id=2, faction=1, x=900, y=900, population=2000, is_capital=True)]
+        w.armies = [Army(id=7, faction=1, x=900, y=900, is_viceroy=False)]
+        lg = Ledger(CFG.info_speed, 1414)
+        st = SendState()
+        lg.generate(w, turn=1, line_of_sight=150.0)
+        got = [u for u in deliver(0, w, lg, 1, st) if u.get("kind") == "visible"]
+        assert len(got) == 1
+        assert 7 not in got[0]["armies"]  # unseen foe: absence is signal
+        assert 2 not in got[0]["towns"]

@@ -252,7 +252,11 @@ class BotProcess:
             else:
                 self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
                 if self.clock_ms < 0.0:
-                    self.clock_ms = 0.0
+                    # Floor at one increment (hiccup recovery): a single
+                    # >110ms scheduling spike otherwise zeroes the bank and
+                    # the next turn offers budget 0 (instant death spiral
+                    # with no recovery — killed healthy bots every war line).
+                    self.clock_ms = min(cap, inc)
         return validated
 
     def send_end(self, scores: dict[int, int]) -> None:
@@ -430,18 +434,47 @@ def _startup_config_json(config: GameConfig) -> str:
 
 
 def deliver(faction: int, world: World, ledger: Ledger, turn: int,
-            send_state: SendState) -> list[dict]:
+            send_state: SendState, los: float = 150.0) -> list[dict]:
     """Tag-aware delivery for one faction (Phase 3 wire-up).
 
     Mute is the I/O skip: a flying faction gets nothing (the game loop
     also skips its I/O entirely; this guards the builder itself).
-    """
+
+    Plus a visibility affirmation: ids of foe armies/towns in LOS now.
+    Values stay deduped (bandwidth), but presence is affirmed every
+    turn — absence of an id the bot mirrors means UNSEEN (not 'static'),
+    so bots can tell 'has not moved' apart from 'no longer visible'
+    without full resend."""
     if faction_in_flight(world, faction):
         return []
     capital = world.faction_capital(faction)
     cap = (capital.x, capital.y) if capital is not None else (0.0, 0.0)
-    return build_updates(ledger, faction, send_state,
-                         ledger.S.get(faction, 0), cap, float(turn))
+    out = build_updates(ledger, faction, send_state,
+                        ledger.S.get(faction, 0), cap, float(turn))
+    try:
+        import math as _math
+        los = float(los or 150.0)
+        eyes = [(t.x, t.y) for t in world.towns if t.faction == faction]
+        eyes += [(a.x, a.y) for a in world.armies if a.faction == faction]
+        if eyes:
+            va, vt = [], []
+            for a in world.armies:
+                # Own armies affirmed unconditionally (command net has no
+                # range — keeps live holders/scouts out of ghost-clean).
+                if a.faction == faction:
+                    va.append(a.id)
+                    continue
+                if min(_math.hypot(a.x - ex, a.y - ey) for ex, ey in eyes) <= los:
+                    va.append(a.id)
+            for t in world.towns:
+                if t.faction == faction:
+                    continue
+                if min(_math.hypot(t.x - ex, t.y - ey) for ex, ey in eyes) <= los:
+                    vt.append(t.id)
+            out.append({"kind": "visible", "turn": turn, "armies": va, "towns": vt})
+    except Exception:
+        pass
+    return out
 
 
 def note_landing(step_events: list[dict], faction: int, turn: int,
@@ -557,7 +590,7 @@ def run_game(
                 orders_dict[faction] = []
                 continue
             budget_ms = max(0.0, float(bp.turn_budget()))
-            if not bp._write_block(turn, deliver(faction, world, ledger, turn, bp.send_state), budget_ms, True):
+            if not bp._write_block(turn, deliver(faction, world, ledger, turn, bp.send_state, float(getattr(config, "line_of_sight", 150.0) or 150.0)), budget_ms, True):
                 bp.alive = False
                 try:
                     bp.kill()

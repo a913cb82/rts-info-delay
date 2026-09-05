@@ -1763,3 +1763,38 @@ class TestGhostClean:
         silence_watch(b, CFG)
         assert b.world.get_army(7) is not None
         assert b.army_has_target(7)
+
+
+class TestVisibleAffirm:
+    """Presence affirmations: absence-as-signal (seen vs unseen)."""
+
+    def test_visible_refreshes_last_seen(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.update(50, [{"kind": "visible", "turn": 49, "armies": [7, 9],
+                       "towns": [2]}])
+        assert b._last_seen[("army", 7)] == 49
+        assert b._last_seen[("army", 9)] == 49
+        assert b._last_seen[("town", 2)] == 49
+        assert b.__dict__.get("_visible_turn") == 49
+
+    def test_affirmed_army_survives_silence(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        # static holder, affirmed recently: NOT a ghost (no clean).
+        b.update(840, [{"kind": "visible", "turn": 839, "armies": [7],
+                        "towns": []}])
+        b.turn = 840
+        silence_watch(b, CFG)
+        assert b.world.get_army(7) is not None
