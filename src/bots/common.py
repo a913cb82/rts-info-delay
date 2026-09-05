@@ -2912,6 +2912,11 @@ def train_floor(state: "BotState", config) -> float:
         or any(a.faction != state.faction for a in state.world.armies)
     if not foe_known and not state._foe_first_seen:
         return cost + thresh  # true void: regrow is safe, legacy floor
+    # First-print urgency (r122: HEAD opens t1400 vs ancestors t1100 —
+    # floor 2000 idles the starter. Armless = print at cost+thresh; the
+    # first body unlocks scouting+settling, worth the thin buffer).
+    if not state.own_armies():
+        return cost + thresh
     return cost + thresh + cost / 2.0
 
 
@@ -3130,6 +3135,13 @@ def demand_trains(state: "BotState", config, can_train,
         elif (can_train(state, t)
                 and t.population - cost >= floor + params.depth_extra - 1e-9):
             out.append(f"TRAIN {t.id}")
+        elif (not state.own_armies() and can_train(state, t)
+                and t.population - cost >= config.death_threshold):
+            # First-print urgency at emission too (r122: gate said 1500
+            # but emission demanded leaving 1500 = real floor 2500).
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
+            deficit[0] = max(0, deficit[0] - 1)
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
         elif (eta_n is not None and t.population >= cost
