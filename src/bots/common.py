@@ -2837,6 +2837,17 @@ def demand_trains(state: "BotState", config, can_train,
             # excluded: musters keep full floors). Engine-validity only.
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
+        elif (deficit[0] <= 0
+                and _dark(state)
+                and len(state.own_armies()) < params.probe_armies + 2
+                and t.population - cost >= config.death_threshold - 1e-9
+                and t.id not in state._pending_trains):
+            # Second-body floor (r94: rotation wants eyes+reserve while
+            # dark, but full floors block poor towns (first print scouts,
+            # capital naked until contact). Survive-pricing funds the
+            # second body; pack deficit excluded (musters keep floors).
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
     return out
 
 

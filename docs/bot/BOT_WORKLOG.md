@@ -1395,3 +1395,13 @@ through pricing/strike/recall/packets — no-note holds instead).
 R94 health: watch (0 suicides, 0 train-deaths, 2 onesies, 2 quiet);
 snowball t5000+ (worse game than r86 twin-giants, but current tree).
 GENERATED r94 (per-loop regen).
+
+## Second-body floor + r95 (per-loop regen)
+
+SHIPPED (common.py, green): rotation-want prints second body at
+survive-pricing (dark + armies<probe+2 + deficit 0; first print
+scouts, capital naked until contact otherwise).
+R95 health: watch (0 onesies, 0 suicides, 0 train-deaths, 1 quiet
+block t1500-2000) — cleanest yet. Snowball t4000+ persists (early
+bloodbath structural: thin vs first packs; all mitigations active).
+GENERATED r95 (per-loop regen).
