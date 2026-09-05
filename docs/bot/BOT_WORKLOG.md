@@ -955,3 +955,10 @@ visible fresh (42/39/12/50), zero foe armies seen 941t+. Logic marches
 when observed (repro) -> REMAINS: packet/note dynamics in bot-view
 (stale-note siege? never-released packets?). Next loop kills it with
 fog + report in hand. VIEWER.md updated.
+
+## Punish loop closed (r19 generated)
+
+REMATCH r18/r19: bitwise r17 line (153 deaths / 131 battles) — both
+mechanisms verified present-but-silent on the calm line (pin needs
+fog-view, next loop). All five survive, no timeouts. GENERATED: r19
+-> recordings/ + viewer/public/ (canonical matches tree).
