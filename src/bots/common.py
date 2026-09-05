@@ -1243,6 +1243,30 @@ def silence_watch(state: "BotState", config) -> None:
         state.__dict__.get("_march_origin", {}).pop(aid, None)
 
 
+def amnesty_notes(state: "BotState") -> None:
+    """Note amnesty (r43 lesson: 27 armies noted 6000t+, nothing wants
+    them, nothing releases them). Field notes older than 300t pop and
+    re-decide fresh — valid plans reform in one turn (same sel, same
+    tip); stale locks break. Home notes, scouts, viceroys, pending
+    builds exempt (holding is their job)."""
+    for aid, tgt in list(state._army_targets.items()):
+        if aid == state._scout_id or aid == getattr(state, "_scout_id2", None):
+            continue
+        a = state.world.get_army(aid)
+        if a is None or getattr(a, "is_viceroy", False):
+            continue
+        if state.has_pending_build(aid):
+            continue
+        if any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in state.world.towns
+               if t.faction == state.faction):
+            continue  # home note: guards hold
+        org = state.__dict__.get("_march_origin", {}).get(aid)
+        if org is None or state.turn - org[2] <= 300:
+            continue
+        state._army_targets.pop(aid, None)
+        state.__dict__.get("_march_origin", {}).pop(aid, None)
+
+
 def drop_dead_notes(state: "BotState") -> None:
     """Clear MOVE_TO notes whose army is statically elsewhere: the order
     died in flight (messenger from-check on stale intel) and has_target
@@ -1253,6 +1277,7 @@ def drop_dead_notes(state: "BotState") -> None:
     means stranded. Catches dispatch-time deaths too (army never left).
     Viceroys exempt (flight notes are live by construction)."""
     silence_watch(state, state.config)
+    amnesty_notes(state)
     cap = state.world.faction_capital(state.faction)
     info = (state.config.info_speed if state.config is not None else 150.0)
     for aid, tgt in list(state._army_targets.items()):
@@ -1993,11 +2018,38 @@ def foe_garrison(state: "BotState", u) -> int:
     """Standing defenders imputed to foe town u (nearest same-faction town).
     Grave-memory prices in: bloodied (our army died here <150t ago) imputes
     >= 1 — dead armies tell no tales, so stale s=0 would otherwise keep
-    approving onesie raids into unseen garrisons."""
+    approving onesie raids into unseen garrisons.
+    Blind-attack floor (GTO rush doctrine, r38 lesson): s=0 from STALE
+    intel is unconfirmed — assume muster-3 (never raid blind-small).
+    Fresh s=0 (observed empty under send-all) still takes at need 1."""
+    s = garrison_map(state).get(u.id, 0)
+    if state.__dict__.get("_bloodied", {}).get(u.id, -10**9) >= state.turn - 150:
+        s = max(s, 1)
+    if s == 0 and state.turn - state._last_seen.get(("town", u.id), -10**9) > 150:
+        s = 3
+    return s
     s = garrison_map(state).get(u.id, 0)
     if state.__dict__.get("_bloodied", {}).get(u.id, -10**9) >= state.turn - 150:
         s = max(s, 1)
     return s
+
+
+def pack_print(state: "BotState", config, sel, free_n, can_train) -> list[str]:
+    """Pack-driven print (shared r40 lesson): shortfall with nothing
+    printing toward it orders the missing member (packs otherwise hold
+    forever while towns compound for the foe). Respects floors."""
+    if sel is None:
+        return []
+    if sel[1] - free_n <= 0 or state._pending_trains:
+        return []
+    cands = sorted((t for t in state.own_towns()
+                    if can_train(state, t)
+                    and t.population - config.army_cost >= config.death_threshold - 1e-9),
+                   key=lambda t: -t.population)
+    if not cands:
+        return []
+    state.note_train(cands[0].id)
+    return [f"TRAIN {cands[0].id}"]
 
 
 def probe_ok(state: "BotState", sel) -> bool:
@@ -2056,6 +2108,11 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         prize = u.population * (1.0 - eff)
         dist = min((math.hypot(a.x - u.x, a.y - u.y) for a in fieldable),
                    default=float("inf"))
+        # Latency caution (doctrine): far fights are dangerous (slow
+        # reinforce, stale intel) — +1 need per 300km. Nearby empties
+        # still take cheap; far ones muster deep or wait.
+        if dist != float("inf"):
+            need += int(dist // 300.0)
         if not priced:
             score = u.population / (1.0 + dist / 300.0)
             ranked.append((score, u, need, s))
@@ -2292,6 +2349,11 @@ def demand_trains(state: "BotState", config, can_train,
         if expand:
             want = True
         if len(state.own_armies()) < params.probe_armies:
+            want = True
+        # Blindness rotation (r41 lesson: 10 prints all game, then 9500t
+        # dark peace): when map-blind, fund up to probe+2 (eyes + reserve
+        # — one army can't scout-map-raid simultaneously).
+        if _dark(state) and len(state.own_armies()) < params.probe_armies + 2:
             want = True
         if not want:
             continue

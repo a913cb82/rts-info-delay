@@ -1247,9 +1247,12 @@ class TestGraveMemory:
         assert foe_garrison(b, tgt) == 0
         b.update(2, [{"kind": "army_update", "id": 7, "faction": 0,
                       "alive": False}])
-        assert foe_garrison(b, tgt) == 1  # stale 0 overridden by grave
+        assert foe_garrison(b, tgt) == 1  # grave imputes (town fresh: no floor)
+        b.update(200, [{"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                        "faction": 1, "population": 8000, "alive": True,
+                        "is_capital": False}])
         b.turn = 200
-        assert foe_garrison(b, tgt) == 0  # fades with the grave
+        assert foe_garrison(b, tgt) == 0  # fresh + grave faded
 
 
 class TestSitePays:
@@ -1927,3 +1930,118 @@ class TestGraveRelease:
         b.turn = 4
         silence_watch(b, CFG)
         assert not b.army_has_target(8)
+
+
+class TestBlindFloor:
+    """r38 lesson: 41 onesies into unseen garrisons (stale s=0 approved
+    need-1 raids). GTO rush floor: stale s=0 imputes muster-3."""
+
+    def test_stale_imputes_three(self) -> None:
+        from bots.common import BotState, foe_garrison
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 500  # town 2 unseen 499t: blind
+        assert foe_garrison(b, b.world.get_town(2)) == 3
+
+    def test_fresh_empty_stays_zero(self) -> None:
+        from bots.common import BotState, foe_garrison
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(500, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                        "faction": 0, "population": 20000, "alive": True,
+                        "is_capital": True},
+                       {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                        "faction": 1, "population": 8000, "alive": True,
+                        "is_capital": False}])
+        b.turn = 500
+        assert foe_garrison(b, b.world.get_town(2)) == 0
+
+
+class TestBlindRotation:
+    """r41 lesson: 10 prints then 9500t dark peace. Blindness funds
+    probe+2 (eyes + reserve)."""
+
+    def test_dark_funds_two(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000  # never saw anyone: dark
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestLatencyPremium:
+    """Doctrine: wary far from capital (latency) — +1 need per 300km."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 900, "y": 500,
+                      "faction": 1, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        return b
+
+    def test_far_costs_more(self) -> None:
+        from bots.common import raid_targets
+        b = self._bot()
+        got = {u.id: n for (u, n, _s) in raid_targets(b, CFG, 3, priced=False)}
+        assert got[3] > got[2], got  # 580km vs 30km: latency premium
+
+
+class TestAmnesty:
+    """r43 lesson: 27 armies noted 6000t+ with nothing wanting them.
+    Field notes older than 300t re-decide."""
+
+    def test_stale_field_note_pops(self) -> None:
+        from bots.common import BotState, amnesty_notes
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        b.__dict__.setdefault("_march_origin", {})[7] = (600.0, 500.0, 100)
+        b.turn = 500
+        amnesty_notes(b)
+        assert not b.army_has_target(7)
+
+    def test_fresh_and_home_spared(self) -> None:
+        from bots.common import BotState, amnesty_notes
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        b.note_move(8, 300.0, 500.0)
+        b.turn = 50
+        amnesty_notes(b)
+        assert b.army_has_target(7)  # fresh field note stays
+        assert b.army_has_target(8)  # home note stays

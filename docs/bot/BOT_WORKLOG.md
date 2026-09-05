@@ -1096,3 +1096,16 @@ mapper-full bare-pop fallback.
 REMATCH r38: battles EVERY millennium (43 total), foundings to t5000
 (action all game — user's bar). r39 quieter (15). GENERATED: r38
 (greedy ghosts t1424+, caveat).
+
+## Note amnesty (loop iteration: bound every lock at 300t)
+
+ANALYSE (r43 report): 27 pro noted 6000t+ (nothing wants/releases
+them); synthetic repro marches (logic willing) -> notes are the lock.
+SHIPPED (common.py + test, green): amnesty_notes in drop_dead_notes
+(all five): field notes older than 300t pop (valid plans reform in
+one turn; home/scout/viceroy/pending exempt).
+REMATCH r44: foundings t1000-3000 (8), captures t3000-5000 (5) — all
+bots alive, no deaths. Late freeze t6000+ persists (rich towns, big
+garrisons, dark map; buzzer silent t9000+). FILED NEXT: buzzer audit
+(strip-mine flip should force late action) + late-garrison equilibrium.
+GENERATED: r44 (all alive).

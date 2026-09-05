@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -96,20 +96,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     pack_building = sel is not None and sel[1] > free_n \
         and not jit_ready(state, config, sel[0], sel[1], free_ids,
         sel[0].faction)
-    # Pack-driven print (r17 lesson): a pack held short forever (need 7,
-    # free 6, no demand) sits 5000 turns — and JIT marches on promised
-    # prints nobody ordered. If shortfall exists with nothing printing
-    # toward it, order the missing member at the richest affordable town.
-    if sel is not None:
-        short = sel[1] - free_n
-        if short > 0 and not state._pending_trains:
-            cands = sorted((t for t in state.own_towns()
-                            if can_train_standard(state, t)
-                            and t.population - config.army_cost >= config.death_threshold - 1e-9),
-                           key=lambda t: -t.population)
-            if cands:
-                out.append(f"TRAIN {cands[0].id}")
-                state.note_train(cands[0].id)
+    # Pack-driven print (shared): shortfall with nothing printing funds it.
+    out.extend(pack_print(state, config, sel, free_n, can_train_standard))
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # ONE nearby free army (recon by fire — bounded risk, gains intel +
     # takes vs passive; prints observed calibrate the follow-on). One
