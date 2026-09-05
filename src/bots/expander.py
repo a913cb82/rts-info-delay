@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home, strike_target
+from .common import BotState, DemandParams, bot_main, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -113,11 +113,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if maybe_assign_scout(state, config, p):
             out.extend(drive_scout(state, config, p) or [])
             continue
-        # Sprawl settling (demand-gated, no site veto — race over pop).
+        # Sprawl settling (demand-gated; site veto applies — sprawl
+        # accepts -EV patience, not fratricide (unbounded sprawl slows
+        # decides past clock on long games: empty_10000 lesson). True
+        # races override via filed race-sites (no racing rival exists).
         site = None
         if expansion_demand(state, config, DemandParams(
                 payback_mult=0.3, void_horizon=100, rates=False, serial=False)):
             site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
+        if site is not None and not site_pays(state, config, site[0], site[1]):
+            site = None
         if site:
             sx, sy = site
             out.extend(order_move(state, config, p, sx, sy))

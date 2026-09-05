@@ -679,3 +679,24 @@ inbound at pathological scale only (50000+ pairs / 300+ towns) so
 scripted-clock tests stay exact). Spreading: MEASURED UNNECESSARY
 (2.4ms worst << 100ms cap; threshold documented: spread via plan-queue
 if decides ever approach ~50% of cap). Suites identical (memo is exact).
+
+## empty_10000 generation: two real bugs (no clock changes)
+
+10000-turn games killed bots every run (3000s clean) — forensics, two
+ROOT causes (both bots-side, per directives): (1) expander NameError
+(enemy_armies use-before-def in strike hoist): needs viable targets AND
+idle fieldable simultaneously (scale-gated!) → crash/eof ~t6000+; crash
+mid-round cascaded via mux (peers timed out on disrupted rounds: turtle
+0ms timeouts). Never fired before (small games: no idle piles). Fixed +
+regression net (all 3000s green). (2) expander sprawl death-spiral:
+100+ towns -> 7-30ms decides vs 10ms increment -> slow clock drain ->
+timeout ~t7000 (systematic, not spikes!). Fixed by site-veto on sprawl
+settling (fratricide-gated like everyone; race-sites filed for true
+races) — sprawl alive+poorer beats dead (correct tradeoff). Runner
+_qol_: mux death logs now carry turn= (was None always — cosmetic).
+Perf: turn-keyed _memo (inbound/staging/garrison/forecast shared per
+decide), guard-set O(T), BotForecast out of per-army loops: 28ms->1.4ms
+worst-case (20x), realistic 0.2-2ms (100x under increment). Best-so-far
+timeout guards (pathological-scale only, tests exact). Spreading
+MEASURED UNNECESSARY (2.4ms << 100ms cap; threshold documented).
+empty_10000: 17.9s wall (~1.8ms/turn), 35.6MB, zero deaths.
