@@ -249,12 +249,15 @@ class BotProcess:
                     self.clock_ms = cap
             else:
                 self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
-                if self.clock_ms < 0.0:
-                    # Floor at one increment (hiccup recovery): a single
-                    # >110ms scheduling spike otherwise zeroes the bank and
-                    # the next turn offers budget 0 (instant death spiral
-                    # with no recovery — killed healthy bots every war line).
-                    self.clock_ms = min(cap, inc)
+                if self.clock_ms <= 0.0:
+                    # Floor (hiccup recovery) only on spikes (elapsed > a
+                    # full period): sustained mild overspend still dies
+                    # (byo-yomi's job), but exact-zero no longer slips the
+                    # floor into a budget-0 instant spiral.
+                    if elapsed_ms > cap:
+                        self.clock_ms = min(cap, inc)
+                    else:
+                        self.clock_ms = 0.0
         return validated
 
     def send_end(self, scores: dict[int, int]) -> None:

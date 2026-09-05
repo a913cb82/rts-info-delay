@@ -1068,3 +1068,16 @@ table 3888 IDENTICAL on baseline (send-all-era drift, filed).
 REMATCH r33: movement FLOWS (pro 54k km, 265k win; mapper-33 cycling;
 zero onesies/punishable/sustained-opportunities). All bots alive.
 GENERATED: r33 -> both locations.
+
+## Mapper tour (loop iteration: kill the pendulum)
+
+ANALYSE (r33 tracks): mapper-33 painted 5301km on a 300km line (18
+laps); zero trains/captures late; idle everywhere. Mechanism:
+stalest-quadrant chase (arrival freshens, far side goes stalest).
+FIX (common.py): fixed tour (legs % 4 quadrant centroids), then
+release. Tests kept passing (hop targeting compatible). Floor edge:
+exact-zero slipped hiccup recovery (floors only on spikes now;
+sustained drips still die properly).
+REMATCH r34: max march 100km (pendulum dead); aggressive 179k wins
+competitive line. New stillness: 27+26 idle (peace disease — filed).
+GENERATED: r34 (turtle ghosts t1893+, caveat).

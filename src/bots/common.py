@@ -1231,26 +1231,17 @@ MAPPER_MAX = 2
 
 
 def mapper_hop_target(state: "BotState", config, p) -> tuple[float, float]:
-    """Next mapping hop: toward the stalest quadrant centroid. Quadrants
-    split the map; staleness = oldest town intel inside (unknown country
-    with no known towns counts stalest — unexplored draws mappers)."""
+    """Next mapping hop: tour the quadrant centroids in order (legs % 4).
+    (Was: stalest-quadrant chase — arrival freshens it, the far side goes
+    stalest, eternal 300km pendulum: mapper-33 painted 5301km of line.)
+    A fixed tour covers the map once, then the patrol releases."""
     size = (config.map_size if config is not None
             and getattr(config, "map_size", None) else [1000, 1000])
     cx, cy = size[0] / 2.0, size[1] / 2.0
     quads = [(cx / 2, cy / 2), (cx + cx / 2, cy / 2),
              (cx / 2, cy + cy / 2), (cx + cx / 2, cy + cy / 2)]
-    stale = []
-    for qx, qy in quads:
-        oldest = -10 ** 9
-        known = False
-        for t in state.world.towns:
-            if (t.x < cx) == (qx < cx) and (t.y < cy) == (qy < cy):
-                known = True
-                ls = state._last_seen.get(("town", t.id), -10 ** 9)
-                oldest = max(oldest, ls)
-        stale.append((oldest if known else -10 ** 18, qx, qy))
-    stale.sort(key=lambda r: r[0])
-    qx, qy = stale[0][1], stale[0][2]
+    legs = state.__dict__.get("_mapper", {}).get(p.id, 0)
+    qx, qy = quads[legs % 4]
     import math as _math
     d = _math.hypot(qx - p.x, qy - p.y)
     if d < 1e-9:
