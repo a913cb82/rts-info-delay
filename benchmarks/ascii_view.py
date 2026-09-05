@@ -159,6 +159,94 @@ def footer(world: dict, header: dict, turn: int, color: bool = True, mode: str =
     return "  ".join(parts) + "\n" + legend
 
 
+def _relations(world: dict) -> dict:
+    """Precomputed spatial relations (no LLM math needed — the GeoJSON
+    trap: models can't 'just look at coords and know'). Per town:
+    nearest foe/own + distances. Per faction: centroid + neighbors.
+    Game-agnostic shape (any positioned entities with faction/pop)."""
+    towns = world.get("towns", [])
+    rel: dict = {"towns": {}, "factions": {}}
+    for t in towns:
+        best_foe = None
+        best_own = None
+        for u in towns:
+            if u["id"] == t["id"]:
+                continue
+            d = math.hypot(u["x"] - t["x"], u["y"] - t["y"])
+            if u["faction"] != t["faction"]:
+                if best_foe is None or d < best_foe[0]:
+                    best_foe = (d, u)
+            elif best_own is None or d < best_own[0]:
+                best_own = (d, u)
+        rel["towns"][str(t["id"])] = {
+            "foe": {"id": best_foe[1]["id"], "faction": best_foe[1]["faction"],
+                      "dist": round(best_foe[0]), "pop": round(best_foe[1]["population"]) } if best_foe else None,
+            "own": {"id": best_own[1]["id"], "dist": round(best_own[0])} if best_own else None,
+        }
+    facs = sorted({t["faction"] for t in towns})
+    for f in facs:
+        own = [t for t in towns if t["faction"] == f]
+        cx = sum(t["x"] for t in own) / len(own)
+        cy = sum(t["y"] for t in own) / len(own)
+        spread = max(math.hypot(t["x"] - cx, t["y"] - cy) for t in own)
+        neigh: dict = {}
+        for u in towns:
+            if u["faction"] == f:
+                continue
+            d = math.hypot(u["x"] - cx, u["y"] - cy)
+            g = str(u["faction"])
+            if g not in neigh or d < neigh[g]:
+                neigh[g] = round(d)
+        rel["factions"][str(f)] = {"centroid": [round(cx), round(cy)],
+                                    "spread": round(spread), "neighbors": neigh}
+    return rel
+
+
+def _views(world: dict) -> dict:
+    """Subject-centric 8-ray first-hit per faction capital (raycast:
+    benchmark winner 8/8 at 137 tokens — first-hit-only mimics human
+    perception; empty directions mean open space). Rays hit towns then
+    armies, nearest first per compass octant."""
+    towns = world.get("towns", [])
+    armies = world.get("armies", [])
+    dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    views: dict = {}
+    caps = [t for t in towns if t.get("is_capital")]
+    for cap in caps:
+        cx, cy = cap["x"], cap["y"]
+        rays: dict = {}
+        for i, name in enumerate(dirs):
+            ang = math.pi / 2 - i * math.pi / 4  # N=up(+y?) use math berthed octants
+            dx, dy = math.cos(ang), math.sin(ang)
+            best = None
+            for t in towns:
+                if t["id"] == cap["id"]:
+                    continue
+                vx, vy = t["x"] - cx, t["y"] - cy
+                dist = math.hypot(vx, vy)
+                if dist < 1e-9:
+                    continue
+                # octant test: angle within 22.5 deg of ray
+                dot = (vx * dx + vy * dy) / dist
+                if dot > math.cos(math.pi / 8):
+                    tag = f"{'C' if t.get('is_capital') else 'T'}{t['id']}f{t['faction']}"
+                    if best is None or dist < best[0]:
+                        best = (dist, f"{tag}@{round(dist)}")
+            for a in armies:
+                vx, vy = a["x"] - cx, a["y"] - cy
+                dist = math.hypot(vx, vy)
+                if dist < 1e-9:
+                    continue
+                dot = (vx * dx + vy * dy) / dist
+                if dot > math.cos(math.pi / 8):
+                    tag = f"A{a['id']}f{a['faction']}"
+                    if best is None or dist < best[0]:
+                        best = (dist, f"{tag}@{round(dist)}")
+            rays[name] = best[1] if best else "-"
+        views[str(cap["faction"])] = {"from": [round(cx), round(cy)], "rays": rays}
+    return views
+
+
 def as_json(world: dict, header: dict, turn: int, gx: int, gy: int, mode: str) -> str:
     """Augmented Cartesian JSON: sparse non-empty cells, each tagged with
     cartesian grid coords plus full entity data (kind, faction, pop,
@@ -211,8 +299,12 @@ def as_json(world: dict, header: dict, turn: int, gx: int, gy: int, mode: str) -
             "capital_pop": round(cap["population"]) if cap else 0,
         }
     return json.dumps({"turn": turn, "grid": {"w": gx, "h": gy, "map": [w, h]},
-                       "mode": mode, "cells": cells, "factions": facs_out},
+                       "mode": mode, "cells": cells, "factions": facs_out,
+                       "relations": _relations(world), "views": _views(world)},
                       indent=1)
+
+
+_COMPACT = [False]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -222,9 +314,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="50x50", help="GRID WxH (default 50x50, square like the map)")
     ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all"])
     ap.add_argument("--no-color", action="store_true")
+    ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json"],
                     help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias)")
     args = ap.parse_args(argv)
+    _COMPACT[0] = args.compact
     if args.format in ("json", "acjson"):
         args.format = "acjson"
     else:
