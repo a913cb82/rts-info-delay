@@ -571,3 +571,19 @@ first-strike, S0 tempo, pro standing-guard doctrine, raid timing/concen-
 tration/interception (Step 3 — the defense/endgame/guard paths back).
 Next in order: expander Step 2 (last bot + race rule), Step 5 (exam 16/16),
 pickets, Step 3, Step 4, filed items.
+
+## D==N horizon rule (short-clean, long-mutual) + war-era rebinds
+
+Mutual spends a non-compounding army; clean-training spends compounding
+pop to save it — clean wins short (terminal + options), mutual wins long
+(compounding recovers). defense_train_ok D==N branch now needs
+turns_left<=500 (exam-pinned both ways: 1v1_short_cleans,
+1v1_long_holds). Uniform +500-1000 across short raid scenarios (pair
+5804/trap 5493/viable 5251/raid_hold 4658/recycle 6293/defend(turtle)
+2182->3640: more force -> cleaner takes; pair forensics: trickle-arrival
+mutual then pack take, sound). guard_duty deterrence broke into WAR
+(4701, t33 mutual): aggressive raids early-windows now (correct
+marginally, +124); pro defends honestly (mutual-saves, headful) —
+concentration (Step 3) is the path from mutuals to cleans (filed, third
+witness: defense/endgame/guard). pro_defense unchanged (no D==N there —
+consistent). Exam 17/18 (muster 8/8; only young_flees (Step 5) red).

@@ -779,26 +779,16 @@ def drive_scout(state: "BotState", config, p):
         # kept target (settle-as-scout); normal logic owns again. But a
         # kept target inside an own town's founding range is a duplicate
         # merge, not a founding — drop the note so builds don't fire on
-        # it (normal site choice or recycle owns instead). And fallback
-        # founding is for TRUE void (foe never seen — recycle's capability
-        # contract); with foe history the army recycles or raids instead
-        # (void_contact t328: -460 late luxury). expansion_demand covers
-        # the contested-payback remainder.
+        # it (normal site choice or recycle owns instead). Fallback
+        # founding keeps the S0 contract (sunk march; test-pinned) —
+        # EV-gating lives at dispatch (settle-branch) and arrival
+        # (builds suppressed-gate), not here.
         state._scout_id = None
-        if tgt is not None and state._foe_first_seen:
-            # Foe history: fallback founding faces the same EV bar as any
-            # expansion (rates + horizon) — true void keeps the capability
-            # contract (recycle), history without demand recycles or raids.
-            if not expansion_demand(state, config, void_horizon=500):
-                state._army_targets.pop(p.id, None)
-                tgt = None
         if tgt is not None:
             interact = (config.interact_radius if config is not None
                         and getattr(config, "interact_radius", None) else 10.0)
             if any(t.faction == state.faction and math.hypot(t.x - tgt[0], t.y - tgt[1]) <= interact + 10.0
                    for t in state.world.towns):
-                state._army_targets.pop(p.id, None)
-            elif not expansion_demand(state, config):
                 state._army_targets.pop(p.id, None)
         return []
     return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
@@ -1018,19 +1008,22 @@ def inbound_force(state: "BotState", config: "GameConfig",
 
 
 def defense_train_ok(population: float, cost: float, floor: float,
-                     eta: float, home: int, n: int, window: float = 4.0) -> bool:
+                     eta: float, home: int, n: int, window: float = 4.0,
+                     turns_left: float = 3000.0) -> bool:
     """Defense-train predicate (shared): train iff the marginal army
     improves the outcome — D == N-1 flips take->save (last-stand: bypass
-    the floor, the town falls anyway, convert), D == N flips mutual->clean
-    (floor applies: don't gut a town to save armies). Otherwise hold:
-    D > N is already won, D < N-1 is already lost (save the armies)."""
+    the floor, the town falls anyway, convert). D == N flips mutual->clean
+    only on short horizons (turns_left <= 500): clean saves a standing
+    army (terminal score + options) but spends compounding pop — long
+    horizons prefer the cheaper mutual (spend static, keep compounding).
+    Otherwise hold: D > N already won, D < N-1 already lost (save armies)."""
     if eta > window or n < 1:
         return False
     if home < n - 1 or home > n:
         return False
     if home == n - 1:
         return population >= cost
-    return population - cost >= floor
+    return turns_left <= 500 and population - cost >= floor
 
 
 def inbound_eta(state: "BotState", config: "GameConfig",
@@ -1280,8 +1273,10 @@ def void_note_busy(state: "BotState") -> bool:
     return False
 
 
-def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
-                     void_horizon: int = 0) -> bool:
+def expansion_demand(state: "BotState", config,
+                     params: "DemandParams | None" = None,
+                     *, payback_mult: float | None = None,
+                     void_horizon: int | None = None) -> bool:
     """Settler pipeline demand. Void (no known foes): colonies ARE the
     void economy (no serialization — a scout's hop note must not block
     the pipeline), but a marginal colony still needs ~500 turns to repay
@@ -1290,8 +1285,13 @@ def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
     Contested: expand iff the colony stream beats the home marginal
     stream (rate comparison on TRUE spend-aware growth — a fresh site at
     ~0.75/turn vs a crowded home at ~0.3) with horizon to amortize
-    (payback_mult scales patience) and one in flight at a time.
-    Darkness shields growers; the buzzer falls out."""
+    (payback_mult scales patience) and one in flight at a time (serial;
+    sprawl personalities parallelize). Darkness shields growers; the
+    buzzer falls out."""
+    if params is None:
+        params = DemandParams()
+    mult = params.payback_mult if payback_mult is None else payback_mult
+    horizon = params.void_horizon if void_horizon is None else void_horizon
     foe_known = any(t.faction != state.faction for t in state.world.towns) \
         or any(a.faction != state.faction for a in state.world.armies)
     if not foe_known:
@@ -1300,12 +1300,14 @@ def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
         if state._foe_first_seen:
             pass  # fall through to contested caution below
         else:
-            return config.max_turns - state.turn >= void_horizon
-    if void_note_busy(state):
+            return config.max_turns - state.turn >= horizon
+    if params.serial and void_note_busy(state):
         return False
     turns_left = config.max_turns - state.turn
-    if turns_left < payback_mult * 500:
+    if turns_left < mult * 500:
         return False
+    if not params.rates:
+        return True  # sprawl overrides marginal math (documented)
     home_rate = max((state.get_growth(t.id) or 3.0) for t in state.own_towns()) \
         if state.own_towns() else 3.0
     return 0.75 > home_rate
@@ -1326,18 +1328,36 @@ def can_train_standard(state: "BotState", town) -> bool:
     return True
 
 
+@dataclass
+class DemandParams:
+    """Personality as parameters (GTO.md s9): pro pays full price on
+    time; the others deviate on schedule. depth_extra = muster cushion;
+    raid_margin = theft bar; payback_mult = expansion patience;
+    threat_window = muster foresight; probe_armies = scout pipeline;
+    void_horizon = marginal colony horizon; rates = marginal colony
+    must beat home (False = sprawl overrides); serial = one expansion
+    at a time (False = parallel sprawl)."""
+    depth_extra: float = 0.0
+    raid_margin: float = 200.0
+    payback_mult: float = 1.0
+    threat_window: float = 4.0
+    probe_armies: int = 0
+    void_horizon: int = 500
+    rates: bool = True
+    serial: bool = True
+
+
 def demand_trains(state: "BotState", config, can_train,
-                  *, depth_extra: float = 0.0, raid_margin: float = 200.0,
-                  payback_mult: float = 1.0, threat_window: float = 4.0,
-                  probe_armies: int = 0, void_horizon: int = 500) -> list[str]:
+                  params: "DemandParams | None" = None) -> list[str]:
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
     rule, raid pipeline (pack deficit for the priced target), expansion
-    pipeline (void merit / contested payback), plus the prober pipeline
-    (`probe_armies`: scouting needs an army, armies need demand — the
-    first prober breaks the cycle; pairs with S0 scouting, so only bots
-    that scout pass >0). One train per town max (engine cap);
-    `depth_extra` thickens the muster cushion per personality; trains are
-    fungible across demands (deficit shared)."""
+    pipeline (void merit / contested rates+payback), plus the prober
+    pipeline (`probe_armies`: scouting needs an army, armies need demand
+    — the first prober breaks the cycle; pairs with S0 scouting, so only
+    bots that scout pass >0). One train per town max (engine cap);
+    trains are fungible across demands (deficit shared)."""
+    if params is None:
+        params = DemandParams()
     out: list[str] = []
     cost = config.army_cost
     floor = config.death_threshold
@@ -1347,7 +1367,7 @@ def demand_trains(state: "BotState", config, can_train,
     # hold-set), arrival caps, and no-settle. Strikes filed (Step 6+).
     force = inbound_force(state, config)
     home = {t.id: home_count(state, t) for t in state.own_towns()}
-    sel = raid_target(state, config, margin=raid_margin)
+    sel = raid_target(state, config, margin=params.raid_margin)
     if sel is not None:
         _, need, _ = sel
         fieldable = sum(1 for a in state.own_armies()
@@ -1355,7 +1375,7 @@ def demand_trains(state: "BotState", config, can_train,
         deficit = [max(0, need - fieldable)]
     else:
         deficit = [0]
-    expand = expansion_demand(state, config, payback_mult, void_horizon)
+    expand = expansion_demand(state, config, params)
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
                                   state.get_growth(t.id), t.population))
@@ -1370,15 +1390,16 @@ def demand_trains(state: "BotState", config, can_train,
         bare = False
         if eta_n is not None:
             eta, n = eta_n
-            if defense_train_ok(t.population, cost, floor + depth_extra, eta,
-                                home[t.id], n, window=threat_window):
+            if defense_train_ok(t.population, cost, floor + params.depth_extra, eta,
+                                home[t.id], n, window=params.threat_window,
+                                turns_left=config.max_turns - state.turn):
                 want = True
                 bare = (home[t.id] == n - 1)  # doomed-town convert branch
         if deficit[0] > 0:
             want = True
         if expand:
             want = True
-        if len(state.own_armies()) < probe_armies:
+        if len(state.own_armies()) < params.probe_armies:
             want = True
         if not want:
             continue
@@ -1388,7 +1409,7 @@ def demand_trains(state: "BotState", config, can_train,
                 state.note_train(t.id)
                 deficit[0] = max(0, deficit[0] - 1)
         elif (can_train(state, t)
-                and t.population - cost >= floor + depth_extra - 1e-9):
+                and t.population - cost >= floor + params.depth_extra - 1e-9):
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)

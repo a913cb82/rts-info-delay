@@ -86,6 +86,20 @@ def exam_muster():
         check("muster", f"1v3_d{dist}_p{pop}", o, lambda o: not _trains(o),
               f"donates into a lost fight; orders={o}")
         assert eta_ok  # geometries stay inside the inbound window
+    # 1v1 short-horizon: clean beats mutual (terminal score + options).
+    o = decide_orders(cap_state(
+        5000, foe_armies=[(400, 500, 1)], own_armies=[(300, 500)]), CFG)
+    check("muster", "1v1_short_cleans", o, lambda o: len(_trains(o)) >= 1,
+          f"takes the mutual on a short horizon; orders={o}")
+    # 1v1 long-horizon: mutual is cheaper (spend static, keep compounding).
+    long_cfg = GameConfig()
+    long_cfg.max_turns = 10000
+    b = _state([(1, 300, 500, 0, 5000, True)], [(200, 400, 500, 1),
+                                                (201, 300, 500, 0)], turn=1)
+    b.config = long_cfg
+    o = decide_orders(b, long_cfg)
+    check("muster", "1v1_long_holds", o, lambda o: not _trains(o),
+          f"buys clean on a long horizon; orders={o}")
 
 
 # ── Pricing: expand iff payback-positive (Step 2; expect FAIL) ──

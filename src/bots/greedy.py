@@ -3,16 +3,16 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home, site_pays
+from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home, site_pays
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     # Step 2, greedy params (present-biased skipper): rich-only incident
     # muster (depth +500), transfer-positive raids only (margin 500),
     # cherry-pick expansion (payback x2). No P3b — void settlers need trains.
-    return demand_trains(state, config, can_train_standard,
-                         depth_extra=500.0, raid_margin=500.0, payback_mult=2.0,
-                         probe_armies=1)
+    return demand_trains(state, config, can_train_standard, DemandParams(
+        depth_extra=500.0, raid_margin=500.0, payback_mult=2.0,
+        probe_armies=1))
 
 
 def _army_targets(state: BotState, config: GameConfig):
@@ -82,7 +82,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # G2: settle on demand (cherry-pick x2) — else recycle home,
             # peace-only (war-footing holds; disbanding feeds merges).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
-                if expansion_demand(state, config, payback_mult=2.0, void_horizon=500) else None
+                if expansion_demand(state, config, DemandParams(payback_mult=2.0),
+                                      void_horizon=500) else None
             if site is not None and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:

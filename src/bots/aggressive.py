@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home, site_pays
+from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home, site_pays
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -22,9 +22,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # Step 2, aggressive params (predator): thin cushion (depth 0),
     # marginal+initiative raids (margin 100), economic expansion rare
     # (payback x3 — foundings are military staging, below), 1 prober.
-    out.extend(demand_trains(state, config, _can_train_aggressive,
-                             depth_extra=0.0, raid_margin=100.0,
-                             payback_mult=3.0, probe_armies=1))
+    out.extend(demand_trains(state, config, _can_train_aggressive, DemandParams(
+        raid_margin=100.0, payback_mult=3.0, probe_armies=1)))
 
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
     enemy_armies = [a for a in state.world.armies if a.faction != faction]
@@ -133,7 +132,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                            for t in own_t):
                     staged = True
             site = None
-            if staged or (expansion_demand(state, config, payback_mult=3.0, void_horizon=500)
+            if staged or (expansion_demand(state, config, DemandParams(payback_mult=3.0),
+                                           void_horizon=500)
                           and not pack_building):
                 site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11, who=p.id)
             # Site veto for economic foundings (staging bypasses: its value

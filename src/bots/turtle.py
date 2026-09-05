@@ -127,7 +127,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                                 config.death_threshold,
                                 town_eta.get(t.id, float("inf")),
                                 _home_count(t), town_inbound.get(t.id, 0),
-                                window=3.0)
+                                window=3.0,
+                                turns_left=config.max_turns - state.turn)
 
     # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is
