@@ -61,7 +61,7 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
    outweighs the hub). Snipe theirs, above all once established; price
    your own escape by empire age, never by panic.
 
-## Open work, in order
+## Iteration backlog (this loop's open work, in order)
 
 **The loop (how bots improve).** Repeat forever, in order:
 1. **Run** a real game (`empty_3000` fast ledger ~4s; `empty_10000`
