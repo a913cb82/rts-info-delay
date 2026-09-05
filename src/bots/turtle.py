@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip
+from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -12,6 +12,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
+    _sched = maybe_schedule_scout(state, config)
+    sc_out = list(_sched) if _sched else []
+    out.extend(sc_out)
     own_t = state.own_towns()
 
     # T1: threat-responsive threshold. Nearest inbound enemy ETA sets the

@@ -10,6 +10,15 @@ from dataclasses import dataclass, field
 from engine.config import GameConfig
 from engine.world import World, Town, Army
 
+
+@dataclass
+class _GhostTown:
+    """Last-known town for blood matching (mirror only holds living)."""
+    id: int
+    x: float
+    y: float
+    faction: int
+
 SITE_MARGIN = 15.0
 TRAIN_SURVIVE = 500
 
@@ -276,6 +285,7 @@ class BotState:
         self._scout_gen1: int = 0
         self._scout_gen2: int = 0
         self._bloodied: dict[int, int] = {}  # foe town id -> turn our army died there
+        self._grave_pos: dict[int, tuple] = {}  # foe town id -> last-known (x, y)
         self._mapper: dict[int, int] = {}  # army id -> legs done (post-contact mapping patrols)
         self._tip_grace: dict = {}  # army_id -> turn until which drop_dead spares its note
         self._scout_leg: int = 0
@@ -326,6 +336,7 @@ class BotState:
         self._foe_first_seen = {}
         self._foe_prints = {}
         self._bloodied = {}
+        self._grave_pos = {}
         self._mapper = {}
         self._picket = None
         self._draining = False
@@ -389,10 +400,21 @@ class BotState:
         # else: tolerant — battles are gone, unknown kinds ignored.
 
     def _remove_town(self, tid: int) -> None:
+        t = self.world.get_town(tid)
+        if t is not None:
+            # Last-known position (blood matching post-dates removals:
+            # town tombstones arrive with/before army tombstones).
+            self.__dict__.setdefault("_town_lastpos", {})[tid] = (t.x, t.y, t.faction)
         self.world.remove_town(tid)
         self._pending_trains.pop(tid, None)
         self._growth.pop(tid, None)
         self._prev_pop.pop(tid, None)
+
+    def _note_grave(self, tid: int, x: float, y: float) -> None:
+        """Record a grave (blood + last-known position). Positions let
+        later notes match dead towns (mirror only holds the living)."""
+        self._bloodied[tid] = self.turn
+        self.__dict__.setdefault("_grave_pos", {})[tid] = (x, y)
 
     def _remove_army(self, aid: int) -> None:
         # Grave memory (anti-onesie): our army dying at a known foe town
@@ -415,11 +437,15 @@ class BotState:
                 sites.append((tr[-1][1], tr[-1][2]))
             for sx, sy in sites:
                 hit = False
-                for t in self.world.towns:
+                cands = list(self.world.towns)
+                for tid, (lx, ly, lf) in self.__dict__.get("_town_lastpos", {}).items():
+                    if self.world.get_town(tid) is None:
+                        cands.append(_GhostTown(tid, lx, ly, lf))
+                for t in cands:
                     if t.faction != self.faction and abs(t.x - sx) < interact + 15 \
                             and abs(t.y - sy) < interact + 15 \
                             and math.hypot(t.x - sx, t.y - sy) <= interact + 15:
-                        self._bloodied[t.id] = self.turn
+                        self._note_grave(t.id, t.x, t.y)
                         hit = True
                         break
                 if hit:
@@ -980,6 +1006,34 @@ def _scout_unmark(state: "BotState", slot: int) -> None:
         state._scout_leg = 0
 
 
+def maybe_schedule_scout(state: "BotState", config):
+    """Cartographic schedule (r35 lesson): neighbors-fresh != covered —
+    fronts go blind and 94k rocks sit unpunished. Every ~1500t per
+    faction (offset), one surplus idle army scouts (fresh gen ray,
+    existing fan machinery). Skips when a pack needs everyone."""
+    if state.turn % 1500 != (state.faction * 300) % 1500:
+        return None
+    if state._scout_id is not None and getattr(state, "_scout_id2", None) is not None:
+        return None
+    try:
+        sel = raid_target(state, config, priced=True)
+    except Exception:
+        sel = None
+    idle = [a for a in state.own_armies()
+            if not a.is_viceroy and not state.army_has_target(a.id)
+            and a.id != state._scout_id and a.id != getattr(state, "_scout_id2", None)]
+    if sel is not None and sel[1] >= len(idle):
+        return None  # pack needs everyone
+    if not idle:
+        return None
+    if _scout_contact(state, config) and not _dark(state):
+        return None  # real war on: raid/defense owns the field
+    p = idle[0]
+    if maybe_assign_scout(state, config, p):
+        return drive_scout(state, config, p) or []
+    return None
+
+
 def maybe_assign_scout(state: "BotState", config, p) -> bool:
     """Mark p as a scout iff no actionable contact exists yet — true
     void OR rubble-only (a visible decoy is not a reason to stay home).
@@ -1144,10 +1198,21 @@ def silence_watch(state: "BotState", config) -> None:
                 hit = u
                 break
         if hit is None:
-            # void note (settler tip, dead-town ghost): no blood, but a
-            # ghost still cleans below (overdue-vs-physics) so the slot
-            # and targeting free up.
-            pass
+            # No live town matches: maybe a grave (dead towns leave the
+            # mirror). Grave-haunting release (r37: 20 armies noted to
+            # dead town-4 sat 2000t): pop immediately (live targets keep
+            # raiding — blood is suspicion, absence is proof).
+            for gid, (gx, gy) in state.__dict__.get("_grave_pos", {}).items():
+                # No age bound (dead is dead; refound towns are live in
+                # mirror and skip) — faded graves must not re-lock notes.
+                if state.world.get_town(gid) is None and \
+                        abs(gx - tgt[0]) < interact + 15 and abs(gy - tgt[1]) < interact + 15 and \
+                        _math.hypot(gx - tgt[0], gy - tgt[1]) <= interact + 15:
+                    state._army_targets.pop(aid, None)
+                    state.__dict__.get("_march_origin", {}).pop(aid, None)
+                    break
+            if aid not in state._army_targets:
+                continue  # released above; ghost-clean below unneeded
         tr = state._trails.get(aid)
         last_heard = tr[-1][0] if tr else -10 ** 9
         org = state.__dict__.get("_march_origin", {}).get(aid)
@@ -1161,6 +1226,7 @@ def silence_watch(state: "BotState", config) -> None:
             continue
         if hit is not None:
             state.__dict__.setdefault("_bloodied", {})[hit.id] = state.turn
+            state.__dict__.setdefault("_grave_pos", {})[hit.id] = (hit.x, hit.y)
         # Ghost-cleaning (r25 trace: army 17 dead-unseen, mirror-kept +
         # re-noted 2000t — the re-note loop defeats drop_dead's age-cap
         # because origin refreshes every decide). Overdue-vs-physics
@@ -1620,14 +1686,18 @@ def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
 def foe_print_factor(state: "BotState", faction: int, grace: int = 20) -> float:
     """Opponent print calibration for W (printable-before-arrival).
 
-    Factions that have fielded force count full; sterile-observed factions
-    (towns seen grace+ turns, zero prints) count zero — unready means
-    can't print OR won't print. Fresh intel assumes live (dark-spring
-    grace: absence of evidence is not evidence yet)."""
-    if state._foe_prints.get(faction, 0) > 0:
-        return 1.0
+    Rate-calibrated (r34 lesson): two prints in 8000 turns is not a
+    remuster threat — W must scale by OBSERVED print rate, not mere
+    fielding. Sterile-observed factions (towns seen grace+ turns, zero
+    prints) count zero. Fresh intel assumes live (dark-spring grace).
+    A print per ~200 turns sustains full W; slower drips scale down."""
     first = state._foe_first_seen.get(faction, state.turn)
-    return 1.0 if state.turn - first < grace else 0.0
+    if state.turn - first < grace:
+        return 1.0
+    prints = state._foe_prints.get(faction, 0)
+    if prints <= 0:
+        return 0.0
+    return min(1.0, prints / max(1.0, (state.turn - first) / 200.0))
 
 
 def buzzer_active(state: "BotState", config) -> bool:

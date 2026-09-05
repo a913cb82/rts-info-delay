@@ -1081,3 +1081,18 @@ sustained drips still die properly).
 REMATCH r34: max march 100km (pendulum dead); aggressive 179k wins
 competitive line. New stillness: 27+26 idle (peace disease — filed).
 GENERATED: r34 (turtle ghosts t1893+, caveat).
+
+## Grave-release (loop iteration: unstick the pile)
+
+ANALYSE (r37 TRACE): pro parked 20 armies on dead town-4, all noted
+there, foes=[], blood=[4], orders=[] — notes to a grave with mapper
+cap full. Root: raid packets marched when town lived; town died;
+notes stuck (re-note treadmill + cap-full sit).
+SHIPPED (common.py + pro.py + tests, green): _grave_pos (last-known
+grave coords) + _town_lastpos (ordering bug: town tombstones precede
+army tombstones) + grave-release in silence_watch (notes matching no
+live town but a dead grave pop, any age; live raids keep need+1) +
+mapper-full bare-pop fallback.
+REMATCH r38: battles EVERY millennium (43 total), foundings to t5000
+(action all game — user's bar). r39 quieter (15). GENERATED: r38
+(greedy ghosts t1424+, caveat).

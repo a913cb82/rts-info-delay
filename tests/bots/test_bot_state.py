@@ -1170,6 +1170,17 @@ class TestPrintCalibration:
                        "faction": 1, "alive": True, "is_viceroy": False}])
         assert foe_print_factor(b, 1) == 1.0
 
+    def test_ancient_drip_decays(self) -> None:
+        # Two prints in 8000 turns is not a remuster threat (r34).
+        from bots.common import foe_print_factor
+        b = self._bot()
+        b.update(1, [self._town(2, 1)])
+        b.update(25, [self._town(2, 1),
+                      {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.update(8000, [self._town(2, 1)])
+        assert foe_print_factor(b, 1) < 0.1
+
 
 class TestProbeSingular:
     """One probe means one: a probe already en route suppresses duplicates
@@ -1845,3 +1856,74 @@ class TestDarkScout:
         b.turn = 500  # no foes ever seen: dark
         out = _stage_trains(b, CFG)
         assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestScheduleScout:
+    """r35 lesson: neighbors-fresh != covered — scheduled mapping scouts."""
+
+    def test_schedule_enrolls_idle(self) -> None:
+        from bots.common import BotState, maybe_schedule_scout
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 1500  # faction 0 phase: 1500 % 1500 == 0
+        out = maybe_schedule_scout(b, CFG)
+        assert out is not None and any("MOVE_TO 7" in o for o in out), out
+        assert b._scout_id == 7 or b._scout_id2 == 7
+
+    def test_schedule_skips_pack(self) -> None:
+        from bots.common import BotState, maybe_schedule_scout
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 20000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 1500
+        # live contact: no mapping dispatched (raid owns the army)
+        out = maybe_schedule_scout(b, CFG)
+        assert out is None or out == []
+
+
+class TestGraveRelease:
+    """r37 trace: 20 armies noted to dead town-4 sat 2000t (mapper cap
+    full). Notes matching fresh graves of dead towns pop."""
+
+    def test_note_to_grave_pops(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 350, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)
+        # town 2 dies observed (tombstone) -> grave; note now haunts it.
+        b.update(2, [{"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 0, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 350, "y": 500,
+                      "faction": 0, "alive": False, "is_viceroy": False}])
+        assert 2 in b._bloodied and 2 in b._grave_pos
+        # fresh army, same haunting note -> release pops it.
+        b.update(3, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 8, "x": 350, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(8, 350.0, 500.0)
+        b.turn = 4
+        silence_watch(b, CFG)
+        assert not b.army_has_target(8)

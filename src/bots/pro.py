@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -295,6 +295,10 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
                         state.__dict__.setdefault("_mapper", {})[p.id] = 0
                         out.extend(order_move(state, config, p,
                                               *mapper_hop_target(state, config, p)))
+                    else:
+                        # Mapper cap full: bare-pop anyway (re-decide beats
+                        # haunting; the next freed army maps instead).
+                        state._army_targets.pop(p.id, None)
                     continue
         else:
             state.__dict__.get("_arr_hold", {}).pop(p.id, None)
@@ -359,6 +363,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
+    _sched = maybe_schedule_scout(state, config)
+    sc_out = list(_sched) if _sched else []
+    out.extend(sc_out)
     # P4: evac (shared drain-and-flee, computed: endure established).
     # Covers naked-home 3-pack marches.
     _evac = evac_plan(state, config, _pro_hopeless(state, config, 1700),

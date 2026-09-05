@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -175,6 +175,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
+    _sched = maybe_schedule_scout(state, config)
+    sc_out = list(_sched) if _sched else []
+    out.extend(sc_out)
     # Idea 2: lazy stages — an expired clock skips later stages entirely
     # instead of paying their compute, keeping the important prefix.
     # Idea 6: low bank skips straight to trains-only (no moves/builds cost).
