@@ -1185,3 +1185,14 @@ kills it. SHIPPED (common.py + tests, green): foe_print_factor > 0.3
 live). R52: zero onesies, but action to t4000 only (overcorrection
 + butterfly: expander ghost t1457). NO GENERATE (r44 stands: all
 alive, action to t5000; r50 best spread but ghosted).
+
+## Burn-down: guard rotation + print cap + stale premium
+
+R53: pro 39 idle + 169km marched; expander 120 prints -> 101 idle.
+SHIPPED: guard rotation (home notes pop every 1500t, faction-phased;
+threats re-hold in 1 turn), print cap (drowning = idle > 2x towns
+skips non-threat prints; eyes still funded 1/300t), stale-age
+premium (unseen s = 3 + age//500 cap +3; r55 bled 43 undersized
+packs vs real garrison 8). R55: prints sane, idle ~0. R56: onesies
+gone, but action thin (needs big + 3 ghosted bots). Ghosts remain
+the #1 action-killer (harness dead-on-arrival, filed).

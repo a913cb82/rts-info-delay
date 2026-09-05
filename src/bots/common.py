@@ -1252,7 +1252,12 @@ def amnesty_notes(state: "BotState") -> None:
     them, nothing releases them). Field notes older than 300t pop and
     re-decide fresh — valid plans reform in one turn (same sel, same
     tip); stale locks break. Home notes, scouts, viceroys, pending
-    builds exempt (holding is their job)."""
+    builds exempt (holding is their job).
+    Guard rotation (r53 lesson: 39 idle, home notes never expire):
+    every 1500t (faction-phased) home notes pop too — real threats
+    re-hold next turn (hold_defenders runs every decide); quiet fronts
+    release garrisons to the field. One turn of re-tasking per 1500."""
+    rotate = state.turn % 1500 == (state.faction * 311) % 1500
     for aid, tgt in list(state._army_targets.items()):
         if aid == state._scout_id or aid == getattr(state, "_scout_id2", None):
             continue
@@ -1263,7 +1268,11 @@ def amnesty_notes(state: "BotState") -> None:
             continue
         if any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in state.world.towns
                if t.faction == state.faction):
-            continue  # home note: guards hold
+            if not rotate:
+                continue  # home note: guards hold (except rotation)
+            state._army_targets.pop(aid, None)
+            state.__dict__.get("_march_origin", {}).pop(aid, None)
+            continue
         org = state.__dict__.get("_march_origin", {}).get(aid)
         if org is None or state.turn - org[2] <= 300:
             continue
@@ -2031,6 +2040,11 @@ def foe_garrison(state: "BotState", u) -> int:
         s = max(s, 1)
     if s == 0 and state.turn - state._last_seen.get(("town", u.id), -10**9) > 150:
         s = 3
+        # Stale-age premium (r55 lesson: stale floor 3 vs real garrison 8
+        # — pro bled 43 undersized packs vs ghost-coast towns). Unseen
+        # towns accumulate guards: +1 per 500t stale, cap +3.
+        age = state.turn - state._last_seen.get(("town", u.id), state.turn)
+        s += min(3, age // 500)
     return s
     s = garrison_map(state).get(u.id, 0)
     if state.__dict__.get("_bloodied", {}).get(u.id, -10**9) >= state.turn - 150:
@@ -2301,6 +2315,12 @@ def demand_trains(state: "BotState", config, can_train,
         params = DemandParams()
     out: list[str] = []
     cost = config.army_cost
+    # Print cap (r54 lesson: expander printed 120 for 9 towns, 101 idle).
+    # Drowning in idle bodies: threat musters still print (survival),
+    # everything else waits (packs/expansion/probes use the pile first).
+    idle_free = sum(1 for a in state.own_armies()
+                    if not state.army_has_target(a.id))
+    drowning = idle_free > 2 * max(1, len(state.own_towns()))
     floor = config.death_threshold
     # Standing guard (deterrence posture, Step 2 remainder): D==0 vs a
     # LONE inbound (N==1) within 12 trains early (visible guards make
@@ -2378,14 +2398,15 @@ def demand_trains(state: "BotState", config, can_train,
                         bare = False
         if deficit[0] > 0:
             want = True
-        if expand:
+        if expand and not drowning:
             want = True
-        if len(state.own_armies()) < params.probe_armies:
+        if len(state.own_armies()) < params.probe_armies and not drowning:
             want = True
         # Blindness rotation (r41 lesson: 10 prints all game, then 9500t
         # dark peace): when map-blind, fund up to probe+2 (eyes + reserve
         # — one army can't scout-map-raid simultaneously).
-        if _dark(state) and len(state.own_armies()) < params.probe_armies + 2:
+        if _dark(state) and len(state.own_armies()) < params.probe_armies + 2 \
+                and not drowning:
             want = True
         # Blind eyes (r45 lesson: 3 noted-but-useless armies >= probe+2,
         # yet stone blind — bodies aren't eyes). Dark + scoutless +

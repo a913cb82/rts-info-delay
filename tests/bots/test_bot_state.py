@@ -2227,3 +2227,70 @@ class TestRemusterGuard:
                          "is_capital": False}])
         got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
         assert got[2] <= 2, got
+
+
+class TestGuardRotation:
+    """r53 lesson: 39 idle, home notes never expire. Rotation pops home
+    notes every 1500t (faction-phased)."""
+
+    def test_rotation_pops_home(self) -> None:
+        from bots.common import BotState, amnesty_notes
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 300.0, 500.0)
+        b.turn = 100
+        amnesty_notes(b)
+        assert b.army_has_target(7)  # off-rotation: holds
+        b.turn = 1500  # (0*311)%1500 == 0: rotation
+        amnesty_notes(b)
+        assert not b.army_has_target(7)
+
+
+class TestPrintCap:
+    """r54 lesson: 120 prints for 9 towns, 101 idle. Drowning skips
+    non-threat prints (threat still musters)."""
+
+    def test_drowning_skips_probe(self) -> None:
+        from bots.common import BotState, demand_trains, DemandParams
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        evs = [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                "faction": 0, "population": 20000, "alive": True,
+                "is_capital": True}]
+        for aid in range(7, 13):
+            evs.append({"kind": "army_update", "id": aid, "x": 300, "y": 500,
+                        "faction": 0, "alive": True, "is_viceroy": False})
+        b.update(1, evs)
+        b.turn = 2000  # 6 free idle > 2x1 town, dark: no probe print
+        b._scout_id = 7  # eyes covered: nothing may print
+        out = demand_trains(b, cfg, lambda s, t: True,
+                            DemandParams(probe_armies=5))
+        assert not any(o.startswith("TRAIN") for o in out), out
+
+
+class TestStalePremium:
+    """r55 lesson: stale floor 3 vs real garrison 8 (43 undersized packs).
+    Unseen towns accumulate: +1 per 500t, cap +3."""
+
+    def test_age_premium(self) -> None:
+        from bots.common import foe_garrison
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 2000
+        assert foe_garrison(b, b.world.get_town(2)) == 3 + 3
+        b.turn = 400
+        assert foe_garrison(b, b.world.get_town(2)) == 3
