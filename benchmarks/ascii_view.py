@@ -78,11 +78,22 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
             aa = armies.get(key, [])
             facs = {t["faction"] for t in ts} | {a["faction"] for a in aa}
             if len(facs) >= 2:
-                row.append(f"{BOLD_RED}{CLASH}{RESET}" if color else CLASH)
+                if mode == "all":
+                    row.append(f"{BOLD_RED}**{RESET}" if color else "**")
+                else:
+                    row.append(f"{BOLD_RED}{CLASH}{RESET}" if color else CLASH)
             elif ts:
                 t = max(ts, key=lambda t: t["population"])
                 f = t["faction"]
-                if mode == "pop" and not t.get("is_capital"):
+                if mode == "all":
+                    # two-char cells: faction + type/pop (town=F+bucket,
+                    # capital=F+◆, buckets pop/10k capped 9)
+                    if t.get("is_capital"):
+                        row.append(col(f, f"{f}{CAPITAL}"))
+                    else:
+                        bucket = min(9, max(1, int(t["population"] // 10000) + 1)) if t["population"] > 0 else 0
+                        row.append(col(f, f"{f}{bucket}"))
+                elif mode == "pop" and not t.get("is_capital"):
                     bucket = min(9, max(1, int(t["population"] // 10000) + 1)) if t["population"] > 0 else 0
                     row.append(col(f, str(bucket)))
                 elif mode == "faction":
@@ -94,8 +105,14 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
             elif aa:
                 f0 = aa[0]["faction"]
                 same = all(a["faction"] == f0 for a in aa)
-                if not same:
-                    row.append(f"{BOLD_RED}{CLASH}{RESET}" if color else CLASH)
+                if mode == "all":
+                    if not same:
+                        row.append(f"{BOLD_RED}**{RESET}" if color else "**")
+                    elif len(aa) >= 3:
+                        n = min(9, len(aa))
+                        row.append(col(f0, f"{f0}{n}"))  # faction + count
+                    else:
+                        row.append(col(f0, f"{f0}{ARMY}"))
                 elif mode == "faction":
                     row.append(col(f0, str(f0)))
                 elif mode == "pop":
@@ -107,13 +124,16 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
                 else:
                     row.append(col(f0, ARMY))
             else:
-                row.append(f"{DIM}{EMPTY}{RESET}" if color else EMPTY)
+                if mode == "all":
+                    row.append("  ")
+                else:
+                    row.append(f"{DIM}{EMPTY}{RESET}" if color else EMPTY)
         # strip padding artifacts, join
         lines.append("".join(row))
     return "\n".join(lines)
 
 
-def footer(world: dict, header: dict, turn: int, color: bool = True) -> str:
+def footer(world: dict, header: dict, turn: int, color: bool = True, mode: str = "glyph") -> str:
     cost = header.get("army_cost", 1000)
     parts = [f"turn {turn}"]
     for f in sorted({t["faction"] for t in world.get("towns", [])} |
@@ -123,7 +143,11 @@ def footer(world: dict, header: dict, turn: int, color: bool = True) -> str:
         na = sum(1 for a in world["armies"] if a["faction"] == f)
         label = f"F{f} pop={pop:.0f} towns={nt} armies={na}"
         parts.append(f"{COLORS[f % len(COLORS)]}{label}{RESET}" if color else label)
-    legend = f"{TOWN} town  {CAPITAL} capital  {ARMY} army(+xN stack)  {BOLD_RED if color else ''}*{RESET if color else ''} clash  {EMPTY} empty"
+    if mode == "all":
+        legend = (f"F+T cells: 0-4 faction + type (▲ army, F9 stack of 9+, "
+                  f"F1-F9 town pop/10k, F{CAPITAL} capital)  ** clash")
+    else:
+        legend = f"{TOWN} town  {CAPITAL} capital  {ARMY} army(+xN stack)  {BOLD_RED if color else ''}*{RESET if color else ''} clash  {EMPTY} empty"
     return "  ".join(parts) + "\n" + legend
 
 
@@ -132,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("recording")
     ap.add_argument("--turns", default="0", help="comma-separated turn numbers (default: last)")
     ap.add_argument("--size", default="100x40", help="GRID WxH (default 100x40)")
-    ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction"])
+    ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all"])
     ap.add_argument("--no-color", action="store_true")
     args = ap.parse_args(argv)
     gx, gy = (int(v) for v in args.size.lower().split("x"))
@@ -151,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"(turn {t} missing, showing {near})", file=sys.stderr)
             t = near
         print(render(turns[t], header, gx, gy, args.mode, color))
-        print(footer(turns[t], header, t, color))
+        print(footer(turns[t], header, t, color, args.mode))
         print()
     return 0
 
