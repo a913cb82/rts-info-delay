@@ -1606,3 +1606,27 @@ class TestPackPrint:
                       "faction": 1, "alive": True, "is_viceroy": False}])
         out = _stage_moves(b, CFG)
         assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestUnpricedRaid:
+    """r19 lesson: the unpriced (multi-foe pressure) path set best but
+    never filled ranked — sel None, no packets, stacks sat forever."""
+
+    def test_unpriced_returns_pressure_ranked(self) -> None:
+        from bots.common import BotState, raid_targets
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 300, "y": 800,
+                      "faction": 2, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        r = raid_targets(b, CFG, 3, priced=False)
+        assert r, "unpriced must return pressure-ranked targets"
+        assert {u.id for (u, _n, _s) in r} <= {2, 3}

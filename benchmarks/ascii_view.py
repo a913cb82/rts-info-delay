@@ -478,6 +478,7 @@ def report(path: str) -> str:
     feedback without watching 10000 turns."""
     import math as _math
     prints: dict = {}
+    samples: dict = {}  # turn -> (towns, armies) every 250t
     founds: dict = {}
     caps: dict = {}
     battled: dict = {}  # army id -> battles joined
@@ -503,6 +504,10 @@ def report(path: str) -> str:
             final = w
             for x in towns:
                 owners[x["id"]] = x["faction"]
+            if t % 250 == 0:
+                # sparse snapshots for opportunity windows (towns+armies)
+                samples[t] = ([dict(u) for u in towns],
+                              [dict(a) for a in w.get("armies", [])])
             seen = set()
             for a in w.get("armies", []):
                 aid, fac, x, y = a["id"], a["faction"], round(a["x"]), round(a["y"])
@@ -593,6 +598,57 @@ def report(path: str) -> str:
                 break
     if not any2:
         lines.append("  (none)")
+    lines.append("opportunities (empty town + foe stack <300km, over time):")
+    # window per (town, foe faction): consecutive 250t samples with the
+    # town garrison-free and a 3+ foe stack in range.
+    open_w: dict = {}
+    shut: list = []
+    for t in sorted(samples):
+        stowns, sarmies = samples[t]
+        garr: dict = {}
+        for a in sarmies:
+            for u in stowns:
+                if u["faction"] == a["faction"] and _math.hypot(u["x"] - a["x"], u["y"] - a["y"]) <= 15:
+                    garr[u["id"]] = garr.get(u["id"], 0) + 1
+                    break
+        stacks: dict = {}  # (faction, cell) -> count
+        for a in sarmies:
+            stacks.setdefault((a["faction"], round(a["x"] / 30), round(a["y"] / 30)), []).append(a["id"])
+        big = {k: v for k, v in stacks.items() if len(v) >= 3}
+        hit: set = set()
+        for u in stowns:
+            if garr.get(u["id"], 0) > 0:
+                continue
+            for (fac, _cx, _cy), aids in big.items():
+                if fac == u["faction"]:
+                    continue
+                a0 = next(a for a in sarmies if a["id"] == aids[0])
+                d = _math.hypot(u["x"] - a0["x"], u["y"] - a0["y"])
+                if d < 300:
+                    hit.add((u["id"], fac))
+        for key in list(open_w):
+            if key not in hit:
+                shut.append((key, open_w.pop(key)))
+        for key in hit:
+            if key not in open_w:
+                u = next(x for x in stowns if x["id"] == key[0])
+                open_w[key] = [t, t, round(u["population"]), u["faction"]]
+            else:
+                open_w[key][1] = t
+                u = next((x for x in stowns if x["id"] == key[0]), None)
+                if u is not None:
+                    open_w[key][2] = max(open_w[key][2], round(u["population"]))
+    for key, w_ in open_w.items():
+        shut.append((key, w_))
+    shut.sort(key=lambda r: -(r[1][1] - r[1][0]))
+    any3 = False
+    for (tid, fac), (t0, t1, peak, owner) in shut[:15]:
+        if t1 - t0 < 250:
+            continue
+        lines.append(f"  town {tid} (F{owner}, peak {peak}) empty {t1 - t0}t (t{t0}-{t1}) vs idle F{fac} stack")
+        any3 = True
+    if not any3:
+        lines.append("  (none sustained)")
     return "\n".join(lines)
 
 

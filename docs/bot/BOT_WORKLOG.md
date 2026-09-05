@@ -969,3 +969,23 @@ USER: UI not fresh after generate. Files WERE fresh (same md5 16:57)
 -> culprit was HTTP cache (30MB JSONL, same filename). FIX
 (viewer/src/main.ts): cache-busting fetch (`?fresh=Date.now()`).
 Loop step 5 now mandates md5sum verification of both copies.
+
+## Unpriced-raid fix (loop iteration: PIN FOUND, one line)
+
+PIN (fog + synthetic bot-view + debug prints): raid_targets unpriced
+path set best but never filled ranked -> sel None in ALL multi-foe
+wars -> no packets/packs (only strike trickles). 6-stack sat 5000t
+with need-2 targets visible. FIX (common.py, 1 line): append pressure
+score to ranked in the unpriced branch. Synthetic repro: 1 march ->
+4 marches (blitz + 3-pack). Test: unpriced returns ranked.
+BENCH: pytest green (perf-budget full20 flaky 5.6/5.0 on loaded box,
+fails clean-tree too — environmental, filed), fast 2.8/5s, strat 6/30s.
+REMATCH r20: pro 520k MAP WIPE (18 captures, 19k km) — offense flows,
+then new rubble-sit @ (731,477). r21: five-way war (pro 293k / aggr
+184k / turtle 94k / greedy 88k / exp 11k). BOTH: turtle 0ms death
+~t3000. Clock experiment r22 (4x caps): zero deaths -> deaths are
+payload-burst pressure (war events/IPC), NOT decide compute (turtle
+decide ~0ms). FILED (infra loop): payload throttle (pop_change floods)
+or clock doctrine revisit; flaky perf-budget test.
+GENERATED: r21 (best TV) -> both locations. Canonical caveat: turtle
+ghosts t3062+ (report shows it honestly).

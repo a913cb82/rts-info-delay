@@ -1838,6 +1838,7 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                    default=float("inf"))
         if not priced:
             score = u.population / (1.0 + dist / 300.0)
+            ranked.append((score, u, need, s))
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
