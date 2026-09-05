@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
+from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -39,17 +39,11 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
-    probe_sent = False
-    if probe_tgt is not None:
-        for a in state.own_armies():
-            tgt = state.army_target(a.id)
-            if tgt is not None and math.hypot(tgt[0] - probe_tgt.x, tgt[1] - probe_tgt.y) <= 20.0:
-                probe_sent = True
-                break
     out.extend(recall_deficit(state, config))
-    out.extend(reinforce_orders(state, config))
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
+    _sk = strike_target(state, config, margin=500.0)
+    sk_march = _sk if _sk is not None and not enemy_armies else None
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -64,14 +58,19 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             continue
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
+        # Strike (windows close!): clear-field blitz/buzzer mass march —
+        # unless one is already en route (per-target singularity).
+        if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
+            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+            continue
         # Priced takes only (transfer-positive): march the selected victim
         # when the pack is ready, else hold while trains build it.
         # Viability lives inside raid_target (duel-gated).
         if pack_building:
-            if not probe_armed or probe_sent or probe_tgt is None or \
-                    math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
+            if not probe_armed or probe_tgt is None \
+                    or en_route(state, probe_tgt.x, probe_tgt.y) \
+                    or math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
                 continue
-            probe_sent = True
         if sel is not None:
             nearest, _, _ = sel
             out.extend(order_move(state, config, p, nearest.x, nearest.y))

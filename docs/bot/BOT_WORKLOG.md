@@ -645,3 +645,21 @@ are FLOORS with Red-Queen slack (~+-1000 war maps, ~+-50 quiet). Rebound
 attrition 9411 (close symmetric win +504 — honest). Methods fix going
 forward: re-run STRATEGIC every commit (drift caught late twice now);
 run suites twice post-change (JIT first-runs lie).
+
+## Strike doctrine (blitz + buzzer, exam 23/23) + equilibrium-tight verdict
+
+Strike (shared): BLITZ (anytime S+1 takes landing <=2 turns out — outruns
+their intel) + BUZZER (turns_left<=30, W=0, arrival<=turns_left, need<=free,
+prize>margin). Wired into all four raiders (strike-first, clear-field
+only (fielded foes route to rope/sel), per-target en_route singularity
+(shared helper — notes are live, flags deleted everywhere), strike-deficit
+in trains. Endgame 5603->7708 (takes instead of late-pack donations!).
+Exam 23/23 (endgame 3/3: blitz/buzzer-strikes + no-settle split).
+empty_3000 IGNITION TEST: zero battles still (S>=1 everywhere +
+thin packs + no unready-2000s). Verdict: EQUILIBRIUM-TIGHT (all-credible
+defense, no cracks — strikes correctly decline; game decided by
+compounding (pro)). Forcing needs MASS (muster-up + multi-prong splits
+at buzzer — filed Step-6-siege-mass (needs strikes + mass, both specced
+not built)). Multi-prong pressure filed (split packs vs 2+ rich towns —
+needs 8+ armies (mass first!)). Consensus mechanisms all hold; the bots
+wait for mistakes that never come vs disciplined foes (correct!).

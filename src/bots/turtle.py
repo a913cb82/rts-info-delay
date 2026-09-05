@@ -200,7 +200,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # Meeting (Step 3, shared): deficit-threats recall settlers (replaces
     # the old blanket recall — sufficient garrisons let settlers work).
     out.extend(recall_deficit(state, config))
-    out.extend(reinforce_orders(state, config))
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
     for p in sorted(state.own_armies(), key=lambda a: min((math.hypot(a.x - t.x, a.y - t.y) for t in own_t), default=0)):

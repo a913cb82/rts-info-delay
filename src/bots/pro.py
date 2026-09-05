@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -68,6 +68,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
     sel = raid_target(state, config, priced=duel_ctx)
+    _sk = strike_target(state, config)
+    sk_march = _sk if _sk is not None and not enemy_armies else None
     # Pack gate: an unaffordable-but-valuable target builds (trains fire),
     # it doesn't march — undersized packs donate. Idle armies hold as the
     # growing pack.
@@ -86,18 +88,9 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
-    probe_sent = False
-    if probe_tgt is not None:
-        for a in state.own_armies():
-            tgt = state.army_target(a.id)
-            if tgt is not None and math.hypot(tgt[0] - probe_tgt.x, tgt[1] - probe_tgt.y) <= 20.0:
-                probe_sent = True
-                break
     # Meeting (Step 3): deficit-threats recall settlers first (bodies
     # home before tasking; recalled notes route via builds to guards).
     out.extend(recall_deficit(state, config))
-    # Meeting (Step 3 v1): surplus reinforces deficits in time.
-    out.extend(reinforce_orders(state, config))
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
     for p in state.own_armies():
@@ -115,11 +108,18 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue
+        # Strike (windows close!): clear-field blitz/buzzer takes march
+        # immediately (mass) — unless one is already en route (per-target
+        # singularity: notes are live, no flags). Fielded foes route to
+        # rope/sel below.
+        if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
+            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+            continue
         if pack_building:
-            if not probe_armed or probe_sent or probe_tgt is None or \
-                    math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
+            if not probe_armed or probe_tgt is None \
+                    or en_route(state, probe_tgt.x, probe_tgt.y) \
+                    or math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
                 continue  # pack not ready: hold (trains are building it)
-            probe_sent = True
         if sel is not None:
             nearest, need, _ = sel
             # P1: leader-targeting (A3) + departure-sync (A2) on the greedy base.

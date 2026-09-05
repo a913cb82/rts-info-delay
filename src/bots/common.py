@@ -1424,6 +1424,13 @@ def demand_trains(state: "BotState", config, can_train,
         deficit = [max(0, min(need, 6) - fieldable)]
     else:
         deficit = [0]
+    # Strike deficit (windows close!): pack for blitz/buzzer takes too.
+    sk = strike_target(state, config, margin=params.raid_margin)
+    if sk is not None:
+        _, sk_need = sk
+        _fieldable = sum(1 for a in state.own_armies()
+                         if not state.army_has_target(a.id))
+        deficit[0] = max(deficit[0], min(sk_need, 6) - _fieldable, 0)
     expand = expansion_demand(state, config, params)
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
@@ -1726,6 +1733,62 @@ def _overmatch(state: "BotState", ratio: float = 1.5) -> bool:
     return my >= ratio * foe_best if foe_best > 0 else True
 
 
+def strike_target(state: "BotState", config, buzzer_window: int = 30,
+                  blitz_reach: float = 2.0, margin: float = 200.0):
+    """Strike doctrine (Step 6+ / early-window unified), two modes:
+    BLITZ (anytime): S+1 takes landing within blitz_reach turns — they
+    can't print before contact (strike before they print!). BUZZER
+    (turns_left <= window): W = 0 takes landing inside the window
+    (retaliation can't arrive). Both need executable force (need <=
+    free) and clear prize>margin. Returns (target, need) or None.
+    Breaks peaceful equilibria (the only breaker when all-credible)."""
+    faction = state.faction
+    eff = config.build_efficiency
+    cost = config.army_cost
+    speed = max(1.0, config.army_speed)
+    turns_left = (getattr(config, "max_turns", 3000) or 3000) - state.turn
+    enemy_towns = [t for t in state.world.towns if t.faction != faction]
+    cands = [t for t in enemy_towns
+             if t.population * (1.0 - eff) > cost * eff + 200]
+    if not cands:
+        return None
+    fieldable = [a for a in state.own_armies()
+                 if not state.army_has_target(a.id)]
+    if not fieldable:
+        return None
+    best = None
+    for u in cands:
+        s = foe_garrison(state, u)
+        arrival = min(math.hypot(a.x - u.x, a.y - u.y) for a in fieldable) / speed
+        prize = u.population * (1.0 - eff)
+        if prize <= margin:
+            continue
+        need = None
+        if arrival <= blitz_reach:
+            need = s + 1  # blitz: they can't print before contact
+        elif turns_left <= buzzer_window and arrival <= turns_left:
+            need = s + 1  # buzzer: W = 0, retaliation can't arrive
+        if need is None or need > len(fieldable):
+            continue
+        score = prize / (1.0 + arrival / 50.0)
+        if best is None or score > best[0]:
+            best = (score, u, need)
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
+def en_route(state: "BotState", x: float, y: float, radius: float = 20.0) -> bool:
+    """A probe/march already heads within radius of (x,y) (notes are
+    live state — a march just ordered suppresses duplicates THIS decide
+    too, no flags needed)."""
+    for a in state.own_armies():
+        tgt = state.army_target(a.id)
+        if tgt is not None and math.hypot(tgt[0] - x, tgt[1] - y) <= radius:
+            return True
+    return False
+
+
 def hold_defenders(state: "BotState", config, force: dict) -> set:
     """Hold-set (shared Step 2 core): per threatened town keep
     min(home, N+1) — the +1th is highest-leverage; beyond it extras are
@@ -1750,7 +1813,9 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
                 here = [a for a in state.own_armies()
                         if a.id not in held
                         and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
-                if here:
+                # Spare-only: never park the LAST army (it might be the
+                # striker — first-strike dominates at the buzzer (GTO s6)).
+                if len(here) >= 2:
                     held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
     # Step 4 conquest guard: towns taken within 25 turns (starvation
     # window) keep one veteran (raiders re-take starving conquests free).

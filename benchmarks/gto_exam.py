@@ -158,6 +158,35 @@ def _march_len(m):
             + (float(ty) - float(fy)) ** 2) ** 0.5
 
 
+def exam_strike():
+    # Blitz (anytime): adjacent unready town (S=0, arrival<=2) struck
+    # before it prints, even absent a priced pipeline.
+    o = decide_orders(cap_state(
+        9000, foe_towns=[(400, 500, 1, 3000, False)],
+        own_armies=[(300, 500)]), CFG)
+    check("endgame", "blitz_strikes", o,
+          lambda o: any("400" in m for m in _moves(o)),
+          f"doesn't blitz adjacent unready; orders={o}")
+    # Buzzer (turns_left<=30): W=0 take landing inside the window.
+    # (Long config: default CFG is 500t — turn must fit inside max!).
+    long_cfg2 = GameConfig()
+    long_cfg2.max_turns = 10000
+    b = BotState()
+    b.init(long_cfg2, 0)
+    b.update(9986, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                    {"kind": "town_update", "id": 2, "x": 450, "y": 500,
+                      "faction": 1, "population": 3000, "alive": True,
+                      "is_capital": False},
+                    {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+    o = decide_orders(b, long_cfg2)
+    check("endgame", "buzzer_strikes", o,
+          lambda o: any("450" in m for m in _moves(o)),
+          f"doesn't strike inside the buzzer window; orders={o}")
+
+
 # ── Selectivity: theft-only vs unready, skip the ready (Step 2) ──
 def exam_selectivity():
     # Poor-unready FAR (1500 @400km: viable halve 750, can't muster) +
@@ -250,21 +279,27 @@ def exam_intel():
 
 # ── Endgame: strip-mine flip at the buzzer ──
 def exam_endgame():
-    # Turn 2950/3000, idle army, no threats: founding never repays in 50
+    # Turn 9986/10000, idle army, no threats: founding never repays in 14
     # turns — no settler marches (guard/recycle instead). (Training is
     # unselective today so a train-check would pass for the wrong reason.)
-    o = decide_orders(cap_state(
-        20000, foe_towns=[(900, 500, 1, 4000, False)],
-        own_armies=[(300, 500)], turn=2950), CFG)
+    long_cfg3 = GameConfig()
+    long_cfg3.max_turns = 10000
+    _cs = cap_state(20000, foe_towns=[(900, 500, 1, 4000, False)],
+                    own_armies=[(300, 500)], turn=9986)
+    _cs.config = long_cfg3
+    o = decide_orders(_cs, long_cfg3)
+    def _tgt2(m):
+        _, _, _, _, tx, ty = m.split()
+        return (float(tx), float(ty))
     check("endgame", "buzzer_no_settle", o,
-          lambda o: not any(m.split()[1] == "7" and _march_len(m) > 60
-                             for m in _moves(o)),
-          f"settles with 50 turns left; orders={o}")
+          lambda o: all(_tgt2(m) == (900.0, 500.0)
+                         for m in _moves(o) if m.split()[1] == "7"),
+          f"settles with 50 turns left (strike-takes at the foe town are allowed); orders={o}")
 
 
 def main():
     for fn in (exam_muster, exam_pricing, exam_selectivity, exam_escape,
-               exam_intel, exam_endgame):
+               exam_intel, exam_endgame, exam_strike):
         fn()
     sections: dict[str, list[bool]] = {}
     for s, _, ok, _ in RESULTS:

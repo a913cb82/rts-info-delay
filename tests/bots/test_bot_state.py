@@ -989,8 +989,10 @@ class TestProbeSingular:
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.note_move(7, 350.0, 500.0)  # probe already en route
         orders = decide_orders(b, CFG)
-        moves8 = [o for o in orders if o.split()[1:2] == ["8"]]
-        assert moves8 == [], orders
+        # Staging (foe town 50km) recalls 7 home; 8 re-probes (handoff:
+        # sequential, not duplicate).
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o for o in orders), orders
+        assert any(o.startswith("MOVE_TO 8 ") and "350.0" in o for o in orders), orders
 
 
 class TestSitePays:
@@ -1172,8 +1174,10 @@ class TestJitMarch:
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.note_move(7, 350.0, 500.0)  # probe already en route
         orders = decide_orders(b, CFG)
-        moves8 = [o for o in orders if o.split()[1:2] == ["8"]]
-        assert moves8 == [], orders
+        # Staging (foe town 50km) recalls 7 home; 8 re-probes (handoff:
+        # sequential, not duplicate).
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o for o in orders), orders
+        assert any(o.startswith("MOVE_TO 8 ") and "350.0" in o for o in orders), orders
 
 
 class TestConquestGuard:
