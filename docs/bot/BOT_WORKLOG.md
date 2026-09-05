@@ -856,3 +856,24 @@ FINDING: fan-out transforms peaceful-compound into early-contact wars;
 winners chaotic (r8 expander, r9 greedy). Filed next: rush doctrine
 (armies exist, unused), deep-scout capital mapping, wobble study (how
 much is clock-order vs doctrine?).
+
+## Two-scout fan (loop iteration: analyse->idea->bench->rematch->fix->rematch)
+
+ANALYSE (user saw no spread scouting in viewer): dispersion audit r9 —
+ZERO armies t500-1500 all factions (nobody prints early), first contact
+~t2000 regardless. Fan-out geometry worked; it never got to fly.
+IDEA: two concurrent probes (different gen rays) instead of one.
+CHANGE (common.py): _scout_id2/_scout_leg2/_scout_gen1/_scout_gen2 +
+slot helpers; per-slot legs/gens/still-keys; exclusions cover both;
+first probe keeps legacy ray (gen 0). New test: second fans out.
+BENCH: scout 22/22, pytest green, fast 2.7/5s, strat 5.4/30s.
+REMATCH r10: expander 354k/97 towns — bot-3 timeout death AGAIN t7894.
+Cause at scale: _crowd_sigma 780 calls x 97 towns (75ms). FIXES: range
+prefilter + per-turn coord table + s0 memo (75->11ms) + yield guard in
+demand_trains (partial trains stand; i>0 keeps scripted-clock exact).
+REMATCH r11: NO deaths, all five reach t10000 — greedy 96k / pro 61k /
+expander 34k / turtle 9k / aggressive 0. Wars t5000-9000 (130 battles).
+HONEST: two-scout machinery correct but still invisible pre-t2000 (no
+early prints — economy question, filed next). Real wins this loop:
+clock discipline at 97-town scale + first all-survive canonical.
+GENERATED: r11 -> recordings/empty_10000.jsonl.

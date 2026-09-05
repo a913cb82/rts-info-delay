@@ -271,8 +271,13 @@ class BotState:
         self._foe_first_seen: dict[int, int] = {}  # faction -> turn first observed
         self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
+        self._scout_id2: int | None = None  # second concurrent probe (fan-out: different ray)
+        self._scout_gen: int = -1  # probe generation (first assign -> 0, legacy ray)
+        self._scout_gen1: int = 0
+        self._scout_gen2: int = 0
         self._tip_grace: dict = {}  # army_id -> turn until which drop_dead spares its note
         self._scout_leg: int = 0
+        self._scout_leg2: int = 0
         self._picket: tuple | None = None  # turtle forward tripwire (army_id, since_turn)
         self._draining: bool = False  # Step 5: drain turn done, fly next
         self._stale_key = None
@@ -322,6 +327,10 @@ class BotState:
         self._draining = False
         self._scout_id = None
         self._scout_leg = 0
+        self._scout_id2 = None
+        self._scout_leg2 = 0
+        self._scout_gen1 = 0
+        self._scout_gen2 = 0
         self._scout_gen = -1  # probe generation: first probe flies the legacy
         # faction ray (gen 0); each new scout rotates by the golden angle
         self._wave_hold_until = -1
@@ -684,6 +693,7 @@ class BotState:
             self._draining,
             self._picket,
             self._scout_id,
+            self._scout_id2,
             self.turn // 25,
         )
         return fp
@@ -871,7 +881,7 @@ def _scout_contact(state: "BotState", config) -> bool:
     return bool(viable)
 
 
-def scout_hop_target(state: "BotState", config, p, hop: int) -> tuple[float, float]:
+def scout_hop_target(state: "BotState", config, p, hop: int, gen: int = 0) -> tuple[float, float]:
     """Next 50km hop: straight faction-spread ray, bent off known towns.
     Tries base, ±45°, ±90°; first segment clearing all known towns by
     15km wins; all-blocked falls back to base (rare blunder accepted).
@@ -893,8 +903,7 @@ def scout_hop_target(state: "BotState", config, p, hop: int) -> tuple[float, flo
         if (aid != p.id and tgt is not None
                 and math.hypot(tgt[0] - p.x, tgt[1] - p.y) >= interact + 15.0):
             known.append((tgt[0], tgt[1], 20.0))
-    base = f * (2 * math.pi / 5) + getattr(state, "_scout_gen", -1) * 2.399963 \
-        + hop * 0.35
+    base = f * (2 * math.pi / 5) + gen * 2.399963 + hop * 0.35
     # Fan-out: each probe generation rotates the ray by the golden angle
     # (successive scouts cover different country), and each leg spirals
     # ~20 deg so one probe sweeps area instead of flying one straight ray.
@@ -908,25 +917,29 @@ def scout_hop_target(state: "BotState", config, p, hop: int) -> tuple[float, flo
             min(size[1] - 20.0, max(20.0, p.y + SCOUT_HOP_KM * math.sin(base))))
 
 
+def _scout_slot(state: "BotState", pid: int) -> int:
+    """Which probe slot (1, 2) an army holds, else 0."""
+    if state._scout_id == pid:
+        return 1
+    if getattr(state, "_scout_id2", None) == pid:
+        return 2
+    return 0
+
+
+def _scout_unmark(state: "BotState", slot: int) -> None:
+    if slot == 2:
+        state._scout_id2 = None
+        state._scout_leg2 = 0
+    else:
+        state._scout_id = None
+        state._scout_leg = 0
+
+
 def maybe_assign_scout(state: "BotState", config, p) -> bool:
-    """Mark p as the scout iff no actionable contact exists yet — true
-    void OR rubble-only (a visible decoy is not a reason to stay home)."""
-    if state._scout_id is not None:
-        # Dead scout frees the slot (else one death ends scouting forever).
-        if state.world.get_army(state._scout_id) is None:
-            state._scout_id = None
-            state._scout_leg = 0
-        else:
-            return False
-    if state.turn < SCOUT_MIN_TURN:
-        return False
-    if p.is_viceroy or _scout_contact(state, config):
-        return False
-    if state.army_has_target(p.id):
-        # Tasked armies are owned (kept scout tips go to builds, packs
-        # to war): re-assigning steals the tip every hop-12 unmark and
-        # the probe loops forever, never founding (0 foundings/3000t).
-        return False
+    """Mark p as a scout iff no actionable contact exists yet — true
+    void OR rubble-only (a visible decoy is not a reason to stay home).
+    Two concurrent probes (fan-out): the second takes a fresh generation
+    ray, so scouts spread across the map instead of one line."""
     # No settle-first block here (TRIED + REVERTED): delaying the first
     # scout for a near-home settler breaks the S0 intel-first contract
     # (10 pinned tests + epistemics: void might hold foes, scouting
@@ -936,10 +949,33 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
     # (S0 contract, test-pinned) — and t1495's deny-convert was CORRECT
     # (1096 pop can't print a guard vs N=1 inbound anyway; convert
     # denies). Stay-behind lives in settled play (2+ armies), not probe.
-    state._scout_id = p.id
-    state._scout_leg = 0
-    state._scout_gen = getattr(state, "_scout_gen", -1) + 1
-    return True
+    for slot, sid in ((1, state._scout_id), (2, getattr(state, "_scout_id2", None))):
+        if sid is not None:
+            # Dead scout frees the slot (else one death ends scouting forever).
+            if state.world.get_army(sid) is None:
+                _scout_unmark(state, slot)
+            else:
+                continue
+        if state.turn < SCOUT_MIN_TURN:
+            return False
+        if p.is_viceroy or _scout_contact(state, config):
+            return False
+        if state.army_has_target(p.id):
+            # Tasked armies are owned (kept scout tips go to builds, packs
+            # to war): re-assigning steals the tip every hop-12 unmark and
+            # the probe loops forever, never founding (0 foundings/3000t).
+            return False
+        state._scout_gen = getattr(state, "_scout_gen", -1) + 1
+        if slot == 2:
+            state._scout_id2 = p.id
+            state._scout_leg2 = 0
+            state._scout_gen2 = state._scout_gen
+        else:
+            state._scout_id = p.id
+            state._scout_leg = 0
+            state._scout_gen1 = state._scout_gen
+        return True
+    return False
 
 
 def _expected_delay(state: "BotState", config, x: float, y: float) -> int:
@@ -1050,7 +1086,7 @@ def drop_dead_notes(state: "BotState") -> None:
         a = state.world.get_army(aid)
         if a is None or getattr(a, "is_viceroy", False):
             continue
-        if aid == state._scout_id:
+        if aid == state._scout_id or aid == getattr(state, "_scout_id2", None):
             continue  # scout notes are drive-managed (hop legs re-note
             # constantly; trail-staleness misreads march holds as stranded
             # and pops the tip every few turns — the infinite probe loop)
@@ -1088,27 +1124,35 @@ def drive_scout(state: "BotState", config, p):
     Unmarks for viable towns (raid logic owns) and foe armies (defense
     owns). Stays out on rubble-only contact, hopping around it, so the
     probe never accidentally captures starvation (trap lesson)."""
-    if state._scout_id != p.id:
+    slot = _scout_slot(state, p.id)
+    if slot == 0:
         return None
+    still_key = "_scout_still" if slot == 1 else "_scout_still2"
+    leg = state._scout_leg2 if slot == 2 else state._scout_leg
+    gen = getattr(state, "_scout_gen2", 0) if slot == 2 else getattr(state, "_scout_gen1", 0)
+    def _bump(n: int) -> int:
+        if slot == 2:
+            state._scout_leg2 = n
+        else:
+            state._scout_leg = n
+        return n
     if p.is_viceroy:
-        state._scout_id = None
-        state._scout_leg = 0
+        _scout_unmark(state, slot)
         return None
     if _scout_contact(state, config):
         # Contact: raid/defense owns the army fresh — drop the stale hop
         # target or it hijacks the army into founding next to the prize.
-        state._scout_id = None
-        state._scout_leg = 0
+        _scout_unmark(state, slot)
         state._army_targets.pop(p.id, None)
         return None
     tgt = state.army_target(p.id)
     if tgt is None:
-        return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
+        return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, leg, gen))
     # Arrival on dead-reckoned pos (own march physics exact; botpos lags
     # 30km+ behind truth and freezes for holding armies).
     rx, ry = state.reckoned_pos(config, p.id)
     if math.hypot(rx - tgt[0], ry - tgt[1]) >= 20:
-        state.__dict__.pop("_scout_still", None)
+        state.__dict__.pop(still_key, None)
         return []  # mid-hop or waiting arrival-intel: hold
     # arrived: next hop only from quiescent intel (else the order dies in
     # flight); the leg steps exactly when the hop dispatches, never twice
@@ -1123,27 +1167,27 @@ def drive_scout(state: "BotState", config, p):
         info = (config.info_speed if config is not None else 150.0) or 150.0
         cap = state.world.faction_capital(state.faction)
         exp = math.ceil(math.hypot(p.x - cap.x, p.y - cap.y) / info) if cap else 1
-        st = state.__dict__.get("_scout_still")
+        st = state.__dict__.get(still_key)
         if st is None or math.hypot(p.x - st[0], p.y - st[1]) > 1e-6:
-            state.__dict__["_scout_still"] = (p.x, p.y, 1)
+            state.__dict__[still_key] = (p.x, p.y, 1)
             return []
         if st[2] < exp + 2:
-            state.__dict__["_scout_still"] = (p.x, p.y, st[2] + 1)
+            state.__dict__[still_key] = (p.x, p.y, st[2] + 1)
             return []
-        state.__dict__.pop("_scout_still", None)
+        state.__dict__.pop(still_key, None)
     else:
-        state.__dict__.pop("_scout_still", None)
+        state.__dict__.pop(still_key, None)
     if not ready_to_dispatch(state, config, p):
         return []
-    state._scout_leg += 1
-    if state._scout_leg >= SCOUT_HOPS:
+    leg = _bump(leg + 1)
+    if leg >= SCOUT_HOPS:
         # hops exhausted with no contact: convert the tip HERE (drive owns
         # it end-to-end — handing a kept note to builds loses it 7 ways:
         # drop_dead, S0 re-steal, quiescence deadlock, grace expiry,
         # arrival-lag, respin-None, cap-march death-letters). Arrived +
         # gated -> BUILD now; bad tip -> respin note+march (queued BUILD
         # fires on arrival); builds stays as backup only.
-        state._scout_id = None
+        _scout_unmark(state, slot)
         if tgt is not None:
             interact = (config.interact_radius if config is not None
                         and getattr(config, "interact_radius", None) else 10.0)
@@ -1167,7 +1211,7 @@ def drive_scout(state: "BotState", config, p):
                     # even if notes die; arrival detection is backup).
                     return dispatch_settler(state, config, p, rs[0], rs[1])
         return []
-    return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
+    return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, leg, gen))
 
 
 class BotForecast:
@@ -1784,7 +1828,7 @@ def void_note_busy(state: "BotState") -> bool:
     notes floods void trains (endgame lesson: unbounded settlers)."""
     towns = list(state.world.towns)
     for a in state.own_armies():
-        if a.id == state._scout_id:
+        if a.id == state._scout_id or a.id == getattr(state, "_scout_id2", None):
             continue
         tgt = state.army_target(a.id)
         if tgt and all(math.hypot(tgt[0] - t.x, tgt[1] - t.y) > 20
@@ -1948,7 +1992,10 @@ def demand_trains(state: "BotState", config, can_train,
     # No in-loop yield: the trains stage is atomic (anytime prefix
     # property) — trains are cheap, and a partial muster is worse than
     # a late one.
-    for t in cands:
+    for i, t in enumerate(cands):
+        if i > 0 and i % 8 == 0 and state.should_yield():
+            break  # clock discipline: partial trains stand (97-town sprawl
+        # otherwise blows the turn budget inside site_pays sigmas)
         if t.id in state._pending_trains and state.turn <= state._pending_trains[t.id]:
             continue
         eta_n = force.get(t.id)
@@ -2005,12 +2052,19 @@ def _crowd_sigma(state: "BotState", config, x: float, y: float, p: float,
     decay = getattr(config, "crowding_decay", 0.8) or 0.8
     asym_k = getattr(config, "crowding_asymmetry", 0.01) or 0.01
     crange = getattr(config, "info_speed", 150.0) or 150.0
-    towns = list(state.world.towns)
-    if extra is not None:
-        towns = towns + [extra]
+    # Per-turn coord table: world is static during decide, so normalize
+    # once (no per-call list-copy, no per-town isinstance — 780 calls x
+    # 97 towns was 75k isinstance checks alone). extra appended per call.
+    base = _memoized(state, ("town_coords",),
+                     lambda: [(t.x, t.y, t.population) for t in state.world.towns])
+    towns = base if extra is None else base + [extra]
+    # Range prefilter: terms beyond crange contribute exactly 0 (the loop
+    # `continue`s them) — skip with a bounding box first. At 97-town
+    # sprawl this is ~20x (780 calls x 97 scans blew the turn budget).
     tot = 0.0
-    for t in towns:
-        tx, ty, pn = (t.x, t.y, t.population) if not isinstance(t, tuple) else t
+    for tx, ty, pn in towns:
+        if abs(tx - x) > crange or abs(ty - y) > crange:
+            continue
         d = _math.hypot(tx - x, ty - y)
         if d < 1e-9 or d > crange + 1e-9:
             continue
@@ -2039,7 +2093,10 @@ def site_pays(state: "BotState", config, x: float, y: float) -> bool:
     net = 0.0
     for t in towns:
         base = growth * t.population * (1.0 - t.population / cap)
-        s0 = _crowd_sigma(state, config, t.x, t.y, t.population)
+        # s0 is site-invariant (world static during decide): memoize per
+        # turn (97-town sprawl recomputed it per site — half the sigmas).
+        s0 = _memoized(state, ("crowd_s0", t.id),
+                       lambda t=t: _crowd_sigma(state, config, t.x, t.y, t.population))
         s1 = _crowd_sigma(state, config, t.x, t.y, t.population, extra=new)
         net += base * (1.0 - s1) - base * (1.0 - s0)
     s_new = _crowd_sigma(state, config, x, y, 500.0)
@@ -2083,7 +2140,8 @@ def recall_deficit(state: "BotState", config) -> list:
         for a in state.own_armies():
             if not a.is_viceroy and state.army_has_target(a.id) \
                     and not state.has_pending_build(a.id) \
-                    and a.id != state._scout_id:
+                    and a.id != state._scout_id \
+                    and a.id != getattr(state, "_scout_id2", None):
                 home = min(state.own_towns(),
                            key=lambda t: math.hypot(a.x - t.x, a.y - t.y),
                            default=None)
@@ -2107,6 +2165,7 @@ def recall_deficit(state: "BotState", config) -> list:
                         if not a.is_viceroy and state.army_has_target(a.id)
                         and not state.has_pending_build(a.id)
                         and a.id != state._scout_id
+                        and a.id != getattr(state, "_scout_id2", None)
                         and not committed_raid(state, a.id)
                         and a.id not in recalled),
                        key=lambda a: math.hypot(a.x - town.x, a.y - town.y))

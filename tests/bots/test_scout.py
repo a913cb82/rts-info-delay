@@ -48,6 +48,21 @@ class TestAssign:
         orders = drive_scout(b, CFG, p)
         assert orders == ["MOVE_TO 7 200.0 500.0 250.0 500.0"]
 
+    def test_second_scout_fans_out(self) -> None:
+        # Two concurrent probes take different rays (fan-out, not one line).
+        from bots.common import maybe_assign_scout, drive_scout
+        b = _scout_bot()
+        _feed(b, 3, towns=[(1, 200, 500, 0, 3000, True)],
+              armies=[(7, 200, 500, 0), (8, 200, 500, 0)])
+        assert maybe_assign_scout(b, CFG, b.world.get_army(7)) is True
+        assert maybe_assign_scout(b, CFG, b.world.get_army(8)) is True
+        assert b._scout_id == 7 and b._scout_id2 == 8
+        o1 = drive_scout(b, CFG, b.world.get_army(7))
+        o2 = drive_scout(b, CFG, b.world.get_army(8))
+        assert o1 == ["MOVE_TO 7 200.0 500.0 250.0 500.0"]  # gen-0 legacy ray
+        assert o2 != o1  # gen-1 golden-angle ray
+        assert maybe_assign_scout(b, CFG, b.world.get_army(7)) is False  # both busy
+
     def test_viable_contact_never_assigns(self) -> None:
         from bots.common import maybe_assign_scout
         b = _scout_bot()
