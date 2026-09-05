@@ -238,21 +238,21 @@ def _relations(world: dict) -> dict:
         if cap:
             cap_off = {"dist": round(math.hypot(cap["x"] - cx, cap["y"] - cy)),
                        "dir": _compass(cap["x"] - cx, cap["y"] - cy)}
-        # clusters: single-linkage grouping within 150km (named blobs like
-        # "main cluster far north-west of capital" instead of ray soup).
+        # clusters: LEADER (greedy ball-covering, pop-desc seeds, R=150km).
+        # Beats single-linkage (chains via stepping-stones into snakes),
+        # DBSCAN (same chaining via density-reachability), k-means (needs
+        # k upfront + random init breaks determinism). Radius bounded by R
+        # guaranteed; loners form singleton clusters (frontier outposts stay
+        # visible, not noise). Deterministic: pop-desc, id tiebreak.
         clusters: list = []
-        rem = sorted(own, key=lambda t: t["id"])
+        rem = sorted(own, key=lambda t: (-t["population"], t["id"]))
         while rem:
             seed = rem.pop(0)
             members = [seed]
-            grown = True
-            while grown:
-                grown = False
-                for u in list(rem):
-                    if any(math.hypot(u["x"] - m["x"], u["y"] - m["y"]) <= 150 for m in members):
-                        members.append(u)
-                        rem.remove(u)
-                        grown = True
+            for u in list(rem):
+                if math.hypot(u["x"] - seed["x"], u["y"] - seed["y"]) <= 150:
+                    members.append(u)
+                    rem.remove(u)
             mx = sum(m["x"] for m in members) / len(members)
             my = sum(m["y"] for m in members) / len(members)
             rad = max(round(math.hypot(m["x"] - mx, m["y"] - my)) for m in members)
