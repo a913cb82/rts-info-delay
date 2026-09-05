@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap
+from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -108,6 +108,31 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _vl = victory_lap(state, config)
     if _vl:
         return _vl
+    # Free-food walk-ins (cheap-suite: turtle scored 3453 vs stub's 5484 —
+    # never attacks, not even undefended food. Fresh-empty, close,
+    # profitable towns take 1 walker; fortress doctrine otherwise holds).
+    _free = [a for a in state.own_armies()
+             if not state.army_has_target(a.id) and not a.is_viceroy]
+    if _free:
+        _best = None
+        for u in state.world.towns:
+            if u.faction == faction:
+                continue
+            if foe_garrison(state, u) != 0:
+                continue
+            if state.turn - state._last_seen.get(("town", u.id), -10**9) > 150:
+                continue  # stale empties are traps, not food
+            _d = min(math.hypot(a.x - u.x, a.y - u.y) for a in _free)
+            if _d > 400:
+                continue
+            _prize = u.population * (1.0 - config.build_efficiency)
+            if _prize < config.army_cost + 200:
+                continue
+            if _best is None or _prize > _best[0]:
+                _best = (_prize, u)
+        if _best is not None:
+            _walker = min(_free, key=lambda a: math.hypot(a.x - _best[1].x, a.y - _best[1].y))
+            out.extend(order_move(state, config, _walker, _best[1].x, _best[1].y))
     _evac = evac_plan(state, config, hopeless, established_stays=True)
     if any(o.startswith("MOVE_CAPITAL") for o in _evac):
         out.extend(_evac)

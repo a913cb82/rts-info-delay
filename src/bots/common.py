@@ -2874,7 +2874,12 @@ def expansion_demand(state: "BotState", config,
     # sprawl opts out (r63 lesson: expander's colonies are TRIPWIRES,
     # not fortresses — best historical Elo sprawled naked). Settlers en
     # route count (pending builds are bodies with jobs).
-    if params.serial and len(state.own_towns()) > len(state.own_armies()) + 1:
+    # Threat-gated (cheap-suite: HEAD-pro settles 3x slower than its
+    # 851ba30 ancestor vs passives — the ratio guards against LIVE
+    # pickers, not quiet fields. Armed live foes -> hold; otherwise sprawl.
+    _armed = any(a.faction != state.faction for a in state.world.armies)
+    if params.serial and _armed \
+            and len(state.own_towns()) > len(state.own_armies()) + 1:
         return False
     turns_left = config.max_turns - state.turn
     if turns_left < chor:

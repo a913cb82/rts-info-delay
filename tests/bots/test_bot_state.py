@@ -2700,10 +2700,12 @@ class TestSupportRatio:
                 "faction": 1, "population": 5000, "alive": True,
                 "is_capital": False},
                {"kind": "army_update", "id": 7, "x": 300, "y": 500,
-                "faction": 0, "alive": True, "is_viceroy": False}]
+                "faction": 0, "alive": True, "is_viceroy": False},
+               {"kind": "army_update", "id": 9, "x": 900, "y": 900,
+                "faction": 1, "alive": True, "is_viceroy": False}]
         b.update(1, evs)
         b.turn = 10
-        assert expansion_demand(b, CFG) is False  # 3 towns, 1 army
+        assert expansion_demand(b, CFG) is False  # 3 towns, 1 army, armed foe
         b.update(11, [{"kind": "army_update", "id": 8, "x": 300, "y": 500,
                        "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 12
