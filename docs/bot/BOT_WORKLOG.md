@@ -587,3 +587,17 @@ marginally, +124); pro defends honestly (mutual-saves, headful) —
 concentration (Step 3) is the path from mutuals to cleans (filed, third
 witness: defense/endgame/guard). pro_defense unchanged (no D==N there —
 consistent). Exam 17/18 (muster 8/8; only young_flees (Step 5) red).
+
+## Step 5 hopeless D<N (exam 18/18!)
+
+_pro_hopeless upgraded from pop-affordability to force-counting: hopeless
+iff home + printable-in-time (1/town/turn cap x ETA) < inbound N at the
+worst town. Young-doomed flees (exam young_flees passes); established
+never qualifies (deep print — accidental pass preserved honestly).
+Exam 18/18 (all sections green; fixtures grown: muster horizon pins,
+passive-prize calibration, probe-singular). Fast suite identical;
+empty sloshes (expander +371 on zero related changes — timing variance,
+note stands). Step 5 remain: evac v2 gates/routing (personality evac
+table filed), capital-sniping weights, settler-hunting (all need Step-3
+meeting intel to aim). Next: turtle pickets (owed), then Step 3 (timing/
+concentration — the defense/endgame/guard paths back), Step 4, filed.

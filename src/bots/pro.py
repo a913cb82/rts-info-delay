@@ -7,24 +7,26 @@ from .common import BotForecast, BotState, bot_main, can_train_standard, defense
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
-    """Port of turtle's hopeless: home force can't grow before contact and
-    is outnumbered."""
+    """D<N hopelessness (Step 5): the worst inbound threat cannot be met
+    even printing everything printable-in-time (1/town/turn TRAIN cap) —
+    pop affordability is necessary but not sufficient (a reinforcement
+    that still loses is a donation). Established empires almost never
+    qualify (deep print); young ones do."""
     faction = state.faction
     own_t = state.own_towns()
-    threat_eta = float("inf")
-    for a in state.world.armies:
-        if a.faction == faction:
-            continue
-        for t in own_t:
-            eta = math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
-            if eta < threat_eta:
-                threat_eta = eta
-    if threat_eta == float("inf"):
+    if not own_t:
         return False
-    reinforce = any(t.population + (state.get_growth(t.id) or 3.0) * threat_eta
-                    >= min(bar, config.army_cost + 200) for t in own_t)
-    foes = sum(1 for a in state.world.armies if a.faction != faction)
-    return not reinforce and len(state.own_armies()) <= foes
+    force = inbound_force(state, config, max_eta=8.0)
+    if not force:
+        return False
+    tid, (eta, n) = min(force.items(), key=lambda kv: kv[1][0])
+    town = next(t for t in own_t if t.id == tid)
+    home = sum(1 for a in state.own_armies()
+               if math.hypot(a.x - town.x, a.y - town.y) <= 20.0)
+    eta_turns = max(0, int(math.ceil(eta)))
+    printable = sum(eta_turns for t in own_t
+                    if t.population >= config.army_cost)
+    return home + printable < n
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:

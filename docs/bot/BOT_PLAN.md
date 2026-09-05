@@ -92,16 +92,19 @@ all force counts from delivered trails, never intent; parse finished
 battles for force counts to calibrate. Muster math under the TRAIN cap:
 no instant N+1 — the evaluator plans multi-turn print (1/town/turn) plus
 standing, prices takes against N ≥ S+W+1, and never orders partial
-musters. PRO DONE (exam muster 6/6, selectivity 2/2, pricing 3/3;
-Elo crown 1501; guard_duty restored 3249 via outcome-muster +
-war-footing hold + spend-aware growth): outcome-rule trains
-(`defense_train_ok`, shared), unready-weighted raid selection, void/
-payback expansion demand, war-footing hold (no recycle-merges under
-threat). REMAIN: roll demand gates to greedy/aggressive/expander/turtle
-per their bars (personalities deviate on schedule: greedy thinner
-muster-depth, turtle thicker, expander print-hungry, aggressive
-initiative-priced). Scouting prerequisite SHIPPED (S0 no-contact
-protocol, below).
+musters. DONE for all five (shared demand API + DemandParams): pro
+(GTO baseline; exam muster 8/8, selectivity 3/3), greedy (rich-only
+muster, transfer-only raids, cherry-pick x2, 1 prober), aggressive
+(thin cushion, margin 100, military staging, pack>trickle), expander
+(sprawl: depth +1000 core-only, margin 300, impatient x0.3, parallel,
+rates overridden), turtle (threat-bars + last-stand + staging-threat;
+expansion spatially-gated near-only BY DESIGN, no raid pipeline —
+fortress). Calibration (sterile W=0), pipelines (deficit+bird-in-hand),
+probes (S==0, range-capped, singular), pack gates, war-footing holds
+(no disband/merge under threat), growth net of spends, site-veto NET —
+all shared. Exam acceptance MET AND EXCEEDED (muster 8/8 includes
+horizon pins). Scouting prerequisite SHIPPED (S0 no-contact protocol +
+pro recon, below).
 
 **S0 — no-contact scout (shipped).** First settler probes before
 founding: 50km hops (arrival-gated; mid-course retargeting is
