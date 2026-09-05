@@ -301,3 +301,10 @@ pairwise results from placements (1st beats 4, 2nd beats 3...),
 K=16 with margin weight (blowouts to 1.5x). Ratings per faction
 slot (F0-pro vs F1-pro tracked separately — positional!). 6 games
 ≈ 60 pairs ≈ 5 min (≈10x the data rate of 1v1s).
+
+## Cross-commit caveat
+
+Historical bots run FULLY on-commit (worktree engine + brains, current
+venv python). Wire protocol drift can kill ancients against the HEAD
+engine — deaths count (0 score), noted not excused. Engine stays HEAD
+only as the referee.
