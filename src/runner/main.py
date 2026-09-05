@@ -95,8 +95,23 @@ class BotProcess:
             return
     def turn_budget(self) -> float:
         """This turn's budget: main reservoir remainder, or the byo-yomi
-        period clock once main is exhausted."""
+        period clock once main is exhausted. Exhaustion grants the FULL
+        cap immediately (crossing turn gets 100ms, not the dregs — a
+        2ms budget with 3ms wobble killed bots before byo-yomi)."""
         if not self.in_byoyomi:
+            try:
+                inc = float(getattr(self.config, "time_increment_ms", 10.0) or 0.0)
+            except Exception:
+                inc = 10.0
+            if self.main_ms <= inc:
+                self.main_ms = 0.0
+                self.in_byoyomi = True
+                try:
+                    cap = float(getattr(self.config, "turn_time_ms", 100) or 100)
+                except Exception:
+                    cap = 100.0
+                self.clock_ms = cap
+                return cap
             return max(0.0, self.main_ms)
         return max(0.0, self.clock_ms)
 
