@@ -1304,3 +1304,16 @@ R74 stands as excellent: action every millennium t1000-t9000,
 aggressive underdog takes, pro0 packs). Accepted: 2 stale-mirror
 fratricides (far-intel price), buzzer end-print wave (unspent at
 game over, harmless).
+
+## Tall-turtle + survivor gate + r80 (per-loop regen)
+
+TURTLE (user: play tall, minimal survival armies, safe-nearby settle
+only): endure (established_stays=True), garrison 1 dark / 2 rich+
+threatened (no over-muster), settle gated (no foe town 350km of site,
+no foe army 300km of capital).
+DIAGNOSE (r79): thin-town ping-pong (600 takes halve to 300, die same
+turn). SHIPPED: priced raids skip pop < 2x death threshold (denial
+keeps them).
+R80: three-way race to t10000 (pro0 14t/110k, expander 1t/88k,
+aggressive 1t/84k), final flip t10000, no onesies, all bots alive.
+Pro1/turtle fall (corner/edge positions). GENERATED r80.

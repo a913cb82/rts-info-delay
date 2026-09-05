@@ -98,10 +98,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 break
     hopeless = threatened and not can_reinforce and own_armed <= seen_enemies
 
-    # EVAC (shared drain-and-flee, turtle flees any doom): hopeless capital
-    # musters everything portable first (drain t, fly t+1), 2x cost floor
-    # kept (suicide-evacs at ~1000 killed the cap for nothing — wake).
-    _evac = evac_plan(state, config, hopeless, established_stays=False)
+    # EVAC (shared drain-and-flee, turtle ENDURES: established stays —
+    # fortresses don't abandon towns (they fall!); hopeless musters
+    # everything home instead. Flight only when the capital itself is
+    # doomed past mustering.)
+    _evac = evac_plan(state, config, hopeless, established_stays=True)
     if any(o.startswith("MOVE_CAPITAL") for o in _evac):
         out.extend(_evac)
         return out
@@ -161,7 +162,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # garrisons measured 1635 vs 2180 concentrated (2v1 wins, 1v1s trade).
     home = [a for a in state.own_armies()
             if any(math.hypot(a.x - t.x, a.y - t.y) <= 20 for t in own_t)] if own_t else []
-    need_garrison = threatened and not home and cap is not None
+    # Garrison depth (fortress: 1 in dark, 2 when threatened + rich —
+    # deterrence without over-muster (a little greed: armies cost growth).
+    _home_cap = sum(1 for a in home
+                    if cap is not None and math.hypot(a.x - cap.x, a.y - cap.y) <= 20) \
+        if cap is not None else 0
+    _want_home = 2 if (threatened and cap is not None and cap.population >= 3000) else 1
+    _foe_known = any(t.faction != faction for t in state.world.towns) \
+        or any(a.faction != faction for a in state.world.armies)
+    need_garrison = cap is not None and _home_cap < _want_home and (threatened or not _foe_known)
 
     # Forward picket (owed): single-town turtle posts one idle army 100km
     # out while the universe is dark (zero foe intel — towns AND armies).
@@ -251,6 +260,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 continue
             biggest = max(own_t, key=lambda t: t.population)
             site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13, who=p.id)
+            # Safe-only settle (fortress: sure-safe or not at all — no foe
+            # town within 350km of the site, no foe army within 300km of
+            # the capital).
+            if site is not None and (
+                    any(math.hypot(site[0] - t.x, site[1] - t.y) < 350
+                        for t in state.world.towns if t.faction != faction)
+                    or any(math.hypot(cap.x - a.x, cap.y - a.y) < 300
+                           for a in state.world.armies if a.faction != faction)):
+                site = None
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))
                 built = True

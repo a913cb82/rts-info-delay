@@ -605,8 +605,11 @@ class BotState:
         hist.append((round(tx / 50.0), round(ty / 50.0), self.turn))
         while len(hist) > 4:
             hist.pop(0)
+        # Flip-flop (3+ distinct in 300t) OR alternation (A..A revisit:
+        # r75's 1.4M km shuttle ran 2 targets, never 3 distinct).
         if len(hist) == 4 and hist[-1][2] - hist[0][2] <= 300 \
-                and len({h[:2] for h in hist}) >= 3:
+                and (len({h[:2] for h in hist}) >= 3
+                     or hist[-1][:2] == hist[-3][:2] != hist[-2][:2]):
             home = min((t for t in self.world.towns if t.faction == self.faction),
                        key=lambda t: __import__("math").hypot(
                            (self.world.get_army(army_id) or t).x - t.x,
@@ -2286,6 +2289,13 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                  if t.population * (1.0 - eff) > cost * eff + 200]
     else:
         cands = list(enemy_towns)
+    # Survivor gate (r79: thin-town ping-pong — 600-pop takes halve to
+    # 300 and die same turn. Priced raids skip towns whose prize can't
+    # survive capture (pop < 2x death threshold); denial/unpriced keeps
+    # them (spite has its own math).)
+    if priced:
+        _survive = 2 * config.death_threshold
+        cands = [t for t in cands if t.population >= _survive]
     if not cands:
         return None
     fieldable = [a for a in state.own_armies()
@@ -2426,6 +2436,13 @@ def expansion_demand(state: "BotState", config,
         return True
     if params.serial and void_note_busy(state):
         return False
+    # Support ratio (r74 lead-change: F2 led 28k with 5 towns + 1 army,
+    # expander picked them one by one — unconquerable sprawl is just
+    # future enemy towns. Every town needs a guard or accept the loss:
+    # no new colonies while towns outnumber armies + 1). Settlers en
+    # route count (pending builds are bodies with jobs).
+    if len(state.own_towns()) > len(state.own_armies()) + 1:
+        return False
     turns_left = config.max_turns - state.turn
     if turns_left < chor:
         return False
@@ -2550,8 +2567,12 @@ def demand_trains(state: "BotState", config, can_train,
                          if not state.army_has_target(a.id))
         deficit[0] = max(deficit[0], min(sk_need, 3 + 2 * len(state.own_towns())) - _fieldable, 0)
     expand = expansion_demand(state, config, params)
+    # Threat-first (r76: early bloodbath — offense starves defense under
+    # the 1/town train cap; packs print while capitals fall. Threatened
+    # towns muster before anyone else spends).
     cands = sorted(state.own_towns(),
-                   key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
+                   key=lambda t: (0 if force.get(t.id) is not None else 1,
+                                  0 if state.should_train_for_overcrowding(t) else 1,
                                   state.get_growth(t.id), t.population))
     # No in-loop yield: the trains stage is atomic (anytime prefix
     # property) — trains are cheap, and a partial muster is worse than
@@ -2858,6 +2879,29 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     # Strict: ties hold (print can lag a turn; arriving exactly-even is
     # a coin flip on intel delay, and flips favor the defender).
     return arrival > print_turns
+
+
+def hopeless_capital(state: "BotState", config, bar: float = 1700.0) -> bool:
+    """D<N hopelessness (shared Step 5): the worst inbound threat cannot
+    be met even printing everything printable-in-time (1/town/turn TRAIN
+    cap) — pop affordability is necessary but not sufficient (a
+    reinforcement that still loses is a donation). Established empires
+    almost never qualify (deep print); young ones do."""
+    import math as _math
+    own_t = state.own_towns()
+    if not own_t:
+        return False
+    force = inbound_force(state, config, max_eta=8.0)
+    if not force:
+        return False
+    tid, (eta, n) = min(force.items(), key=lambda kv: kv[1][0])
+    town = next(t for t in own_t if t.id == tid)
+    home = sum(1 for a in state.own_armies()
+               if _math.hypot(a.x - town.x, a.y - town.y) <= 20.0)
+    eta_turns = max(0, int(_math.ceil(eta)))
+    printable = sum(eta_turns for t in own_t
+                    if t.population >= config.army_cost)
+    return home + printable < n
 
 
 def evac_plan(state: "BotState", config, hopeless: bool, established_stays: bool = True) -> list:

@@ -652,6 +652,76 @@ def report(path: str) -> str:
     return "\n".join(lines)
 
 
+def lead(path: str) -> str:
+    """Score timeline + lead flips (loop step 1 for comebacks): pop /
+    towns / armies per faction per millennium, lead column, FLIP lines
+    naming who took the lead and when."""
+    header, turns = load_turns(path)
+    if not turns:
+        return "no turns found"
+    out = [f"lead {path.split('/')[-1]}:"]
+    prev = None
+    for m in range(0, 10001, 1000):
+        t = min(turns, key=lambda k: abs(k - m))
+        w = turns[t]
+        pops = {}
+        for f in (0, 1, 2, 3, 4):
+            tw = [x for x in w["towns"] if x["faction"] == f]
+            na = sum(1 for x in w["armies"] if x["faction"] == f)
+            pops[f] = (len(tw), round(sum(x["population"] for x in tw)), na)
+        cur = max(range(5), key=lambda f: pops[f][1])
+        cells = " ".join(f"F{f}:{pops[f][0]}t/{pops[f][1]}/{pops[f][2]}a" for f in range(5))
+        tag = ""
+        if prev is not None and cur != prev:
+            tag = f"  <-- FLIP F{prev}->F{cur}"
+        out.append(f"t{t}: {cells} LEAD=F{cur}{tag}")
+        prev = cur
+    return "\n".join(out)
+
+
+def flip(path: str, faction: int, t0: int, t1: int) -> str:
+    """Events around a flip window for faction F's collapse (or rise):
+    town takes/deaths, battles, plus F's prints in-window (did it react?)
+    and F's army count arc. Answers 'what did they do wrong/right?'."""
+    header, turns = load_turns(path)
+    if not turns:
+        return "no turns found"
+    evmap: dict = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if "world" in r:
+                evmap[r.get("turn", 0)] = r.get("events", [])
+    out = [f"flip F{faction} {t0}-{t1}:"]
+    for t in sorted(turns):
+        if not (t0 <= t <= t1):
+            continue
+        w = turns[t]
+        evs = evmap.get(t, [])
+        nf = sum(1 for x in w["towns"] if x["faction"] == faction)
+        na = sum(1 for x in w["armies"] if x["faction"] == faction)
+        for e in evs:
+            k = e.get("kind")
+            if k in ("town_capture", "town_death") and e.get("old_faction", e.get("faction")) == faction:
+                out.append(f"  t{t} LOST {k} town{e.get('id')} ->F{e.get('new_faction', '')} pop={round(e.get('population', 0))} @({e.get('x', 0):.0f},{e.get('y', 0):.0f})")
+            elif k == "town_capture" and e.get("new_faction") == faction:
+                out.append(f"  t{t} TOOK town{e.get('id')} from F{e.get('old_faction')} pop={round(e.get('population', 0))}")
+            elif k == "battle":
+                mine = [c for c in e.get("combatants", []) if c["faction"] == faction]
+                if mine:
+                    foes = ",".join(f"F{c['faction']}:{c['id']}" for c in e.get("combatants", []) if c["faction"] != faction)
+                    out.append(f"  t{t} battle {len(mine)}v({foes}) killed={e.get('killed')} @({e.get('x', 0):.0f},{e.get('y', 0):.0f})")
+        if t % 250 == 0:
+            out.append(f"  [t{t} F{faction}: {nf}t/{na}a]")
+    return "\n".join(out)
+
+
 def fog(path: str, faction: int, turn: int) -> str:
     """What faction F had observed by turn T (bot-view replay): per town
     last-seen pop/faction/alive + staleness + GHOSTS (dead-unseen) +
@@ -737,15 +807,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--deltas", default="100,10,1", help="score-delta offsets (symmetric past+future, comma-separated)")
-    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report", "fog"],
-                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window; report: full-game brief; fog: what a faction observed (--faction, --turn)")
+    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report", "fog", "lead", "flip"],
+                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window; report: full-game brief; fog: what a faction observed (--faction, --turn); lead: score timeline + lead flips; flip: events around a flip window (--window A-B, --faction F context)")
     ap.add_argument("--faction", default="0", help="fog format: faction to observe as")
     ap.add_argument("--window", default="", help="autopsy window TURNS, e.g. 7800-8000 (default: last 1000)")
     args = ap.parse_args(argv)
     _COMPACT[0] = args.compact
     if args.format in ("json", "acjson"):
         args.format = "acjson"
-    elif args.format not in ("autopsy", "report", "fog"):
+    elif args.format not in ("autopsy", "report", "fog", "lead", "flip"):
         args.format = "ascii"
     if args.format == "fog":
         t = int(args.turns.split(",")[0]) if args.turns != "last" else -1
@@ -767,6 +837,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.format == "report":
         print(report(args.recording))
+        return 0
+    if args.format == "lead":
+        print(lead(args.recording))
+        return 0
+    if args.format == "flip":
+        if args.window and "-" in args.window:
+            t0, t1 = (int(v) for v in args.window.split("-", 1))
+        else:
+            t1, t0 = 8000, 7000
+        print(flip(args.recording, int(args.faction), t0, t1))
         return 0
     if args.format == "autopsy":
         if args.window and "-" in args.window:

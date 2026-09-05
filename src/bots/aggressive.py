@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, coverage_orders, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotForecast, BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -22,6 +22,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _sched = maybe_schedule_scout(state, config)
     sc_out = list(_sched) if _sched else []
     out.extend(sc_out)
+    # Evac (shared drain-and-flee; predators flee doom too).
+    _evac = evac_plan(state, config, hopeless_capital(state, config))
+    if any(o.startswith("MOVE_CAPITAL") for o in _evac):
+        out.extend(_evac)
+        return out
+    out.extend(_evac)
 
     # Step 2, aggressive params (predator): thin cushion (depth 0),
     # marginal+initiative raids (margin 100), economic expansion rare

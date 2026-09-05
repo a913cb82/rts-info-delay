@@ -3,30 +3,11 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, coverage_orders, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
-    """D<N hopelessness (Step 5): the worst inbound threat cannot be met
-    even printing everything printable-in-time (1/town/turn TRAIN cap) —
-    pop affordability is necessary but not sufficient (a reinforcement
-    that still loses is a donation). Established empires almost never
-    qualify (deep print); young ones do."""
-    faction = state.faction
-    own_t = state.own_towns()
-    if not own_t:
-        return False
-    force = inbound_force(state, config, max_eta=8.0)
-    if not force:
-        return False
-    tid, (eta, n) = min(force.items(), key=lambda kv: kv[1][0])
-    town = next(t for t in own_t if t.id == tid)
-    home = sum(1 for a in state.own_armies()
-               if math.hypot(a.x - town.x, a.y - town.y) <= 20.0)
-    eta_turns = max(0, int(math.ceil(eta)))
-    printable = sum(eta_turns for t in own_t
-                    if t.population >= config.army_cost)
-    return home + printable < n
+    return hopeless_capital(state, config, bar)
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:

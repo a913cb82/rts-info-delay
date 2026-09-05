@@ -2622,3 +2622,52 @@ class TestSettlerFloor:
         out = demand_trains(b, cfg, can_train_standard)
         assert any(o.startswith("TRAIN 1") for o in out), out
 
+
+
+class TestAlternation:
+    """r75: 1.4M km two-target shuttle (never 3 distinct). A..A revisit
+    stands down too."""
+
+    def test_abab_stands_down(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        for i, (x, y) in enumerate([(900, 500), (300, 900), (900, 500), (300, 900)]):
+            b.turn = 100 + i * 50
+            b.note_move(7, float(x), float(y))
+        assert b.army_target(7) == (300.0, 500.0)
+
+
+class TestSupportRatio:
+    """r74 lead-change: F2 led 28k (5 towns, 1 army), picked apart.
+    Towns must not outnumber armies + 1."""
+
+    def test_unguarded_sprawl_blocked(self) -> None:
+        from bots.common import expansion_demand
+        b = BotState()
+        b.init(CFG, 0)
+        evs = [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                "faction": 0, "population": 4000, "alive": True,
+                "is_capital": True},
+               {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                "faction": 0, "population": 4000, "alive": True,
+                "is_capital": False},
+               {"kind": "town_update", "id": 3, "x": 600, "y": 600,
+                "faction": 0, "population": 4000, "alive": True,
+                "is_capital": False},
+               {"kind": "town_update", "id": 9, "x": 900, "y": 900,
+                "faction": 1, "population": 5000, "alive": True,
+                "is_capital": False},
+               {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                "faction": 0, "alive": True, "is_viceroy": False}]
+        b.update(1, evs)
+        b.turn = 10
+        assert expansion_demand(b, CFG) is False  # 3 towns, 1 army
+        b.update(11, [{"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                       "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 12
+        assert expansion_demand(b, CFG) is True  # 3 towns, 2 armies

@@ -46,3 +46,12 @@ kind/faction/pop/ids) plus precomputed geometry (no LLM math):
 5. ascii `--mode all` at war turns (who stood where).
 6. Event ledger (`town_spawn/death/capture`, battles) per millennium.
 7. Per-bot well/badly + filed ideas → worklog report card.
+
+## lead / flip (lead-change analysis)
+
+- `ascii_view.py REC --format lead`: pop/towns/armies per faction per
+  millennium + FLIP lines (who took the lead, when).
+- `ascii_view.py REC --format flip --faction F --window A-B`: F's lost
+  towns, takes, battles with counts/coords, plus F's town/army arc
+  (did it react?). Pair with `fog --faction F --turns T` (what did it
+  see?) for full Hunter's-loop diagnosis.
