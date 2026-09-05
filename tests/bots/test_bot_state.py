@@ -1521,8 +1521,10 @@ class TestArrivalRelease:
         b2 = self._bot()
         b2.__dict__.setdefault("_arr_hold", {})[7] = 31
         _stage_builds(b2, CFG)
-        assert not b2.army_has_target(7)  # note dropped, main loop re-tasks
-        assert 7 not in b2.__dict__.get("_arr_hold", {})  # via release
+        # mapper release (not bare pop): enrolled with a mapping hop.
+        assert 7 in b2.__dict__.get("_mapper", {})
+        assert b2.army_has_target(7)
+        assert 7 not in b2.__dict__.get("_arr_hold", {})  # hold cleared
 
 
 class TestEvacPlan:
@@ -1671,4 +1673,93 @@ class TestSilenceWatch:
         b.turn = 3  # just dispatched: silence < round-trip
         silence_watch(b, CFG)
         assert 2 not in b._bloodied
+        assert b.army_has_target(7)
+
+
+class TestMapper:
+    """Arrival-release enrolls mappers (not bare pops that re-lock);
+    mappers hop toward stalest country, then release."""
+
+    def _bot(self, cfg):
+        from bots.common import BotState
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 800, "y": 800,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        return b
+
+    def test_release_enrolls_mapper(self) -> None:
+        from bots.pro import _stage_builds
+        b = self._bot(CFG)
+        b.note_move(7, 600.0, 500.0)
+        b.__dict__.setdefault("_arr_hold", {})[7] = 31
+        out = _stage_builds(b, CFG)
+        assert 7 in b.__dict__.get("_mapper", {}), out
+        assert b.army_has_target(7)  # enrolled with a hop, not bare-popped
+
+    def test_mapper_hops_stale(self) -> None:
+        from bots.common import drive_mapper, mapper_hop_target
+        b = self._bot(CFG)
+        b.__dict__.setdefault("_mapper", {})[7] = 0
+        p = b.world.get_army(7)
+        tx, ty = mapper_hop_target(b, CFG, p)
+        # only known towns: home (300,500) + foe (800,800); stalest quad
+        # is empty country (no known towns) — hop leaves home area.
+        assert (tx, ty) != (600.0, 500.0)
+        out = drive_mapper(b, CFG, p)
+        assert out and out[0].startswith("MOVE_TO 7 "), out
+
+    def test_mapper_exhausts(self) -> None:
+        from bots.common import drive_mapper
+        from bots.common import MAPPER_HOPS
+        b = self._bot(CFG)
+        b.__dict__.setdefault("_mapper", {})[7] = MAPPER_HOPS
+        p = b.world.get_army(7)
+        assert drive_mapper(b, CFG, p) is None
+        assert 7 not in b.__dict__.get("_mapper", {})
+
+
+class TestGhostClean:
+    """r25 trace: army 17 dead-unseen, mirror-kept + re-noted 2000t (the
+    re-note loop refreshes origin, defeating the age-cap). Overdue-vs-
+    physics ghosts clean out (live ones re-observe back)."""
+
+    def test_ghost_cleans(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        # age the origin + trail deep past physics (re-notes refresh
+        # origin in life; here we simulate long-overdue directly).
+        b.__dict__.setdefault("_march_origin", {})[7] = (600.0, 500.0, 2)
+        b._trails[7].append((2, 600.0, 500.0))
+        b.turn = 900
+        silence_watch(b, CFG)
+        assert b.world.get_army(7) is None  # ghost forgotten
+        assert not b.army_has_target(7)
+
+    def test_live_marcher_spared(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(100, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                        "faction": 0, "population": 20000, "alive": True,
+                        "is_capital": True},
+                       {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                        "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        b.turn = 110  # fresh note, recent trail: leave alone
+        silence_watch(b, CFG)
+        assert b.world.get_army(7) is not None
         assert b.army_has_target(7)

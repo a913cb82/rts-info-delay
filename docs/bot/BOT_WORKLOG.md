@@ -1006,3 +1006,21 @@ new mechanism (settler-intercept: colonists die crossing pro lands on
 void notes — no foe note, no blood). FILED NEXT: danger-routing for
 settlers (route around known garrisons / hold while hot).
 GENERATED: r23 -> both locations (all bots alive; F2/F4 townless).
+
+## Ghost-clean + tracer timing (loop iteration)
+
+ANALYSE (r25 TRACE, pro t6000-8000): army 17 ghost (dead-unseen, in
+mirror @ (268,622), note live, same MOVE_TO re-issued 2000t, foes=[]
+— total sensory+motor lock, visible only via trace).
+SHIPPED: ghost-clean in silence_watch (overdue-vs-physics:
+elapsed >> march+mail -> forget locally; live re-observe back) + 2
+tests (ghost cleans, live spared) + trace ms timing. Benches green
+(minus env-flaky perf).
+REMATCH r26: pro ACTIVE (27 prints/8 caps, survives 388k expander
+wave); one-sided 51-drip REPLACED by mutual siege (17+16 @ town 0)
++ 3+3 (gate holds after 3rd). Turtle 0ms death t1903 (again!).
+TIMING VERDICT (traced decides: 0.2ms med, 0.9 max — never compute):
+0ms deaths are harness (cold-start numba eats 1s main; single hiccup
+-> zero-recovery spiral). FILED (infra): warm subprocesses / bigger
+main / bank floor; pop_change is 99% of events (throttleniosk candidate).
+GENERATED: r26 (current tree; turtle ghosts t1903+, caveat logged).

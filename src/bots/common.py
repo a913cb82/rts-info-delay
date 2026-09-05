@@ -276,6 +276,7 @@ class BotState:
         self._scout_gen1: int = 0
         self._scout_gen2: int = 0
         self._bloodied: dict[int, int] = {}  # foe town id -> turn our army died there
+        self._mapper: dict[int, int] = {}  # army id -> legs done (post-contact mapping patrols)
         self._tip_grace: dict = {}  # army_id -> turn until which drop_dead spares its note
         self._scout_leg: int = 0
         self._scout_leg2: int = 0
@@ -325,6 +326,7 @@ class BotState:
         self._foe_first_seen = {}
         self._foe_prints = {}
         self._bloodied = {}
+        self._mapper = {}
         self._picket = None
         self._draining = False
         self._scout_id = None
@@ -1132,7 +1134,10 @@ def silence_watch(state: "BotState", config) -> None:
                 hit = u
                 break
         if hit is None:
-            continue
+            # void note (settler tip, dead-town ghost): no blood, but a
+            # ghost still cleans below (overdue-vs-physics) so the slot
+            # and targeting free up.
+            pass
         tr = state._trails.get(aid)
         last_heard = tr[-1][0] if tr else -10 ** 9
         org = state.__dict__.get("_march_origin", {}).get(aid)
@@ -1142,7 +1147,20 @@ def silence_watch(state: "BotState", config) -> None:
         march = _math.hypot(cap.x - tgt[0], cap.y - tgt[1]) / speed
         if state.turn - last_heard <= 2 * (mail + march) + 20:
             continue
-        state.__dict__.setdefault("_bloodied", {})[hit.id] = state.turn
+        if hit is not None:
+            state.__dict__.setdefault("_bloodied", {})[hit.id] = state.turn
+        # Ghost-cleaning (r25 trace: army 17 dead-unseen, mirror-kept +
+        # re-noted 2000t — the re-note loop defeats drop_dead's age-cap
+        # because origin refreshes every decide). Overdue-vs-physics
+        # (elapsed since origin dwarfs march+mail) means dead-or-stuck:
+        # forget locally (live armies re-observe back in — self-healing).
+        ox, oy, ot = org if org is not None else (tgt[0], tgt[1], last_heard)
+        if state.turn - ot > 3 * (mail + march) + 50:
+            state.world.remove_army(aid)
+            state._trails.pop(aid, None)
+            state._army_targets.pop(aid, None)
+            state.__dict__.get("_march_origin", {}).pop(aid, None)
+            continue
         state._army_targets.pop(aid, None)
         state.__dict__.get("_march_origin", {}).pop(aid, None)
 
@@ -1193,6 +1211,64 @@ def drop_dead_notes(state: "BotState") -> None:
             # botpos — kept scout tips wait for builds here, never pop)
         if math.hypot(x - tgt[0], y - tgt[1]) > 20:
             del state._army_targets[aid]
+
+
+MAPPER_HOPS = 8
+MAPPER_HOP_KM = 150.0
+MAPPER_MAX = 2
+
+
+def mapper_hop_target(state: "BotState", config, p) -> tuple[float, float]:
+    """Next mapping hop: toward the stalest quadrant centroid. Quadrants
+    split the map; staleness = oldest town intel inside (unknown country
+    with no known towns counts stalest — unexplored draws mappers)."""
+    size = (config.map_size if config is not None
+            and getattr(config, "map_size", None) else [1000, 1000])
+    cx, cy = size[0] / 2.0, size[1] / 2.0
+    quads = [(cx / 2, cy / 2), (cx + cx / 2, cy / 2),
+             (cx / 2, cy + cy / 2), (cx + cx / 2, cy + cy / 2)]
+    stale = []
+    for qx, qy in quads:
+        oldest = -10 ** 9
+        known = False
+        for t in state.world.towns:
+            if (t.x < cx) == (qx < cx) and (t.y < cy) == (qy < cy):
+                known = True
+                ls = state._last_seen.get(("town", t.id), -10 ** 9)
+                oldest = max(oldest, ls)
+        stale.append((oldest if known else -10 ** 18, qx, qy))
+    stale.sort(key=lambda r: r[0])
+    qx, qy = stale[0][1], stale[0][2]
+    import math as _math
+    d = _math.hypot(qx - p.x, qy - p.y)
+    if d < 1e-9:
+        return (qx, qy)
+    step = min(MAPPER_HOP_KM, d)
+    return (min(size[0] - 20.0, max(20.0, p.x + step * (qx - p.x) / d)),
+            min(size[1] - 20.0, max(20.0, p.y + step * (qy - p.y) / d)))
+
+
+def drive_mapper(state: "BotState", config, p):
+    """Advance a mapping patrol; None = done (release to normal logic).
+    Legs step on arrival (dead-reckoned); no founding (pure eyes)."""
+    import math as _math
+    legs = state.__dict__.get("_mapper", {}).get(p.id)
+    if legs is None:
+        return None
+    if legs >= MAPPER_HOPS:
+        state.__dict__.get("_mapper", {}).pop(p.id, None)
+        state._army_targets.pop(p.id, None)
+        return None
+    tgt = state.army_target(p.id)
+    if tgt is None:
+        return _dispatch_leg(state, config, p, *mapper_hop_target(state, config, p))
+    rx, ry = state.reckoned_pos(config, p.id)
+    if _math.hypot(rx - tgt[0], ry - tgt[1]) >= 20:
+        return []  # en route or awaiting arrival-intel: hold
+    if not ready_to_dispatch(state, config, p):
+        return []
+    state.__dict__.setdefault("_mapper", {})[p.id] = legs + 1
+    return _dispatch_leg(state, config, p, *mapper_hop_target(state, config, p))
 
 
 def drive_scout(state: "BotState", config, p):
@@ -1748,6 +1824,14 @@ def bot_main(decide_fn):
     cfg, faction = _read_startup()
     state = BotState()
     state.init(cfg, faction)
+    import os as _os
+    trace_dir = _os.environ.get("BOT_TRACE_DIR")
+    trace_every = int(_os.environ.get("BOT_TRACE_EVERY", "25"))
+    trace_fh = None
+    if trace_dir:
+        from pathlib import Path as _P
+        _P(trace_dir).mkdir(parents=True, exist_ok=True)
+        trace_fh = open(_P(trace_dir) / f"trace_{faction}.jsonl", "w", buffering=1)
     while True:
         r = _read_turn()
         if r is None:
@@ -1771,6 +1855,7 @@ def bot_main(decide_fn):
         state.clock_budget_ms = clock  # idea 6: effort level for this turn
         # Ideas 4+5: replay plans/standing orders on quiet turns.
         orders = state.cached_or_decide(decide_fn, cfg, events)
+        _dec_ms = (time.time() - t_start) * 1000.0
         # Command queue: fresh decide first (re-tasks win), then fire due
         # scheduled commands (validated: notes/af prevalence/arrival).
         try:
@@ -1779,6 +1864,22 @@ def bot_main(decide_fn):
             pass
         # Track issued orders locally (delay-aware decisions + evac flag).
         state.note_orders(orders)
+        if trace_fh is not None and (turn % max(1, trace_every) == 0):
+            try:
+                trace_fh.write(json.dumps({
+                    "turn": turn, "faction": faction, "ms": round(_dec_ms, 1),
+                    "towns": [{"id": t.id, "f": t.faction, "pop": round(t.population),
+                                 "x": round(t.x), "y": round(t.y), "cap": t.is_capital}
+                                for t in state.world.towns],
+                    "armies": [{"id": a.id, "f": a.faction, "x": round(a.x), "y": round(a.y)}
+                                 for a in state.world.armies],
+                    "notes": {str(k): [round(v[0]), round(v[1])] for k, v in state._army_targets.items()},
+                    "scout": [state._scout_id, getattr(state, "_scout_id2", None)],
+                    "mapper": sorted(state.__dict__.get("_mapper", {})),
+                    "blood": sorted(state.__dict__.get("_bloodied", {})),
+                    "orders": orders}) + "\n")
+            except Exception:
+                pass
         for o in orders:
             sys.stdout.write(o + "\n")
         sys.stdout.write("go\n")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -118,6 +118,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         sc = drive_scout(state, config, p)
         if sc is not None:
             out.extend(sc)
+            continue
+        mp = drive_mapper(state, config, p)
+        if mp is not None:
+            out.extend(mp)
             continue
         if state.army_has_target(p.id):
             continue  # handled by the builds stage
@@ -270,6 +274,13 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
                 if holds[p.id] > 30:
                     holds.pop(p.id, None)
                     state._army_targets.pop(p.id, None)
+                    # Mapper release (not bare pop — bare pops re-note the
+                    # same deterministic tip and re-lock): freed field
+                    # armies map the dark (post-contact scouting) instead.
+                    if len(state.__dict__.get("_mapper", {})) < MAPPER_MAX:
+                        state.__dict__.setdefault("_mapper", {})[p.id] = 0
+                        out.extend(order_move(state, config, p,
+                                              *mapper_hop_target(state, config, p)))
                     continue
         else:
             state.__dict__.get("_arr_hold", {}).pop(p.id, None)
