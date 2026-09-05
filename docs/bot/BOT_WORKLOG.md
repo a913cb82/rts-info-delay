@@ -1290,3 +1290,17 @@ R74: action EVERY millennium t1000-t9000 (43 foundings, 14 captures,
 24 battles); aggressive 6 captures (underdog!); expander 32/7.
 Blemishes: 2 stale-mirror fratricides (10, own-towns; accepted price
 of far intel), turtle ghost t1515 (harness). GENERATED r74.
+
+## Turn-order starvation (filed, harness) + r74 notes
+
+PROFILED (order-swapped): turtle update+decide 0.2ms (identical to
+pro; the 4ms first-call is shared JIT). Turtle is NOT slow — it dies
+first every line because faction 4 moves LAST every turn (engine +
+3 bots consume the timeslice; turtle starves on scheduling noise).
+HARNESS FIX (filed): shuffle faction turn order per turn (or nice
+the engine under the bots).
+R74 stands as excellent: action every millennium t1000-t9000,
+2 stale-idle, zero real onesies, multi-polar (expander sprawl,
+aggressive underdog takes, pro0 packs). Accepted: 2 stale-mirror
+fratricides (far-intel price), buzzer end-print wave (unspent at
+game over, harmless).
