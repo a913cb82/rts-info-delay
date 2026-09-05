@@ -585,16 +585,16 @@ def run_game(
             bp, budget_ms, t_w = writes[faction]
             elapsed_ms = (t_end - t_w) * 1000.0
             if lines is None:
-                done[faction] = bp._finish_block(None, True, False, elapsed_ms, True, cap, inc, budget_ms)
+                done[faction] = bp._finish_block(None, True, False, elapsed_ms, True, cap, inc, budget_ms, turn=turn)
                 continue
             try:
                 exited = bp.proc.poll() is not None
             except Exception:
                 exited = False
             if exited:
-                done[faction] = bp._finish_block([], False, True, 0.0, True, cap, inc, budget_ms)
+                done[faction] = bp._finish_block([], False, True, 0.0, True, cap, inc, budget_ms, turn=turn)
             else:
-                done[faction] = bp._finish_block(lines, False, False, elapsed_ms, True, cap, inc, budget_ms)
+                done[faction] = bp._finish_block(lines, False, False, elapsed_ms, True, cap, inc, budget_ms, turn=turn)
         for faction in bot_processes.keys():
             if faction in done:
                 orders_dict[faction] = done[faction]

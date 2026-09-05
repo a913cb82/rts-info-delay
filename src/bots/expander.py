@@ -45,7 +45,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
     _sk = strike_target(state, config, margin=300.0)
-    sk_march = _sk if _sk is not None and not enemy_armies else None
+    _sk_foes = [a for a in state.world.armies if a.faction != faction]
+    sk_march = _sk if _sk is not None and not _sk_foes else None
     for p in state.own_armies():
         if state.should_yield():
             break
