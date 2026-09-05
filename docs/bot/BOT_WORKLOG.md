@@ -1213,3 +1213,16 @@ R63: 74 foundings (to t8000), 8 captures (to t5000), battles
 t2000-6000, 2 idle, 1x3-onesie (own-town), no punishable. Expander
 snowball (256k; all rivals 0) + late ghost t8438 (harness, filed).
 GENERATED r63 (action all game; balance next).
+
+## Muster window 6 + r65 (per-loop regen)
+
+DIAGNOSE (user: why did pro fall to 1 army?): r63 t3526 — army 33
+spawned t3515 300km out, walked in with zero battle. Synthetic repro
+PROVES pro prints when it sees (TRAIN 0 at ETA 2.6). Failure = mail
+ate the eta-4 window (intel 1-2t stale + print 1t + spawn vs arrival
+race lost by a turn).
+SHIPPED (common.py + test, green): threat_window 4 -> 6 (all bots).
+R65: pro 19 foundings/8 captures/34 battles (defends, then snowballs
+506k; 45 garrison-idle). Spread to t6000 (r63 reached t8000 — late
+action still the gap). GENERATED r65 (per-loop regen).
+NEXT: snowball/balance (winner-takes-all by t6000, late dead).

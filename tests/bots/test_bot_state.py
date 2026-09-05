@@ -2456,3 +2456,52 @@ class TestBuildCap:
         b.note_build(7)  # 4th: abandon
         assert not b.has_pending_build(7)
         assert not b.army_has_target(7)
+
+
+class TestTransitNoSuicide:
+    """r63: greedy bare-converted two towns vs distant closing scouts
+    that never came. Far closing = transit."""
+
+    def test_far_closing_no_bare(self) -> None:
+        from bots.common import BotState, demand_trains, can_train_standard
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(99, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 1100, "alive": True,
+                       "is_capital": True},
+                      {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                       "faction": 1, "population": 5000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "army_update", "id": 9, "x": 700, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100  # raider 400km out (ETA 8): transit. Normal trains
+        # blocked by floors (1100 < 2000); only bare-convert would fire.
+        out = demand_trains(b, cfg, can_train_standard)
+        assert not any(o == "TRAIN 1" for o in out), out
+
+
+class TestMusterWindow:
+    """r63: pro's capital fell to 1 army (4609 pop, 0 guards) — mail ate
+    the eta-4 window. Muster at 6."""
+
+    def test_eta_six_musters(self) -> None:
+        from bots.common import BotState, demand_trains, can_train_standard
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(99, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 5000, "alive": True,
+                       "is_capital": True},
+                      {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                       "faction": 1, "population": 5000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100  # raider 300km out (ETA 6): muster the guard
+        out = demand_trains(b, cfg, can_train_standard)
+        assert any(o.startswith("TRAIN 1") for o in out), out

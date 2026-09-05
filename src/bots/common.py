@@ -2442,7 +2442,9 @@ class DemandParams:
     depth_extra: float = 0.0
     raid_margin: float = 200.0
     payback_mult: float = 1.0
-    threat_window: float = 4.0
+    threat_window: float = 6.0  # muster foresight (r63: pro saw the
+    # raider at eta~4 but mail+print ate the window — capital fell
+    # to 1 army with 4609 pop and zero guards. Muster a week out.)
     probe_armies: int = 0
     void_horizon: int | None = None  # None = min(500, max_turns-50)
     rates: bool = True
@@ -2534,8 +2536,12 @@ def demand_trains(state: "BotState", config, can_train,
                     # trigger suicide (aggressive t1807: 27-turn phantom).
                     speed = max(1.0, config.army_speed)
                     raiders = inbound_armies(state, config, t.id)
+                    # Transit-vs-inbound (r63: greedy bare-converted TWO
+                    # towns vs distant closing scouts that never came).
+                    # Distant closing = transit (don't suicide for it).
                     bare = any(math.hypot(a.x - t.x, a.y - t.y) / speed <= 2.0
-                               or closing_on(state, a.id, t.x, t.y)
+                               or (closing_on(state, a.id, t.x, t.y)
+                                   and math.hypot(a.x - t.x, a.y - t.y) / speed <= 4.0)
                                for a in raiders)
                 if bare:
                     # Mutual-save beats deny (greedy t1817: converted a
