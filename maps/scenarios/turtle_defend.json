@@ -4,7 +4,7 @@
   1000,
   1000
  ],
- "max_turns": 100,
+ "max_turns": 400,
  "turn_time_ms": 1000,
  "info_speed": 150.0,
  "army_speed": 50.0,

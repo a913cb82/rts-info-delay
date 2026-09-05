@@ -88,7 +88,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if maybe_assign_scout(state, config, p):
                 out.extend(drive_scout(state, config, p) or [])
                 continue
-            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11)
+            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=340, salt=11, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
     return out

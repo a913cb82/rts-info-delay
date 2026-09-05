@@ -3,6 +3,12 @@
 Roadmap lives in `BOT_PLAN.md`; this file is numbers + suite docs.
 Exactly one table binds (fog era, below); the rest is record.
 
+Suites are instruments, not scripture — tune them freely to measure
+whatever behavior the current step cares about (add scenarios, reshape
+maps, split or merge suites). Budgets: fast stays <5s, slow <30s. When a
+scenario stops discriminating, replace it; when a step needs a fixture
+that doesn't exist (demand pricing, muster math, buzzer flips), build it.
+
 ## Goal
 Per-bot scenario suites (disjoint map sets) that run in seconds and
 discriminate each personality's weaknesses. Used to score the 5 bots
@@ -106,8 +112,10 @@ quiet, ignore sub-~50 long-game deltas.
 Fast suite: raid_hold 3657 (take) / recycle 3678 (60t, probe-then-found) /
 skip_thin 3446 (take, decoy skipped) / settle 2589 / chain 4783 /
 guard 2620 (holds) / viable 4238 (take) / pair 4791 (take) / trap 4481
-(take, decoy skipped) / defend 2747 (holds, both sides expand now) /
-wake 2121 / cluster 5465 / opening 3242 / defense 3305 / endgame 8804.
+(take, decoy skipped) / defend 2182 (400t now; holds by mutual, hub
+intact — the old 2747 measured an UNTESTED defense: the raider staged
+94km out and never attacked) / wake 2121 / cluster 5465 / opening
+3242 / defense 3305 / endgame 8804.
 Since landing: movement streams fixed (bots see own armies — foundings
 work, E1 done), scout-first probing restored all raid takes (pair/viable/
 raid_hold/trap/skip_thin goal-PASS), quiescence gating steadied orders.

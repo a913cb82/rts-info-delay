@@ -100,9 +100,18 @@ furniture for scenarios, not a personality. There is no `random` bot
   inbound ETAs ≤ 8 turns; stationary foe guards excluded),
   `note_wave_watch` (vanished own army → hold one home 6 turns),
   `should_hold_home` (keep ≥1 army on a threatened town).
+- `staging_eta` (shared): a known foe town inside home LOS (150 km) of an
+  own town is raid staging → positioning-threat (recall/hold). Never a
+  spend-signal: mustering costs 1000 against a town that may never
+  produce force, while recall is free insurance. Turtle merges it into
+  `threat_eta`; spend bars everywhere stay army-only.
+- Turtle last-stand fires only when home defenders are strictly
+  outnumbered (D < N) at ETA ≤ 3 — a defender that mutual-saves holds,
+  never guts its own town (t9 lesson: spending kills as surely as raids).
 - `find_build_site`: deterministic hash samples, scored by
   (min-dist-to-any-town desc, crowding asc), >20 km from every town.
-  Reach per bot above; salts differ so settlers decorrelate.
+  Reach per bot above; the spin is seeded by army id (`who`), never the
+  turn — re-queries hold headings instead of roulette-retargeting.
 - `BotForecast`: delay-compensated army positions
   (`forecast_army_pos`, `forecast_all_armies`); `with_my_orders`
   partially built, `with_en_route_orders` / `forecast_battles` stubs.

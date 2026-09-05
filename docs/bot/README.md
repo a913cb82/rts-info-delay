@@ -23,7 +23,7 @@ is the complete reference for bot improvement work.
 - **Intel model:** snapshots, late — LOS 150km eyes, 150km/turn mail,
   three delivery gates (tagged + released + ≥ S). Bots never get the map.
 - **Scoreboard:** `BOT_PLAN.md` (live) — empty_3000: pro 9156 / turtle
-  7184 / aggressive 4873 / expander 4829 / greedy 4270.
+  7055 / aggressive 4873 / expander 4829 / greedy 4270.
 - **Open milestones, in order:** Step 2 demand gates + trade evaluator
   (scout prerequisite shipped) → Steps 3–6 → pro recon + turtle pickets
   owed throughout. Details: `BOT_PLAN.md`.

@@ -131,7 +131,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         else:
             # G2: recycle — no foes and no site: march home for +500 pop-add
             # (builds stage BUILDs on arrival since target is an own town).
-            site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11)
+            site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():

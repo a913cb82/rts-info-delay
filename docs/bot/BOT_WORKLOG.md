@@ -379,3 +379,38 @@ Single run — scores carry load noise, but the mechanism is convicted at
 game level (the t2256/t2260/t2281 merges are gone) and pinned by unit
 tests. Remaining S0 followups: note-drop tension (needs bot-side logging
 first), turn-hash.
+
+## Turn-hash + staging-threat + last-stand D<N (S0 followups 2-3, turtle hole)
+
+`find_build_site` hashed the turn (all callers pass constant salts), so
+every re-query re-rolled sites and headings flapped (army18's dogleg
+class). Fix: spin seeded by army id (`who`), never the turn — re-queries
+hold headings; turtle's stacked-same-site settlers spread too. TDD:
+`TestSiteStability` (same-army-stable, two-armies-spread). Immediately
+moved turtle_defend 2747→1083 — forensics, not a revert: the new spin
+stages aggressive 26km out (textbook) instead of 94km, and the 94km
+raider NEVER ATTACKED (baseline record: no raid, no deaths — the old
+2747 measured an untested defense). Under the first real attack turtle
+stood 0 defenders home (both guards settled blind) and the last-stand
++200 margin vetoed the final train. Two fixes: (1) `staging_eta`
+(shared helper): known foe town inside home LOS (150km) is staging =
+positioning-threat (recall/hold), merged into turtle's `threat_eta`;
+first merged into spend bars too, which made greedy muster 1000 vs a
+passive stub decoy (skip_thin −1295) — lesson: positioning is cheap,
+spending is dear; spend bars stay army-only everywhere, skip_thin back
+to 3446. (2) last-stand: margin +200→affordable was SUICIDAL (fired
+into 1v1-mutual at 1016, spending kills as surely as raids) — now fires
+only when home defenders are strictly outnumbered (D < N, ETA ≤ 3),
+which also discriminates passing settlers from raids. TDD: margin,
+staging-recall chain, D<N hold/fire pins. Then the horizon problem: at
+100 turns gutting-the-capital for a clean 2v1 outscores holding (2549
+beheaded > ~1650 hub-intact) — suicide binds. Extended turtle_defend
+100→400t (instruments are mutable; 331ms, still fast): HOLD lineage
+(t22 mutual, capital regrows 1016→1453, no second raid) scores 2182 and
+binds. Suite: fast 15/15 (only defend moves, ±5 spin-noise elsewhere),
+strategic 13/13 (guard_duty +271 towns 2→4 on the new spin — luck, not
+doctrine; outsettle +34, voids ±3). empty_3000: 9156/4270/4873/4829/7055
+(turtle −129 staging caution tax; merges 0, takes 0). Residuals for
+Step 3: interception (2v1 the raid en route keeps the capital FAT —
+full 2747-class restoration needs it), cluster-rep turn-hash (same
+disease, line 527, not chased).

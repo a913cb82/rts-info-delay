@@ -774,3 +774,70 @@ def test_wait_is_indefinite_until_someone_moves():
     assert engine.get_army(51) is not None
     t = engine.get_town(2)
     assert t is not None and t.faction == 1 and not t.is_capital
+
+
+class TestSiteStability:
+    """find_build_site must hash the army, not the turn — else every
+    re-query (note-drop, arrival-wait, quiescence gap) roulette-retargets
+    and headings flap turn-to-turn (army18's dogleg)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 3, [
+            {"kind": "town_update", "id": 1, "x": 200.0, "y": 500.0,
+             "faction": 0, "population": 3000, "alive": True,
+             "is_capital": True},
+        ])
+        return b
+
+    def test_same_army_same_site_across_turns(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot()
+        s3 = find_build_site(b, CFG, 200.0, 500.0, salt=11, who=7)
+        _sync_bot(b, None, 4, [])
+        s4 = find_build_site(b, CFG, 200.0, 500.0, salt=11, who=7)
+        assert s3 is not None and s3 == s4
+
+    def test_two_armies_spread(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot()
+        s7 = find_build_site(b, CFG, 200.0, 500.0, salt=11, who=7)
+        s8 = find_build_site(b, CFG, 200.0, 500.0, salt=11, who=8)
+        assert s7 is not None and s8 is not None and s7 != s8
+
+
+class TestStagingEta:
+    """A known foe town inside striking distance (150km) of an own town
+    is staging, i.e. positioning-threat — ETA = dist/army_speed (upper
+    bound; armies may already march). Beyond 150km it is strategic
+    intel, not threat. Spend-signals stay army-only (inbound_eta), so
+    staging never opens the war chest by itself."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _upd(self, b, turn, towns):
+        b.update(turn, [{"kind": "town_update", "id": t[0], "x": t[1],
+                         "y": t[2], "faction": t[3], "population": t[4],
+                         "alive": True, "is_capital": t[5]}
+                        for t in towns])
+
+    def test_staging_town_imputes(self) -> None:
+        from bots.common import inbound_eta, staging_eta
+        b = self._bot()
+        self._upd(b, 1, [(1, 300, 500, 0, 2000, True),
+                         (2, 326, 500, 1, 900, False)])
+        assert staging_eta(b, CFG) == {1: pytest.approx(26.0 / 50.0)}
+        assert inbound_eta(b, CFG) == {}  # spend-signal: armies only
+
+    def test_distant_town_ignored(self) -> None:
+        from bots.common import staging_eta
+        b = self._bot()
+        self._upd(b, 1, [(1, 300, 500, 0, 2000, True),
+                         (2, 600, 500, 1, 900, False)])
+        assert staging_eta(b, CFG) == {}

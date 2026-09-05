@@ -64,8 +64,12 @@ def _batch_ids(events) -> tuple[set, set]:
 
 _build_site_cache: dict[tuple, tuple[float, float] | None] = {}
 
-def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin: float = 80, rmax: float = 300, salt: int = 0) -> tuple[float, float] | None:
-    key = (state.turn, int(ref_x), int(ref_y), rmin, rmax, salt, state.faction)
+def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin: float = 80, rmax: float = 300, salt: int = 0, who: int = 0) -> tuple[float, float] | None:
+    """Deterministic site spin, stable per army: `who` (army/town id) —
+    never the turn — seeds the hash, so re-queries across turns return
+    the same site and headings hold through note-drops and waits.
+    Different armies spread via id + position."""
+    key = (state.turn, int(ref_x), int(ref_y), rmin, rmax, salt, who, state.faction)
     if key in _build_site_cache:
         return _build_site_cache[key]
     th = config.map_size[0] if isinstance(config.map_size, (list, tuple)) else 1000
@@ -75,7 +79,7 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
     if not nearby_towns:
         nearby_towns = state.world.towns[:50]  # fallback small sample
     for k in range(16):
-        h = _hash(state.turn, int(ref_x * 7 + ref_y * 13) & 0xFFFF, salt + k)
+        h = _hash(who, int(ref_x * 7 + ref_y * 13) & 0xFFFF, salt + k)
         ang = (h % 3600) / 3600 * 2 * math.pi
         d = rmin + ((h // 3600) % 1000) / 1000 * (rmax - rmin)
         x = ref_x + d * math.cos(ang)
@@ -872,12 +876,41 @@ def towns_by_train_priority(state: "BotState", conservative: bool = False) -> li
     return cands
 
 
+def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
+    """Per-own-town staging threat ETA from known foe towns.
+
+    A foe town inside striking distance (home LOS) of an own town is raid
+    staging, i.e. threat: ETA = dist/army_speed is an upper bound (armies
+    may already march, so the true ETA is sooner). Unlike armies, a town
+    counts toward EVERY own town in range (it can strike any of them).
+    Beyond LOS it is strategic intel, not tactical threat."""
+    import math as _math
+    faction = state.faction
+    los = getattr(config, "line_of_sight", None) or 150.0
+    speed = max(1.0, config.army_speed)
+    out: dict[int, float] = {}
+    for t in state.own_towns():
+        best = float("inf")
+        for u in state.world.towns:
+            if u.faction == faction:
+                continue
+            d = _math.hypot(u.x - t.x, u.y - t.y)
+            if d <= los:
+                best = min(best, d / speed)
+        if best != float("inf"):
+            out[t.id] = best
+    return out
+
+
 def inbound_eta(state: "BotState", config: "GameConfig",
                 max_eta: float = 8.0) -> dict[int, float]:
     """Per-own-town inbound threat ETA (nearest-own-town prediction).
 
     An enemy army counts toward the own town nearest to IT. Stationary
     guards sitting on their own towns are excluded (they are not inbound).
+    Spend-signal: armies only. Staging (foe towns) is a POSITIONING signal
+    (recall/hold, via staging_eta) — mustering costs 1000 against a town
+    that may never produce force, while recall is free insurance.
     Returns {town_id: min_eta} for towns with eta <= max_eta."""
     import math as _math
     faction = state.faction

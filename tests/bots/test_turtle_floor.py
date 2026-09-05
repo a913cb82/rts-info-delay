@@ -58,3 +58,50 @@ class TestSurviveFloor:
     def test_no_threat_no_train(self) -> None:
         # control: unseen universe, thin town hoards.
         assert _trains(_turtle_state(1400, None)) == []
+
+
+class TestLastStandMargin:
+    def test_last_stand_trains_at_exact_affordability(self) -> None:
+        # 1029 bark (turtle_defend t21): foe 100km out (ETA 2 <= 3), the
+        # town falls anyway — convert pop to force. The +200 cushion must
+        # not veto the exact situation last-stand exists for.
+        assert _trains(_turtle_state(1029, (400, 500))) == ["TRAIN 1"]
+
+
+class TestStagingThreat:
+    def test_staging_town_recalls_settler(self) -> None:
+        # Known foe town 100km out (no army seen yet): staging, i.e.
+        # threat — a noted settler aborts and comes home.
+        b = BotState()
+        b.init(CFG, 0)
+        evs = [_town_update(1, 300, 500, faction=0, pop=2000, cap=True),
+               _town_update(2, 200, 500, faction=1, pop=900, cap=False),
+               _army_update(7, 250, 500, faction=0)]
+        b.update(1, evs)
+        b.note_move(7, 150.0, 500.0)
+        orders = decide_orders(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o
+                   for o in orders), orders
+
+
+class TestLastStandCounts:
+    def test_last_stand_holds_when_defender_home(self) -> None:
+        # 1029 bark with a defender standing: 1v1 mutual-saves at full
+        # pop — training guts the town for nothing. HOLD.
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [_town_update(1, 300, 500, faction=0, pop=1029, cap=True),
+                     _army_update(9, 400, 500, faction=1),
+                     _army_update(7, 300, 500, faction=0)])
+        assert _trains(b) == []
+
+    def test_last_stand_fires_when_outnumbered(self) -> None:
+        # Same, but two raiders vs one defender: the town falls without
+        # the train — convert.
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [_town_update(1, 300, 500, faction=0, pop=1029, cap=True),
+                     _army_update(9, 400, 500, faction=1),
+                     _army_update(10, 420, 500, faction=1),
+                     _army_update(7, 300, 500, faction=0)])
+        assert _trains(b) == ["TRAIN 1"]

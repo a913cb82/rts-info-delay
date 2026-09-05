@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, drop_dead_notes, order_move, find_build_site, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, drop_dead_notes, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -34,8 +34,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # nearest to me). Only that town counts the threat — robust to intel
     # delay, unlike reading the army's stated target (arrives too late).
     town_eta: dict[int, float] = {}
+    town_inbound: dict[int, int] = {}
+    stage = staging_eta(state, config)
+    threat_eta = min(threat_eta, min(stage.values(), default=float("inf")))
     for t in own_t:
         best = float("inf")
+        n = 0
         for a in state.world.armies:
             if a.faction == faction:
                 continue
@@ -45,7 +49,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             eta = math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
             if eta < best:
                 best = eta
+            if eta <= 3:
+                n += 1
+        # Spend-signal stays army-only (staging moves settlers, never
+        # opens the war chest — see inbound_eta). town_eta feeds the
+        # muster bars and last-stand; threat_eta above feeds recall/hold.
         town_eta[t.id] = best
+        town_inbound[t.id] = n
 
     # Sleep lightly (2000) only while NO threat is visible anywhere: the
     # danger is then unseen/distant (wake). Once a threat shows, unthreatened
@@ -103,12 +113,19 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # T3: last-stand — a threat imputed to THIS town arriving in <=3 and
     # the town still standing: train whatever is affordable, rules be
-    # damned (the town falls anyway; convert pop to force). Deliberately
-    # per-town, not global: a distant/passing threat must not draft a thin
-    # town to death (Step 1 survive floor). Unused-global `doomed` removed.
+    # damned (the town falls anyway; convert pop to force). Fires ONLY
+    # when home defenders are strictly outnumbered (D < N): a defender
+    # that mutual-saves (1v1) must hold, never gut its own town — the
+    # spending kills as surely as the raid (turtle_defend t9 lesson).
+    # Deliberately per-town, not global (Step 1 survive floor).
+    def _home_count(t) -> int:
+        return sum(1 for a in state.own_armies()
+                   if math.hypot(a.x - t.x, a.y - t.y) <= config.interact_radius + 10)
+
     def last_stand(t) -> bool:
         return (town_eta.get(t.id, float("inf")) <= 3
-                and t.population >= config.army_cost + 200)
+                and t.population >= config.army_cost
+                and _home_count(t) < town_inbound.get(t.id, 0))
 
     # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is
@@ -123,9 +140,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if relaxed_ids and picket_out:
         cands = sorted((t for t in own_t
                         if t.id in relaxed_ids
-                        and t.population >= min(town_bar(t), config.army_cost + 200)
-                        and (t.population - config.army_cost >= config.death_threshold - 1e-9
-                             or last_stand(t))
+                        and (last_stand(t)
+                             or (t.population >= min(town_bar(t), config.army_cost + 200)
+                                 and t.population - config.army_cost >= config.death_threshold - 1e-9))
                         and t.id not in state._pending_trains),
                        key=lambda t: -t.population)
     else:
@@ -182,7 +199,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
                 continue
             biggest = max(own_t, key=lambda t: t.population)
-            site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13)
+            site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
                 built = True
