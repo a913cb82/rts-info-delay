@@ -69,7 +69,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
     _sk = strike_target(state, config, margin=100.0)
-    sk_march = _sk if _sk is not None and not enemy_armies else None
+    # Local superiority (r121: global `not enemy_armies` veto = 4
+    # prints/game; no veto = feeding. Strike unless a foe army sits on
+    # the target (within 200km) — towns fall, armies don't get fed).
+    sk_march = None
+    if _sk is not None:
+        _tx, _ty = _sk[0].x, _sk[0].y
+        if not any(math.hypot(a.x - _tx, a.y - _ty) <= 200.0
+                   for a in enemy_armies):
+            sk_march = _sk
     fc_chase = BotForecast(state, config)
     for p in state.own_armies():
         if state.should_yield():
