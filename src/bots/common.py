@@ -639,7 +639,14 @@ def scout_hop_target(state: "BotState", config, p, hop: int) -> tuple[float, flo
 def maybe_assign_scout(state: "BotState", config, p) -> bool:
     """Mark p as the scout iff no actionable contact exists yet — true
     void OR rubble-only (a visible decoy is not a reason to stay home)."""
-    if state._scout_id is not None or state.turn < SCOUT_MIN_TURN:
+    if state._scout_id is not None:
+        # Dead scout frees the slot (else one death ends scouting forever).
+        if state.world.get_army(state._scout_id) is None:
+            state._scout_id = None
+            state._scout_leg = 0
+        else:
+            return False
+    if state.turn < SCOUT_MIN_TURN:
         return False
     if p.is_viceroy or _scout_contact(state, config):
         return False
@@ -1258,9 +1265,14 @@ def raid_target(state: "BotState", config, priced: bool = True,
 
 
 def void_note_busy(state: "BotState") -> bool:
-    """An expansion is already in flight (a note to nowhere-known)."""
+    """A settler expansion is already in flight (a note to nowhere-
+    known). Scout hop notes don't count (the scout's own hops must not
+    block the settler pipeline — recycle lesson) — but ignoring ALL void
+    notes floods void trains (endgame lesson: unbounded settlers)."""
     towns = list(state.world.towns)
     for a in state.own_armies():
+        if a.id == state._scout_id:
+            continue
         tgt = state.army_target(a.id)
         if tgt and all(math.hypot(tgt[0] - t.x, tgt[1] - t.y) > 20
                        for t in towns):
@@ -1381,6 +1393,58 @@ def demand_trains(state: "BotState", config, can_train,
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
     return out
+
+
+def _crowd_sigma(state: "BotState", config, x: float, y: float, p: float,
+                 extra: tuple | None = None) -> float:
+    """Engine crowding sigma at (x,y) for pop p (extra = optional new
+    neighbor (ex, ey, epop) included). Transcribed from crowding_net."""
+    import math as _math
+    eq = getattr(config, "equilibrium_spacing", 0.1) or 0.1
+    decay = getattr(config, "crowding_decay", 0.8) or 0.8
+    asym_k = getattr(config, "crowding_asymmetry", 0.01) or 0.01
+    crange = getattr(config, "info_speed", 150.0) or 150.0
+    towns = list(state.world.towns)
+    if extra is not None:
+        towns = towns + [extra]
+    tot = 0.0
+    for t in towns:
+        tx, ty, pn = (t.x, t.y, t.population) if not isinstance(t, tuple) else t
+        d = _math.hypot(tx - x, ty - y)
+        if d < 1e-9 or d > crange + 1e-9:
+            continue
+        pn = max(1.0, pn)
+        tot += (1.0 + asym_k * _math.log(pn / max(1.0, p))) * \
+            ((eq * _math.sqrt(min(pn, p)) / d) ** decay)
+    return tot
+
+
+def site_pays(state: "BotState", config, x: float, y: float) -> bool:
+    """Founding veto (fratricide): NET empire growth with the colony
+    minus without must clear amortized founding cost (500/turns_left +
+    margin). Counts both the colony's stream AND the crowding it deals
+    home (externality!) — a colony that stunts home more than it earns
+    is vetoed even when its own growth looks fine. Unknown/void sites
+    (no intel to tax them) allow. Military staging bypasses (position).
+    Empty_3000 lesson: full-map foundings fratricide (-4346)."""
+    import math as _math
+    cap = getattr(config, "population_cap", 100000.0) or 100000.0
+    growth = getattr(config, "population_growth", 0.001) or 0.001
+    max_turns = getattr(config, "max_turns", 3000) or 3000
+    towns = [t for t in state.own_towns()]
+    if not towns:
+        return True
+    new = (x, y, 500.0)
+    net = 0.0
+    for t in towns:
+        base = growth * t.population * (1.0 - t.population / cap)
+        s0 = _crowd_sigma(state, config, t.x, t.y, t.population)
+        s1 = _crowd_sigma(state, config, t.x, t.y, t.population, extra=new)
+        net += base * (1.0 - s1) - base * (1.0 - s0)
+    s_new = _crowd_sigma(state, config, x, y, 500.0)
+    net += growth * 500.0 * (1.0 - 500.0 / cap) * (1.0 - s_new)
+    amort = 500.0 / max(1, max_turns - state.turn) + 0.1
+    return net > amort
 
 
 def hold_defenders(state: "BotState", config, force: dict) -> set:

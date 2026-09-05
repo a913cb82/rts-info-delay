@@ -965,3 +965,69 @@ class TestPrintCalibration:
                       {"kind": "army_update", "id": 9, "x": 600, "y": 500,
                        "faction": 1, "alive": True, "is_viceroy": False}])
         assert foe_print_factor(b, 1) == 1.0
+
+
+class TestProbeSingular:
+    """One probe means one: a probe already en route suppresses duplicates
+    (per-turn flags trickle-donate into garrisoning foes — endgame lesson)."""
+
+    def test_second_probe_holds(self) -> None:
+        from bots.pro import decide_orders
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 400, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 700.0, 500.0)  # probe already en route
+        orders = decide_orders(b, CFG)
+        moves8 = [o for o in orders if o.split()[1:2] == ["8"]]
+        assert moves8 == [], orders
+
+
+class TestSitePays:
+    """Founding veto (fratricide): NET empire growth with the colony
+    minus without must clear amortized founding cost."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _tu(self, tid, x, pop, faction=0, cap=False):
+        return {"kind": "town_update", "id": tid, "x": x, "y": 500,
+                "faction": faction, "population": pop, "alive": True,
+                "is_capital": cap}
+
+    def test_open_pays(self) -> None:
+        from bots.common import site_pays
+        from engine.config import GameConfig
+        long_cfg = GameConfig()
+        long_cfg.max_turns = 3000
+        b = self._bot()
+        b.init(long_cfg, 0)
+        b.update(1, [self._tu(1, 200, 3000, cap=True)])
+        # No neighbors, 3000 turns: NET = colony stream > amortized.
+        assert site_pays(b, long_cfg, 600.0, 500.0) is True
+
+    def test_fratricide_vetoes(self) -> None:
+        from bots.common import site_pays
+        b = self._bot()
+        # Big home (1347) + site 100km out: the colony crowds home
+        # harder than it earns -> veto.
+        b.update(1, [self._tu(1, 200, 1347, cap=True)])
+        assert site_pays(b, CFG, 300.0, 500.0) is False
+
+    def test_short_horizon_vetoes(self) -> None:
+        from bots.common import site_pays
+        b = self._bot()
+        # Open site but only 60 turns left: cannot amortize -500.
+        b.update(2940, [self._tu(1, 200, 3000, cap=True)])
+        assert site_pays(b, CFG, 600.0, 500.0) is False

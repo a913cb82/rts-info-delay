@@ -184,11 +184,11 @@ def exam_escape():
 
 # ── Intel: probe on schedule (pro recon owed; expect FAIL) ──
 def exam_intel():
-    # Blind with an idle army: a 50km S0 probe hop goes out, not an
-    # 80-300km blind settler march (indistinguishable except by range).
-    o = decide_orders(cap_state(
-        9000, foe_towns=[(900, 500, 1, 4000, False)],
-        own_armies=[(300, 500)]), CFG)
+    # TRUE-blind (zero foe intel) with an idle army: a 50km S0 probe hop
+    # goes out, not an 80-300km blind settler march (range tells them
+    # apart). (Known-target + pack-hold is correct, not probing — the
+    # fixture must be truly blind.)
+    o = decide_orders(cap_state(9000, own_armies=[(300, 500)]), CFG)
     def _is_probe(m):
         _, _, fx, fy, tx, ty = m.split()
         return 40 < ((float(tx) - float(fx)) ** 2

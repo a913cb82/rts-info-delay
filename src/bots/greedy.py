@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home
+from .common import BotForecast, BotState, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home, site_pays
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -34,9 +34,15 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                  if not state.army_has_target(a.id) and a.id not in held)
     pack_building = sel is not None and sel[1] > free_n
     probe_armed = pack_building and sel[2] == 0
-    probe_sent = False
-    probe_reach = 6.0 * max(1.0, config.army_speed)
     probe_tgt = sel[0] if probe_armed else None
+    probe_reach = 6.0 * max(1.0, config.army_speed)
+    probe_sent = False
+    if probe_tgt is not None:
+        for a in state.own_armies():
+            tgt = state.army_target(a.id)
+            if tgt is not None and math.hypot(tgt[0] - probe_tgt.x, tgt[1] - probe_tgt.y) <= 20.0:
+                probe_sent = True
+                break
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -77,6 +83,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # peace-only (war-footing holds; disbanding feeds merges).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
                 if expansion_demand(state, config, payback_mult=2.0, void_horizon=500) else None
+            if site is not None and not site_pays(state, config, site[0], site[1]):
+                site = None
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():
@@ -108,12 +116,21 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
         is_enemy_target = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in enemy_towns)
         if not is_enemy_target and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
             # War-footing: home-bound armies hold as defenders (shared
-            # guard_duty lesson) — merge only in true peace.
-            foe_known = bool(enemy_towns) or any(
-                a.faction != faction for a in state.world.armies)
+            # guard_duty lesson) — merges need TRUE void (never-seen),
+            # never eviction-flicker (shared endgame lesson).
             own_home = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20
                            for t in state.world.towns if t.faction == faction)
-            if foe_known and own_home:
+            if state._foe_first_seen and own_home:
+                continue
+            # Suppressed arrivals (shared Step 4 lite): void-site foundings
+            # whose purpose lapsed re-decide (drop the note, normal logic
+            # owns) instead of gifting hostages. True-void always founds.
+            if not own_home and state._foe_first_seen and not expansion_demand(
+                    state, config, payback_mult=2.0, void_horizon=500):
+                state._army_targets.pop(p.id, None)
+                continue
+            if not own_home and not site_pays(state, config, tgt[0], tgt[1]):
+                state._army_targets.pop(p.id, None)
                 continue
             out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
     return out

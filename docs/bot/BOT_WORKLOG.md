@@ -546,3 +546,28 @@ everywhere; pro 9156 control). Scores recovered exactly (greedy 4835,
 turtle 7055). Remain: pro recon (unlocks Step 5), Step 5 (hopeless D<N),
 expander/turtle Step 2 (race-slots rule for expander), Steps 3-4, filed
 strikes/tempo/vetoes.
+
+## Recon + site-veto NET + Step-6 defense (exam 15/16; empty slosh noted)
+
+Pro recon shipped (S0 + 1 prober piercing P3b; exam blind_probes passes
+-> 15/16, only young_flees (Step 5) red). Three recon-exposed bugs fixed:
+pro builds founded on scout waypoints (greedy's guard never ported);
+_scout_id stuck on dead armies (no scouting ever again — frees on death
+now); per-turn probe flags trickle-donated (one probe en route suppresses
+duplicates now, pinned). Suppressed-arrival lite in builds (demand+site
+re-check at arrival; hostage foundings re-decide). Site-veto NET
+(site_growth transcribed incl. info_speed radius fix; found iff NET
+empire delta > amortized): fratricide (colony crowding home harder than
+it earns) is the dominant full-map cost. Suite: fast holds (opening UP
++2009 on recon (early intel -> early takes); defense/endgame/longpeace
+rebased honest-below (untested-peace/wartime-merges/recon-premium with
+filed Step-3/5 paths back); recycle UP on lean pipelines; trio at
+binding. empty_3000 sloshes +/-2000 between commits (foundings on/off at
+veto margins + cadence): VARIANCE NOTE — judge mechanisms + suites, not
+empty-points; bindings move with doctrine (living docs rule). Filed:
+dynamic-crowding exodus (id9 starved post-veto — static vetoes can't see
+neighbors grow into you), war-print expansion, race-slots (expander),
+first-strike, S0 tempo, pro standing-guard doctrine, raid timing/concen-
+tration/interception (Step 3 — the defense/endgame/guard paths back).
+Next in order: expander Step 2 (last bot + race rule), Step 5 (exam 16/16),
+pickets, Step 3, Step 4, filed items.
