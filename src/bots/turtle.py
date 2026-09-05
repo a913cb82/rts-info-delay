@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, order_move, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -208,17 +208,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # one builder at a time
     built = False
+    # Meeting (Step 3, shared): deficit-threats recall settlers (replaces
+    # the old blanket recall — sufficient garrisons let settlers work).
+    out.extend(recall_deficit(state, config))
+    out.extend(reinforce_orders(state, config))
+    # Meeting (Step 3 v1): surplus reinforces deficits in time.
+    out.extend(reinforce_orders(state, config))
     for p in sorted(state.own_armies(), key=lambda a: min((math.hypot(a.x - t.x, a.y - t.y) for t in own_t), default=0)):
         if p.is_viceroy and state.army_has_target(p.id):
             continue
         if state._picket is not None and p.id == state._picket[0]:
             continue  # posted picket: picket block owns it, never settle it
-        # recall first: threatened settlers abort and come home (2v1 beats
-        # waves, 1v1 only trades — every home army counts). Skipped when
-        # hopeless: the settler lineages instead.
-        if threatened and not hopeless and cap is not None and state.army_has_target(p.id) and not state.has_pending_build(p.id):
-            out.extend(order_move(state, config, p, cap.x, cap.y))
-            continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
                 continue

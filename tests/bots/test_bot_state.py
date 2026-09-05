@@ -975,17 +975,19 @@ class TestProbeSingular:
         from bots.pro import decide_orders
         b = BotState()
         b.init(CFG, 0)
+        # Short march (50km, arrival 1 < deficit): JIT cannot complete en
+        # route -> pack holds -> probe singularity holds (no duplicates).
         b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
-                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
                       "faction": 1, "population": 8000, "alive": True,
                       "is_capital": False},
-                     {"kind": "army_update", "id": 7, "x": 400, "y": 500,
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False},
                      {"kind": "army_update", "id": 8, "x": 300, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
-        b.note_move(7, 700.0, 500.0)  # probe already en route
+        b.note_move(7, 350.0, 500.0)  # probe already en route
         orders = decide_orders(b, CFG)
         moves8 = [o for o in orders if o.split()[1:2] == ["8"]]
         assert moves8 == [], orders
@@ -1031,3 +1033,213 @@ class TestSitePays:
         # Open site but only 60 turns left: cannot amortize -500.
         b.update(2940, [self._tu(1, 200, 3000, cap=True)])
         assert site_pays(b, CFG, 600.0, 500.0) is False
+
+
+class TestRecallDeficit:
+    """Threatened towns recall noted settlers home — but only the deficit
+    (D < N need bodies); sufficient garrisons let settlers work."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_deficit_recalls(self) -> None:
+        from bots.common import recall_deficit
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 50.0, 500.0)
+        orders = recall_deficit(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o for o in orders)
+
+    def test_sufficient_holds_settlers(self) -> None:
+        from bots.common import recall_deficit
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 50.0, 500.0)
+        assert recall_deficit(b, CFG) == []
+
+
+class TestReinforce:
+    """Cross-town reinforcement (Step 3 meeting v1): surplus guards
+    (D > N+1) march to deficit towns (D < N) in time (arrival <= ETA-1)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_surplus_reinforces_deficit(self) -> None:
+        from bots.common import reinforce_orders
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 500,
+                      "faction": 0, "population": 9000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 300, "y": 500,
+                      "faction": 0, "population": 2000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        orders = reinforce_orders(b, CFG)
+        # Raider at 400: nearest own town is id2 (300, dist 100, ETA 2)
+        # -> deficit (0 < 1); id1 (100) has 2 surplus but 200km = 4 turns
+        # > ETA-1 = 1 -> too late, hold (no donation marches).
+        assert orders == [], orders
+
+    def test_in_time_reinforces(self) -> None:
+        from bots.common import reinforce_orders
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 500,
+                      "faction": 0, "population": 9000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 200, "y": 500,
+                      "faction": 0, "population": 2000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 350, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        # Raider at 350: nearest is id2 (200, dist 150, ETA 3); id1 (100)
+        # has 2 surplus; march 100km = 2 turns <= ETA-1 = 2 -> GO.
+        orders = reinforce_orders(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") or o.startswith("MOVE_TO 8 ")
+                   for o in orders), orders
+
+
+class TestJitMarch:
+    """Just-in-time packs (Step 3 tempo): march iff the pack completes en
+    route (arrival >= print-deficit at own-town print rate), else hold."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_long_march_goes_early(self) -> None:
+        from bots.pro import decide_orders
+        # Need-3 (rich printer far) with 1 free army 500km out (arrival 10):
+        # print 2 more in ~2 turns (1 town) < arrival -> march NOW.
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        orders = decide_orders(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") for o in orders), orders
+
+    def test_short_march_waits(self) -> None:
+        from bots.pro import decide_orders
+        # Same need, pack short of completion with no time to print
+        # (arrival 1 == deficit 1, strict holds): the free 2nd army holds
+        # while the en-route probe continues (singularity, not pack).
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)  # probe already en route
+        orders = decide_orders(b, CFG)
+        moves8 = [o for o in orders if o.split()[1:2] == ["8"]]
+        assert moves8 == [], orders
+
+
+class TestConquestGuard:
+    """Step 4: fresh conquests (taken <=25 turns ago) keep one guard
+    through the starvation window."""
+
+    def test_fresh_take_holds_guard(self) -> None:
+        from bots.common import hold_defenders
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 1, "population": 3000, "alive": True,
+                      "is_capital": False}])
+        b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        held = hold_defenders(b, CFG, {})
+        assert held == {7}, held
+
+    def test_old_conquest_releases(self) -> None:
+        from bots.common import hold_defenders
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 1, "population": 3000, "alive": True,
+                      "is_capital": False}])
+        b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.update(60, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 1600, "alive": True,
+                       "is_capital": False}])
+        held = hold_defenders(b, CFG, {})
+        assert held == set(), held
+
+
+class TestMergeHorizon:
+    """Home-capital merges are -500 now for compounding later: hold on
+    short horizons (standing armies beat treadmill merges)."""
+
+    def _bot(self, cfg, turn):
+        from bots.common import BotState
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(turn, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                         "faction": 0, "population": 3000, "alive": True,
+                         "is_capital": True},
+                        {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                         "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 300.0, 500.0)
+        return b
+
+    def test_short_holds(self) -> None:
+        from bots.greedy import _stage_builds
+        b = self._bot(CFG, 490)
+        assert _stage_builds(b, CFG) == []
+
+    def test_long_merges(self) -> None:
+        from bots.greedy import _stage_builds
+        from engine.config import GameConfig
+        long_cfg = GameConfig()
+        long_cfg.max_turns = 3000
+        b = self._bot(long_cfg, 1)
+        out = _stage_builds(b, long_cfg)
+        assert any(o.startswith("BUILD 7 ") for o in out), out

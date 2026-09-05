@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home
+from .common import BotState, DemandParams, bot_main, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, reinforce_orders, should_hold_home
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -32,9 +32,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
     sel = raid_target(state, config, margin=300.0)
-    free_n = sum(1 for a in state.own_armies()
-                 if not state.army_has_target(a.id) and a.id not in held)
-    pack_building = sel is not None and sel[1] > free_n
+    free_ids = [a.id for a in state.own_armies()
+                if not state.army_has_target(a.id) and a.id not in held]
+    free_n = len(free_ids)
+    pack_building = sel is not None and sel[1] > free_n \
+        and not jit_ready(state, config, sel[0], sel[1], free_ids)
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
@@ -45,6 +47,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if tgt is not None and math.hypot(tgt[0] - probe_tgt.x, tgt[1] - probe_tgt.y) <= 20.0:
                 probe_sent = True
                 break
+    out.extend(recall_deficit(state, config))
+    out.extend(reinforce_orders(state, config))
+    # Meeting (Step 3 v1): surplus reinforces deficits in time.
+    out.extend(reinforce_orders(state, config))
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -70,6 +76,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 own_home = any(math.hypot(tx - t.x, ty - t.y) < 20
                                for t in own_t)
                 if state._foe_first_seen and own_home:
+                    continue
+                cap = state.world.faction_capital(faction)
+                _max_turns = getattr(config, "max_turns", 3000) or 3000
+                if own_home and cap is not None and math.hypot(tx - cap.x, ty - cap.y) < 20 \
+                        and _max_turns - state.turn < 500:
                     continue
                 if not own_home and state._foe_first_seen and not expansion_demand(
                         state, config, DemandParams(payback_mult=0.3, void_horizon=100,

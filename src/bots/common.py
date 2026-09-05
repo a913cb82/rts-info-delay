@@ -137,6 +137,8 @@ class BotState:
         self.evac_ordered: bool = False  # own MOVE_CAPITAL issued, flight unconfirmed
         self._last_turn: int | None = None  # last payload turn (jump detector)
         self._last_seen: dict = {}  # (kind, id) -> delivery turn (staleness)
+        self._first_seen: dict = {}  # (kind, id) -> first delivery turn
+        self._taken_at: dict = {}  # town_id -> turn it flipped to mine (Step 4)
         self._trails: dict = {}  # army_id -> deque[(turn, x, y)] (velocity)
         self._wave_ids: set = set()
         self._wave_hold_until: int = -1
@@ -178,6 +180,8 @@ class BotState:
         self._standing_orders = None
         self._plan = None
         self._last_seen = {}
+        self._first_seen = {}
+        self._taken_at = {}
         self._trails = {}
         self._wave_ids = set()
         self._foe_first_seen = {}
@@ -212,6 +216,7 @@ class BotState:
                     t.population = float(ev.get("population", t.population))
                     t.is_capital = bool(ev.get("is_capital", t.is_capital))
             self._last_seen[("town", eid)] = self.turn
+            self._first_seen.setdefault(("town", eid), self.turn)
         elif kind == "army_update":
             if ev.get("alive") is False:
                 self._remove_army(eid)
@@ -232,6 +237,7 @@ class BotState:
                     tr = self._trails[eid] = deque(maxlen=4)
                 tr.append((self.turn, a.x, a.y))
             self._last_seen[("army", eid)] = self.turn
+            self._first_seen.setdefault(("army", eid), self.turn)
         # else: tolerant — battles are gone, unknown kinds ignored.
 
     def _remove_town(self, tid: int) -> None:
@@ -295,6 +301,13 @@ class BotState:
         known_armies = {a.id for a in self.world.armies}
         for ev in events:
             self._apply_update(ev)
+            # Step 4: take-time (faction flip TO mine) for conquest guards.
+            if ev.get("kind") == "town_update":
+                _tid = ev.get("id")
+                _nt = self.world.get_town(_tid) if _tid is not None else None
+                if _nt is not None and _nt.faction == self.faction \
+                        and _tid in prev_faction and prev_faction[_tid] != self.faction:
+                    self._taken_at[_tid] = self.turn
         if events:
             # Field flips (faction/flag) don't change list lengths, so the
             # world's index wouldn't rebuild without this (mark_dirty
@@ -419,6 +432,8 @@ class BotState:
             tuple(sorted(self._army_targets.items())),
             tuple(sorted(self._foe_first_seen.items())),
             tuple(sorted(self._foe_prints.items())),
+            tuple(sorted(self._first_seen.items())),
+            tuple(sorted(self._taken_at.items())),
             self._picket,
             self._scout_id,
             self.turn // 25,
@@ -1276,6 +1291,16 @@ def void_note_busy(state: "BotState") -> bool:
     return False
 
 
+def _void_horizon(state: "BotState", config, explicit: int | None) -> int:
+    """Marginal colony horizon: 500 turns to repay (-500 + ~1/turn),
+    capped by game length (no foundings in the last 50 turns — buzzer).
+    Explicit overrides (expander sprints 100, S0-fallback 0 capability)."""
+    if explicit is not None:
+        return explicit
+    max_turns = getattr(config, "max_turns", 3000) or 3000
+    return min(500, max_turns - 50)
+
+
 def expansion_demand(state: "BotState", config,
                      params: "DemandParams | None" = None,
                      *, payback_mult: float | None = None,
@@ -1294,7 +1319,9 @@ def expansion_demand(state: "BotState", config,
     if params is None:
         params = DemandParams()
     mult = params.payback_mult if payback_mult is None else payback_mult
-    horizon = params.void_horizon if void_horizon is None else void_horizon
+    _exp = void_horizon if void_horizon is not None else params.void_horizon
+    vhor = _void_horizon(state, config, _exp)
+    chor = min(mult * 500, (getattr(config, "max_turns", 3000) or 3000) - 50)
     foe_known = any(t.faction != state.faction for t in state.world.towns) \
         or any(a.faction != state.faction for a in state.world.armies)
     if not foe_known:
@@ -1303,11 +1330,11 @@ def expansion_demand(state: "BotState", config,
         if state._foe_first_seen:
             pass  # fall through to contested caution below
         else:
-            return config.max_turns - state.turn >= horizon
+            return config.max_turns - state.turn >= vhor
     if params.serial and void_note_busy(state):
         return False
     turns_left = config.max_turns - state.turn
-    if turns_left < mult * 500:
+    if turns_left < chor:
         return False
     if not params.rates:
         return True  # sprawl overrides marginal math (documented)
@@ -1345,7 +1372,7 @@ class DemandParams:
     payback_mult: float = 1.0
     threat_window: float = 4.0
     probe_armies: int = 0
-    void_horizon: int = 500
+    void_horizon: int | None = None  # None = min(500, max_turns-50)
     rates: bool = True
     serial: bool = True
 
@@ -1471,6 +1498,129 @@ def site_pays(state: "BotState", config, x: float, y: float) -> bool:
     return net > amort
 
 
+def recall_deficit(state: "BotState", config) -> list:
+    """Conditional recall (shared Step 3 meeting): threatened towns with
+    home D < inbound N recall noted settlers (nearest first, up to the
+    deficit). Sufficient garrisons let settlers work (blanket recall
+    stalls expansion in contact games). Staging (foe towns in striking
+    distance) recalls BLANKET — threat-footing concentrates everything
+    (count unknown; beheading risk dominates expansion pause). Scouts
+    exempt (intel continuity; muster covers the deficit).
+    Viceroys/pending-builds exempt."""
+    out: list = []
+    recalled: set = set()
+    stage = staging_eta(state, config)
+    # Fresh staging only (first-seen <= 10 turns): urgent (force may be
+    # coming inside intel lag). Stale staging without force is an outpost
+    # (blanket-recalling for outposts freezes all expansion forever —
+    # area-denial by staging; deficit-loop covers real force).
+    fresh_stage = False
+    for tid in list(stage):
+        if state.turn - state._first_seen.get(("town", tid), state.turn) <= 10:
+            fresh_stage = True
+            break
+    if fresh_stage:
+        for a in state.own_armies():
+            if not a.is_viceroy and state.army_has_target(a.id) \
+                    and not state.has_pending_build(a.id) \
+                    and a.id != state._scout_id:
+                home = min(state.own_towns(),
+                           key=lambda t: math.hypot(a.x - t.x, a.y - t.y),
+                           default=None)
+                if home is not None:
+                    out.extend(order_move(state, config, a, home.x, home.y))
+                    recalled.add(a.id)
+    force = inbound_force(state, config)
+    if not force:
+        return out
+    for tid, (_, n) in force.items():
+        town = state.world.get_town(tid)
+        if town is None or town.faction != state.faction:
+            continue
+        home = home_count(state, town)
+        if home <= n - 2:
+            continue  # hopeless: settlers lineage, don't feed the grinder
+        need = max(0, n - home)
+        if need <= 0:
+            continue
+        cands = sorted((a for a in state.own_armies()
+                        if not a.is_viceroy and state.army_has_target(a.id)
+                        and not state.has_pending_build(a.id)
+                        and a.id != state._scout_id
+                        and a.id not in recalled),
+                       key=lambda a: math.hypot(a.x - town.x, a.y - town.y))
+        for a in cands[:need]:
+            out.extend(order_move(state, config, a, town.x, town.y))
+    return out
+
+
+def reinforce_orders(state: "BotState", config) -> list:
+    """Cross-town reinforcement (shared Step 3 meeting v1): deficit
+    towns (D < N) pull nearest surplus to mutual (fill to N), arriving
+    in time (march <= ETA-1 — too-late holds, no donation marches).
+    Surplus = home + untargeted + unheld (hold-set keeps min(home, N+1)
+    + buzzer guards, so surplus never strips a defense). Unthreatened
+    towns strip bare (no threat needs no guard)."""
+    out: list = []
+    force = inbound_force(state, config)
+    if not force:
+        return out
+    speed = max(1.0, config.army_speed)
+    held = hold_defenders(state, config, force)
+    home_of: dict = {}
+    for a in state.own_armies():
+        for t in state.own_towns():
+            if math.hypot(a.x - t.x, a.y - t.y) <= 20.0:
+                home_of[a.id] = t.id
+                break
+    surplus = [a for a in state.own_armies()
+               if a.id in home_of and a.id not in held
+               and not state.army_has_target(a.id)]
+    deficits: list = []
+    for t in state.own_towns():
+        eta_n = force.get(t.id)
+        if eta_n is None:
+            continue
+        eta, n = eta_n
+        if home_count(state, t) < n:
+            deficits.append((eta, n, t))
+    for eta, n, t in sorted(deficits, key=lambda e: e[0]):
+        need = n - home_count(state, t)
+        cands = sorted((a for a in surplus
+                        if not state.army_has_target(a.id)),
+                       key=lambda a: math.hypot(a.x - t.x, a.y - t.y))
+        for a in cands:
+            if need <= 0:
+                break
+            if math.hypot(a.x - t.x, a.y - t.y) / speed <= max(0.0, eta - 1):
+                out.extend(order_move(state, config, a, t.x, t.y))
+                surplus.remove(a)
+                need -= 1
+    return out
+
+
+def jit_ready(state: "BotState", config, target, need: int, free_ids: list) -> bool:
+    """Just-in-time packs (Step 3 tempo): march iff the pack is complete
+    (need <= free) or completes en route (arrival >= print-deficit at
+    own-town print rate). Long marches leave now and build on the way;
+    short marches wait and dash complete."""
+    if need <= len(free_ids):
+        return True
+    towns = state.own_towns()
+    if not towns or not free_ids:
+        return False
+    by_id = {a.id: a for a in state.own_armies()}
+    dists = [math.hypot(by_id[i].x - target.x, by_id[i].y - target.y)
+               for i in free_ids if i in by_id]
+    if not dists:
+        return False
+    arrival = min(dists) / max(1.0, config.army_speed)
+    print_turns = (need - len(free_ids)) / max(1, len(towns))
+    # Strict: ties hold (print can lag a turn; arriving exactly-even is
+    # a coin flip on intel delay, and flips favor the defender).
+    return arrival > print_turns
+
+
 def hold_defenders(state: "BotState", config, force: dict) -> set:
     """Hold-set (shared Step 2 core): per threatened town keep
     min(home, N+1) — the +1th is highest-leverage; beyond it extras are
@@ -1497,4 +1647,13 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
                         and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
                 if here:
                     held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
+    # Step 4 conquest guard: towns taken within 25 turns (starvation
+    # window) keep one veteran (raiders re-take starving conquests free).
+    for t in state.own_towns():
+        if state.turn - state._taken_at.get(t.id, -1000) <= 25:
+            here = [a for a in state.own_armies()
+                    if a.id not in held
+                    and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
+            if here:
+                held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
     return held

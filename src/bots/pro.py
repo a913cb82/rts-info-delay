@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, should_hold_home, site_pays
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, jit_ready, maybe_assign_scout, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -34,12 +34,14 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     # against; holding compounds (policy optimum 5254: never train).
     # Pro-only (void settlers need trains in the other bots). Recon
     # exception: exactly one prober (intel has option value; pairs with
-    # S0 below — without it pro is blind forever).
+    # S0 below — without it pro is blind forever) — but never spending
+    # the lineage seed (succession: prober at 1500 floor-locks the town;
+    # settle first, scout second when poor).
     if not any(t.faction != state.faction for t in state.world.towns) and not any(
             a.faction != state.faction for a in state.world.armies):
         if not state.own_armies():
             for t in state.own_towns():
-                if can_train_standard(state, t) \
+                if can_train_standard(state, t) and t.population >= 2500 \
                         and t.population - config.army_cost >= config.death_threshold - 1e-9:
                     return [f"TRAIN {t.id}"]
         return []
@@ -69,9 +71,11 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # Pack gate: an unaffordable-but-valuable target builds (trains fire),
     # it doesn't march — undersized packs donate. Idle armies hold as the
     # growing pack.
-    free_n = sum(1 for a in state.own_armies()
-                 if not state.army_has_target(a.id) and a.id not in held)
-    pack_building = sel is not None and sel[1] > free_n
+    free_ids = [a.id for a in state.own_armies()
+                if not state.army_has_target(a.id) and a.id not in held]
+    free_n = len(free_ids)
+    pack_building = sel is not None and sel[1] > free_n \
+        and not jit_ready(state, config, sel[0], sel[1], free_ids)
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # ONE nearby free army (recon by fire — bounded risk, gains intel +
     # takes vs passive; prints observed calibrate the follow-on). One
@@ -88,6 +92,13 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             if tgt is not None and math.hypot(tgt[0] - probe_tgt.x, tgt[1] - probe_tgt.y) <= 20.0:
                 probe_sent = True
                 break
+    # Meeting (Step 3): deficit-threats recall settlers first (bodies
+    # home before tasking; recalled notes route via builds to guards).
+    out.extend(recall_deficit(state, config))
+    # Meeting (Step 3 v1): surplus reinforces deficits in time.
+    out.extend(reinforce_orders(state, config))
+    # Meeting (Step 3 v1): surplus reinforces deficits in time.
+    out.extend(reinforce_orders(state, config))
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -163,7 +174,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # just delivers defenders to the builds-merge (guard_duty t31).
             # In war-footing the army holds position (staying is the order).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
-                if expansion_demand(state, config, void_horizon=500) else None
+                if expansion_demand(state, config) else None
             # Site veto (fratricide): even a demanded colony must clear
             # growth>margin at its site (shared empty_3000 lesson).
             if site is not None and not site_pays(state, config, site[0], site[1]):
@@ -208,13 +219,21 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
                            for t in state.world.towns if t.faction == faction)
             if state._foe_first_seen and own_home:
                 continue
+            # Merge horizon (recycle treadmill): home-capital merges are
+            # -500 now for compounding later — hold on short horizons
+            # (standing armies beat treadmill merges; recycle lesson).
+            cap = state.world.faction_capital(faction)
+            _max_turns = getattr(config, "max_turns", 3000) or 3000
+            if own_home and cap is not None and math.hypot(tgt[0] - cap.x, tgt[1] - cap.y) < 20 \
+                    and _max_turns - state.turn < 500:
+                continue
             # Suppressed arrivals (Step 4 lite): a void-site founding whose
             # purpose lapsed (foe history since dispatch, demand dead now)
             # re-decides instead of gifting hostages (pro_defense t10:
             # founded into a raid, captured t12). True-void foundings
             # (capability contract) always fire.
             if not own_home and state._foe_first_seen and not expansion_demand(
-                    state, config, void_horizon=500):
+                    state, config):
                 state._army_targets.pop(p.id, None)
                 continue
             # Arrival site re-check (crowding shifts en route): fratricide

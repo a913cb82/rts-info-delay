@@ -618,3 +618,15 @@ instead of settler in a peaceful equilibrium that never raids — premium
 pays when raids come (Elo/guard/defend)). GTO note: pickets insure
 raids; peaceful-dark taxes them; Nash would mix, deterministic bots pay
 the premium (documented, not solved).
+
+## Step 4 post-capture (compositional) + merge horizon
+
+Post-capture doctrine is compositional (no single function): veterans
+hold conquests via war-footing (no-merge) + conquest-guard (fresh takes
+keep one through starvation, pinned) + sel-march chains re-raids when
+priced + suppressed-arrival lite re-decides lapsed foundings at builds.
+Shipped the missing pieces: take-time tracking (_taken_at on flip,
+wiped/fingerprinted) + conquest-guard in hold-set (TDD both polarities)
++ merge-horizon gate (home-capital merges need turns_left>=500 —
+recycle treadmill broken 2605->6083 (standing beats merging short);
+longpeace 4191 recovering). Step 4 DONE (composition documented here).

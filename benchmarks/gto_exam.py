@@ -118,12 +118,17 @@ def exam_pricing():
     check("pricing", "rich_void_expands", o, lambda o: len(_moves(o)) >= 1,
           f"rich void town sits on its hands; orders={o}")
     # Rich home, CONTESTED, short horizon: 1e8/30000 = 3333 turns payback
-    # never fits — hold (darkness already lifted; expansion is priced).
+    # never fits — no SETTLING (darkness already lifted; expansion is
+    # priced). Raid marches at the known foe town are JIT-tempo (allowed);
+    # anything else marching is a settler (forbidden).
     o = decide_orders(cap_state(30000, foe_towns=[(900, 500, 1, 4000, False)],
                                 own_armies=[(300, 500)]), CFG)
+    def _tgt(m):
+        _, _, _, _, tx, ty = m.split()
+        return (float(tx), float(ty))
     check("pricing", "rich_contested_holds", o,
-          lambda o: not any(m.split()[1] == "7" and _march_len(m) > 60
-                             for m in _moves(o)),
+          lambda o: all(_tgt(m) == (900.0, 500.0)
+                         for m in _moves(o) if m.split()[1] == "7"),
           f"settles a priced contest; orders={o}")
 
 

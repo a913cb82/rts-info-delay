@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home, site_pays
+from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -30,9 +30,11 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
     sel = raid_target(state, config, margin=500.0)
-    free_n = sum(1 for a in state.own_armies()
-                 if not state.army_has_target(a.id) and a.id not in held)
-    pack_building = sel is not None and sel[1] > free_n
+    free_ids = [a.id for a in state.own_armies()
+                if not state.army_has_target(a.id) and a.id not in held]
+    free_n = len(free_ids)
+    pack_building = sel is not None and sel[1] > free_n \
+        and not jit_ready(state, config, sel[0], sel[1], free_ids)
     probe_armed = pack_building and sel[2] == 0
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
@@ -43,6 +45,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             if tgt is not None and math.hypot(tgt[0] - probe_tgt.x, tgt[1] - probe_tgt.y) <= 20.0:
                 probe_sent = True
                 break
+    out.extend(recall_deficit(state, config))
+    out.extend(reinforce_orders(state, config))
+    # Meeting (Step 3 v1): surplus reinforces deficits in time.
+    out.extend(reinforce_orders(state, config))
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -82,8 +88,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # G2: settle on demand (cherry-pick x2) — else recycle home,
             # peace-only (war-footing holds; disbanding feeds merges).
             site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
-                if expansion_demand(state, config, DemandParams(payback_mult=2.0),
-                                      void_horizon=500) else None
+                if expansion_demand(state, config, DemandParams(payback_mult=2.0)) else None
             if site is not None and not site_pays(state, config, site[0], site[1]):
                 site = None
             if site:
@@ -123,11 +128,16 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
                            for t in state.world.towns if t.faction == faction)
             if state._foe_first_seen and own_home:
                 continue
+            cap = state.world.faction_capital(faction)
+            _max_turns = getattr(config, "max_turns", 3000) or 3000
+            if own_home and cap is not None and math.hypot(tgt[0] - cap.x, tgt[1] - cap.y) < 20 \
+                    and _max_turns - state.turn < 500:
+                continue
             # Suppressed arrivals (shared Step 4 lite): void-site foundings
             # whose purpose lapsed re-decide (drop the note, normal logic
             # owns) instead of gifting hostages. True-void always founds.
             if not own_home and state._foe_first_seen and not expansion_demand(
-                    state, config, payback_mult=2.0, void_horizon=500):
+                    state, config, payback_mult=2.0):
                 state._army_targets.pop(p.id, None)
                 continue
             if not own_home and not site_pays(state, config, tgt[0], tgt[1]):
