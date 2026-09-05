@@ -5,19 +5,39 @@ State of the bots: `BOTS.md`. Numbers: `BOT_BENCH.md`. History: `BOT_WORKLOG.md`
 Full strategy reference: `GTO.md` (this plan's doctrine section is the
 compact form; GTO.md is the detailed form).
 
+## Goal
+
+Pro converges to true GTO play (`GTO.md`); every other bot converges to
+GTO skewed by its personality — same optimal backbone, documented bias
+parameters (`GTO.md` §9): greedy present-biased, turtle risk-averse,
+expander slot-hungry, aggressive initiative-hungry. A personality is a
+parameter shift, never a different game: all five muster, +1, price, and
+time correctly; they differ only in what they systematically
+over/under-buy. Every step below serves that convergence (pro pays full
+price on time; the others deviate on schedule, not by error).
+
 ## Doctrine (settled)
 
-1. **+1 or nothing.** Equal numbers annihilate (1v1 *and* 2v2); any strict
-   outnumbering kills clean. Never willingly enter an equal fight.
+1. **N+1, N, or 0 — never partial.** Equal numbers annihilate (1v1 *and*
+   2v2), so the (N+1)th army is the highest-leverage unit on the board:
+   it converts your total loss into their total loss. Defend at N+1
+   (keep everything), at N (save the town, lose the armies — correct for
+   rich towns, spoiling interceptions, and rich-vs-poor attrition), or
+   at 0 (lost — save the armies; partial reinforcement donates). Never
+   attack at exactly N when N+1 is affordable; N-for-N is never the take
+   (no survivors = no capture).
 2. **Trade evaluator.** Every march-or-hold decision answers: when these
    paths meet, do I strictly outnumber? Outnumber → take it. Equal →
    decline (free and unilateral — both declining is just peace, which
    favors whoever compounds faster) or convert (add one: train, recall,
-   viceroy). Outnumbered → be elsewhere. Armies are 1000 pop that
-   compounds; ground re-settles.
+   viceroy — print time included, since TRAIN is capped 1/town/turn and
+   a muster of N costs N turns at one town). Outnumbered → be elsewhere.
+   Takes need N ≥ S+W+1 against warning W plus standing S. Armies are
+   1000 pop that *would* compound; ground re-settles.
 3. **Last responsible moment.** All lags are known (intel + messenger ≈
-   2× one-way per decision), so compute the latest turn you can act and
-   wait for it. Early reactions bleed production and chase ghosts.
+   2× one-way per decision, plus 1 turn per mustered army under the
+   TRAIN cap), so compute the latest turn you can act and wait for it.
+   Early reactions bleed production and chase ghosts.
 4. **No randomness, ever.** Mirrors come from identical thresholds +
    intel; break them by outplaying (foresee, decline, convert first),
    never by jitter. Deterministic tie-breaks only as last resorts.
@@ -28,9 +48,12 @@ compact form; GTO.md is the detailed form).
    optimism/pessimism, not fudge factors: near towns decide sharp, far
    towns need trend confirmation or big margins. Turtle paranoid on
    defense, patient on offense; greedy the reverse.
-7. **Capitals are the only irreplaceable asset.** Losing one blinds you
-   permanently; taking one blinds the enemy permanently. Snipe theirs,
-   never risk your last.
+7. **Capitalhood is an option, priced against amnesia.** Beheading is
+   permanent, but headless-with-towns still scores, musters, and raids
+   nearly fully — what dies is future escapes plus the intel hub. Escape
+   young (amnesia cheap, hub future long), endure established (the brain
+   outweighs the hub). Snipe theirs, above all once established; price
+   your own escape by empire age, never by panic.
 
 ## Open work, in order
 
@@ -60,8 +83,11 @@ profitability proof. Evaluator rules: sums gate on KNOWN foes only (the
 mirror holds observed entities — never-observed forces are absent by
 construction, not zero); `last_seen` staleness scales the risk posture;
 all force counts from delivered trails, never intent; parse finished
-battles for force counts to calibrate. Scouting prerequisite SHIPPED
-(S0 no-contact protocol, below) — demand gates + evaluator remain open.
+battles for force counts to calibrate. Muster math under the TRAIN cap:
+no instant N+1 — the evaluator plans multi-turn print (1/town/turn) plus
+standing, prices takes against N ≥ S+W+1, and never orders partial
+musters. Scouting prerequisite SHIPPED (S0 no-contact protocol, below) —
+demand gates + evaluator remain open.
 
 **S0 — no-contact scout (shipped).** First settler probes before
 founding: 50km hops (arrival-gated; mid-course retargeting is
@@ -76,19 +102,26 @@ restored, void_contact takes, trap/skip_thin skip decoys and take
 prizes. Costs: scout tax in sprint races (outsettle), slower probes
 (~3 turns/50km at range). Pro recon NOT done (pro still blind — owes
 before Step 5/6 need eyes); turtle pickets NOT done.
+Followups filed (re-analysis below): probe memory (repeat rays merge
+into own towns), scout/note-drop tension (arrival-waits inside the drop
+margin), turn-hashed sites (retarget roulette after note-drops).
 
 **Step 3 — meeting forecast + computed arrival-sync.** Deterministic
 meeting prediction from known speeds (path-blocking auto-intercepts, so
 forecasting is enough to force field battles); release own packs on
 computed coincident arrivals (perfect own-info — the arrival-sync that
 can work, since the old one died on stale *foe* intel). Punish
-foe 1v1-acceptance by adding one anywhere on your path.
+foe 1v1-acceptance by adding one anywhere on your path (print-capped at
+one per town per turn, so pack-building starts early).
 
 **Step 4 — post-capture doctrine.** Assign every surviving attacker at
 once: nearest viable next target in reach → found nearby → march home to
 recycle. (Greedy's kill-runt-then-found was emergent; make it policy for
 all raiders.) Includes garrisoning fresh conquests through their
-starvation window.
+starvation window. Also covers suppressed arrivals: an army whose BUILD
+is refused near a known foe gets an explicit decision (besiege / leave /
+capture by waiting) — never silence and drift (the empty_3000 take was
+accidental drift after a correct refusal).
 
 **Step 5 — evac v2 + capital game.** Earlier-and-stricter evac gates
 (1-turn lead now required; failure beheads permanently); viceroy routing
@@ -97,14 +130,20 @@ Pre-step verdict OWED-AND-DELIVERED: Elo resolved (greedy 1544 /
 aggressive 1543 take; holders hold) — old all-hold was attacker-passivity,
 not mechanics. Sniping work unblocked when Steps 2–4 land;
 settler-hunting (kill unescorted movers when nothing is worth taking);
-buffer-settling toward spent foes (turtle-true offense).
+buffer-settling toward spent foes (turtle-true offense). Evac gates differ
+by personality (goal framing): turtle earliest + drain-and-flee (muster
+into escorted exodus, leave the husk); pro computed (hub future vs
+amnesia); greedy latest (compounding over beheading risk); aggressive
+almost never (fights headless); expander moves hub by geometry (centroid).
+Rule of thumb: escape young, endure established.
 
 **Step 6 — siege craft (pro, last).** Engineered 2v1 *at the town* via
 staggered computed arrivals; takes in symmetric endgames; anti-standoff
 play (recognize compounding races, be the first to add the second army).
 
-Explicitly parked: crowding-weapon colonies (weak math), escorts
-(messenger lag wins), TRAIN pre-capture quirk exploits
+Explicitly parked: crowding-weapon colonies (weak math), settler-escort
+bodyguards (messenger lag wins; exodus convoys under Step 5 are the live
+form), TRAIN pre-capture quirk exploits
 (engine smell, not doctrine), counter-intel (staying out of foe sight
 discs on purpose — needs the evaluator first so we know what secrecy is
 worth). Retired from this list: per-faction sent-tracking for landing
@@ -203,6 +242,8 @@ tables with margin; run benches quiet.
   earlier).
 - Rematch timelines (who trained when, who died how) diffed against the
   last analysis, read as a trade ledger.
+- Muster discipline: takes at N ≥ S+W+1, defenses at N/N+1/0 (no
+  partials), mutuals split by role (town-save / attrition / setup).
 
 ## Scoreboard to beat (current tree, fog era)
 
