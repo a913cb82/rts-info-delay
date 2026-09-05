@@ -2310,7 +2310,7 @@ class TestStalePremium:
                      {"kind": "town_update", "id": 2, "x": 900, "y": 900,
                       "faction": 1, "population": 5000, "alive": True,
                       "is_capital": False}])
-        b.turn = 2000
+        b.turn = 1600
         assert foe_garrison(b, b.world.get_town(2)) == 3 + 3
         b.turn = 400
         assert foe_garrison(b, b.world.get_town(2)) == 3
@@ -3094,3 +3094,64 @@ class TestLeaderHate:
         assert r is not None
         # leader (faction 1) town should rank first
         assert r[0][0].faction == 1
+
+
+class TestVictoryLap:
+    """Unopposed empires settle, not park."""
+
+    def test_lap_settles(self) -> None:
+        from bots.common import BotState, victory_lap
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        evs = [{"kind": "town_update", "id": i, "x": 300 + i * 50, "y": 500,
+                "faction": 0, "population": 5000, "is_capital": i == 1}
+               for i in (1, 2, 3)]
+        b.update(100, evs)
+        # contact: a foe army seen (then gone) + a dead foe town sighting
+        b.update(101, [{"kind": "army_update", "id": 9, "x": 900, "y": 900,
+                        "faction": 1, "alive": True, "is_viceroy": False}])
+        b.update(102, evs)
+        out = victory_lap(b, CFG)
+        assert sum(1 for o in out if o.startswith("TRAIN")) == 3
+
+    def test_contested_quiet(self) -> None:
+        from bots.common import BotState, victory_lap
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(4000, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                         "faction": 0, "population": 5000, "is_capital": True},
+                        {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                         "faction": 1, "population": 5000, "is_capital": False}])
+        assert victory_lap(b, CFG) == []
+
+
+class TestDeadFoes:
+    """Ghost factions are food, not threat."""
+
+    def test_armyless_foe_dead_late(self) -> None:
+        from bots.common import BotState, dead_foes
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 5000, "is_capital": False}])
+        b.turn = 5000
+        assert dead_foes(b) == {1}
+
+    def test_live_foe_not_dead(self) -> None:
+        from bots.common import BotState, dead_foes
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(4900, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                         "faction": 0, "population": 5000, "is_capital": True},
+                        {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                         "faction": 1, "population": 5000, "is_capital": False},
+                        {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                         "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 5000
+        assert dead_foes(b) == set()

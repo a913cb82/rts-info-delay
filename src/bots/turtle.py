@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind
+from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -105,6 +105,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _sw = second_wind(state, config)
     if _sw:
         return _sw
+    _vl = victory_lap(state, config)
+    if _vl:
+        return _vl
     _evac = evac_plan(state, config, hopeless, established_stays=True)
     if any(o.startswith("MOVE_CAPITAL") for o in _evac):
         out.extend(_evac)

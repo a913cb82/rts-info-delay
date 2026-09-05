@@ -1478,3 +1478,17 @@ there too). Shell-camper verified earlier; full 5-python-bot game
 verified here.
 R108 health: watch (0/0 suicides/train-deaths, 2 onesies incl F2x9
 @ town11 meatgrinder, 1 early dead-peace). GENERATED r108.
+
+## 5 loops (r109-r118): zombie/ghost-weather arc
+
+L1 second-wind (embered factions gamble, collapse-evidence gated).
+L2 fortress learning (death-count doubles avoid window to 2400t).
+L3 bloodlust (3x lead drops verify/caps) + killer instinct.
+L4 leader-hate (trailers prefer a 2x leader — 99k/96k/93k race).
+L5 ghost-weather: victory-lap (contact-gated after r115 fog misfire —
+mirror is visibility-limited!) + dead-foes (armyless 2000t+ are food:
+no site-shadow, no stale premium, ghost pops don't lead, verify
+bypass — verify/blood deadlock broke ghost-game peace).
+r118 canonical (watch). Tooling lesson: one write per file mutation
+(stale-`s` double-writes clobber — bit twice: grave writer, army-seen
+hook; audit with grep after every multi-edit).

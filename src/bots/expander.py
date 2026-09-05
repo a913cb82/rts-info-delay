@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust
+from .common import BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust, victory_lap, dead_foes
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -25,6 +25,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _sw = second_wind(state, config)
     if _sw:
         return _sw
+    _vl = victory_lap(state, config)
+    if _vl:
+        return _vl
     _evac = evac_plan(state, config, hopeless_capital(state, config),
                        established_stays=False)
     if any(o.startswith("MOVE_CAPITAL") for o in _evac):
@@ -171,7 +174,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # JIT packet flush: only full packets march.
     by_id = {a.id: a for a in state.own_armies()}
     for tgt_id, (tgt, tneed, members) in packets.items():
-        if (len(members) >= tneed and (bloodlust(state, config) or assault_verified(state, tgt))) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
+        if (len(members) >= tneed and (bloodlust(state, config) or tgt.faction in dead_foes(state) or assault_verified(state, tgt))) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
             held = sync_hold(state, config, tgt.x, tgt.y, members)
             # Follow-on queue (user: take then fan out — pre-plan the
             # second wave: 2 nearest other foe towns. Fired on arrival

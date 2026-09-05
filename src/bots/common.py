@@ -443,7 +443,10 @@ class BotState:
                 f[k] *= 0.85  # per-10t tick
                 if abs(f[k]) < 0.01:
                     del f[k]
+            _dead = dead_foes(self, self.config)
             for t in self.world.towns:
+                if t.faction != self.faction and t.faction in _dead:
+                    continue  # dead rivals cast no shadow (r113 unfreeze)
                 cx = min(n - 1, max(0, int(t.x / size[0] * n)))
                 cy = min(n - 1, max(0, int(t.y / size[1] * n)))
                 f[(cx, cy)] = f.get((cx, cy), 0.0) + (1.0 if t.faction == self.faction else -2.0)
@@ -609,6 +612,9 @@ class BotState:
                 tr.append((self.turn, a.x, a.y))
             self._last_seen[("army", eid)] = self.turn
             self._first_seen.setdefault(("army", eid), self.turn)
+            _ff = ev.get("faction", None)
+            if _ff is not None and int(_ff) != self.faction:
+                self.__dict__.setdefault("_foe_army_seen", {})[int(_ff)] = self.turn
             self._stamp_cover(float(ev.get("x", 0.0)), float(ev.get("y", 0.0)))
         # else: tolerant — battles are gone, unknown kinds ignored.
 
@@ -2579,9 +2585,11 @@ def foe_garrison(state: "BotState", u) -> int:
         s = 3
         # Stale-age premium (r55 lesson: stale floor 3 vs real garrison 8
         # — pro bled 43 undersized packs vs ghost-coast towns). Unseen
-        # towns accumulate guards: +1 per 500t stale, cap +3.
-        age = state.turn - state._last_seen.get(("town", u.id), state.turn)
-        s += min(3, age // 500)
+        # towns accumulate guards: +1 per 500t stale, cap +3. Dead foes
+        # are exempt (r113: ghost towns are food — no phantom guards).
+        if u.faction not in dead_foes(state):
+            age = state.turn - state._last_seen.get(("town", u.id), state.turn)
+            s += min(3, age // 500)
     return s
     s = garrison_map(state).get(u.id, 0)
     if state.__dict__.get("_bloodied", {}).get(u.id, -10**9) >= state.turn - 150:
@@ -2724,7 +2732,10 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         # (need -1, min 1). No alliance, just shared incentives — taxes
         # runaways and seeds three-way races).
         _pops: dict[int, float] = {}
+        _dead2 = dead_foes(state)
         for _t in state.world.towns:
+            if _t.faction != faction and _t.faction in _dead2:
+                continue  # hate the living (r114)
             _pops[_t.faction] = _pops.get(_t.faction, 0.0) + _t.population
         _foe_pops = {k: v for k, v in _pops.items() if k != faction}
         if _foe_pops and u.faction == max(_foe_pops, key=_foe_pops.get):
@@ -3441,13 +3452,64 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     return arrival > print_turns
 
 
+def dead_foes(state: "BotState", config=None) -> set:
+    """Factions that look dead (r113: SICK — 3 ghosts by t1750, survivors
+    froze 8500t vs dead rivals' towns: stale threat never clears, packs
+    never price, prints never come. A foe with no armies in the live
+    world AND none seen in 2000t is dead: its towns are food, not
+    threat)."""
+    # Young games keep full caution (no history to judge by).
+    if state.turn < 2000:
+        return set()
+    live_army_factions = {a.faction for a in state.world.armies}
+    out = set()
+    foe_factions = ({t.faction for t in state.world.towns} |
+                    {a.faction for a in state.world.armies}) - {state.faction}
+    seen = state.__dict__.get("_foe_army_seen", {})
+    for f in foe_factions:
+        if f in live_army_factions:
+            continue
+        if state.turn - seen.get(f, -10**9) > 2000:
+            out.add(f)
+    return out
+
+
+def victory_lap(state: "BotState", config) -> list[str]:
+    """Victory-lap (r112: winner parks 61 idle armies + churn 176 while
+    empty land sits unclaimed. No believed foe towns left: every
+    printable town prints, every free army fans out settling (coverage
+    already seeks dark cells). No defense needed — nobody's coming."""
+    out: list[str] = []
+    if any(t.faction != state.faction for t in state.world.towns):
+        return out
+    # Fog, not victory (r115: mirror is visibility-limited — unseen foes
+    # are not dead foes. Require CONTACT: a foe town known now or a foe
+    # army ever seen).
+    if not state.__dict__.get("_foe_army_seen"):
+        return out
+    # Established winners only (single-town mirrors/openings are not
+    # victories — need an empire or a late clock).
+    if len(state.own_towns()) < 3 and state.turn < 3000:
+        return out
+    if state.turn > (getattr(config, "max_turns", 10000) or 10000) - 60:
+        return out  # buzzer: foundings can't repay
+    for t in state.own_towns():
+        if t.population >= config.army_cost and not state.has_pending_build(t.id):
+            out.append(f"TRAIN {t.id}")
+    out.extend(coverage_orders(state, config))
+    return out
+
+
 def bloodlust(state: "BotState", config) -> bool:
     """Killer instinct (r110: SICK endgame stall — snowball decided at
     t4000 then coasts 6000t. A 3x population lead drops every brake:
     no verify windows, no overkill caps, no stale premiums — end it.
     Believed pops via world towns (mirror holds the living)."""
     pops: dict[int, float] = {}
+    _dead = dead_foes(state)
     for t in state.world.towns:
+        if t.faction != state.faction and t.faction in _dead:
+            continue  # ghost empires compound but don't lead (r114)
         pops[t.faction] = pops.get(t.faction, 0.0) + t.population
     mine = pops.get(state.faction, 0.0)
     foes = [v for k, v in pops.items() if k != state.faction]
