@@ -755,3 +755,22 @@ def test_waiting_viceroy_founds_after_town_gone():
     assert len(engine.towns) == 2
     new = next(x for x in engine.towns if x.id != 1)
     assert new.is_capital and (new.x, new.y) == (200, 100)
+
+
+def test_wait_is_indefinite_until_someone_moves():
+    """Guard-held landing is a stable equilibrium: viceroy at (0,0), foe
+    town at (9,0), guard at (18,0) — no combat (18 apart), no capture
+    (guard matches), no founding (blocked). Nothing in the engine breaks
+    it; only movement does. This is intentional."""
+    old = _town(fid=0, x=500, y=500, pop=5000, cap=False, tid=1)
+    foe = _town(fid=1, x=9, y=0, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[old, foe])
+    engine.armies.append(_viceroy(0, 0, 0, 0, 0))
+    engine.armies.append(_army(fid=1, x=18, y=0, aid=51))
+    for turn in range(1, 8):
+        events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders={})
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
+    assert engine.get_army(50) is not None
+    assert engine.get_army(51) is not None
+    t = engine.get_town(2)
+    assert t is not None and t.faction == 1 and not t.is_capital

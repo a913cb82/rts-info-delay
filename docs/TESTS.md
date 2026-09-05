@@ -224,6 +224,7 @@ intent fields, no battle events, no seer lists.
 | O11f | MOVE_CAPITAL merges into friendly town (NEW) | guard lands within 10km of a friendly town | no new town: first match promotes AND pop-adds +500 (army converts, like BUILD); `town_spawn` carries the existing id + capital flag (landing-detectable, mirror-upserted) |
 | O11g | MOVE_CAPITAL onto own tile (NEW) | evac aimed at the demoted old capital | re-promotes it: still one town, still capital, viceroy consumed — an expensive no-op, never a stack |
 | O11h | Stacked maps rejected (NEW) | two towns same tile (post-clamp) in map CSV | `parse_map` raises `ValueError`; all shipped maps parse clean |
+| O11j | Guard-held wait is indefinite (NEW) | viceroy 9 off a guarded foe town, guard out of combat range | stable for 7 turns: no combat/capture/founding; intentional — only movement resolves it |
 | O11b | Old capital demoted (NEW) | at train time (economy execution) | exactly one capital per faction; none exists mid-flight |
 | O11d | Capture never creates capitals (NEW) | headless faction captures a (capital) town | town flips, demoted if it was a capital; captor stays headless — beheading is permanent |
 | O11i | Contested captures (NEW) | guard at home + rival at the gates / two rivals | weakest-in-range enemy takes, unless an ally matches it (held) or enemies tie (standoff); reads the combat-phase table (dead count), recompute only on direct calls |
