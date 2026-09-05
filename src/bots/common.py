@@ -1049,6 +1049,14 @@ def drop_dead_notes(state: "BotState") -> None:
             exp_delay = 1
         if state.turn - t_new < exp_delay + 2:
             continue  # intel still flowing
+        # Note age-cap: notes older than 100 turns without arrival are
+        # stale intent (dead letters, obsolete raids) — drop and re-decide
+        # fresh. (Pro t7000-8500: 22 armies sat home 1500 turns on dead
+        # notes, never marching at priced thin towns.)
+        noted_at = state.__dict__.get("_march_origin", {}).get(aid, (0, 0, 0))[2]
+        if state.turn - noted_at > 100:
+            del state._army_targets[aid]
+            continue
         if math.hypot(x - tgt[0], y - tgt[1]) <= 20:
             continue  # trail shows arrival (freshest intel, not lagging
             # botpos — kept scout tips wait for builds here, never pop)

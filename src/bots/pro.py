@@ -70,6 +70,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     sel = raid_target(state, config, priced=duel_ctx)
     sels = raid_targets(state, config, 3, priced=duel_ctx) if sel is not None else []
     marched: dict[int, int] = {}  # target town id -> packet size sent
+    packets: dict = {}  # tgt id -> (tgt, need, [army ids]) JIT flush
     _sk = strike_target(state, config)
     sk_march = _sk if _sk is not None and not enemy_armies else None
     # Pack gate: an unaffordable-but-valuable target builds (trains fire),
@@ -169,7 +170,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     continue
                 if tgt.id != nearest.id and en_route(state, tgt.x, tgt.y):
                     continue
-                out.extend(order_move(state, config, p, tgt.x, tgt.y))
+                # JIT packets: collect (don't emit); only full packets
+                # march post-loop (partials trickle and die in detail —
+                # pro t7000-9000 bled 29->3 in piecemeal mutuals/solos).
+                packets.setdefault(tgt.id, (tgt, tneed, []))[2].append(p.id)
                 marched[tgt.id] = marched.get(tgt.id, 0) + 1
                 packeted = True
                 break
@@ -206,6 +210,15 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 if not foe_known:
                     home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
                     out.extend(order_move(state, config, p, home.x, home.y))
+    # JIT packet flush: only full packets march (partials hold for next
+    # turn's recompute — trickling dies in detail).
+    by_id = {a.id: a for a in state.own_armies()}
+    for tgt_id, (tgt, tneed, members) in packets.items():
+        if len(members) >= tneed or jit_ready(state, config, tgt, tneed, members, tgt.faction):
+            for aid in members:
+                a = by_id.get(aid)
+                if a is not None:
+                    out.extend(order_move(state, config, a, tgt.x, tgt.y))
     return out
 
 

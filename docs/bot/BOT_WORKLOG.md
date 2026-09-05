@@ -766,3 +766,20 @@ pro town t5521 (2360). 18 battles. Placement fixed; wars flow.
 OPEN: pro parallel-packets + ghost/vector/bare gates + reckoning all in
 this game (pro takes? check). Chain/settle binds drifted (-9/-16%,
 projection changes selection — may need re-baseline, flagged).
+
+## Pro capitalizes (wins 121k): note-cap + JIT packets + ghost/vector
+
+Midgame stall root cause: STALE-NOTE PARALYSIS (22 armies sat home
+1500 turns on dead raid/settler notes — arrival detection never fired,
+drop_dead gaps, notes lived forever). Fixed: 100-turn note age-cap
+(drop + re-decide fresh). Piecemeal bleed (29->3 in 1-for-1 mutuals +
+solo feeds): JIT packet flush (collect need-sized, march only full —
+partials hold for recompute). Ghost threats (27-turn phantoms):
+fresh_foe_armies (12-turn cutoff) in inbound + garrisons. Transit
+suicides: closing_on vector gate on bare-convert (close-or-closing).
+Review game: pro 121678 (5-town east cluster + compounding + 2 late
+turtle takes) beats expander 75768 (13 thin). 29 foundings 0 edge,
+52 battles. Pro wins WITHOUT taking expander (compounding > sprawl
+when sprawl is thin) — capitalizing means declining bad attrition.
+Turtle clock-deaths are box load (quiet runs clean; cold decides
+<=4.6ms at 200 towns).
