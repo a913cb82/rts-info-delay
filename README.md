@@ -34,7 +34,7 @@ cd viewer && npx vite --port 5173 --strictPort
 Turn-based. Each turn consists of phases:
 
 #### Command
-- Bot receives newly visible events
+- Bot receives newly visible updates
 - Bot submits orders
 
 #### Propagation
@@ -51,7 +51,7 @@ Turn-based. Each turn consists of phases:
 - An army dies if any enemy in range has weakness <= its own
 
 #### Captures
-- Enemy army within 10km of a town flips ownership and halves population
+- Enemy army within 10km of a town flips ownership, halves population, removes the capital flag
 
 #### Economy
 - Towns grow logistically, with crowding from nearby towns
@@ -59,14 +59,14 @@ Turn-based. Each turn consists of phases:
 - Armies with build orders found new towns or boost existing towns
 
 #### Knowledge
-- Events generated for every Army and Town and tagged by timestamp and faction visibility
+- Updates generated for every observed army and town, tagged by timestamp and faction visibility
 
 ### Details
 
 - Score = Σ town population + 1000 per army. Highest score at end wins.
 - Eliminated when no capital and no viceroy in flight.
 - Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
-- Orders are discarded if target is not within 10km on arrival.
+- `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.
 
 | Order          | Syntax                               | Effect                                                       |
 |----------------|--------------------------------------|--------------------------------------------------------------|
