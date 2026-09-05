@@ -227,10 +227,13 @@ def _enemies_within_radius(
 
 
 def resolve_captures(world: World, config: GameConfig) -> list[dict]:
-    """Capture enemy towns within interact_radius of surviving armies.
+    """Contested captures: the weakest enemy army in range takes the town.
 
-    After combat, surviving armies within interact_radius of an enemy town
-    capture it: ownership changes, population reduced by build_efficiency.
+    After combat, each town with enemy armies within interact_radius is
+    decided once: weakest-in-range enemy faction captures (ownership
+    changes, population reduced by build_efficiency) — unless an allied
+    army in range matches its weakness (held), or enemies tie for weakest
+    across factions (standoff, no capture). Same-faction ties capture.
     A captured capital is demoted; captures never create capitals
     (beheading is permanent, only MOVE_CAPITAL founds new ones).
     """
@@ -240,7 +243,7 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
 
     radius = config.interact_radius
     R2 = (radius+1e-9)*(radius+1e-9)
-    captured_town_ids: set[int] = set()
+    weaknesses = compute_weaknesses(world.armies, config)
     # Hoisted bookkeeping: one O(T+A) snapshot instead of per-capture
     # O(T)/O(A) scans (faction_capital + any() checks). Updated per capture.
     # Armies are static during captures, so viceroy presence is precomputed.
@@ -249,20 +252,19 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
         if t.is_capital and t.faction not in capitals:
             capitals[t.faction] = t
     book = capitals
+    # Gather in-range armies per town (all factions; allies vote to hold).
+    near: dict[int, list] = {t.id: [] for t in world.towns}
     # small n: brute with squared reject is faster than hash
     if len(world.armies) * len(world.towns) < 50000:
         for army in world.armies:
-            ax, ay, af = army.x, army.y, army.faction
+            ax, ay = army.x, army.y
             for town in world.towns:
-                if town.id in captured_town_ids: continue
-                if town.faction == af: continue
                 dx = town.x - ax; dy = town.y - ay
                 if abs(dx) > radius+1e-9 or abs(dy) > radius+1e-9: continue
                 if dx*dx + dy*dy > R2: continue
-                # capture below (bookkept, no per-capture scans)
-                events.append(_apply_capture(world, town, af, config, book))
-                captured_town_ids.add(town.id)
-        if captured_town_ids:
+                near[town.id].append(army)
+        _decide_captures(world, config, near, weaknesses, book, events)
+        if events:
             world.mark_dirty()
         return events
     # large: hash cell 10
@@ -284,14 +286,12 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
             neigh = sh.query_radius(float(army.x), float(army.y), float(radius+1e-9))
             for idx in neigh:
                 town = world.towns[idx]
-                if town.id in captured_town_ids: continue
-                if town.faction == army.faction: continue
                 # query already guarantees dist <=R, but double-check for exclusive zero case
                 dx = town.x - army.x; dy = town.y - army.y
                 if dx*dx + dy*dy > R2: continue
-                events.append(_apply_capture(world, town, army.faction, config, book))
-                captured_town_ids.add(town.id)
-        if captured_town_ids:
+                near[town.id].append(army)
+        _decide_captures(world, config, near, weaknesses, book, events)
+        if events:
             world.mark_dirty()
         return events
     except Exception:
@@ -299,26 +299,34 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
 
     for army in world.armies:
         for town in world.towns:
-            if town.id in captured_town_ids:
-                continue  # already captured this turn
-            if town.faction == army.faction:
-                continue  # can't capture own town
             dist = math.hypot(army.x - town.x, army.y - town.y)
             if dist > radius + 1e-9:
                 continue
+            near[town.id].append(army)
 
-            # Capture!
-            old_faction = town.faction
-            was_capital = town.is_capital
-            old_pop = town.population
-
-            # Capture via shared bookkept helper (no per-capture scans).
-            events.append(_apply_capture(world, town, army.faction, config, book))
-            captured_town_ids.add(town.id)
-
-    if captured_town_ids:
+    _decide_captures(world, config, near, weaknesses, book, events)
+    if events:
         world.mark_dirty()
     return events
+
+
+def _decide_captures(world, config, near, weaknesses, book, events) -> None:
+    """One decision per town, in world order: weakest-in-range enemy
+    faction captures, unless an allied army in range matches its weakness
+    (held) or enemies tie for weakest across factions (standoff)."""
+    for town in world.towns:
+        armies = near.get(town.id, [])
+        foes = [a for a in armies if a.faction != town.faction]
+        if not foes:
+            continue
+        min_foe = min(weaknesses.get(a.id, 0) for a in foes)
+        if any(weaknesses.get(a.id, 0) <= min_foe
+               for a in armies if a.faction == town.faction):
+            continue  # guarded: an ally matches the best enemy
+        takers = {a.faction for a in foes if weaknesses.get(a.id, 0) == min_foe}
+        if len(takers) != 1:
+            continue  # standoff between enemies
+        events.append(_apply_capture(world, town, next(iter(takers)), config, book))
 
 
 def _apply_capture(world: World, town, new_faction: int, config: GameConfig, book) -> dict:

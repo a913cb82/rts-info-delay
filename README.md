@@ -51,7 +51,7 @@ Turn-based. Each turn consists of phases:
 - An army dies if any enemy in range has weakness <= its own
 
 #### Captures
-- Enemy army within 10km of a town flips ownership, halves population
+- Enemy army within 10km of a town flips ownership, halves population — unless an allied army matches the weakest attacker, or attackers tie
 - Captured capitals become normal towns
 
 #### Economy

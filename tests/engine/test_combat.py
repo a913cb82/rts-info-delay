@@ -313,3 +313,51 @@ class TestCaptureCapitals:
         resolve_captures(w, CFG)
         assert w.faction_capital(0) is None
         assert w.faction_capital(1) is None
+
+
+class TestCaptureWeakness:
+    """Takes are contested: weakest enemy in range captures, unless an
+    allied army matches it or enemies tie for weakest."""
+
+    def _world(self) -> World:
+        w = World()
+        w.map_size = [1000, 1000]
+        return w
+
+    def test_allied_guard_holds(self) -> None:
+        from engine.combat import resolve_captures
+        w = self._world()
+        w.towns.append(Town(id=0, faction=1, x=9, y=0, population=2000))
+        w.armies.append(Army(id=1, faction=0, x=0, y=0))
+        w.armies.append(Army(id=2, faction=1, x=18, y=0))
+        resolve_captures(w, CFG)
+        assert w.get_town(0) is not None and w.get_town(0).faction == 1
+
+    def test_enemy_tie_no_capture(self) -> None:
+        from engine.combat import resolve_captures
+        w = self._world()
+        w.towns.append(Town(id=0, faction=1, x=9, y=0, population=2000))
+        w.armies.append(Army(id=1, faction=0, x=0, y=0))
+        w.armies.append(Army(id=2, faction=2, x=18, y=0))
+        resolve_captures(w, CFG)
+        assert w.get_town(0) is not None and w.get_town(0).faction == 1
+
+    def test_weakest_enemy_takes(self) -> None:
+        from engine.combat import resolve_captures
+        w = self._world()
+        w.towns.append(Town(id=0, faction=1, x=9, y=0, population=2000))
+        w.armies.append(Army(id=1, faction=0, x=0, y=0))   # w0, foe
+        w.armies.append(Army(id=2, faction=1, x=18, y=0))  # w1, allied
+        w.armies.append(Army(id=3, faction=2, x=25, y=0))  # out of town range
+        resolve_captures(w, CFG)
+        t = w.get_town(0)
+        assert t is not None and t.faction == 0 and t.population == 1000
+
+    def test_same_faction_tie_captures(self) -> None:
+        from engine.combat import resolve_captures
+        w = self._world()
+        w.towns.append(Town(id=0, faction=1, x=9, y=0, population=2000))
+        w.armies.append(Army(id=1, faction=0, x=0, y=0))
+        w.armies.append(Army(id=2, faction=0, x=5, y=0))
+        resolve_captures(w, CFG)
+        assert w.get_town(0) is not None and w.get_town(0).faction == 0
