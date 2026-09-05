@@ -783,3 +783,21 @@ turtle takes) beats expander 75768 (13 thin). 29 foundings 0 edge,
 when sprawl is thin) — capitalizing means declining bad attrition.
 Turtle clock-deaths are box load (quiet runs clean; cold decides
 <=4.6ms at 200 towns).
+
+## Bot work landed (544 + 23/23): stickiness, packets, S0 verdict
+
+Shuttle fleet (30 expander armies ping-ponging 100-300km): recall
+(blanket staging + deficit) re-tasked committed raiders mid-march.
+Fixed: committed_raid exemption in the DEFICIT branch only (staging
+blanket keeps its pinned probe-handoff — TestProbeSingular/JitMarch).
+Raids stick till arrival/outcome. Shuttle count 30 -> 0.
+JIT packets (pro + expander): collect need-sized, march only full
+(partials hold). Pro parallel thin-takes + no over-muster.
+Settle-first TRIED + REVERTED (10 S0 tests): intel-first wins under
+uncertainty; far-but-interior tips win games. Clustering handled by
+65km floor (now in tip_safe too — both paths), not mission reorder.
+Early deaths re-verified REAL (closing attackers, correct denies).
+OPEN: snipe doctrine (expander should scout+rush rich capitals; pro
+capital guard), recall-radius (out-of-position losses), chain/settle
+re-baseline (-9/-16%), greedy expansion volume, packet effectiveness
+in wars.

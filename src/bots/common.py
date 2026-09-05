@@ -921,18 +921,11 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
         # to war): re-assigning steals the tip every hop-12 unmark and
         # the probe loops forever, never founding (0 foundings/3000t).
         return False
-    # Settle-first (void): the first army founds near home (65-150km,
-    # supported) instead of scout-tipping 350km out — far tips + same-ray
-    # repeats stacked pro's east cluster (38km pairs, 350km from capital).
-    # Needs demand + site (else scout as before — intel not lost).
-    if (len(state.own_armies()) <= 1 and state._scout_id is None
-            and not state._foe_first_seen
-            and not any(t.faction != state.faction for t in state.world.towns)
-            and not any(a.faction != state.faction for a in state.world.armies)
-            and expansion_demand(state, config)
-            and find_build_site(state, config, p.x, p.y, rmin=80, rmax=300,
-                                salt=11, who=p.id) is not None):
-        return False
+    # No settle-first block here (TRIED + REVERTED): delaying the first
+    # scout for a near-home settler breaks the S0 intel-first contract
+    # (10 pinned tests + epistemics: void might hold foes, scouting
+    # resolves it; far-but-interior tips win games). Clustering is handled
+    # by the 65km floor (both paths), not by reordering missions.
     # No stay-behind block here (REVERTED): the first print must scout
     # (S0 contract, test-pinned) — and t1495's deny-convert was CORRECT
     # (1096 pop can't print a guard vs N=1 inbound anyway; convert
@@ -2078,8 +2071,7 @@ def recall_deficit(state: "BotState", config) -> list:
         for a in state.own_armies():
             if not a.is_viceroy and state.army_has_target(a.id) \
                     and not state.has_pending_build(a.id) \
-                    and a.id != state._scout_id \
-                    and not committed_raid(state, a.id):
+                    and a.id != state._scout_id:
                 home = min(state.own_towns(),
                            key=lambda t: math.hypot(a.x - t.x, a.y - t.y),
                            default=None)
