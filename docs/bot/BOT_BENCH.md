@@ -286,3 +286,10 @@ header). Run it via scenario_bench (single file) pre/post-fix to
 confirm. Limitation: bot mirrors start empty (positions replay, minds
 don't — blood/trails/notes lost). Pair with fog (what did it see?) to
 judge memory-dependence.
+
+## Bash bots (language-agnostic runner)
+
+`run_game` takes `{faction: argv-list | bash-string}`. Strings run via
+`bash -c` (pipes, env, any executable — verified with a shell camper
+bot playing 50 turns). Protocol is line-based over stdio (config /
+faction / go, then turn frames); see `src/runner/main.py`.

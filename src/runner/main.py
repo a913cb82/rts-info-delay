@@ -468,7 +468,7 @@ def note_landing(step_events: list[dict], faction: int, turn: int,
 
 def run_game(
     config: GameConfig,
-    bots: dict[int, list[str]],
+    bots: dict[int, list[str] | str],
     record_path: Path | None = None,
 ) -> dict[int, int]:
     """Run a full game.
@@ -497,11 +497,10 @@ def run_game(
     # Initialize bots
     bot_processes: dict[int, BotProcess] = {}
     for faction, cmd in bots.items():
-        # cmd may be list[str] or str
+        # cmd may be list[str] (argv, direct spawn) or str (bash command:
+        # pipes, env vars, any executable — bots need not be python).
         if isinstance(cmd, str):
-            # Split string? Assume it's a command line, split
-            import shlex
-            cmd_list = shlex.split(cmd)
+            cmd_list = ["bash", "-c", cmd]
         else:
             cmd_list = list(cmd)
         bp = BotProcess(cmd=cmd_list, faction=faction, config=config)

@@ -273,3 +273,21 @@ def test_startup_config_strips_map():
     assert "map" not in d
     assert d["map_size"] == [1000, 1000]
     assert d["info_speed"] == 150.0
+
+
+class TestBashCommands:
+    """Runner takes bash command strings (language-agnostic bots)."""
+
+    def test_str_runs_through_bash(self) -> None:
+        from runner.main import BotProcess
+        bp = BotProcess(cmd=["bash", "-c", "echo hi"], faction=0, config=CFG)
+        assert bp.proc is not None
+        out = bp.proc.stdout.readline()
+        assert "hi" in out
+        bp.kill()
+
+    def test_run_game_accepts_str(self) -> None:
+        import inspect
+        from runner.main import run_game
+        ann = inspect.signature(run_game).parameters["bots"].annotation
+        assert "str" in str(ann)
