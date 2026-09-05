@@ -1630,3 +1630,45 @@ class TestUnpricedRaid:
         r = raid_targets(b, CFG, 3, priced=False)
         assert r, "unpriced must return pressure-ranked targets"
         assert {u.id for (u, _n, _s) in r} <= {2, 3}
+
+
+class TestSilenceWatch:
+    """Fog eats tombstones (observers-only): overdue noted raiders are
+    presumed dead — blood the target, drop the note."""
+
+    def test_overdue_ghosts_blood(self) -> None:
+        from bots.common import BotState, silence_watch, probe_ok
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 349, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)
+        b.turn = 500  # far past 2x round-trip + margin, trail silent
+        silence_watch(b, CFG)
+        assert b._bloodied.get(2) == 500
+        assert not b.army_has_target(7)
+        assert probe_ok(b, (b.world.get_town(2), 5, 0)) is False
+
+    def test_fresh_notes_spared(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)
+        b.turn = 3  # just dispatched: silence < round-trip
+        silence_watch(b, CFG)
+        assert 2 not in b._bloodied
+        assert b.army_has_target(7)

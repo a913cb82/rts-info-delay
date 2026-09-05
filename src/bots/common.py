@@ -1102,6 +1102,51 @@ def _seg_dist(px, py, tx, ty, qx, qy) -> float:
     return math.hypot(qx - (px + dx * s), qy - (py + dy * s))
 
 
+def silence_watch(state: "BotState", config) -> None:
+    """Overdue raiders are presumed dead (fog eats tombstones: death
+    news reaches observers of the site only, never home). A noted army
+    unheard-of past 2x round-trip + margin bloodies its foe-town target
+    and drops the note — silence is the signal dead armies can't send.
+    Marching armies report flowing snapshots (trail fresh); holders with
+    home notes never match foe towns; scouts exempt (still-arrival
+    silence is normal). Piggybacks drop_dead_notes (all five, per turn)."""
+    import math as _math
+    cap = state.world.faction_capital(state.faction)
+    if cap is None:
+        return
+    speed = max(1.0, getattr(config, "army_speed", 50.0) or 50.0)
+    info = max(1.0, getattr(config, "info_speed", 150.0) or 150.0)
+    interact = float(getattr(config, "interact_radius", 10.0) or 10.0)
+    scouts = {state._scout_id, getattr(state, "_scout_id2", None)}
+    for aid, tgt in list(state._army_targets.items()):
+        if aid in scouts:
+            continue
+        a = state.world.get_army(aid)
+        if a is None or getattr(a, "is_viceroy", False):
+            continue  # observed deaths blood in _remove_army already
+        hit = None
+        for u in state.world.towns:
+            if u.faction != state.faction and abs(u.x - tgt[0]) < interact + 15 \
+                    and abs(u.y - tgt[1]) < interact + 15 \
+                    and _math.hypot(u.x - tgt[0], u.y - tgt[1]) <= interact + 15:
+                hit = u
+                break
+        if hit is None:
+            continue
+        tr = state._trails.get(aid)
+        last_heard = tr[-1][0] if tr else -10 ** 9
+        org = state.__dict__.get("_march_origin", {}).get(aid)
+        if org is not None:
+            last_heard = max(last_heard, org[2])  # note birth: no trail yet
+        mail = _math.hypot(cap.x - tgt[0], cap.y - tgt[1]) / info
+        march = _math.hypot(cap.x - tgt[0], cap.y - tgt[1]) / speed
+        if state.turn - last_heard <= 2 * (mail + march) + 20:
+            continue
+        state.__dict__.setdefault("_bloodied", {})[hit.id] = state.turn
+        state._army_targets.pop(aid, None)
+        state.__dict__.get("_march_origin", {}).pop(aid, None)
+
+
 def drop_dead_notes(state: "BotState") -> None:
     """Clear MOVE_TO notes whose army is statically elsewhere: the order
     died in flight (messenger from-check on stale intel) and has_target
@@ -1111,6 +1156,7 @@ def drop_dead_notes(state: "BotState") -> None:
     a trail older than expected-delay + 2 at one spot >20km off-note
     means stranded. Catches dispatch-time deaths too (army never left).
     Viceroys exempt (flight notes are live by construction)."""
+    silence_watch(state, state.config)
     cap = state.world.faction_capital(state.faction)
     info = (state.config.info_speed if state.config is not None else 150.0)
     for aid, tgt in list(state._army_targets.items()):

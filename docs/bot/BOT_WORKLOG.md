@@ -989,3 +989,20 @@ decide ~0ms). FILED (infra loop): payload throttle (pop_change floods)
 or clock doctrine revisit; flaky perf-budget test.
 GENERATED: r21 (best TV) -> both locations. Canonical caveat: turtle
 ghosts t3062+ (report shows it honestly).
+
+## Silence-watch (loop iteration: absence-based blood)
+
+ANALYSE (report r21): expander 51 onesies @ turtle-4 t3912-9832;
+pro passive line (2 prints) vs blitz line (r20) — wobble decides.
+IDEA (filed): silence-watch (overdue = presumed dead).
+SHIPPED (common.py + 2 tests, green): silence_watch in drop_dead_notes
+(all five): noted-unheard past 2x round-trip + margin vs FOE-town note
+-> blood + drop note. Fresh notes (origin turn), marchers (flowing
+trails), home notes (never foe), scouts all exempt.
+BENCH: pytest green (minus env-flaky perf), fast 4.6/5s, strat 11.7/30s.
+REMATCH r23: pro ACTIVE (21 prints, 6 caps, 121k) — unfreeze+pack-train
+flow on this line. Onesies PERSIST (69 @ pro-12, slow drip ~70t):
+new mechanism (settler-intercept: colonists die crossing pro lands on
+void notes — no foe note, no blood). FILED NEXT: danger-routing for
+settlers (route around known garrisons / hold while hot).
+GENERATED: r23 -> both locations (all bots alive; F2/F4 townless).
