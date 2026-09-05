@@ -2117,3 +2117,113 @@ class TestBlindEyes:
         b._pending_trains.clear()
         out = demand_trains(b, cfg, lambda s, t: True)
         assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestPovertyBreak:
+    """r47 lesson: pro 500-1400 pop all game, 2500 prober floor, P3b early
+    return — zero prints, blind and poor forever."""
+
+    def test_poor_prober_prints(self) -> None:
+        from bots.common import BotState
+        from bots.pro import _stage_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1600, "alive": True,
+                      "is_capital": True}])
+        b.turn = 700
+        out = _stage_trains(b, cfg)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestLandGrab:
+    """r48 lesson: foundings stop t2000+, small towns never expand
+    (rate-arbitrage blocks uncrowded homes forever). Below 20k,
+    throughput beats arbitrage."""
+
+    def test_small_empire_expands(self) -> None:
+        from bots.common import BotState, expansion_demand
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 4000
+        assert expansion_demand(b, cfg) is True
+
+
+class TestBuzzerZero:
+    """r50 lesson: t9000+ silence (needs exceed everyone). Buzzer zeroes
+    W (no future to defend)."""
+
+    def test_buzzer_zeroes_w(self) -> None:
+        from bots.common import BotState, raid_targets
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        for turn, expect_big in ((5000, True), (9900, False)):
+            b = BotState()
+            b.init(cfg, 0)
+            b.update(turn - 1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                                 "faction": 0, "population": 20000, "alive": True,
+                                 "is_capital": True},
+                                {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                                 "faction": 1, "population": 60000, "alive": True,
+                                 "is_capital": False},
+                                {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                                 "faction": 0, "alive": True, "is_viceroy": False}])
+            b.turn = turn
+            got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
+            if expect_big:
+                assert got[2] > 2, got
+            else:
+                assert got[2] <= 2, got
+
+
+class TestRemusterGuard:
+    """r51 lesson: buzzer W=0 reintroduced onesies (54 vs printers).
+    Printers cost +1; sterile still cheap."""
+
+    def _bot(self, foe_prints):
+        from bots.common import BotState
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 9900
+        b._foe_first_seen[1] = 100
+        b._foe_prints[1] = foe_prints
+        return b, cfg
+
+    def test_printer_costs_extra(self) -> None:
+        from bots.common import raid_targets
+        b, cfg = self._bot(50)
+        got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
+        assert got[2] >= 3, got  # S0 + buzzer-W0 + dist0 + remuster1 = 2...
+
+    def test_sterile_cheap(self) -> None:
+        from bots.common import raid_targets
+        b, cfg = self._bot(0)
+        b.update(9900, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                         "faction": 1, "population": 60000, "alive": True,
+                         "is_capital": False}])
+        got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
+        assert got[2] <= 2, got

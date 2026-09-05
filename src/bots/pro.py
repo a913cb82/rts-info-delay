@@ -34,17 +34,19 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     # against; holding compounds (policy optimum 5254: never train).
     # Pro-only (void settlers need trains in the other bots). Recon
     # exception: exactly one prober (intel has option value; pairs with
-    # S0 below — without it pro is blind forever) — but never spending
-    # the lineage seed (succession: prober at 1500 floor-locks the town;
-    # settle first, scout second when poor).
+    # S0 below — without it pro is blind forever). Survivable floor
+    # (pop-cost >= death threshold, ~1500): the 2500 floor poverty-
+    # trapped r47 (capital 500-1400 all game, zero prints, blind and
+    # poor forever). No early return either — demand's void branch
+    # settles the dark (settlers observe en route; economy first).
     if not any(t.faction != state.faction for t in state.world.towns) and not any(
             a.faction != state.faction for a in state.world.armies):
         if not state.own_armies():
             for t in state.own_towns():
-                if can_train_standard(state, t) and t.population >= 2500 \
+                if can_train_standard(state, t) \
                         and t.population - config.army_cost >= config.death_threshold - 1e-9:
                     return [f"TRAIN {t.id}"]
-        return []
+        # (fall through: demand's void branch settles dark fields)
     out = demand_trains(state, config, can_train_standard)
     # Scout-print (r31 lesson): blind + scoutless + affordable -> print
     # eyes (darkness re-arms scouting, but prints must fund it; the S0

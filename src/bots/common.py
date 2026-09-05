@@ -2108,6 +2108,11 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         if arrival_t > turns_left:
             continue
         w = min(printable, arrival_t) * foe_print_factor(state, u.faction)
+        # Buzzer (r50 lesson: t9000+ silence — needs exceed everyone).
+        # Retaliation time has run out: no future to defend, so W -> 0
+        # explicitly (arrival doesn't collapse on its own). Bare S+1+dist.
+        if buzzer_active(state, config):
+            w = 0.0
         need = int(s + w + 1)
         prize = u.population * (1.0 - eff)
         dist = min((math.hypot(a.x - u.x, a.y - u.y) for a in fieldable),
@@ -2117,6 +2122,12 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         # still take cheap; far ones muster deep or wait.
         if dist != float("inf"):
             need += int(dist // 300.0)
+        # Remuster guard (r51 lesson: buzzer W=0 reintroduced onesies —
+        # pro lost 54 vs printing towns. S=0 observed + printer foe =
+        # remuster before arrival: onesies never suffice). Printers cost
+        # +1; sterile-observed foes still take cheap.
+        if foe_print_factor(state, u.faction) > 0.3:
+            need += 1
         if not priced:
             score = u.population / (1.0 + dist / 300.0)
             ranked.append((score, u, need, s))
@@ -2214,6 +2225,14 @@ def expansion_demand(state: "BotState", config,
         return False
     if not params.rates:
         return True  # sprawl overrides marginal math (documented)
+    # Land grab (r48 lesson: foundings stop t2000+, small towns never
+    # expand — rate-arbitrage blocks them forever since an uncrowded
+    # home grows ~1-2/turn vs a colony's 0.75). Below 20k, expansion is
+    # throughput (parallel compounding), not arbitrage: afford +
+    # horizon suffices (serial + site_pays still filter downstream).
+    total_pop = sum(t.population for t in state.own_towns())
+    if total_pop < 20000:
+        return True
     home_rate = max((state.get_growth(t.id) or 3.0) for t in state.own_towns()) \
         if state.own_towns() else 3.0
     return 0.75 > home_rate

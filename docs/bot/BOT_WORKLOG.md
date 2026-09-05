@@ -1140,3 +1140,48 @@ loop — suite 5.1s->3.0s).
 REMATCH r46: foundings t1000-2000 only, 1 capture; turtle 0ms drip
 t1888. Eyes funded but late action still freezing (links downstream
 unverified). NO GENERATE (r44 stands).
+
+## Iterations 1-2 (5x loop): poverty-break + clock diagnosis
+
+IT1 ANALYSE (r47 traces): pro 1 town 512pop, 0 armies, scout null,
+zero orders all game. P3b early-return + 2500 prober floor = poverty
+trap (capital never reaches 2500, blind and poor forever).
+IT1 SHIPPED (pro.py + test, green): prober at survivable floor
+(pop-cost >= death threshold); no early return (demand void branch
+settles the dark). R48: pro 11k (thin line, aggressive died early).
+IT2 ANALYSE (turtle 0ms drip): turtle update+decide 0.5ms total —
+innocent. Clock math: byo-yomi clock hits exactly 0 (mild overspend
+under cap misses the spike floor) -> next turn enters with budget 0
+= dead on arrival. Raising cap 100->300 made it WORSE (floor
+compares elapsed > cap). REVERTED (canonical stays 100).
+PROPOSED HARNESS FIX (not bot-side, filed): Fischer increment always
+due — else-branch should grant min(cap, inc), never 0.0.
+
+## Iteration 3: land grab (expansion thaw)
+
+ANALYSE: foundings stop t2000+ everywhere. Contested branch gates on
+rate-arbitrage (0.75 > home max-growth) — uncrowded small towns grow
+1-2/turn, so small empires NEVER expand.
+SHIPPED (common.py + test, green): below 20k total pop, expansion is
+throughput (parallel compounding), not arbitrage — afford + horizon
+suffice (serial + site_pays still filter). R50: 9 foundings to t5000,
+3 captures to t7000 (best spread yet); expander bot ghosted t2887
+but faction coasted to 236k. NO GENERATE yet (2 iters left).
+
+## Iteration 4: buzzer audit (W -> 0 explicitly)
+
+ANALYSE (r50 t9000 state): 1-3 towns each, 0-1 armies, total silence.
+Raid W never collapses (arrival ~5 x factor persists to the buzzer),
+so needs exceed everyone.
+SHIPPED (common.py + test, green): buzzer zeroes W (no future to
+defend; bare S+1+dist). R51: 50 battles t5000+ (endgame ignited) but
+54 pro onesies vs printers (W=0 vs remuster) — see IT5.
+
+## Iteration 5: remuster guard (printers +1)
+
+ANALYSE (r51 autopsy): fresh-empty + W=0 -> onesie marches, remuster
+kills it. SHIPPED (common.py + tests, green): foe_print_factor > 0.3
+-> need += 1 (printers; sterile still cheap; fresh-unknown assumes
+live). R52: zero onesies, but action to t4000 only (overcorrection
++ butterfly: expander ghost t1457). NO GENERATE (r44 stands: all
+alive, action to t5000; r50 best spread but ghosted).
