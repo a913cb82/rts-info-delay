@@ -218,6 +218,18 @@ class World:
                 faction = ord(c) - ord('a')
                 army = Army(id=self.allocate_id(), faction=faction, x=float(x), y=float(y))
                 self.armies.append(army)
+        # Stacked towns are impossible to create in-game (BUILD merges,
+        # viceroy founding merges into friendly towns), so a stacked map
+        # is an authoring error, not a state to price. Checked post-clamp.
+        for i in range(len(self.towns)):
+            ti = self.towns[i]
+            for j in range(i + 1, len(self.towns)):
+                tj = self.towns[j]
+                if abs(ti.x - tj.x) < 1e-9 and abs(ti.y - tj.y) < 1e-9:
+                    raise ValueError(
+                        f"stacked towns in map: town {ti.id} (faction {ti.faction}) "
+                        f"and town {tj.id} (faction {tj.faction}) both at "
+                        f"({ti.x}, {tj.y})")
         self.mark_dirty()
 
     def armies_for_faction(self, faction: int) -> list[Army]:

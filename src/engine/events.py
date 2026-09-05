@@ -39,7 +39,10 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
 
         elif kind == "town_spawn":
             eid = ev.get("id")
-            if eid is not None and not world.get_town(eid):
+            if eid is None:
+                continue
+            ex = world.get_town(eid)
+            if ex is None:
                 t = Town(
                     id=eid,
                     faction=ev.get("faction", 0),
@@ -49,6 +52,16 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
                     is_capital=ev.get("is_capital", False),
                 )
                 world.towns.append(t)
+            else:
+                # Merge-promotion (viceroy landing on a friendly town)
+                # reuses the town_spawn shape with an existing id: apply
+                # absolutely (idempotent on replay).
+                ex.faction = ev.get("faction", ex.faction)
+                ex.x = ev.get("x", ex.x)
+                ex.y = ev.get("y", ex.y)
+                ex.population = ev.get("population", ex.population)
+                ex.is_capital = ev.get("is_capital", ex.is_capital)
+                world.mark_dirty()
 
         elif kind == "town_capture":
             t = world.get_town(ev.get("id"))

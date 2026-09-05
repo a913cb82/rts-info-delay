@@ -508,16 +508,91 @@ def test_move_capital_old_capital_demoted():
     assert new_caps[0].x == 200 and new_caps[0].y == 200
 
 
-def test_move_capital_stacked_die():
-    """Stacked MOVE_CAPITAL (same tile) insta-kills lower-pop new (bot fault)."""
-    t = _town(fid=0, x=100, y=100, pop=5000, tid=1)
-    engine = _make_world(towns=[t])
-    step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={0: ["MOVE_CAPITAL 100 100"]})
-    old_cap = next((x for x in engine.towns if x.id == 1), None)
-    assert old_cap is not None
-    assert not old_cap.is_capital
-    new_caps = [x for x in engine.towns if x.is_capital and x.faction == 0]
-    assert len(new_caps) == 0
+def test_move_capital_near_home_repromotes():
+    """Landing within 10km of the (demoted) old capital re-promotes it:
+    first match in world order wins, mirroring apply_build — no new town."""
+    cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
+    exclave = _town(fid=0, x=105, y=105, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[cap, exclave])
+    events = []
+    for turn in range(1, 6):
+        orders = {0: ["MOVE_CAPITAL 105 105"]} if turn == 1 else {}
+        events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
+        if any(e.get("kind") == "town_spawn" for e in events):
+            break
+    assert len(engine.towns) == 2  # no fresh founding
+    old = next(x for x in engine.towns if x.id == 1)
+    assert old.is_capital
+    other = next(x for x in engine.towns if x.id == 2)
+    assert not other.is_capital
+    assert not [a for a in engine.armies if a.is_viceroy]
+    spawn = next(e for e in events if e.get("kind") == "town_spawn")
+    assert spawn["id"] == 1 and spawn["is_capital"] is True  # landing-detectable
+
+
+def test_move_capital_far_exclave_promotes():
+    """The real evac shape: old capital out of range, exclave promotes."""
+    cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
+    exclave = _town(fid=0, x=500, y=500, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[cap, exclave])
+    events = []
+    for turn in range(1, 18):
+        orders = {0: ["MOVE_CAPITAL 505 505"]} if turn == 1 else {}
+        events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
+        if any(e.get("kind") == "town_spawn" for e in events):
+            break
+    assert len(engine.towns) == 2
+    dest = next(x for x in engine.towns if x.id == 2)
+    assert dest.is_capital
+    assert dest.population < 2400  # merge promotes, not pop-adds (+500)
+    old = next(x for x in engine.towns if x.id == 1)
+    assert not old.is_capital
+    assert not [a for a in engine.armies if a.is_viceroy]
+    spawn = next(e for e in events if e.get("kind") == "town_spawn")
+    assert spawn["id"] == 2 and spawn["is_capital"] is True
+
+
+def test_move_capital_exact_stack_no_new_town():
+    """Exact same-tile pair: the exclave crowding-dies turn 1, the viceroy
+    merges back into the old capital — never a second town on the tile."""
+    cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
+    exclave = _town(fid=0, x=100, y=100, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[cap, exclave])
+    for turn in range(1, 6):
+        orders = {0: ["MOVE_CAPITAL 100 100"]} if turn == 1 else {}
+        step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
+    assert len(engine.towns) == 1
+    assert engine.towns[0].is_capital
+    assert not [a for a in engine.armies if a.is_viceroy]
+
+
+def test_move_capital_onto_self_repromotes():
+    """Evac onto the (demoted) old capital's own tile re-promotes it:
+    no new town, no stack — an expensive no-op."""
+    cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
+    engine = _make_world(towns=[cap])
+    for turn in range(1, 6):
+        orders = {0: ["MOVE_CAPITAL 100 100"]} if turn == 1 else {}
+        step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
+    assert len(engine.towns) == 1
+    assert engine.towns[0].is_capital
+    assert not [a for a in engine.armies if a.is_viceroy]
+
+
+def test_move_capital_empty_ground_founds():
+    """No friendly town in range: fresh founding exactly as before."""
+    cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
+    far = _town(fid=0, x=500, y=500, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[cap, far])
+    events = []
+    for turn in range(1, 8):
+        orders = {0: ["MOVE_CAPITAL 300 300"]} if turn == 1 else {}
+        events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
+        if any(e.get("kind") == "town_spawn" for e in events):
+            break
+    assert len(engine.towns) == 3
+    new = next(x for x in engine.towns if x.is_capital and x.faction == 0)
+    assert (new.x, new.y) == (300, 300)
 
 
 def test_move_capital_delayed_arrival():

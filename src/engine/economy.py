@@ -14,10 +14,10 @@ def logistic(population: float, config: GameConfig) -> float:
     return config.population_growth * population * (1.0 - population / config.population_cap)
 
 
-# Stacked towns (dist < 1e-9): the lower-or-equal-pop town insta-dies, the
-# higher-pop town ignores the stacked neighbour. Implemented as a huge
-# crowding total driving net to a large negative (town then dies by threshold).
-_STACKED_KILL = 1e6
+# Near-zero distances (dist < 1e-9) cannot occur in-game: BUILD merges
+# within 10km, viceroy founding merges into friendly towns, parse_map
+# rejects stacked maps. The max() floors below keep the formula total
+# (no singularity branch) for degenerate constructed states only.
 
 # Cache soundness rule (applies to all three caches below): entries are
 # keyed by id(list) for O(1) lookup but ALWAYS validated by a full
@@ -70,17 +70,7 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
             if not np.any(mask):
                 return log
             pj = pops[mask]
-            d = dists[mask]
-            # unified stacked rule (see _STACKED_KILL)
-            stacked = d < 1e-9
-            if np.any(stacked):
-                if np.any(pj[stacked] >= town.population):
-                    return log * (1.0 - _STACKED_KILL)
-                keep = ~stacked
-                pj = pj[keep]
-                d = d[keep]
-                if pj.size == 0:
-                    return log
+            d = np.maximum(dists[mask], 1e-9)
             mins = np.minimum(pj, town.population)
             mins = np.maximum(mins, 0.0)
             d_eqs = config.equilibrium_spacing * np.sqrt(mins)
@@ -133,19 +123,7 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
         ys_f = np.array([all_towns[i].y for i in neigh], dtype=float)
         dx = town.x - xs_f
         dy = town.y - ys_f
-        dists = np.hypot(dx, dy)
-        # unified stacked rule (see _STACKED_KILL)
-        stacked = dists < 1e-9
-        if np.any(stacked):
-            if np.any(pops_f[stacked] >= town.population):
-                return log * (1.0 - _STACKED_KILL)
-            keep = ~stacked
-            pops_f = pops_f[keep]
-            xs_f = xs_f[keep]
-            ys_f = ys_f[keep]
-            dists = dists[keep]
-            if dists.size == 0:
-                return log
+        dists = np.maximum(np.hypot(dx, dy), 1e-9)
         mins = np.minimum(pops_f, town.population)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)
@@ -187,11 +165,7 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
             dist = math.hypot(dx, dy)
             if dist > config.info_speed + 1e-9:
                 continue
-            if dist < 1e-9:
-                # unified stacked rule (see _STACKED_KILL)
-                if other.population >= town.population:
-                    total += _STACKED_KILL
-                continue
+            dist = max(dist, 1e-9)
             d_eq = equilibrium_distance(town.population, other.population, config)
             asym = asymmetry(town.population, other.population, config)
             ratio = (d_eq / dist) ** config.crowding_decay
@@ -210,18 +184,8 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
         mask = dists <= config.info_speed + 1e-9
         if not np.any(mask):
             return log
-        dists = dists[mask]
+        dists = np.maximum(dists[mask], 1e-9)
         pops_f = pops_f[mask]
-        # unified stacked rule (see _STACKED_KILL)
-        stacked = dists < 1e-9
-        if np.any(stacked):
-            if np.any(pops_f[stacked] >= town.population):
-                return log * (1.0 - _STACKED_KILL)
-            keep = ~stacked
-            dists = dists[keep]
-            pops_f = pops_f[keep]
-            if dists.size == 0:
-                return log
         mins = np.minimum(pops_f, town.population)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)
@@ -243,11 +207,7 @@ def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float
             dist = math.hypot(dx, dy)
             if dist > config.info_speed + 1e-9:
                 continue
-            if dist < 1e-9:
-                # unified stacked rule (see _STACKED_KILL)
-                if other.population >= town.population:
-                    total += _STACKED_KILL
-                continue
+            dist = max(dist, 1e-9)
             d_eq = equilibrium_distance(town.population, other.population, config)
             asym = asymmetry(town.population, other.population, config)
             ratio = (d_eq / dist) ** config.crowding_decay
@@ -302,10 +262,7 @@ try:
                 if m < 0: m = 0
                 d_eq = eq_sp * math.sqrt(m) if m > 0 else 0.0
                 if d < 1e-9:
-                    # stacked insta-kill: lower pop dies
-                    if pi <= pj:
-                        total += 1e6  # make lower insta-die
-                    continue
+                    d = 1e-9
                 a = 1.0
                 if pi > 0 and pj > 0:
                     a = 1.0 + asym * math.log(pj / pi)
@@ -328,9 +285,7 @@ try:
                 continue
             pj = pops_[j]
             if d < 1e-9:
-                if pj >= pi_:
-                    total += 1e6  # unified stacked rule (see _STACKED_KILL)
-                continue
+                d = 1e-9
             m = pi_ if pi_ < pj else pj
             if m < 0.0:
                 m = 0.0
@@ -394,19 +349,7 @@ def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float
             nets[i] = logs[i]
             continue
         pj = pops[mask]
-        dists = D[i][mask]
-        # unified stacked rule (see _STACKED_KILL)
-        stacked = dists < 1e-9
-        if np.any(stacked):
-            if np.any(pj[stacked] >= pi):
-                nets[i] = float(logs[i] * (1.0 - _STACKED_KILL))
-                continue
-            keep = ~stacked
-            pj = pj[keep]
-            dists = dists[keep]
-            if pj.size == 0:
-                nets[i] = float(logs[i])
-                continue
+        dists = np.maximum(D[i][mask], 1e-9)
         mins = np.minimum(pj, pi)
         mins = np.maximum(mins, 0.0)
         d_eqs = config.equilibrium_spacing * np.sqrt(mins)

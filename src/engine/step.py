@@ -734,15 +734,34 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         if old_capital:
             old_capital.is_capital = False
             world.mark_dirty()
-        nid = world.allocate_id()
-        from engine.world import Town
-        new_town = Town(id=nid, faction=viceroy.faction, x=tx, y=ty,
-                        population=config.army_cost * config.build_efficiency,
-                        is_capital=True)
-        world.towns.append(new_town)
-        events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction,
-                       "x": new_town.x, "y": new_town.y, "population": new_town.population,
-                       "is_capital": True})
+        # Normal BUILD logic, including the merge check: landing on a
+        # friendly town promotes it (first match, like apply_build) instead
+        # of founding. The town_spawn carries the existing id + capital
+        # flag, so landing detection, mirror, viewer, and bots all behave.
+        dest = None
+        for t in world.towns:
+            if (t.faction == viceroy.faction
+                    and math.hypot(t.x - tx, t.y - ty) <= config.interact_radius + 1e-9):
+                dest = t
+                break
+        if dest is not None:
+            dest.is_capital = True
+            world.mark_dirty()
+            events.append({"kind": "town_spawn", "id": dest.id, "faction": dest.faction,
+                           "x": dest.x, "y": dest.y, "population": dest.population,
+                           "is_capital": True})
+            new_town = dest
+            nid = dest.id
+        else:
+            nid = world.allocate_id()
+            from engine.world import Town
+            new_town = Town(id=nid, faction=viceroy.faction, x=tx, y=ty,
+                            population=config.army_cost * config.build_efficiency,
+                            is_capital=True)
+            world.towns.append(new_town)
+            events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction,
+                           "x": new_town.x, "y": new_town.y, "population": new_town.population,
+                           "is_capital": True})
         # S (landing turn) is set runner-side: note_landing() detects this
         # event in the step output (engine never filters by establishment).
         viceroy_id, vx, vy = viceroy.id, viceroy.x, viceroy.y

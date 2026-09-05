@@ -221,6 +221,9 @@ intent fields, no battle events, no seer lists.
 | O10 | MOVE_CAPITAL blind | during flight 3 turns | faction ledger deliveries =0 even for nearby events |
 | O10b | MOVE_CAPITAL insufficient pop | capital pop 400 | rejected cleanly: no deduction, no viceroy, order dropped |
 | O11 | MOVE_CAPITAL founds | guard arrives | new town at dest, pop 500, is_capital=true (old capital was demoted at train time, not here) |
+| O11f | MOVE_CAPITAL merges into friendly town (NEW) | guard lands within 10km of a friendly town | no new town: first match promotes (pop unchanged), `town_spawn` carries the existing id + capital flag (landing-detectable, mirror-upserted) |
+| O11g | MOVE_CAPITAL onto own tile (NEW) | evac aimed at the demoted old capital | re-promotes it: still one town, still capital, viceroy consumed — an expensive no-op, never a stack |
+| O11h | Stacked maps rejected (NEW) | two towns same tile (post-clamp) in map CSV | `parse_map` raises `ValueError`; all shipped maps parse clean |
 | O11b | Old capital demoted (NEW) | at train time (economy execution) | exactly one capital per faction; none exists mid-flight |
 | O11d | Capture never creates capitals (NEW) | headless faction captures a (capital) town | town flips, demoted if it was a capital; captor stays headless — beheading is permanent |
 | O11e | Capital falls before economy (NEW) | invader on capital the turn MOVE_CAPITAL is ordered | capture in 4b voids the intent: no viceroy, town lost |

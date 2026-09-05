@@ -180,3 +180,20 @@ class TestEntities:
         w.map_size = [1000, 1000]
         ids = {w.allocate_id() for _ in range(10)}
         assert len(ids) == 10
+
+
+class TestStackedMaps:
+    def test_stacked_towns_error(self) -> None:
+        import pytest
+        with pytest.raises(ValueError, match="stacked"):
+            _make_world("100,200,A,500\n100,200,B,500\n")
+
+    def test_nearby_towns_fine(self) -> None:
+        w = _make_world("100,200,A,500\n100.001,200,B,500\n")
+        assert len(w.towns) == 2
+
+    def test_stacked_clamped_edges_error(self) -> None:
+        # distinct points clamping onto each other still count
+        import pytest
+        with pytest.raises(ValueError, match="stacked"):
+            _make_world("0,0,A,500\n-50,-50,B,500\n", map_size=[1000, 1000])
