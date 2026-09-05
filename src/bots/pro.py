@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -64,6 +64,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     duel_ctx = len(war_foes) <= 1
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
+    out.extend(fire_followups(state, config))  # queued second waves fire first
     sel = raid_target(state, config, priced=duel_ctx)
     sels = raid_targets(state, config, 3, priced=duel_ctx) if sel is not None else []
     marched: dict[int, int] = {}  # target town id -> packet size sent
@@ -122,9 +123,17 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # immediately (mass) — unless one is already en route (per-target
         # singularity: notes are live, no flags). Fielded foes route to
         # rope/sel below.
+        # Overkill cap (user: don't go overboard — strike mass marches
+        # EVERYONE at one town). Cap marchers at need+2 (extras hold for
+        # packs/patrols).
         if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
-            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
-            continue
+            _skm = sum(1 for a in state.own_armies()
+                       if state.army_has_target(a.id) and state.army_target(a.id) is not None
+                       and abs(state.army_target(a.id)[0] - sk_march[0].x) < 15
+                       and abs(state.army_target(a.id)[1] - sk_march[0].y) < 15)
+            if _skm < sk_march[1] + 2:
+                out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+                continue
         if pack_building:
             if not probe_armed or probe_tgt is None \
                     or en_route(state, probe_tgt.x, probe_tgt.y) \
@@ -221,12 +230,26 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     for tgt_id, (tgt, tneed, members) in packets.items():
         if (len(members) >= tneed and assault_verified(state, tgt)) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
             held = sync_hold(state, config, tgt.x, tgt.y, members)
+            # Follow-on queue (user: take then fan out — pre-plan the
+            # second wave: 2 nearest other foe towns. Fired on arrival
+            # (grave/ours note) with zero idle turns between waves).
+            foes = sorted((u for u in state.world.towns
+                           if u.faction != state.faction and u.id != tgt.id),
+                          key=lambda u: (u.x - tgt.x) ** 2 + (u.y - tgt.y) ** 2)[:2]
+            # Overkill cap: march need (+1 spare), rest hold.
+            sent = 0
             for aid in members:
                 if aid in held:
                     continue  # near armies wait: land together
+                if sent >= tneed + 1:
+                    break
                 a = by_id.get(aid)
                 if a is not None:
                     out.extend(order_move(state, config, a, tgt.x, tgt.y))
+                    sent += 1
+                    if foes:
+                        state.__dict__.setdefault("_followup", {})[aid] = [
+                            (u.x, u.y) for u in foes]
     # Idle patrols last (doctrine: leftovers sweep stalest sectors).
     out.extend(coverage_orders(state, config))
     return out

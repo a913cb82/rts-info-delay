@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, assault_verified, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotForecast, BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, assault_verified, fire_followups, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -42,6 +42,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
+    out.extend(fire_followups(state, config))  # queued second waves fire first
     # A1 lives inside raid_target now (duel-gated viability + priced
     # selection, margin 100 for initiative). Priced for duels, pressure
     # for big wars.
@@ -126,9 +127,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         # Strike (windows close!): clear-field blitz/buzzer mass march —
         # unless one is already en route (per-target singularity).
+        # Overkill cap (user: don't go overboard — strike mass marches
+        # EVERYONE at one town). Cap marchers at need+2 (extras hold for
+        # packs/patrols).
         if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
-            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
-            continue
+            _skm = sum(1 for a in state.own_armies()
+                       if state.army_has_target(a.id) and state.army_target(a.id) is not None
+                       and abs(state.army_target(a.id)[0] - sk_march[0].x) < 15
+                       and abs(state.army_target(a.id)[1] - sk_march[0].y) < 15)
+            if _skm < sk_march[1] + 2:
+                out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+                continue
         # Pack gate subsumes A2 departure-sync (need covers defendedness;
         # the old retrench-march trickled). Undersized packs hold, except
         # one nearby probe vs visibly-empty (bounded recon by fire).

@@ -72,3 +72,17 @@ body post-mutual; F0 28-idle pile (rotation vs holds).
 IDEAS: tall-guard minimum (turtle keeps 1 home ALWAYS, even dark);
 post-mutual remuster priority (threat-first covers? verify!);
 threat-diffusion field (below).
+
+## Parked ideas (not worked now)
+
+- Order-delay-aware sync (mail lag to armies in departure math; currently
+  travel-only + 0.5 tolerance).
+- Staging-then-jump sync (far holds 1 turn out, all jump together —
+  needs staging points + convergence detection; current stagger+
+  tolerance covers most).
+- Defender-trickle audit (reinforce cohorts shipped; verify no solo feeds).
+- Mirror opening book (guard-first vs settle-first by neighbor distance).
+- Conquest strip-and-hold (TRAIN at thin conquest to drain, then let fall?).
+- Personality exploit modeling (turtle never chases etc.).
+- Corner-settle-inward bias (map luck?).
+- Buzzer print-strand audit (prints for unlandable takes via pack deficit?).

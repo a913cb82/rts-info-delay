@@ -3159,13 +3159,19 @@ def reinforce_orders(state: "BotState", config) -> list:
         cands = sorted((a for a in surplus
                         if not state.army_has_target(a.id)),
                        key=lambda a: math.hypot(a.x - t.x, a.y - t.y))
-        for a in cands:
-            if need <= 0:
-                break
-            if math.hypot(a.x - t.x, a.y - t.y) / speed <= max(0.0, eta - 1):
-                out.extend(order_move(state, config, a, t.x, t.y))
-                surplus.remove(a)
-                need -= 1
+        # Cohort dispatch (r97: F1 fed 57 alone into 2 F0 — trickle dies.
+        # Send the largest same-turn arrival cohort (need-capped); hold
+        # the rest for the next wave instead of donating piecemeal).
+        intime = [a for a in cands
+                   if math.hypot(a.x - t.x, a.y - t.y) / speed <= max(0.0, eta - 1)]
+        waves: dict = {}
+        for a in intime:
+            key = round(math.hypot(a.x - t.x, a.y - t.y) / speed)
+            waves.setdefault(key, []).append(a)
+        cohort = max(waves.values(), key=len) if waves else []
+        for a in cohort[:max(0, need)]:
+            out.extend(order_move(state, config, a, t.x, t.y))
+            surplus.remove(a)
     return out
 
 
@@ -3183,6 +3189,49 @@ def assault_verified(state: "BotState", target) -> bool:
     if target.id in state.__dict__.get("_lost_towns", set()):
         return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 150
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
+
+
+def fire_followups(state: "BotState", config) -> list[str]:
+    """Fire queued follow-ons (take-then-fan-out with zero idle turns).
+    A noted army whose target is arrived (ours/dead/gone) marches its
+    queued second wave instead of idling one turn for re-decide."""
+    import math as _math
+    out: list[str] = []
+    fu = state.__dict__.get("_followup", {})
+    if not fu:
+        return out
+    for aid in list(fu):
+        a = state.world.get_army(aid)
+        if a is None:
+            fu.pop(aid, None)
+            continue
+        tgt = state.army_target(aid)
+        done = False
+        if tgt is None:
+            done = True
+        else:
+            try:
+                rx, ry = state.reckoned_pos(config, aid)
+            except Exception:
+                rx, ry = a.x, a.y
+            if _math.hypot(rx - tgt[0], ry - tgt[1]) < 20:
+                done = True
+            else:
+                hit = None
+                for u in state.world.towns:
+                    if abs(u.x - tgt[0]) < 15 and abs(u.y - tgt[1]) < 15:
+                        hit = u
+                        break
+                if hit is None or hit.faction == state.faction:
+                    done = True  # grave or ours: wave landed
+        if done:
+            waves = fu.pop(aid, [])
+            if waves:
+                nx, ny = waves[0]
+                out.extend(order_move(state, config, a, nx, ny))
+                if len(waves) > 1:
+                    fu[aid] = waves[1:]
+    return out
 
 
 def sync_hold(state: "BotState", config, tx: float, ty: float,

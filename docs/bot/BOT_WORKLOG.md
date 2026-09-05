@@ -1426,3 +1426,13 @@ army sinks, x0.7/10t, 3x3 blur) steers fully-blocked scout rays
 keeps 1 home ALWAYS — r96 F4 beheaded at 12k with 0 guard).
 R97 health: watch (0 onesies, 0 suicides, 0 train-deaths, 3 dead-
 peace quiets); pro0-vs-pro1 duel to t7000. GENERATED r97.
+
+## Cohort reinforce + followup queue + overkill caps + r100 (regen)
+
+SHIPPED: reinforce same-turn cohorts (no solo feeds); follow-on
+fan-out queue (take then spread, zero idle turns; pro+expander);
+strike mass capped at need+2 + packet flush at need+1 (user: no
+overkill); BRAINSTORM parked-ideas section (user: log future ideas).
+R100 health: watch (0 onesies, 0 suicides, 0 train-deaths, 3 quiet
+— 2 dead-peace, 1 fought); captures to t5000, foundings to t8000.
+GENERATED r100 (per-loop regen).

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, assault_verified, sync_hold, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -42,6 +42,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
+    out.extend(fire_followups(state, config))  # queued second waves fire first
     sel = raid_target(state, config, margin=300.0)
     free_ids = [a.id for a in state.own_armies()
                 if not state.army_has_target(a.id) and a.id not in held]
@@ -76,9 +77,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         # Strike (windows close!): clear-field blitz/buzzer mass march —
         # unless one is already en route (per-target singularity).
+        # Overkill cap (user: don't go overboard — strike mass marches
+        # EVERYONE at one town). Cap marchers at need+2 (extras hold for
+        # packs/patrols).
         if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
-            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
-            continue
+            _skm = sum(1 for a in state.own_armies()
+                       if state.army_has_target(a.id) and state.army_target(a.id) is not None
+                       and abs(state.army_target(a.id)[0] - sk_march[0].x) < 15
+                       and abs(state.army_target(a.id)[1] - sk_march[0].y) < 15)
+            if _skm < sk_march[1] + 2:
+                out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+                continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
                 continue
@@ -161,12 +170,26 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for tgt_id, (tgt, tneed, members) in packets.items():
         if (len(members) >= tneed and assault_verified(state, tgt)) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
             held = sync_hold(state, config, tgt.x, tgt.y, members)
+            # Follow-on queue (user: take then fan out — pre-plan the
+            # second wave: 2 nearest other foe towns. Fired on arrival
+            # (grave/ours note) with zero idle turns between waves).
+            foes = sorted((u for u in state.world.towns
+                           if u.faction != state.faction and u.id != tgt.id),
+                          key=lambda u: (u.x - tgt.x) ** 2 + (u.y - tgt.y) ** 2)[:2]
+            # Overkill cap: march need (+1 spare), rest hold.
+            sent = 0
             for aid in members:
                 if aid in held:
                     continue  # near armies wait: land together
+                if sent >= tneed + 1:
+                    break
                 a = by_id.get(aid)
                 if a is not None:
                     out.extend(order_move(state, config, a, tgt.x, tgt.y))
+                    sent += 1
+                    if foes:
+                        state.__dict__.setdefault("_followup", {})[aid] = [
+                            (u.x, u.y) for u in foes]
     # Idle patrols last (doctrine: leftovers sweep stalest sectors).
     out.extend(coverage_orders(state, config))
     return out
