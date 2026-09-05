@@ -421,6 +421,57 @@ def as_json(world: dict, header: dict, turn: int, gx: int, gy: int, mode: str, t
 _COMPACT = [False]
 
 
+def autopsy(path: str, t0: int, t1: int) -> str:
+    """Death ledger over [t0, t1]: who fed whom where (onesie detector).
+    Kills attribute to the nearest town (defender site); >= 3 losses by
+    one faction at one town in-window raises a ONESIES alert."""
+    import math as _math
+    towns: list = []
+    losses: dict = {}  # (loser, town_id) -> [turns]
+    tkills: dict = {}  # town_id -> owner faction (latest)
+    takes: list = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if "world" not in rec:
+                continue
+            t = rec.get("turn", 0)
+            w = rec["world"]
+            if t <= t1:
+                towns = w.get("towns", towns)
+                for x in towns:
+                    tkills[x["id"]] = x["faction"]
+            if not (t0 <= t <= t1):
+                continue
+            for e in rec.get("events", []):
+                k = e.get("kind")
+                if k == "battle":
+                    fac = {c["id"]: c["faction"] for c in e.get("combatants", [])}
+                    for kid in e.get("killed", []):
+                        lf = fac.get(kid)
+                        if lf is None:
+                            continue
+                        site = min(towns, key=lambda u: _math.hypot(u["x"] - e["x"], u["y"] - e["y"]),
+                                   default=None) if towns else None
+                        tid = site["id"] if site else -1
+                        losses.setdefault((lf, tid), []).append(t)
+                elif k in ("town_capture", "town_death"):
+                    takes.append((t, k, e))
+    lines = [f"autopsy {t0}-{t1}:"]
+    for (lf, tid), ts in sorted(losses.items(), key=lambda kv: -len(kv[1])):
+        owner = tkills.get(tid, "?")
+        flag = "  <-- ONESIES" if len(ts) >= 3 else ""
+        lines.append(f"  F{lf} lost {len(ts)} @ town {tid} (F{owner}) t{min(ts)}-{max(ts)}{flag}")
+    for t, k, e in takes:
+        lines.append(f"  t{t} {k}: {e}")
+    if len(lines) == 1:
+        lines.append("  (no deaths)")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="ASCII viewer for jsonl recordings")
     ap.add_argument("recording")
@@ -430,14 +481,35 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--deltas", default="100,10,1", help="score-delta offsets (symmetric past+future, comma-separated)")
-    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json"],
-                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias)")
+    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy"],
+                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window")
+    ap.add_argument("--window", default="", help="autopsy window TURNS, e.g. 7800-8000 (default: last 1000)")
     args = ap.parse_args(argv)
     _COMPACT[0] = args.compact
     if args.format in ("json", "acjson"):
         args.format = "acjson"
-    else:
+    elif args.format not in ("autopsy",):
         args.format = "ascii"
+    if args.format == "autopsy":
+        if args.window and "-" in args.window:
+            t0, t1 = (int(v) for v in args.window.split("-", 1))
+        else:
+            # default: last 1000 turns
+            maxt = 0
+            with open(args.recording) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                        if "world" in r:
+                            maxt = max(maxt, r.get("turn", 0))
+                    except Exception:
+                        pass
+            t1, t0 = maxt, max(0, maxt - 1000)
+        print(autopsy(args.recording, t0, t1))
+        return 0
     gx, gy = (int(v) for v in args.size.lower().split("x"))
     color = not args.no_color and sys.stdout.isatty()
     header, turns = load_turns(args.recording)

@@ -900,3 +900,18 @@ diverge run-to-run, magnitude game-scale); decide <8ms @100 towns
 (bank math: 13ms vs 10ms grant drains to 0ms deaths t3300-4100).
 GENERATED: r17 -> recordings/empty_10000.jsonl (calm line, all survive,
 machinery armed).
+
+## Viewer serves own bundle + autopsy (loop support)
+
+CORRECTION (user right, forensics wrong): viewer reads
+viewer/public/empty_10000.jsonl, NOT recordings/ — the analysed file
+and the watched file differed. Old bundle held the r7 line where pro
+fed 18 onesies (105-126) into turtle's 2-guard capital t7867-7916 —
+the exact reported suicide, ownership F0 confirmed. Loop generate now
+writes BOTH locations (docs fixed). Lesson: analyse what the user
+watches (ask for the file/turns before exonerating anyone).
+NEW TOOL: `--format autopsy --window A-B` (death ledger, nearest-town
+attribution, ONESIES flag >= 3; validated: r17 window counts match
+manual). VIEWER.md recipe updated. Filed next: silence-watch (fog
+eats deep-raid deaths — tombstones reach observers only, ledger.py),
+fog-view per faction (what did the bot know?), 8ms decide ceiling.
