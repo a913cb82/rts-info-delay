@@ -139,7 +139,7 @@ from turns at or after the faction's last landing S. Three gates
 
 - **Turn order**: command → propagation (messengers advance/deliver) →
   movement (50 km/turn, path-blocking stops at closest approach) →
-  combat (simultaneous) → captures → economy (growth, TRAIN spawns,
+  combat (simultaneous deaths + contested takes) → economy (growth, TRAIN spawns,
   BUILD consumes incl. viceroy founding, deaths) → knowledge (ledger
   generate + evict).
 - **Combat (weakness)**: armies count enemies within 10 km; an army dies

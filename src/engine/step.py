@@ -168,13 +168,10 @@ def step(
     # BUILD-step in economy, not an arrival side effect)
     movement_events = _phase_movement(world, config)
 
-    # Phase 4: Combat (towns read its weakness table in 4b)
-    combat_evts, weaknesses = _phase_combat(world, config)
-
-    # Phase 4b: Town capture (after combat, before economy)
-    # Record factions before capture so TRAIN uses original owner
-    pre_capture_factions = {t.id: t.faction for t in world.towns}
-    capture_events = _phase_captures(world, config, weaknesses)
+    # Phase 4: Combat + captures (merged): weaknesses, deaths, takes.
+    # pre_capture_factions recorded between deaths and takes so TRAIN
+    # uses the original owner.
+    combat_evts, pre_capture_factions = _phase_combat(world, config)
 
     # Phase 5: Economy
     economy_events = _phase_economy(world, config, ledger=normalized_ledger, turn=normalized_turn, pre_capture_factions=pre_capture_factions)
@@ -183,8 +180,7 @@ def step(
     all_events: list[dict] = []
     all_events.extend(propagation_events)
     all_events.extend(movement_events)
-    all_events.extend(combat_evts)
-    all_events.extend(capture_events)
+    all_events.extend(combat_evts)  # combat + captures, in order
     all_events.extend(economy_events)
 
     # Phase 6: Knowledge — tagged state generation only. Step event dicts
@@ -609,15 +605,15 @@ def _phase_movement(world: World, config: GameConfig) -> list[dict]:
 
 
 def _phase_combat(world: World, config: GameConfig) -> tuple[list[dict], dict]:
-    """Resolve weakness-based simultaneous deaths (+ weakness table)."""
-    from engine.combat import resolve_combat
-    return resolve_combat(world, config)
-
-
-def _phase_captures(world: World, config: GameConfig, weaknesses=None) -> list[dict]:
-    """Capture enemy towns within interact_radius of surviving armies."""
-    from engine.combat import resolve_captures
-    return resolve_captures(world, config, weaknesses)
+    """Merged combat + captures (was 4 and 4b): 1) compute weaknesses,
+    2) kill armies where an enemy in range has weakness <= its own,
+    3) capture each town by its lowest-weakness nearby army's faction
+    unless another faction matches it (standoff) or it owns the town."""
+    from engine.combat import resolve_combat, resolve_captures
+    combat_evts, weaknesses = resolve_combat(world, config)
+    pre_capture_factions = {t.id: t.faction for t in world.towns}
+    capture_evts = resolve_captures(world, config, weaknesses)
+    return combat_evts + capture_evts, pre_capture_factions
 
 
 def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0, pre_capture_factions: dict[int, int] | None = None) -> list[dict]:
@@ -723,7 +719,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
     # the new capital here — same phase, same tolerance, same consumption
     # as BUILD. It lived through combat as a normal army (interception can
     # still kill the evac), and the new town can never be same-turn captured
-    # (captures already ran in 4b).
+    # (captures already ran in phase 4).
     for viceroy in list(world.armies):
         if not viceroy.is_viceroy or not viceroy.has_target:
             continue

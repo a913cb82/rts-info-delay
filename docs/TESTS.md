@@ -228,7 +228,7 @@ intent fields, no battle events, no seer lists.
 | O11b | Old capital demoted (NEW) | at train time (economy execution) | exactly one capital per faction; none exists mid-flight |
 | O11d | Capture never creates capitals (NEW) | headless faction captures a (capital) town | town flips, demoted if it was a capital; captor stays headless — beheading is permanent |
 | O11i | Contested captures (NEW) | guard at home + rival at the gates / two rivals | weakest-in-range enemy takes, unless an ally matches it (held) or enemies tie (standoff); reads the combat-phase table (dead count), recompute only on direct calls |
-| O11e | Capital falls before economy (NEW) | invader on capital the turn MOVE_CAPITAL is ordered | capture in 4b voids the intent: no viceroy, town lost |
+| O11e | Capital falls before economy (NEW) | invader on capital the turn MOVE_CAPITAL is ordered | capture step voids the intent: no viceroy, town lost |
 | O11c | Multiple MOVE_CAPITAL queued (NEW) | second sent during flight | dropped: no capital to target while headless (plus in-flight guard at execution) |
 | O12 | All invalid commands ignored (NEW) | `FOO`, `MOVE_TO` missing args, bad id | no crash, no state change |
 | O13 | Multiple commands per turn (NEW) | `TRAIN 1`, `MOVE_TO 2 0 0 10 10`, `BUILD 3 5 5` then `go` | all three processed in order |

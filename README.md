@@ -49,10 +49,7 @@ Turn-based. Each turn consists of phases:
 - Armies fight each other
 - Weakness = #enemies within 10km
 - An army dies if any enemy in range has weakness <= its own
-
-#### Captures
-- Enemy army within 10km of a town flips ownership, halves population — unless an allied army matches the weakest attacker, or attackers tie
-- Captured capitals become normal towns
+- Towns are taken by the lowest-weakness nearby army's faction, unless another faction matches it or it owns the town: flips ownership, halves population, removes the capital flag
 
 #### Economy
 - Towns grow logistically, with crowding from nearby towns
