@@ -929,3 +929,18 @@ onesie sites. Also fixed: captures via new_faction, dead-town owners.
 NEXT (filed): fog-view per faction, battle-flow, silence-watch,
 8ms ceiling; pending pro arrival-release (in tree, tested) rematches
 with the punish-doctrine loop.
+
+## Punish passivity (loop iteration: mechanisms shipped, pin unlocated)
+
+ANALYSE (report): pro 6-stack static 5381t @ rubble (234,586) with
+town 42 (2.3k) 70km away; greedy 3-print win; expander onesies.
+IDEA: punish passivity (unstick + pack-print + march thin).
+SHIPPED (common/pro + tests, all green): arrival-release (_arr_hold,
+>30 field arrivals drop notes), pack-train (shortfall + nothing
+pending -> TRAIN richest). Benches PASS (2.3/5s, 5.1/30s).
+REMATCH r18/r19: BITWISE r17 line (153 deaths, 131 battles) — neither
+fires. Fully-observed repro marches all 8 (logic willing) -> pin is
+BOT-VIEW (stale intel lock), unknowable from truth snapshots.
+FILED NEXT: fog-view (replay per-faction observed world from the
+recording) to SEE the lock, then kill it. Lesson: no more blind
+mechanisms — visibility first.

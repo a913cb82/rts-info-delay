@@ -1495,6 +1495,36 @@ class TestMergeHorizon:
         assert any(o.startswith("BUILD 7 ") for o in out), out
 
 
+class TestArrivalRelease:
+    """r17 lesson: field armies arrived >30 turns with nothing resolving
+    drop the note (ghost-note treadmill) instead of haunting rubble."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 600.0, 500.0)  # arrived at void field note
+        return b
+
+    def test_counts_then_releases(self) -> None:
+        from bots.pro import _stage_builds
+        b = self._bot()
+        _stage_builds(b, CFG)
+        assert b.__dict__.get("_arr_hold", {}).get(7) == 1
+        # release path: seeded past threshold on a FRESH note (the void
+        # path below would pop an unresolved note first, so seed first).
+        b2 = self._bot()
+        b2.__dict__.setdefault("_arr_hold", {})[7] = 31
+        _stage_builds(b2, CFG)
+        assert not b2.army_has_target(7)  # note dropped, main loop re-tasks
+        assert 7 not in b2.__dict__.get("_arr_hold", {})  # via release
+
+
 class TestEvacPlan:
     """Drain-and-flee (Step 5): hopeless + time drains (strip to husk),
     hopeless + urgent flies, established endures (pro)."""
@@ -1542,3 +1572,37 @@ class TestEvacPlan:
                       "faction": 1, "alive": True, "is_viceroy": False}])
         out = evac_plan(b, CFG, hopeless=True, established_stays=True)
         assert out == []
+
+
+class TestPackPrint:
+    """r17 lesson: a pack held short with nothing printing orders its
+    missing member instead of sitting 5000 turns."""
+
+    def test_short_pack_trains(self) -> None:
+        from bots.common import BotState
+        from bots.pro import _stage_moves
+        b = BotState()
+        b.init(CFG, 0)
+        # Rich home, one far rich foe town (need > free: 0 armies out).
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 50000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 310, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 10, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 11, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 12, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 13, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        out = _stage_moves(b, CFG)
+        assert any(o.startswith("TRAIN 1") for o in out), out

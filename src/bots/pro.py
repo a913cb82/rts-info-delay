@@ -82,6 +82,20 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     pack_building = sel is not None and sel[1] > free_n \
         and not jit_ready(state, config, sel[0], sel[1], free_ids,
         sel[0].faction)
+    # Pack-driven print (r17 lesson): a pack held short forever (need 7,
+    # free 6, no demand) sits 5000 turns — and JIT marches on promised
+    # prints nobody ordered. If shortfall exists with nothing printing
+    # toward it, order the missing member at the richest affordable town.
+    if sel is not None:
+        short = sel[1] - free_n
+        if short > 0 and not state._pending_trains:
+            cands = sorted((t for t in state.own_towns()
+                            if can_train_standard(state, t)
+                            and t.population - config.army_cost >= config.death_threshold - 1e-9),
+                           key=lambda t: -t.population)
+            if cands:
+                out.append(f"TRAIN {cands[0].id}")
+                state.note_train(cands[0].id)
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # ONE nearby free army (recon by fire — bounded risk, gains intel +
     # takes vs passive; prints observed calibrate the follow-on). One
@@ -242,6 +256,23 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
             continue
         is_enemy_target = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in enemy_towns)
         rx, ry = state.reckoned_pos(config, p.id)
+        # Arrival-treadmill release (r17 lesson): a FIELD army arrived at
+        # its note >30 turns with nothing resolving (no BUILD, no battle,
+        # no capture — ghost notes on dead towns, quiescence-locked
+        # respins) drops the note and re-decides next turn. Home guards
+        # exempt (holding is their job). 6-stack haunted rubble 3000t.
+        if math.hypot(rx - tgt[0], ry - tgt[1]) < config.interact_radius + 10:
+            own_home = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20
+                           for t in state.world.towns if t.faction == faction)
+            if not own_home:
+                holds = state.__dict__.setdefault("_arr_hold", {})
+                holds[p.id] = holds.get(p.id, 0) + 1
+                if holds[p.id] > 30:
+                    holds.pop(p.id, None)
+                    state._army_targets.pop(p.id, None)
+                    continue
+        else:
+            state.__dict__.get("_arr_hold", {}).pop(p.id, None)
         if not is_enemy_target and math.hypot(rx - tgt[0], ry - tgt[1]) < config.interact_radius + 10:
             # War-footing: a home-bound army holds as a defender, never
             # merges — disbanding into +500 under known threat throws the
