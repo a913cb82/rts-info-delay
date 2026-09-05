@@ -2970,3 +2970,17 @@ class TestThreatField:
         b.turn = 20
         b._diffuse_threat_field()
         assert b._threat_at(800, 800) < 0  # sink splatted + blurred
+
+
+class TestExploreField:
+    """User: diffusion exploration (sources/sinks, evaporate, blur)."""
+
+    def test_seen_is_sink(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 10
+        b._diffuse_explore_field()
+        assert b._explore_at(100, 100) < b._explore_at(900, 900)

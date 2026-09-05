@@ -1448,3 +1448,12 @@ _oppor_field (rich-foe-town sources, x0.9/10t, blur) + raid cluster
 premium (campaigns seed followup-rich waves).
 R101: 0/0/0 errors, captures to t4000, foundings to t7000; snowball.
 NO GENERATE (r100 spread better).
+
+## Pheromone exploration + r104 (per-loop regen)
+
+SHIPPED (common.py + tests, green): _explore_field (16x16 staleness
+pheromone: observed splats 0 (sinks), +0.5/10t evaporate to cap 10
+(sources: unvisited glows), 3x3 blur; coverage ascends it 3 steps).
+Probe attempt-cap 1/target/1000t (packs keep 2; ledger once per flush).
+R104: ZERO pure-1v1s, 0 onesies/suicides/train-deaths, 2 early dead-
+peace quiets; captures t3000, foundings to t6000. GENERATED r104.

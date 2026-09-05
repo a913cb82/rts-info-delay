@@ -250,6 +250,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     if foes:
                         state.__dict__.setdefault("_followup", {})[aid] = [
                             (u.x, u.y) for u in foes]
+            if sent > 0:
+                # Attempt ledger, once per flush (shared with probe_ok +
+                # recon caps — unseen deaths never blood).
+                state.__dict__.setdefault("_assaults", {}).setdefault(tgt.id, []).append(state.turn)
     # Idle patrols last (doctrine: leftovers sweep stalest sectors).
     out.extend(coverage_orders(state, config))
     return out

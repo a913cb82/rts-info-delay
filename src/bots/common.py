@@ -374,6 +374,59 @@ class BotState:
         except Exception:
             pass
 
+    def _diffuse_explore_field(self) -> None:
+        """Exploration pheromone field (user: diffusion exploration with
+        sources/sinks). 16x16 staleness field, persisted: every observed
+        position splats freshness (sink: seen = 0), all cells evaporate
+        upward (+0.5/10t toward cap 10 = sources: unvisited ground glows
+        staler), then 3x3 blur (gradients stay smooth). Coverage descends
+        it (climb to stalest); sits alongside the 4x4 stamp grid (which
+        stays for cheap staleness reads)."""
+        try:
+            n = 16
+            cap = 10.0
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            f = self.__dict__.setdefault("_explore_field", {})
+            for k in list(f):
+                f[k] = min(cap, f[k] + 0.5)
+                if f[k] >= cap and k in f:
+                    pass
+            for (kind, eid), t in list(self._last_seen.items()):
+                if t < self.turn - 10:
+                    continue
+                if kind == "town":
+                    u = self.world.get_town(eid)
+                    x, y = (u.x, u.y) if u else (None, None)
+                else:
+                    a = self.world.get_army(eid)
+                    x, y = (a.x, a.y) if a else (None, None)
+                if x is None:
+                    continue
+                cx = min(n - 1, max(0, int(x / size[0] * n)))
+                cy = min(n - 1, max(0, int(y / size[1] * n)))
+                f[(cx, cy)] = 0.0
+            blur: dict = {}
+            for (cx, cy), v in f.items():
+                for nx in (cx - 1, cx, cx + 1):
+                    for ny in (cy - 1, cy, cy + 1):
+                        if 0 <= nx < n and 0 <= ny < n:
+                            w = 0.5 if (nx, ny) == (cx, cy) else 0.0625
+                            blur[(nx, ny)] = blur.get((nx, ny), 0.0) + v * w
+            self.__dict__["_explore_field"] = blur
+        except Exception:
+            pass
+
+    def _explore_at(self, x: float, y: float) -> float:
+        """Sample exploration staleness (high = unvisited, climb it)."""
+        try:
+            n = 16
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            cx = min(n - 1, max(0, int(x / size[0] * n)))
+            cy = min(n - 1, max(0, int(y / size[1] * n)))
+            return self.__dict__.get("_explore_field", {}).get((cx, cy), 10.0)
+        except Exception:
+            return 10.0
+
     def _diffuse_site_field(self) -> None:
         """Siting diffusion field (user: sources/sinks with memory).
         10x10 grid, persisted per turn: own towns splat +1 (support
@@ -654,6 +707,7 @@ class BotState:
                 self._diffuse_site_field()  # diffusion ticks 10t (perf)
                 self._diffuse_threat_field()
                 self._diffuse_oppor_field()
+                self._diffuse_explore_field()
         self.turn = turn
         self._last_turn = turn
         # Snapshot prev pops for towns this batch names, then apply absolutely.
@@ -1314,33 +1368,35 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     cells.sort(key=lambda c: -c[0])
     out: list[str] = []
     free = list(idle)
-    # Diffusion gradient (user: scouting flows down the freshness field).
-    # Per-army descent: from the army's cell, step to the stalest
-    # 8-neighbor (3 steps) — patrols push into stale frontiers instead
-    # of teleport-assigning to global-stalest (which re-treads). Cells
-    # within 300km only (nearby-first); leftovers micro (150km).
-    stale = {(cx, cy): state.turn - cover.get((cx, cy), -10 ** 9)
-             for cx in range(n) for cy in range(n)}
-    def _cell(x, y):
-        return (min(n - 1, max(0, int(x / size[0] * n))),
-                min(n - 1, max(0, int(y / size[1] * n))))
+    # Diffusion gradient (user: scouting flows on the pheromone field).
+    # Per-army ascent: from the army's cell, step to the stalest
+    # 8-neighbor on the 16x16 explore field (3 steps) — patrols push
+    # into stale frontiers instead of teleport-assigning to
+    # global-stalest (which re-treads). Cells within 300km only
+    # (nearby-first); leftovers micro (150km).
+    en = 16
+    def _ecell(x, y):
+        return (min(en - 1, max(0, int(x / size[0] * en))),
+                min(en - 1, max(0, int(y / size[1] * en))))
+    def _estale(cx, cy):
+        return state._explore_at((cx + 0.5) / en * size[0], (cy + 0.5) / en * size[1])
     claimed: set = set()
     for p in list(free):
-        cx, cy = _cell(p.x, p.y)
+        cx, cy = _ecell(p.x, p.y)
         for _ in range(3):
-            opts = [(stale.get((nx, ny), 10 ** 9), nx, ny)
+            opts = [(_estale(nx, ny), nx, ny)
                     for nx in (cx - 1, cx, cx + 1) for ny in (cy - 1, cy, cy + 1)
-                    if 0 <= nx < n and 0 <= ny < n and (nx, ny) != (cx, cy)
+                    if 0 <= nx < en and 0 <= ny < en and (nx, ny) != (cx, cy)
                     and (nx, ny) not in claimed]
             if not opts:
                 break
             opts.sort(reverse=True)
-            if opts[0][0] <= stale.get((cx, cy), 10 ** 9):
+            if opts[0][0] <= _estale(cx, cy):
                 break  # local freshest: hold the gradient here
             _, cx, cy = opts[0]
         if (cx, cy) in claimed:
             continue
-        tx, ty = (cx + 0.5) / n * size[0], (cy + 0.5) / n * size[1]
+        tx, ty = (cx + 0.5) / en * size[0], (cy + 0.5) / en * size[1]
         if _math.hypot(p.x - tx, p.y - ty) < 30:
             continue
         if _math.hypot(p.x - tx, p.y - ty) > 300:
@@ -2550,7 +2606,16 @@ def probe_ok(state: "BotState", sel) -> bool:
         return False
     if state.__dict__.get("_bloodied", {}).get(sel[0].id, -10**9) >= state.turn - 150:
         return False
-    return state.turn - state._last_seen.get(("town", sel[0].id), -10 ** 9) <= 100
+    if state.turn - state._last_seen.get(("town", sel[0].id), -10 ** 9) > 100:
+        return False
+    # Attempt-cap (r101-102: probes re-fed vs guards — unseen deaths
+    # never blood. Probes get ONE per target per 1000t (packs keep two
+    # via recon cap); shared _assaults ledger.
+    tries = [t for t in state.__dict__.get("_assaults", {}).get(sel[0].id, [])
+             if state.turn - t < 1000]
+    if len(tries) >= 1:
+        return False
+    return True
 
 
 def _underdog(state: "BotState") -> bool:
