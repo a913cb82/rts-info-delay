@@ -100,7 +100,7 @@ PLAN: `net(A) = logistic(A) × [1 − Σ asym(A,B_i) × (d_eq_i/d_i)^crowding_de
 | E31d | TRAIN insufficient pop — no spawn? | town pop 400, TRAIN standing | if pop<1000, no army spawned (alternative spec) — **decision needed; test pins chosen behaviour** |
 | E31e | TRAIN ownership check | enemy town id | command ignored |
 | E31f | BUILD faction of new town | faction B army builds | new town faction=B |
-| E31g | BUILD on enemy town? | army at enemy town position | still boosts that town? or ownership check fails? — PLAN says BUILD valid only if owns target? Need clarify: target is location, not town — so always valid if army owned |
+| E31g | BUILD on enemy town (DECIDED: block) | army at enemy town position | holds: army waits, order retained, no boost — fires after capture, founds after destruction |
 
 ## 7. Movement — basic
 
@@ -211,7 +211,7 @@ intent fields, no battle events, no seer lists.
 | O3b | MOVE_TO ownership fail (NEW) | try MOVE_TO on enemy army id | ignored |
 | O4 | BUILD empty ground | `BUILD <army_id> 50 50` army at (50,50) | new town at (50,50) pop 500, same faction, army removed |
 | O5 | BUILD on own town | army co-located with own town | town pop +=500 |
-| O5b | BUILD on enemy town — what happens? (NEW) | army at enemy town pos | **must decide**: either boost enemy town (weird) or forbid — test pins choice |
+| O5b | BUILD on enemy town (DECIDED: block) | army at enemy town pos | holds, order retained; pop-adds after capture, founds after destruction |
 | O6 | BUILD distance fail | army at (0,0), BUILD 20 0 | no town, army survives |
 | O6b | BUILD ownership of army (NEW) | BUILD <enemy_army_id> … | ignored (not owned) |
 | O7 | BUILD consumes | after success | army gone |

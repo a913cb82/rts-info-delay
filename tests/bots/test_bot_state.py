@@ -702,3 +702,56 @@ def test_bot_handles_duplicate_events():
     ])
     # Only one town in bot
     assert len([t for t in bot.world.towns if t.id == 1]) == 1
+
+
+def _viceroy(fid, x, y, tx, ty, aid=50):
+    a = Army(id=aid, faction=fid, x=x, y=y, target_x=tx, target_y=ty,
+             has_target=True, is_viceroy=True)
+    return a
+
+
+def test_move_capital_onto_guarded_foe_waits():
+    """Viceroy at a guard-held foe town: no founding, no consumption —
+    holds until the town is captured or gone. Geometry: T=(200,100),
+    foe town 9N, guard 9N of it (viceroy 18 off, guard 27 off: no combat,
+    no capture, stable wait)."""
+    old = _town(fid=0, x=0, y=0, pop=5000, cap=False, tid=1)
+    foe = _town(fid=1, x=200, y=109, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[old, foe])
+    engine.armies.append(_viceroy(0, 200, 91, 200, 100))
+    engine.armies.append(_army(fid=1, x=200, y=118, aid=51))
+    for turn in range(1, 5):
+        events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders={})
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
+    assert engine.get_army(50) is not None  # viceroy alive, waiting
+    assert engine.get_town(2) is not None and engine.get_town(2).faction == 1
+
+
+def test_waiting_viceroy_merges_after_capture():
+    """Guard removed -> unopposed capture fires, then merge+promote."""
+    old = _town(fid=0, x=0, y=0, pop=5000, cap=False, tid=1)
+    foe = _town(fid=1, x=200, y=109, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[old, foe])
+    engine.armies.append(_viceroy(0, 200, 91, 200, 100))
+    engine.armies.append(_army(fid=1, x=200, y=118, aid=51))
+    step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={})
+    engine.remove_army(51)  # guard dies elsewhere
+    step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=2, orders={})
+    t = engine.get_town(2)
+    assert t is not None and t.faction == 0 and t.is_capital
+
+
+def test_waiting_viceroy_founds_after_town_gone():
+    """Foe town destroyed -> fresh founding at target."""
+    old = _town(fid=0, x=0, y=0, pop=5000, cap=False, tid=1)
+    foe = _town(fid=1, x=200, y=109, pop=2000, cap=False, tid=2)
+    engine = _make_world(towns=[old, foe])
+    engine.armies.append(_viceroy(0, 200, 91, 200, 100))
+    engine.armies.append(_army(fid=1, x=200, y=118, aid=51))
+    step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={})
+    engine.remove_town(2)
+    events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=2, orders={})
+    assert any(e.get("kind") == "town_spawn" for e in events)
+    assert len(engine.towns) == 2
+    new = next(x for x in engine.towns if x.id != 1)
+    assert new.is_capital and (new.x, new.y) == (200, 100)

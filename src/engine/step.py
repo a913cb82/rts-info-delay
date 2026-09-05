@@ -738,12 +738,20 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         # friendly town promotes it (first match, like apply_build) instead
         # of founding. The town_spawn carries the existing id + capital
         # flag, so landing detection, mirror, viewer, and bots all behave.
+        # Landing on an enemy town waits (like a blocked BUILD): hold
+        # until it is captured or gone. Nothing consumed, no event.
         dest = None
+        blocked = False
         for t in world.towns:
-            if (t.faction == viceroy.faction
-                    and math.hypot(t.x - tx, t.y - ty) <= config.interact_radius + 1e-9):
-                dest = t
+            if math.hypot(t.x - tx, t.y - ty) > config.interact_radius + 1e-9:
+                continue
+            if t.faction != viceroy.faction:
+                blocked = True
                 break
+            dest = t
+            break
+        if blocked:
+            continue
         if dest is not None:
             dest.is_capital = True
             dest.population += config.army_cost * config.build_efficiency

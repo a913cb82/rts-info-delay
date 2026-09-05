@@ -488,6 +488,10 @@ def apply_build(world: World, config: GameConfig) -> list[dict]:
             if math.hypot(t.x - tx, t.y - ty) <= config.interact_radius + 1e-9:
                 found_town = t
                 break
+        if found_town is not None and found_town.faction != army.faction:
+            # Blocked by an enemy town: hold (keep the standing order)
+            # until it is captured or gone. Nothing consumed, no event.
+            continue
         aid = army.id
         ax, ay = army.x, army.y
         world.remove_army(aid)

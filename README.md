@@ -73,12 +73,12 @@ Turn-based. Each turn consists of phases:
 - `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.
 - Viceroy in flight receives no information during flight, and only information on events which happened after new capital was founded.
 
-| Order          | Syntax                               | Effect                                                       |
-|----------------|--------------------------------------|--------------------------------------------------------------|
-| `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army                                     |
-| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                          |
-| `BUILD`        | `BUILD <army> <x> <y>`               | consume the army: found a pop-500 town, or +500 own-town pop |
-| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy raises army and marches out to build new capital     |
+| Order          | Syntax                               | Effect                                                                                               |
+|----------------|--------------------------------------|------------------------------------------------------------------------------------------------------|
+| `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army                                                                             |
+| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                                                                  |
+| `BUILD`        | `BUILD <army> <x> <y>`               | consume the army: found a pop-500 town, or +500 own-town pop; blocked by enemy towns in range (waits) |
+| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy marches out, founds a new capital on arrival; waits out enemy towns in range                 |
 
 ## Bots
 

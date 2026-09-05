@@ -492,7 +492,7 @@ class TestEconomyCommands:
         assert all(town.id != tid for town in w.towns)
 
     def test_build_on_enemy_town(self) -> None:
-        """E31g: BUILD on enemy town — PLAN says BUILD valid if army owned."""
+        """E31g: BUILD on enemy town blocks (decided: hold, don't donate)."""
         w = World()
         w.map_size = [1000, 1000]
         # Enemy town at (100,200)
@@ -506,13 +506,9 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
         )
         events = apply_build(w, CFG)
-        # BUILD targets a location, not a town — enemy town gets boosted
-        boosted = [t for t in w.towns if t.id == tid]
-        if boosted:
-            # If the stub returns the town, pop should increase by 500
-            pass  # implementation decides whether enemy town is boosted
-        # Army is consumed regardless
-        assert all(army.id != a.id for army in w.armies)
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
+        assert enemy_town.population == 2000  # untouched, not donated to
+        assert w.get_army(a.id) is not None  # army waits
 
 
 class TestStandingOrderCleanup:
@@ -559,3 +555,57 @@ class TestStandingOrderCleanup:
         w.armies = [a, enemy]
         resolve_combat(w, CFG)
         assert len(w.armies) == 0
+
+
+class TestBuildBlocked:
+    """BUILD onto an enemy town blocks (army waits, order retained)
+    until the town is captured or gone."""
+
+    def _world(self):
+        w = World()
+        w.map_size = [1000, 1000]
+        return w
+
+    def _order(self, w, aid, x, y):
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.BUILD, target_id=aid, target_type="army", args=[x, y]))
+
+    def test_build_on_enemy_town_blocked(self) -> None:
+        w = self._world()
+        w.towns.append(Town(id=w.allocate_id(), faction=1, x=100, y=200, population=2000))
+        a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
+        w.armies.append(a)
+        self._order(w, a.id, 100, 200)
+        events = apply_build(w, CFG)
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
+        assert w.get_army(a.id) is not None  # not consumed
+        assert w.get_town(0).population == 2000  # untouched
+        assert any(so.command == CommandType.BUILD for so in w.standing_orders)  # retained
+
+    def test_blocked_build_fires_after_capture(self) -> None:
+        w = self._world()
+        t = Town(id=w.allocate_id(), faction=1, x=100, y=200, population=2000)
+        w.towns.append(t)
+        a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
+        w.armies.append(a)
+        self._order(w, a.id, 100, 200)
+        apply_build(w, CFG)
+        t.faction = 0  # captured by us
+        apply_build(w, CFG)
+        assert t.population == pytest.approx(2500)
+        assert w.get_army(a.id) is None
+
+    def test_blocked_build_founds_after_town_gone(self) -> None:
+        w = self._world()
+        t = Town(id=w.allocate_id(), faction=1, x=100, y=200, population=2000)
+        w.towns.append(t)
+        a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
+        w.armies.append(a)
+        self._order(w, a.id, 100, 200)
+        apply_build(w, CFG)
+        world_remove = w.get_town(t.id)
+        assert world_remove is not None
+        w.remove_town(t.id)  # starved/destroyed
+        events = apply_build(w, CFG)
+        assert any(e.get("kind") == "town_spawn" for e in events)
+        assert w.get_army(a.id) is None
