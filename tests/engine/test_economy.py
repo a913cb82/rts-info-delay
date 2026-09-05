@@ -609,3 +609,46 @@ class TestBuildBlocked:
         events = apply_build(w, CFG)
         assert any(e.get("kind") == "town_spawn" for e in events)
         assert w.get_army(a.id) is None
+
+
+class TestTrainCap:
+    """TRAIN capped at 1 army / town / turn; extras discarded cleanly."""
+
+    def _world(self, pop=5000):
+        w = World()
+        w.map_size = [1000, 1000]
+        tid = w.allocate_id()
+        w.towns.append(Town(id=tid, faction=0, x=300, y=400, population=pop))
+        return w, tid
+
+    def test_second_train_same_turn_discarded(self) -> None:
+        w, tid = self._world()
+        for _ in range(2):
+            w.standing_orders.append(
+                StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
+        events = apply_train(w, CFG)
+        assert len([e for e in events if e.get("kind") == "army_spawn"]) == 1
+        assert w.get_town(tid).population == pytest.approx(4000)  # one deduction only
+        assert not [so for so in w.standing_orders if so.command == CommandType.TRAIN]
+
+    def test_cap_is_per_town(self) -> None:
+        w, tid = self._world()
+        tid2 = w.allocate_id()
+        w.towns.append(Town(id=tid2, faction=0, x=600, y=700, population=5000))
+        for t in (tid, tid, tid2):
+            w.standing_orders.append(
+                StandingOrder(command=CommandType.TRAIN, target_id=t, target_type="town"))
+        apply_train(w, CFG)
+        assert len(w.armies) == 2
+        assert w.get_town(tid).population == pytest.approx(4000)
+        assert w.get_town(tid2).population == pytest.approx(4000)
+
+    def test_cap_resets_next_turn(self) -> None:
+        w, tid = self._world()
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
+        apply_train(w, CFG)
+        w.standing_orders.append(
+            StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
+        apply_train(w, CFG)
+        assert len(w.armies) == 2

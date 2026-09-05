@@ -410,8 +410,14 @@ def apply_train(world: World, config: GameConfig, pre_capture_factions: dict[int
     train_orders = [so for so in world.standing_orders if so.command == CommandType.TRAIN and so.target_type == "town"]
     if not train_orders:
         return events
+    trained_this_turn: set[int] = set()  # 1 army / town / turn cap
     for so in list(train_orders):
         if so not in world.standing_orders:
+            continue
+        if so.target_id in trained_this_turn:
+            # Extra TRAINs at the same town in the same turn are
+            # discarded: removed, no deduction, no spawn.
+            world.standing_orders.remove(so)
             continue
         town = world.get_town(so.target_id)
         if town is None:
@@ -429,6 +435,7 @@ def apply_train(world: World, config: GameConfig, pre_capture_factions: dict[int
                     continue
             except (ValueError, TypeError):
                 pass
+        trained_this_turn.add(so.target_id)
         original_pop = town.population
         town.population -= config.army_cost
         should_spawn = original_pop >= config.army_cost - 1e-9

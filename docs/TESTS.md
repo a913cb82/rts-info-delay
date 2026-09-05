@@ -101,6 +101,7 @@ PLAN: `net(A) = logistic(A) × [1 − Σ asym(A,B_i) × (d_eq_i/d_i)^crowding_de
 | E31e | TRAIN ownership check | enemy town id | command ignored |
 | E31f | BUILD faction of new town | faction B army builds | new town faction=B |
 | E31g | BUILD on enemy town (DECIDED: block) | army at enemy town position | holds: army waits, order retained, no boost — fires after capture, founds after destruction |
+| E31h | TRAIN capped 1/town/turn (NEW) | two TRAIN orders same town same turn | first executes (−1000, one spawn); extras removed, no deduction |
 
 ## 7. Movement — basic
 
