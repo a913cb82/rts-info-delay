@@ -44,6 +44,20 @@ def _site(turn, i, cfg, own_towns, salt=0, rmin=80.0, rmax=250.0, around=None):
         min(th - SITE_MARGIN, max(SITE_MARGIN, c["y"])),
     )
 
+def _memoized(state: "BotState", key, compute):
+    """Per-turn compute cache (BotState._memo reset on turn advance and
+    wipe): shared geometry (inbound/staging/garrisons) is identical for
+    every caller within a decide — compute once, not 7x. World is static
+    during decide (orders only queue), so same-turn reuse is exact."""
+    m = state.__dict__.get("_memo")
+    if m is None or m[0] != state.turn:
+        m = state.__dict__["_memo"] = (state.turn, {})
+    _, d = m
+    if key not in d:
+        d[key] = compute()
+    return d[key]
+
+
 def _batch_ids(events) -> tuple[set, set]:
     """Town/army ids a batch names (growth bookkeeping scope)."""
     towns: set = set()
@@ -78,7 +92,10 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
     nearby_towns = [t for t in state.world.towns if math.hypot(t.x - ref_x, t.y - ref_y) < rmax + 200]
     if not nearby_towns:
         nearby_towns = state.world.towns[:50]  # fallback small sample
+    _big_site = len(nearby_towns) > 300
     for k in range(16):
+        if _big_site and k % 4 == 0 and state.should_yield():
+            break  # timeout guard: return best-so-far (healthy budgets never trip)
         h = _hash(who, int(ref_x * 7 + ref_y * 13) & 0xFFFF, salt + k)
         ang = (h % 3600) / 3600 * 2 * math.pi
         d = rmin + ((h // 3600) % 1000) / 1000 * (rmax - rmin)
@@ -139,6 +156,7 @@ class BotState:
         self._last_seen: dict = {}  # (kind, id) -> delivery turn (staleness)
         self._first_seen: dict = {}  # (kind, id) -> first delivery turn
         self._taken_at: dict = {}  # town_id -> turn it flipped to mine (Step 4)
+        self._memo: tuple = (-1, {})  # (turn, {}) per-turn compute cache
         self._trails: dict = {}  # army_id -> deque[(turn, x, y)] (velocity)
         self._wave_ids: set = set()
         self._wave_hold_until: int = -1
@@ -170,6 +188,7 @@ class BotState:
         w = World()
         w.map_size = list(self.config.map_size) if self.config and self.config.map_size else [1000, 1000]
         self.world = w
+        self._memo = (-1, {})
         self._army_targets = {}
         self._pending_trains = {}
         self._pending_builds = {}
@@ -850,11 +869,18 @@ class BotForecast:
 
     def forecast_army_pos(self, army: Army | dict, turns_ahead: float | None = None) -> tuple[float, float]:
         """Intent-free forecast: own noted targets are exact; foe motion
-        extrapolates the bot-kept position trail by mail lag."""
+        extrapolates the bot-kept position trail by mail lag. Memoized
+        per foe per turn (same foe forecast N armies — compute once)."""
         if isinstance(army, dict):
             aid, x, y = army["id"], army["x"], army["y"]
         else:
             aid, x, y = army.id, army.x, army.y
+        if turns_ahead is None:
+            return _memoized(self.state, ("forecast_pos", aid),
+                             lambda: self._forecast_army_pos_inner(aid, x, y, None))
+        return self._forecast_army_pos_inner(aid, x, y, turns_ahead)
+
+    def _forecast_army_pos_inner(self, aid, x: float, y: float, turns_ahead) -> tuple[float, float]:
         if turns_ahead is None:
             turns_ahead = self._turns_stale(x, y)
         tgt = self.state._army_targets.get(aid)
@@ -962,18 +988,21 @@ def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
     faction = state.faction
     los = getattr(config, "line_of_sight", None) or 150.0
     speed = max(1.0, config.army_speed)
-    out: dict[int, float] = {}
-    for t in state.own_towns():
-        best = float("inf")
-        for u in state.world.towns:
-            if u.faction == faction:
-                continue
-            d = _math.hypot(u.x - t.x, u.y - t.y)
-            if d <= los:
-                best = min(best, d / speed)
-        if best != float("inf"):
-            out[t.id] = best
-    return out
+
+    def _compute():
+        out: dict[int, float] = {}
+        for t in state.own_towns():
+            best = float("inf")
+            for u in state.world.towns:
+                if u.faction == faction:
+                    continue
+                d = _math.hypot(u.x - t.x, u.y - t.y)
+                if d <= los:
+                    best = min(best, d / speed)
+            if best != float("inf"):
+                out[t.id] = best
+        return out
+    return _memoized(state, ("staging_eta", los, speed), _compute)
 
 
 def foe_print_factor(state: "BotState", faction: int, grace: int = 20) -> float:
@@ -1007,27 +1036,43 @@ def inbound_force(state: "BotState", config: "GameConfig",
     their own towns are excluded (not inbound)."""
     import math as _math
     faction = state.faction
-    own_t = state.own_towns()
-    foe_towns = [t for t in state.world.towns if t.faction != faction]
-    out: dict[int, tuple[float, int]] = {}
-    for t in own_t:
-        best = float("inf")
-        n = 0
+    speed = max(1.0, config.army_speed)
+
+    def _compute():
+        own_t = state.own_towns()
+        foe_towns = [t for t in state.world.towns if t.faction != faction]
+        # Guard set once (armies sitting on their own towns), not per pair.
+        guarded = set()
         for a in state.world.armies:
             if a.faction == faction:
                 continue
-            if any(_math.hypot(a.x - u.x, a.y - u.y) <= 15
-                    for u in foe_towns if u.faction == a.faction):
-                continue
-            if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
-                continue
-            eta = _math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
-            if eta < best:
-                best = eta
-            n += 1
-        if best <= max_eta:
-            out[t.id] = (best, n)
-    return out
+            for u in foe_towns:
+                if u.faction == a.faction and _math.hypot(a.x - u.x, a.y - u.y) <= 15:
+                    guarded.add(a.id)
+                    break
+        out: dict[int, tuple[float, int]] = {}
+        # Timeout guard fires only at pathological scale (50000+ pairs ≈
+        # 5ms+; normal states never check the clock here, keeping
+        # scripted-clock tests exact).
+        big = len(own_t) * len(state.world.armies) > 50000
+        for i, t in enumerate(own_t):
+            if big and i % 16 == 0 and state.should_yield():
+                break  # timeout guard: partial map stands (threats known so far)
+            best = float("inf")
+            n = 0
+            for a in state.world.armies:
+                if a.faction == faction or a.id in guarded:
+                    continue
+                if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
+                    continue
+                eta = _math.hypot(a.x - t.x, a.y - t.y) / speed
+                if eta < best:
+                    best = eta
+                n += 1
+            if best <= max_eta:
+                out[t.id] = (best, n)
+        return out
+    return _memoized(state, ("inbound_force", max_eta, speed), _compute)
 
 
 def defense_train_ok(population: float, cost: float, floor: float,
@@ -1208,16 +1253,30 @@ def home_count(state: "BotState", t, radius: float = 20.0) -> int:
                if math.hypot(a.x - t.x, a.y - t.y) <= radius)
 
 
+def garrison_map(state: "BotState") -> dict:
+    """Standing defenders per foe town (nearest same-faction town),
+    computed once per turn (shared by raid_target + strike_target —
+    per-town calls recomputed it 2xT times per decide)."""
+    def _compute():
+        by_faction: dict = {}
+        for t in state.world.towns:
+            by_faction.setdefault(t.faction, []).append(t)
+        counts: dict = {}
+        for a in state.world.armies:
+            if a.faction == state.faction:
+                continue
+            same = by_faction.get(a.faction)
+            if not same:
+                continue
+            w = min(same, key=lambda t: math.hypot(a.x - t.x, a.y - t.y))
+            counts[w.id] = counts.get(w.id, 0) + 1
+        return counts
+    return _memoized(state, ("garrison_map",), _compute)
+
+
 def foe_garrison(state: "BotState", u) -> int:
     """Standing defenders imputed to foe town u (nearest same-faction town)."""
-    n = 0
-    for a in state.world.armies:
-        if a.faction == state.faction or a.faction != u.faction:
-            continue
-        same = [t for t in state.world.towns if t.faction == u.faction]
-        if min(same, key=lambda t: math.hypot(a.x - t.x, a.y - t.y)).id == u.id:
-            n += 1
-    return n
+    return garrison_map(state).get(u.id, 0)
 
 
 def raid_target(state: "BotState", config, priced: bool = True,
@@ -1247,7 +1306,10 @@ def raid_target(state: "BotState", config, priced: bool = True,
     fieldable = [a for a in state.own_armies()
                  if not state.army_has_target(a.id)]
     best = None
-    for u in cands:
+    _big = len(cands) * max(1, len(fieldable)) > 50000
+    for i, u in enumerate(cands):
+        if _big and i % 8 == 0 and state.should_yield():
+            break  # timeout guard: best-so-far stands
         s = foe_garrison(state, u)
         printable = max(0.0, (u.population - cost - floor) / cost)
         arrival_t = min((math.hypot(a.x - u.x, a.y - u.y)
@@ -1757,7 +1819,10 @@ def strike_target(state: "BotState", config, buzzer_window: int = 30,
     if not fieldable:
         return None
     best = None
-    for u in cands:
+    _big = len(cands) * max(1, len(fieldable)) > 50000
+    for i, u in enumerate(cands):
+        if _big and i % 8 == 0 and state.should_yield():
+            break  # timeout guard: best-so-far stands
         s = foe_garrison(state, u)
         arrival = min(math.hypot(a.x - u.x, a.y - u.y) for a in fieldable) / speed
         prize = u.population * (1.0 - eff)

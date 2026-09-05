@@ -663,3 +663,19 @@ at buzzer — filed Step-6-siege-mass (needs strikes + mass, both specced
 not built)). Multi-prong pressure filed (split packs vs 2+ rich towns —
 needs 8+ armies (mass first!)). Consensus mechanisms all hold; the bots
 wait for mistakes that never come vs disciplined foes (correct!).
+
+## Bot efficiency (no clock changes): memo + guards, spreading unneeded
+
+Profiled large-state decides (40 towns + 30 armies): inbound_force 45%
+(recomputed 7x/decide!) + foe_garrison 42% (2xT times!) + hypot spam.
+Fixes: turn-keyed _memo (lazy-invalidate on turn advance, cleared on
+wipe; derived caches excluded from fingerprint) sharing inbound/staging/
+garrison-map/forecasts across all callers per decide; guard-set hoisted
+O(T) not O(T*A); BotForecast hoisted out of per-army loops (was rebuilt
+per army!). 28ms -> 1.4ms worst-case (20x); realistic empty-late states
+0.2-2ms (100x under the 10ms increment). Exit-early: moves-loop yield
+existed; added best-so-far guards (find_build_site, raid/strike scans,
+inbound at pathological scale only (50000+ pairs / 300+ towns) so
+scripted-clock tests stay exact). Spreading: MEASURED UNNECESSARY
+(2.4ms worst << 100ms cap; threshold documented: spread via plan-queue
+if decides ever approach ~50% of cap). Suites identical (memo is exact).

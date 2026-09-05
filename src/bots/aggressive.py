@@ -52,6 +52,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out.extend(reinforce_orders(state, config))
     _sk = strike_target(state, config, margin=100.0)
     sk_march = _sk if _sk is not None and not enemy_armies else None
+    fc_chase = BotForecast(state, config)
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -117,8 +118,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             nearest, _, _ = sel
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
-            fc = BotForecast(state, config)
-            forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
+            forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
             out.extend(order_move(state, config, p, fx, fy))
         else:

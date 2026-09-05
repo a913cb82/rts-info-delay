@@ -93,6 +93,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     out.extend(recall_deficit(state, config))
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
+    fc_chase = BotForecast(state, config)
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -159,8 +160,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     continue  # solo vs peer with empty field: wait for pack
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
-            fc = BotForecast(state, config)
-            forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
+            forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
             out.extend(order_move(state, config, p, fx, fy))
         else:
