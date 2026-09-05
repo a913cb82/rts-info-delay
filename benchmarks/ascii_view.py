@@ -298,10 +298,12 @@ def as_json(world: dict, header: dict, turn: int, gx: int, gy: int, mode: str) -
             "armies": sum(1 for a in world["armies"] if a["faction"] == f),
             "capital_pop": round(cap["population"]) if cap else 0,
         }
-    return json.dumps({"turn": turn, "grid": {"w": gx, "h": gy, "map": [w, h]},
+    payload = {"turn": turn, "grid": {"w": gx, "h": gy, "map": [w, h]},
                        "mode": mode, "cells": cells, "factions": facs_out,
-                       "relations": _relations(world), "views": _views(world)},
-                      indent=1)
+                       "relations": _relations(world), "views": _views(world)}
+    if _COMPACT[0]:
+        return json.dumps(payload, separators=(",", ":"))
+    return json.dumps(payload, indent=1)
 
 
 _COMPACT = [False]
