@@ -1,9 +1,10 @@
 # Bots — current guide
 
 Living reference for bot work: personalities as coded, shared machinery,
-the intel model, and the mechanics that matter. History lives in
-`BOT_WORKLOG.md`, numbers in `BOT_BENCH.md`, open plans in `BOT_PLAN.md`,
-clock infrastructure in `BOT_TIME.md`.
+the intel model, and the mechanics that matter. Entry point: `README.md`.
+Strategy: `GTO.md`. History lives in `BOT_WORKLOG.md`, numbers in
+`BOT_BENCH.md`, open plans in `BOT_PLAN.md`, clock infrastructure in
+`BOT_TIME.md`.
 
 ## Personalities
 

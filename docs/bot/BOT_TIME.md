@@ -95,7 +95,7 @@ full bank → expensive searches (coordination, wide site search).
 The event-shape machinery this section once described (landing rebuild
 payloads, per-turn town snapshots, `TOWN_DEATH` kind, builder-returns-[]
 mute) was deleted by the rework — see `BOTS.md` intel model and
-`docs/EVENT_REWORK.md`. What survived into the fog era: `stale_turns`
+the (since-deleted) EVENT_REWORK plan. What survived into the fog era: `stale_turns`
 compensation (load-bearing), quiet-turn replay (any update breaks sleep),
 plan queue, clock effort. The worklog entries stand as record.
 

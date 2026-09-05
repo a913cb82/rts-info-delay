@@ -69,14 +69,15 @@ Turn-based. Each turn consists of phases:
 - Eliminated when no capital and no viceroy in flight.
 - Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
 - `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.
+- Towns can only `TRAIN` one army per turn (additional `TRAIN` commands are discarded)
 - Viceroy in flight receives no information during flight, and only information on events which happened after new capital was founded.
 
-| Order          | Syntax                               | Effect                                                                       |
-|----------------|--------------------------------------|------------------------------------------------------------------------------|
-| `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army (1 per town per turn; extras discarded)             |
-| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                                          |
-| `BUILD`        | `BUILD <army> <x> <y>`               | consumes army, found a pop-500 town, or +500 own-town pop                    |
-| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy army marches out, founds a new capital on arrival                    |
+| Order          | Syntax                               | Effect                                                  |
+|----------------|--------------------------------------|---------------------------------------------------------|
+| `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army                                |
+| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                     |
+| `BUILD`        | `BUILD <army> <x> <y>`               | consumes army: found pop-500 town, or +500 pop          |
+| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy marches out, founds new capital on arrival      |
 
 ## Bots
 
@@ -117,4 +118,4 @@ One order per line, then `go`. Missing `go` past the clock budget kills the bot.
 - `benchmarks/` — bot performance and runtime performance benchmarks.
 - `viewer/` — replay UI.
 - `tests/` — engine, runner, and bot tests.
-- `docs/` — development work planning and recording.
+- `docs/` — development work planning and recording (`docs/bot/` — bot strategy, guide, roadmap, benchmarks).

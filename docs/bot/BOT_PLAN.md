@@ -2,6 +2,8 @@
 
 What we believe about playing well, and what remains to build, in order.
 State of the bots: `BOTS.md`. Numbers: `BOT_BENCH.md`. History: `BOT_WORKLOG.md`.
+Full strategy reference: `GTO.md` (this plan's doctrine section is the
+compact form; GTO.md is the detailed form).
 
 ## Doctrine (settled)
 
