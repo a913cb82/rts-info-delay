@@ -51,7 +51,7 @@ Turn-based. Each turn consists of phases:
 - An army dies if any enemy in range has weakness <= its own
 
 #### Captures
-- Enemy army near town changes ownership and halves population
+- Enemy army within 10km of a town flips ownership and halves population
 
 #### Economy
 - Towns grow logistically, with crowding from nearby towns
@@ -63,17 +63,17 @@ Turn-based. Each turn consists of phases:
 
 ### Details
 
-- Score = town population + 1000 per army. Highest score at max turns wins.
+- Score = Σ town population + 1000 per army. Highest score at end wins.
 - Eliminated when no capital and no viceroy in flight.
+- Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
+- Orders are discarded if target is not within 10km on arrival.
 
-| Order         | Syntax                                  | Effect                                                        |
-|---------------|-----------------------------------------|---------------------------------------------------------------|
-| `TRAIN`       | `TRAIN <town>`                          | −1000 pop, spawn an army                                      |
-| `MOVE_TO`     | `MOVE_TO <army> <fx> <fy> <tx> <ty>`    | march to `(tx, ty)`                                           |
-| `BUILD`       | `BUILD <army> <x> <y>`                  | consume the army: found a pop-500 town, or +500 own-town pop  |
-| `MOVE_CAPITAL`| `MOVE_CAPITAL <x> <y>`                 | viceroy marches out, founds a new capital on arrival          |
-- Bots see delayed reports only: armies and towns have 150km line of sight, mail travels 150km/turn to
-  the capital.
+| Order          | Syntax                               | Effect                                                       |
+|----------------|--------------------------------------|--------------------------------------------------------------|
+| `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army                                     |
+| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                          |
+| `BUILD`        | `BUILD <army> <x> <y>`               | consume the army: found a pop-500 town, or +500 own-town pop |
+| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy raises army and marches out to build new capital     |
 
 ## Bots
 
