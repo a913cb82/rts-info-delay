@@ -290,3 +290,53 @@ class TestReadyToDispatch:
         got = order_move(b, CFG, b.world.get_army(7), 600, 500)
         assert got == ["MOVE_TO 7 450.0 500.0 600.0 500.0"]
         assert b._army_targets.get(7) == (600, 500)
+
+
+class TestProbeMemory:
+    """Second probes must not re-fly settled rays (empty_3000: three
+    +500 duplicate merges from deterministic repeat rays)."""
+
+    def test_second_scout_bends_off_kept_note(self) -> None:
+        from bots.common import maybe_assign_scout, drive_scout
+        b = _scout_bot()
+        _feed(b, 3, towns=[(1, 200, 500, 0, 3000, True)],
+              armies=[(7, 200, 500, 0)])
+        p7 = b.world.get_army(7)
+        assert maybe_assign_scout(b, CFG, p7) is True
+        assert drive_scout(b, CFG, p7) == ["MOVE_TO 7 200.0 500.0 250.0 500.0"]
+        # First probe finishes (fallback unmarks) but its settler note
+        # persists — the production duplicate-merge setup.
+        b._scout_id = None
+        assert b._army_targets.get(7) == (250.0, 500.0)
+        _feed(b, 4, towns=[(1, 200, 500, 0, 3000, True)],
+              armies=[(7, 200, 500, 0), (8, 200, 500, 0)])
+        p8 = b.world.get_army(8)
+        assert maybe_assign_scout(b, CFG, p8) is True
+        orders = drive_scout(b, CFG, p8)
+        assert orders and orders[0].startswith("MOVE_TO 8 ")
+        assert orders != ["MOVE_TO 8 200.0 500.0 250.0 500.0"]
+
+    def test_fallback_near_own_town_releases(self) -> None:
+        from bots.common import drive_scout
+        b = _scout_bot()
+        _feed(b, 3, towns=[(1, 200, 500, 0, 3000, True),
+                           (2, 400, 500, 0, 1500, False)],
+              armies=[(7, 390, 500, 0)])
+        b._scout_id = 7
+        b._scout_leg = 11
+        b.note_move(7, 400.0, 500.0)  # kept hop target on own town
+        assert drive_scout(b, CFG, b.world.get_army(7)) == []
+        assert b._scout_id is None
+        assert 7 not in b._army_targets  # builds must not found there
+
+    def test_fallback_far_from_towns_keeps_note(self) -> None:
+        from bots.common import drive_scout
+        b = _scout_bot()
+        _feed(b, 3, towns=[(1, 200, 500, 0, 3000, True)],
+              armies=[(7, 590, 500, 0)])
+        b._scout_id = 7
+        b._scout_leg = 11
+        b.note_move(7, 600.0, 500.0)
+        assert drive_scout(b, CFG, b.world.get_army(7)) == []
+        assert b._scout_id is None
+        assert b._army_targets.get(7) == (600.0, 500.0)  # settle-as-scout

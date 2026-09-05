@@ -359,3 +359,23 @@ drunk-walk mechanism for army18's dogleg: scout arrival-waits (~2+2+
 quiescence turns static) sit inside drop_dead_notes' exp_delay+2 margin
 (≈4 near home) → mid-probe note drop → turn-hashed find_build_site
 resettles → new heading. Needs bot-side logging to convict.
+
+## Probe memory (S0 followup 1 of 3)
+
+Second probes re-flew deterministic base rays and merged into own towns
+(+500 ×3 in the 3136-lineage). Fix in `common.py`: `scout_hop_target`
+bends off own towns + fellow-probe noted destinations (20km; underfoot
+points < interact+15 skipped so dispatch off the capital still works;
+foe logic untouched), and hop-12 fallback drops the kept note when it
+sits inside an own town's founding range (normal site choice/recycle
+owns instead of settle-as-scout merging). TDD: 3 new tests in
+`TestProbeMemory` (bend-off, fallback-release, far-fallback keeps note).
+Fast 15/15 + strategic 12/13 identical (void_settle 2930, towns 3→4 —
+extra distinct founding, −6 inside margin; pricing that 4th town is Step
+2's job). empty_3000 rematch: pro 9156 (identical, doesn't scout) /
+greedy 4270 (+1134) / aggressive 4873 (+1107) / expander 4829 (+602) /
+turtle 7184 (+547); pop-jump merges 3→0, captures 1→0, town deaths 1→0.
+Single run — scores carry load noise, but the mechanism is convicted at
+game level (the t2256/t2260/t2281 merges are gone) and pinned by unit
+tests. Remaining S0 followups: note-drop tension (needs bot-side logging
+first), turn-hash.

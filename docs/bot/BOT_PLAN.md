@@ -262,7 +262,8 @@ guard_duty 2963 / longpeace 5254 / opening 1391 / siege 5324 /
 snowball 4851 / staleness 4007 / succession 1826;
 void_contact 5135 (take) / void_settle 2936 (3 towns); self-play
 symmetric; Elo greedy 1544 / aggressive 1543 / pro 1473 / expander 1470 /
-turtle 1470. empty_3000 rematch: pro 9156 / turtle 6637 / expander 4227 /
-aggressive 3766 / greedy 3136 (8 foundings, 1 take, exile-lineage).
+turtle 1470. empty_3000 rematch (probe memory): pro 9156 / turtle 7184 /
+aggressive 4873 / expander 4829 / greedy 4270 (8 foundings, 0 takes,
+0 deaths, duplicate merges 3→0).
 Next milestones in order: Step 2 demand gates + trade evaluator; then
 Steps 3–6 in sequence (Elo verdict delivered; pro recon owed).

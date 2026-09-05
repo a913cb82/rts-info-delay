@@ -561,17 +561,31 @@ def _scout_contact(state: "BotState", config) -> bool:
 def scout_hop_target(state: "BotState", config, p, hop: int) -> tuple[float, float]:
     """Next 50km hop: straight faction-spread ray, bent off known towns.
     Tries base, ±45°, ±90°; first segment clearing all known towns by
-    15km wins; all-blocked falls back to base (rare blunder accepted)."""
+    15km wins; all-blocked falls back to base (rare blunder accepted).
+    Probe memory: also bends off own towns and fellow-probe destinations
+    (20km), so repeat probes don't re-fly settled rays into duplicate
+    merges. Memory points underfoot (< interact+15 of p) are skipped —
+    the scout stands on its own capital at dispatch. Foe logic is
+    untouched (danger keeps no underfoot exemption)."""
     size = (config.map_size if config is not None
             and getattr(config, "map_size", None) else [1000, 1000])
+    interact = (config.interact_radius if config is not None
+                and getattr(config, "interact_radius", None) else 10.0)
     f = state.faction
-    known = [t for t in state.world.towns if t.faction != f]
+    known = [(t.x, t.y, 15.0) for t in state.world.towns if t.faction != f]
+    for t in state.world.towns:
+        if t.faction == f and math.hypot(t.x - p.x, t.y - p.y) >= interact + 15.0:
+            known.append((t.x, t.y, 20.0))
+    for aid, tgt in sorted(state._army_targets.items()):
+        if (aid != p.id and tgt is not None
+                and math.hypot(tgt[0] - p.x, tgt[1] - p.y) >= interact + 15.0):
+            known.append((tgt[0], tgt[1], 20.0))
     base = f * (2 * math.pi / 5)
     for turn in (0.0, math.pi / 4, -math.pi / 4, math.pi / 2, -math.pi / 2):
         ang = base + turn
         tx = min(size[0] - 20.0, max(20.0, p.x + SCOUT_HOP_KM * math.cos(ang)))
         ty = min(size[1] - 20.0, max(20.0, p.y + SCOUT_HOP_KM * math.sin(ang)))
-        if all(_seg_dist(p.x, p.y, tx, ty, t.x, t.y) >= 15 for t in known):
+        if all(_seg_dist(p.x, p.y, tx, ty, qx, qy) >= r for qx, qy, r in known):
             return (tx, ty)
     return (min(size[0] - 20.0, max(20.0, p.x + SCOUT_HOP_KM * math.cos(base))),
             min(size[1] - 20.0, max(20.0, p.y + SCOUT_HOP_KM * math.sin(base))))
@@ -710,8 +724,17 @@ def drive_scout(state: "BotState", config, p):
     state._scout_leg += 1
     if state._scout_leg >= SCOUT_HOPS:
         # hops exhausted with no contact: builds stage founds on the
-        # kept target (settle-as-scout); normal logic owns again.
+        # kept target (settle-as-scout); normal logic owns again. But a
+        # kept target inside an own town's founding range is a duplicate
+        # merge, not a founding — drop the note so builds don't fire on
+        # it (normal site choice or recycle owns instead).
         state._scout_id = None
+        if tgt is not None:
+            interact = (config.interact_radius if config is not None
+                        and getattr(config, "interact_radius", None) else 10.0)
+            if any(t.faction == state.faction and math.hypot(t.x - tgt[0], t.y - tgt[1]) <= interact + 10.0
+                   for t in state.world.towns):
+                state._army_targets.pop(p.id, None)
         return []
     return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
 
