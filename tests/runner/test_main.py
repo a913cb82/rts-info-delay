@@ -31,7 +31,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             # Check that config was written to stdin
             written = mock_proc.stdin.write.call_args_list
             config_written = any("config" in str(arg) for arg in written)
@@ -46,7 +46,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=2, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=2, config=CFG)
             written = mock_proc.stdin.write.call_args_list
             faction_written = any("faction 2" in str(arg) for arg in written)
             assert faction_written
@@ -60,7 +60,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             written = mock_proc.stdin.write.call_args_list
             go_written = any("go" in str(arg) for arg in written)
             assert go_written
@@ -74,7 +74,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             mock_proc.stdin.write.reset_mock()
             events = [{"kind": "battle", "x": 50, "y": 50}]
             bp.send_turn(turn=3, events=events)
@@ -93,7 +93,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             orders = bp.send_turn(turn=1, events=[])
             # Allow float formatting (0.0 vs 0)
             assert any("MOVE_TO 1" in o and "100" in o for o in orders)
@@ -114,7 +114,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             orders = bp.send_turn(turn=1, events=[])
             assert len(orders) == 4
             assert any("MOVE_TO" in o for o in orders)
@@ -131,7 +131,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             # send_turn should handle timeout
             orders = bp.send_turn(turn=1, events=[])
             assert orders == [] or bp.alive is False
@@ -145,7 +145,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             bp.send_turn(turn=1, events=[])
             # Second turn also fails
             orders2 = bp.send_turn(turn=2, events=[])
@@ -161,7 +161,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             orders = bp.send_turn(turn=1, events=[])
             assert orders == []
 
@@ -174,7 +174,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             events = [{"kind": "battle", "x": 50, "y": 50}]
             bp.send_turn(turn=1, events=events)
             # Check that events were sent, not full world
@@ -190,7 +190,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             scores = {0: 5000, 1: 3000}
             bp.send_end(scores)
             written = mock_proc.stdin.write.call_args_list
@@ -206,7 +206,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             bp.send_turn(turn=1, events=[])
             # Should still be able to send end
             bp.send_end({0: 1000})
@@ -224,7 +224,7 @@ class TestBotProtocol:
         mock_proc.poll = MagicMock(return_value=None)
 
         with patch("subprocess.Popen", return_value=mock_proc):
-            bp = BotProcess(cmd=["python", "-c", "pass"], faction=0, config=CFG)
+            bp = BotProcess(cmd="python -c pass", faction=0, config=CFG)
             orders = bp.send_turn(turn=1, events=[])
             # Malformed line should be skipped
             assert not any("garbage" in o for o in orders)
@@ -280,7 +280,7 @@ class TestBashCommands:
 
     def test_str_runs_through_bash(self) -> None:
         from runner.main import BotProcess
-        bp = BotProcess(cmd=["bash", "-c", "echo hi"], faction=0, config=CFG)
+        bp = BotProcess(cmd="echo hi", faction=0, config=CFG)
         assert bp.proc is not None
         out = bp.proc.stdout.readline()
         assert "hi" in out

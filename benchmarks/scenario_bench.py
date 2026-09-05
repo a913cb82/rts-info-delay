@@ -21,7 +21,7 @@ def run_scenario(path, py):
     d = json.loads(Path(path).read_text())
     cfg = GameConfig.from_dict({k: v for k, v in d.items()
                                 if k not in ("teams", "focal", "goal")})
-    bots = {int(f): [py, "-m", f"bots.{name}"] for f, name in d["teams"].items()}
+    bots = {int(f): f"{py} -m bots.{name}" for f, name in d["teams"].items()}
     t0 = time.perf_counter()
     # No recording (scores come back directly — the old write+reparse of
     # full JSONL cost ~0.5s/suite and broke the 5s budget in send-all era).

@@ -17,8 +17,8 @@ from runner.main import run_game
 d = json.loads(Path("maps/empty.json").read_text())
 d["max_turns"] = 3000
 cfg = GameConfig.from_dict(d)
-teams = {0: "pro", 1: "greedy", 2: "aggressive", 3: "expander", 4: "turtle"}
-run_game(cfg, {f: [sys.executable, "-m", f"bots.{n}"] for f, n in teams.items()},
+teams = {0: "pro", 1: "pro", 2: "aggressive", 3: "expander", 4: "turtle"}
+run_game(cfg, {f: f"{sys.executable} -m bots.{n}" for f, n in teams.items()},
          Path("recordings/empty_3000.jsonl"))
 EOF
 cp recordings/empty_3000.jsonl viewer/public/empty_3000.jsonl

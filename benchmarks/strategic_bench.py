@@ -20,7 +20,7 @@ def play(cfg_dict, teams, record=None):
     cfg = GameConfig.from_dict({k: v for k, v in cfg_dict.items()
                                 if k not in ("teams", "focal", "note")})
     py = sys.executable
-    bots = {int(f): [py, "-m", f"bots.{name}"] for f, name in teams.items()}
+    bots = {int(f): f"{py} -m bots.{name}" for f, name in teams.items()}
     t0 = time.perf_counter()
     run_game(cfg, bots, Path(record) if record else None)
     return (time.perf_counter() - t0) * 1000

@@ -25,8 +25,10 @@ class BotProcess:
     faction: int
     alive: bool
 
-    def __init__(self, cmd: list[str], faction: int, config: GameConfig) -> None:
-        """Spawn subprocess, send startup (config, faction, go)."""
+    def __init__(self, cmd: str, faction: int, config: GameConfig) -> None:
+        """Spawn subprocess via bash, send startup (config, faction, go).
+        Pure bash-string: every bot launches as `bash -c <cmd>` (python
+        bots included) — one spawn path, any executable."""
         self.faction = faction
         self.config = config
         self.alive = True
@@ -55,7 +57,7 @@ class BotProcess:
             else:
                 env["PYTHONPATH"] = src_path
             self.proc = subprocess.Popen(
-                cmd,
+                ["bash", "-c", cmd],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -468,7 +470,7 @@ def note_landing(step_events: list[dict], faction: int, turn: int,
 
 def run_game(
     config: GameConfig,
-    bots: dict[int, list[str] | str],
+    bots: dict[int, str],
     record_path: Path | None = None,
 ) -> dict[int, int]:
     """Run a full game.
@@ -497,13 +499,7 @@ def run_game(
     # Initialize bots
     bot_processes: dict[int, BotProcess] = {}
     for faction, cmd in bots.items():
-        # cmd may be list[str] (argv, direct spawn) or str (bash command:
-        # pipes, env vars, any executable — bots need not be python).
-        if isinstance(cmd, str):
-            cmd_list = ["bash", "-c", cmd]
-        else:
-            cmd_list = list(cmd)
-        bp = BotProcess(cmd=cmd_list, faction=faction, config=config)
+        bp = BotProcess(cmd=cmd, faction=faction, config=config)
         bot_processes[faction] = bp
 
     # Prepare record file: ensure parent exists, clear file, write config

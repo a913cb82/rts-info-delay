@@ -1468,3 +1468,13 @@ capture harness stderr every rematch (r104's "freeze" was 4 silent
 ghosts hidden by tail-cut).
 R107 health: watch (0/0/0 errors, 2 dead-peace quiets); F3+F4 ghosts
 t1660/1888 (harness). GENERATED r107.
+
+## Pure bash-string runner + r108 (per-loop regen)
+
+HARNESS (user): run_game/BotProcess take ONLY bash strings now
+(`bash -c` single spawn path; python bots launch the same way).
+Converted tests + both benches + README example (greedy->double-pro
+there too). Shell-camper verified earlier; full 5-python-bot game
+verified here.
+R108 health: watch (0/0 suicides/train-deaths, 2 onesies incl F2x9
+@ town11 meatgrinder, 1 early dead-peace). GENERATED r108.
