@@ -452,6 +452,47 @@ class BotState:
         except Exception:
             pass
 
+    def _diffuse_oppor_field(self) -> None:
+        """Opportunity diffusion field (campaigns: rich foe towns as prize
+        sources, slow decay (x0.9/10t — towns don't move!), 3x3 blur.
+        Raid scoring samples it (cluster premium: takes near other rich
+        towns seed followup-rich campaigns)."""
+        try:
+            n = 10
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            f = self.__dict__.setdefault("_oppor_field", {})
+            for k in list(f):
+                f[k] *= 0.9
+                if abs(f[k]) < 0.05:
+                    del f[k]
+            for t in self.world.towns:
+                if t.faction == self.faction:
+                    continue
+                cx = min(n - 1, max(0, int(t.x / size[0] * n)))
+                cy = min(n - 1, max(0, int(t.y / size[1] * n)))
+                f[(cx, cy)] = f.get((cx, cy), 0.0) + min(3.0, t.population / 20000.0)
+            blur: dict = {}
+            for (cx, cy), v in f.items():
+                for nx in (cx - 1, cx, cx + 1):
+                    for ny in (cy - 1, cy, cy + 1):
+                        if 0 <= nx < n and 0 <= ny < n:
+                            w = 0.5 if (nx, ny) == (cx, cy) else 0.0625
+                            blur[(nx, ny)] = blur.get((nx, ny), 0.0) + v * w
+            self.__dict__["_oppor_field"] = blur
+        except Exception:
+            pass
+
+    def _oppor_at(self, x: float, y: float) -> float:
+        """Sample the opportunity field (prize neighborhood)."""
+        try:
+            n = 10
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            cx = min(n - 1, max(0, int(x / size[0] * n)))
+            cy = min(n - 1, max(0, int(y / size[1] * n)))
+            return self.__dict__.get("_oppor_field", {}).get((cx, cy), 0.0)
+        except Exception:
+            return 0.0
+
     def _threat_at(self, x: float, y: float) -> float:
         """Sample the threat field (negative near foe armies)."""
         try:
@@ -612,6 +653,7 @@ class BotState:
             if turn % 10 == 0:
                 self._diffuse_site_field()  # diffusion ticks 10t (perf)
                 self._diffuse_threat_field()
+                self._diffuse_oppor_field()
         self.turn = turn
         self._last_turn = turn
         # Snapshot prev pops for towns this batch names, then apply absolutely.
@@ -2608,6 +2650,12 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
             if u.population < 2 * config.death_threshold:
                 continue
             score = u.population / (1.0 + dist / 300.0)
+            # Opportunity premium (campaigns: takes near other rich towns
+            # seed followup-rich waves; diffusion neighborhood bonus).
+            try:
+                score *= 1.0 + min(0.5, state._oppor_at(u.x, u.y) * 0.1)
+            except Exception:
+                pass
             ranked.append((score, u, need, s))
             if best is None or score > best[0]:
                 best = (score, u, need, s)
@@ -3214,7 +3262,10 @@ def fire_followups(state: "BotState", config) -> list[str]:
                 rx, ry = state.reckoned_pos(config, aid)
             except Exception:
                 rx, ry = a.x, a.y
-            if _math.hypot(rx - tgt[0], ry - tgt[1]) < 20:
+            # Anticipate landing (user: preemptive campaign — fire the
+            # followup when ≤1 turn out, don't wait a turn for the news).
+            speed = max(1.0, config.army_speed)
+            if _math.hypot(rx - tgt[0], ry - tgt[1]) < 20 + speed:
                 done = True
             else:
                 hit = None

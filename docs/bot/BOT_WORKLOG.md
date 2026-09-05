@@ -1436,3 +1436,15 @@ overkill); BRAINSTORM parked-ideas section (user: log future ideas).
 R100 health: watch (0 onesies, 0 suicides, 0 train-deaths, 3 quiet
 — 2 dead-peace, 1 fought); captures to t5000, foundings to t8000.
 GENERATED r100 (per-loop regen).
+
+## Anticipation + opportunity diffusion (r100 stands)
+
+MEASURED (user: arrivals scatter?): r100 takes are ALL 1-2 attackers
+(thin takes; packs never fight — needs too big to fill). So the
+coordination gap is packs-vs-real-targets, not arrival timing (multi
+battles land together; trickle is defensive, now cohorts).
+SHIPPED: followup anticipation (fire at ETA<=1, not on news);
+_oppor_field (rich-foe-town sources, x0.9/10t, blur) + raid cluster
+premium (campaigns seed followup-rich waves).
+R101: 0/0/0 errors, captures to t4000, foundings to t7000; snowball.
+NO GENERATE (r100 spread better).
