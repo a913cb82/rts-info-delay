@@ -24,7 +24,10 @@ is the complete reference for bot improvement work.
   three delivery gates (tagged + released + ≥ S). Bots never get the map.
 - **Scoreboard:** `BOT_PLAN.md` (live) — empty_3000: pro 6263 / greedy
   5688 / expander 5200 / aggressive 3089 / turtle 2297 (equilibrium-tight;
-  sloshes — judge mechanisms + suites). Exam 23/23 all green.
+  sloshes — judge mechanisms + suites). empty_10000 (see
+  `EMPTY_10000.md` war-verdict): greedy 129706 / pro 107507 /
+  aggressive 98436 / expander 19368 / turtle 871 (three-way war
+  t4653–t5345; greedy won beheaded). Exam 23/23 all green.
 - **Open milestones:** ALL plan Steps substantially done (2 all-five, 3
   meeting/tempo, 4 compositional, 5 hopeless/evac/snipe/guards, 6
   buzzer/strikes; recon + pickets shipped). Filed-futures in plan/GTO.

@@ -288,5 +288,10 @@ turtle 2297 (equilibrium-tight, zero battles; sloshes ±2000 — judge
 mechanisms + suites, not empty-points).
 Next in order: ALL plan Steps substantially DONE (2 all-five, 3 meeting,
 4 compositional, 5 hopeless/evac/snipe/guards, 6 buzzer/strikes; recon +
-pickets shipped). REMAIN filed-futures (see Steps + GTO s12 + worklog).
-(Exam 23/23 all green.)
+pickets shipped). empty_10000 war-verdict (see EMPTY_10000.md): P1 —
+expander density-cap + suicide-breaker + settler-routing; turtle
+velocity-test + guard-budget + stand-down; pro stay-behind +
+provocation-check + revenge-pricing. P2 — aggressive retaliation-
+pricing + colony guards-or-abandon + expansion-floor; greedy cheap
+stay-behind (guard the winning formula otherwise). REMAIN filed-
+futures (see Steps + GTO s12 + worklog). (Exam 23/23 all green.)

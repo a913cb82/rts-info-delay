@@ -301,3 +301,17 @@ headless endgame value (hub loss vs amnesia, exact trade).
 - **Merges:** home-capital merges need turns_left ≥ 500 (else treadmill).
 - **JIT packs:** march iff complete or completes en route (long leave,
   short dash); pack cap 6 pre-siege (decline giant races).
+- **Stay-behind (war-verdict, EMPTY_10000):** never drain home below
+  N+1 vs live third parties (pro t4696 — the backstab tax).
+- **Retaliation pricing:** raids price the victim's revenge
+  (aggressive t4696: +320 pop, −(capital + 4 colonies + war)).
+- **Headless wins:** beheading priced, not fatal (greedy won beheaded
+  t4688→t10000; pro compounded beheaded t4696→).
+- **Suicide-breaker:** re-verify defenders fresh per dispatch; 2
+  fails on one target → stand down (expander t5282–t9965, 7 singles
+  into a 7-stack, 0 casualties caused).
+- **Density cap:** own-town spacing floor ~65km (expander 14×1.4k —
+  sequential NET+ foundings, collective −EV).
+- **Traffic vs threat:** inbound-vector test before mustering
+  (settlers walk toward void, raiders toward ME — turtle spent 10k
+  vs settlers).

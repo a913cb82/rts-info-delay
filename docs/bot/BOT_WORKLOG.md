@@ -700,3 +700,20 @@ worst-case (20x), realistic 0.2-2ms (100x under increment). Best-so-far
 timeout guards (pathological-scale only, tests exact). Spreading
 MEASURED UNNECESSARY (2.4ms << 100ms cap; threshold documented).
 empty_10000: 17.9s wall (~1.8ms/turn), 35.6MB, zero deaths.
+
+## empty_10000 war-verdict (analysis -> EMPTY_10000.md)
+
+First 10000-turn clean game (18s, zero deaths): greedy 129706 / pro
+107507 / aggressive 98436 / expander 19368 / turtle 871. Arc: sit
+(t0-1000) -> colonize (t1000-3000) -> THREE-WAY WAR (t4653-5350) ->
+compound. Pro double-founds on greedy's border + musters (capital
+2566->615, no stay-behind) -> kills greedy capital (t4688) ->
+aggressive backstabs drained pro capital (t4696, 320 pop) -> pro takes
+greedy colony (t4709) + hunts aggressive capital (t5345). Greedy wins
+BEHEADED (headless compounding). Lessons -> GTO s12 (stay-behind,
+retaliation pricing, headless wins, suicide-breaker, density cap,
+traffic-vs-threat) + BOT_PLAN P1/P2 next-steps. Per-bot plans filed
+in EMPTY_10000.md (pro stay-behind/provocation/revenge-price;
+greedy guard-formula + cheap guard; aggressive revenge-price/colony-
+guards/expansion-floor; expander density/suicide-breaker/routing;
+turtle velocity/guard-budget/stand-down).
