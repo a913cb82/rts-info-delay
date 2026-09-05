@@ -1,7 +1,8 @@
 # rl_game_min
 
-A minimal deterministic strategy game: five bots fight over towns on a
-2D map. No randomness anywhere — same code, same game, every time.
+Strategy game with fog of war and information delay.
+
+You only see what messengers report to the capital. Your armies only receive orders when messengers reach them.
 
 ## Quickstart
 
@@ -26,74 +27,87 @@ cd viewer && npx vite --port 5173 --strictPort
 # → http://localhost:5173/?game=empty_3000.jsonl&names=pro,greedy,aggressive,expander,turtle
 ```
 
-```bash
-python -m pytest tests/                        # full suite (~4s)
-PYTHONPATH=src python benchmarks/scenario_bench.py      # fast bot suite (~2s)
-PYTHONPATH=src python benchmarks/strategic_bench.py     # slow suite (~9s)
-```
-
 ## The game
 
-**Goal.** Highest score at the end. Score = Σ town population +
-1000 per army. A faction is eliminated when it has no capital and no
-commander (viceroy) in flight.
+### Overview
 
-**Pieces.** Towns have population, an owner, and a capital flag. Armies
-belong to a faction and move 50 km/turn. That's it — no resources, no
-tech, no terrain.
+Turn based. Each turn consists of phases:
 
-**A turn** runs seven phases: command → propagation → movement →
-combat → captures → economy → knowledge.
+#### Command
+- Bot receives newly visible events
+- Bot submits orders
 
-**Orders** (all ride messengers at 150 km/turn, so distance means lag):
+#### Propagation
+- Order messengers move 150km towards destinations
+- Order recipients receive orders
 
-- `TRAIN <town>` — pay 1000 pop, spawn an army (needs ≥1000 pop left).
-- `MOVE_TO <army> <x> <y>` — march there.
-- `BUILD <army> <x> <y>` — consume the army: found a new town (pop 500)
-  on empty land, or add pop to your own town.
-- `MOVE_CAPITAL <x> <y>` — abandon your capital, send the commander
-  marching; if he arrives he founds a new capital. Lose him and you're
-  beheaded for good.
+#### Movement
+- Armies move in ordered direction
+- Armies and Towns block enemy armies
 
-**Combat.** Armies count nearby enemies: any strict outnumbering (2v1,
-3v2) kills clean with zero casualties; equal numbers (1v1 *and* 2v2)
-annihilate everybody.
+#### Combat
+- Armies fight each other
+- Weakness = # enemy armies within 10km
+- If Army weakness <= weakness of any enemy within 10km, Army dies
 
-**Captures.** An unopposed army at a town flips it: population halved,
-capital flag removed. Captures never create capitals — beheading is
-permanent. Only `BUILD` founds new towns.
+#### Captures
+- Enemy Army near Town changes ownership and halves population
 
-**Economy.** Towns grow logistically (~a few pop/turn); below 500 pop a
-town dies. A train-then-build cycle costs ~1500 score and repays over
-hundreds of turns — spending, not income, is the scarce resource.
+#### Economy
+- Towns grow logistically, with crowding effect from other nearby towns
+- Towns under 500 population die
+- Armies with build orders build new Towns or boost existing Towns
 
-**Fog of war.** Bots never see the map or the truth — only delayed
-reports. Each turn they learn what their own towns/armies can see
-(150 km), delivered late by distance to their capital, and nothing from
-before their last landing. After moving capital they forget everything
-and re-learn from scratch. Click a faction name in the viewer header to
-see its live field of view.
+#### Knowledge
+- Events generated for every Army and Town and tagged by timestamp and faction visibility
+
+### Details
+
+- Score = town population + 1000 per army. Highest score at max turns wins.
+- Eliminated with no capital and no viceroy in flight.
+- Orders: `TRAIN <town>` (costs 1000 pop), `MOVE_TO <army> <fx> <fy> <tx> <ty>`,
+  `BUILD <army> <x> <y>` (founds a pop-500 town, or adds pop to own town),
+  `MOVE_CAPITAL <x> <y>` (commander marches out, founds on arrival).
+- Only `BUILD` founds towns. Captures never promote. Beheading is permanent.
+- Bots see delayed reports only: 150km sight, mail travels 150km/turn to
+  the capital, nothing from before the last landing.
 
 ## Bots
 
-One line each; full guide in `docs/BOTS.md`, plans in `docs/BOT_PLAN.md`:
+Bots run as separate processes and communicate with the engine by stdin and stdout.
 
-- **greedy** — raids whatever pays, recycles idlers.
-- **aggressive** — seeks the leader, attacks in packs.
-- **expander** — settles everywhere, accepts decapitation.
-- **turtle** — hoards behind threat-responsive bars, evacs when doomed.
-- **pro** — no personality: counter-punches duels, pressures wars.
+### Input Format
+
+Line protocol. Startup block, then one block per turn:
+
+```
+config {rules + map_size, never the map}
+faction <n>
+go
+turn <t>
+clock <budget_ms>
+{event json, one per line}
+go
+```
+
+Events: `town_update` (`id,x,y,faction,population,is_capital`, pop 0 =
+dead) and `army_update` (`id,x,y,faction,alive,is_viceroy`). No positions
+for unseen things, no destinations, no battles. `end` instead of a block
+means the game is over (or you are muted mid-flight: no block at all).
+
+### Output Format
+
+One order per line (see Details), then `go`. Unknown commands and bad
+numbers are ignored. Missing `go` past the clock budget kills the bot
+(timeout counts as dead, orders dropped).
 
 ## Layout
 
-- `src/engine/` — rules: step phases, movement, combat, economy, ledger.
-- `src/runner/` — game loop: bot subprocesses, clocks, intel delivery, records.
-- `src/bots/` — the five personalities + shared machinery (`common.py`).
-- `maps/` — `empty.json`, `full.json`, `scenarios/` (fast suite),
-  `strategic/` (slow suite).
-- `benchmarks/` — `scenario_bench.py`, `strategic_bench.py`, `bench_suite.py`.
-- `viewer/` — turn-by-turn replay UI (map, fog overlay, score graph).
-- `tests/` — engine, runner, and bot suites.
-- `docs/` — `BOTS.md` (guide), `BOT_PLAN.md` (roadmap), `BOT_BENCH.md`
-  (numbers), `BOT_TIME.md` (clocks), `BOT_WORKLOG.md` (history),
-  `EVENT_REWORK.md` (intel pipeline spec), `TESTS.md` (test protocol).
+- `src/engine/` — game rules.
+- `src/runner/` — game loop.
+- `src/bots/` — demo bots.
+- `maps/` — game maps
+- `benchmarks/` — bot performance and runtime performance benchmarks.
+- `viewer/` — replay UI.
+- `tests/` — engine, runner, and bot tests.
+- `docs/` — development work planning and recording.
