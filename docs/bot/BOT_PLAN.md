@@ -92,8 +92,9 @@ all force counts from delivered trails, never intent; parse finished
 battles for force counts to calibrate. Muster math under the TRAIN cap:
 no instant N+1 — the evaluator plans multi-turn print (1/town/turn) plus
 standing, prices takes against N ≥ S+W+1, and never orders partial
-musters. Scouting prerequisite SHIPPED (S0 no-contact protocol, below) —
-demand gates + evaluator remain open.
+musters. Acceptance: GTO exam muster 2/6→6/6, selectivity 1/2→2/2
+(exam file has the fixtures). Scouting prerequisite SHIPPED (S0
+no-contact protocol, below) — demand gates + evaluator remain open.
 
 **S0 — no-contact scout (shipped).** First settler probes before
 founding: 50km hops (arrival-gated; mid-course retargeting is
@@ -108,9 +109,13 @@ restored, void_contact takes, trap/skip_thin skip decoys and take
 prizes. Costs: scout tax in sprint races (outsettle), slower probes
 (~3 turns/50km at range). Pro recon NOT done (pro still blind — owes
 before Step 5/6 need eyes); turtle pickets NOT done.
-Followups filed (re-analysis below): probe memory (repeat rays merge
-into own towns), scout/note-drop tension (arrival-waits inside the drop
-margin), turn-hashed sites (retarget roulette after note-drops).
+Followups filed (re-analysis below): probe memory SHIPPED, turn-hash
+SHIPPED (which defused the roulette half of the note-drop tension —
+re-plots return the same site). Note-drop proper CLOSED as benign:
+measured 88/88 empty_3000 drops on scout notes with 0 doglegs — drops
+fire during arrival-waits on fresh orders, the army marches on
+engine-side, quiescence blocks doomed re-dispatches; pure bookkeeping
+churn, no strand, no delay. Worklog has the numbers.
 
 **Step 3 — meeting forecast + computed arrival-sync.** Deterministic
 meeting prediction from known speeds (path-blocking auto-intercepts, so

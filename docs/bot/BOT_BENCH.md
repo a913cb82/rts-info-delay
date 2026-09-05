@@ -9,6 +9,19 @@ maps, split or merge suites). Budgets: fast stays <5s, slow <30s. When a
 scenario stops discriminating, replace it; when a step needs a fixture
 that doesn't exist (demand pricing, muster math, buzzer flips), build it.
 
+## GTO exam (`benchmarks/gto_exam.py`, scored, non-blocking)
+
+How GTO is pro, in one number: decide-level doctrine fixtures (scripted
+intel in, orders out), parameterized over geometries so passing needs
+the RULE, not the point. Expected to fail where Steps haven't landed —
+the failures are the roadmap. Baseline 6/14: muster 2/6, pricing 2/2
+(pack-rule-adjacent passes, noted), selectivity 1/2 (viability gate real),
+escape 1/2 (established-endures accidental), intel 0/1, endgame 0/1.
+Fail map: muster 2v1/1v3 + poor_unready_first → Step 2; young_flees →
+Step 5 (hopeless needs D<N force-counting); blind_probes → pro recon;
+buzzer_no_settle → Step 6. Never gate on it (a ceiling, not a floor) —
+judge game truth in the suites; challenge fixtures with numbers.
+
 ## Goal
 Per-bot scenario suites (disjoint map sets) that run in seconds and
 discriminate each personality's weaknesses. Used to score the 5 bots

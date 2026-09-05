@@ -414,3 +414,25 @@ doctrine; outsettle +34, voids ±3). empty_3000: 9156/4270/4873/4829/7055
 Step 3: interception (2v1 the raid en route keeps the capital FAT —
 full 2747-class restoration needs it), cluster-rep turn-hash (same
 disease, line 527, not chased).
+
+## GTO exam 6/14 + note-drop closed (S0 done, Step 2 scoped)
+
+Note-drop tension CLOSED as benign without a code change: wrapper-bot
+drop logging (monkeypatch-per-bot-module, file log) measured 88/88
+empty_3000 drops on scout notes with 0 doglegs — drops fire during
+arrival-waits on fresh orders, the army marches on engine-side, and
+quiescence blocks doomed re-dispatches. Turn-hash had already defused
+the roulette half; what remains is bookkeeping churn. All S0 followups
+done (probe memory, turn-hash, note-drop verdict).
+GTO exam (`benchmarks/gto_exam.py`, scored non-blocking, ms): doctrine
+fixtures over geometries, baseline pro 6/14 — muster 2/6 (overtrains
+defended towns AND marches the defenders away; donates into 1v3),
+pricing 2/2, selectivity 1/2 (thin gate real; leader-targeting picks
+the ready rich over the unready poor), escape 1/2 (young rides down —
+_pro_hopeless is pop-based, needs D<N force-counting; established
+passes accidentally), intel 0/1 (pro still blind, marches settlers at
+foe towns), endgame 0/1 (settles with 50 turns left). Two fixture bugs
+caught by sniffing passes (same-faction score sharing; empty-field
+buzzer) — exam honest now. Fail map filed in BENCH + Step 2/5/6
+acceptance lines. Next: Step 2 demand gates + trade evaluator for pro
+(exam muster/selectivity are its acceptance).
