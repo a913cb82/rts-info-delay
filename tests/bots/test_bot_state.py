@@ -3072,3 +3072,25 @@ class TestBloodlust:
                      {"kind": "town_update", "id": 2, "x": 600, "y": 500,
                       "faction": 1, "population": 4000, "is_capital": False}])
         assert bloodlust(b, CFG) is False
+
+
+class TestLeaderHate:
+    """Trailing bots prefer the runaway's towns."""
+
+    def test_leader_discount(self) -> None:
+        from bots.common import BotState, raid_targets
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 3000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 20000, "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 300, "y": 800,
+                      "faction": 2, "population": 3000, "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        r = raid_targets(b, CFG, 5)
+        assert r is not None
+        # leader (faction 1) town should rank first
+        assert r[0][0].faction == 1

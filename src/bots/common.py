@@ -2719,6 +2719,18 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         # seed comebacks and tax the leader.
         if _underdog(state):
             need = max(1, need - 1)
+        # Leader-hate (r111: solo blowouts — F1 106k vs zeros, no contest.
+        # Emergent gang-up: everyone prefers the pop-leader's towns
+        # (need -1, min 1). No alliance, just shared incentives — taxes
+        # runaways and seeds three-way races).
+        _pops: dict[int, float] = {}
+        for _t in state.world.towns:
+            _pops[_t.faction] = _pops.get(_t.faction, 0.0) + _t.population
+        _foe_pops = {k: v for k, v in _pops.items() if k != faction}
+        if _foe_pops and u.faction == max(_foe_pops, key=_foe_pops.get):
+            _mine = _pops.get(faction, 0.0)
+            if _foe_pops[u.faction] >= 2.0 * _mine:
+                need = max(1, need - 1)
         if not priced:
             # Denial needs survivors too (r95: F0's 6 thin takes all died
             # same turn — spite vs 400-pop towns buys nothing). Skip
