@@ -1280,3 +1280,13 @@ or rich town (>=3000). R72: pro0 28 captures (conqueror) + expander
 t7000, 3x3-onesies (minor), 155km patrol churn (watch). Pro1 still
 falls (positional: corner vs central). GENERATED r72.
 NEXT: patrol churn (155km) + pro1-corner dynamics.
+
+## Nearby-first + rotating far patrol + r74 (per-loop regen)
+
+SHIPPED (common.py, green): coverage nearby-first (stalest within
+300km; leftovers hold for packs) + one rotating far patrol per 500t
+(r73 nearby-only blinded all: action died t3000).
+R74: action EVERY millennium t1000-t9000 (43 foundings, 14 captures,
+24 battles); aggressive 6 captures (underdog!); expander 32/7.
+Blemishes: 2 stale-mirror fratricides (10, own-towns; accepted price
+of far intel), turtle ghost t1515 (harness). GENERATED r74.

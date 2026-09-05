@@ -1103,14 +1103,32 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     cells.sort(key=lambda c: -c[0])
     out: list[str] = []
     free = list(idle)
+    # Nearby-first (r72: 155km patrol churn — patrols chased staleness
+    # map-wide. Sweep stalest within 300km; only go far when home
+    # ground is fresh. Nearby = observable + defensible (doctrine).)
     for _, tx, ty in cells:
         if not free:
             break
         p = min(free, key=lambda a: _math.hypot(a.x - tx, a.y - ty))
         if _math.hypot(p.x - tx, p.y - ty) < 30:
             continue  # cell already has a body: keep sweeping elsewhere
+        if _math.hypot(p.x - tx, p.y - ty) > 300:
+            continue  # far cells wait for a nearer body (below)
         out.extend(order_move(state, config, p, tx, ty))
         free.remove(p)
+    # (leftovers hold: positioned for packs, no far churn — except one
+    # rotating far patrol per 500t (r73: nearby-only blinded everyone,
+    # action died t3000. Far eyes on rotation, not every leftover).)
+    if free and state.turn % 500 == (state.faction * 137) % 500:
+        for _, tx, ty in cells:
+            if not free:
+                break
+            p = min(free, key=lambda a: _math.hypot(a.x - tx, a.y - ty))
+            if _math.hypot(p.x - tx, p.y - ty) < 30:
+                continue
+            out.extend(order_move(state, config, p, tx, ty))
+            free.remove(p)
+            break  # one far patrol per rotation
     return out
 
 
