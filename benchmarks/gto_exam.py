@@ -90,32 +90,47 @@ def exam_muster():
 
 # ── Pricing: expand iff payback-positive (Step 2; expect FAIL) ──
 def exam_pricing():
-    # Poor home, void all around: founding never repays — hold, don't march.
+    # Poor home, void all around: founding never repays — recycle home
+    # (+500 pop-add) or hold, never march away.
     o = decide_orders(cap_state(3000, foe_towns=[(900, 500, 1, 4000, False)],
                                 own_armies=[(300, 500)]), CFG)
     check("pricing", "poor_home_holds", o,
-          lambda o: not any(m.split()[1] == "7" for m in _moves(o)),
+          lambda o: not any(m.split()[1] == "7" and _march_len(m) > 20
+                             for m in _moves(o)),
           f"marches a settler from a poor town; orders={o}")
-    # Rich home: expansion is affordable — a settler marches.
+    # Rich home, VOID (no foes ever seen): uncontested compounding — a
+    # settler marches.
+    o = decide_orders(cap_state(30000, own_armies=[(300, 500)]), CFG)
+    check("pricing", "rich_void_expands", o, lambda o: len(_moves(o)) >= 1,
+          f"rich void town sits on its hands; orders={o}")
+    # Rich home, CONTESTED, short horizon: 1e8/30000 = 3333 turns payback
+    # never fits — hold (darkness already lifted; expansion is priced).
     o = decide_orders(cap_state(30000, foe_towns=[(900, 500, 1, 4000, False)],
                                 own_armies=[(300, 500)]), CFG)
-    check("pricing", "rich_home_expands", o, lambda o: len(_moves(o)) >= 1,
-          f"rich town sits on its hands; orders={o}")
+    check("pricing", "rich_contested_holds", o,
+          lambda o: not any(m.split()[1] == "7" and _march_len(m) > 60
+                             for m in _moves(o)),
+          f"settles a priced contest; orders={o}")
+
+
+def _march_len(m):
+    _, _, fx, fy, tx, ty = m.split()
+    return ((float(tx) - float(fx)) ** 2
+            + (float(ty) - float(fy)) ** 2) ** 0.5
 
 
 # ── Selectivity: theft-only vs unready, skip the ready (Step 2) ──
 def exam_selectivity():
-    # Poor-unready near (1500: halves 750 viable, but 1500-1000 < floor
-    # so it can't muster) + rich-ready far (8000, musters deep), DIFFERENT
-    # factions (else leader-targeting shares one score and distance
-    # decides — correct by accident): the one army raids the poor town.
-    # (800 would halve 400 and starve — decoy.)
+    # Poor-unready FAR (1500 @400km: viable halve 750, can't muster) +
+    # rich-ready NEAR (8000 @150km, prints 3 before arrival), same faction
+    # (distance would pick the rich town — readiness must overrule it).
+    # (800 would halve 400 and starve — decoy, excluded by viability.)
     o = decide_orders(cap_state(
-        20000, foe_towns=[(450, 500, 1, 1500, False),
-                           (700, 500, 2, 8000, False)],
+        20000, foe_towns=[(700, 500, 1, 1500, False),
+                           (450, 500, 1, 8000, False)],
         own_armies=[(300, 500)]), CFG)
     check("selectivity", "poor_unready_first", o,
-          lambda o: any("450" in m for m in _moves(o)),
+          lambda o: any("700" in m for m in _moves(o)),
           f"doesn't pick the unready victim; orders={o}")
     # Thin decoy (800 -> halves 400, starves): never raid it with the only army.
     o = decide_orders(cap_state(
@@ -175,12 +190,6 @@ def exam_endgame():
           lambda o: not any(m.split()[1] == "7" and _march_len(m) > 60
                              for m in _moves(o)),
           f"settles with 50 turns left; orders={o}")
-
-
-def _march_len(m):
-    _, _, fx, fy, tx, ty = m.split()
-    return ((float(tx) - float(fx)) ** 2
-            + (float(ty) - float(fy)) ** 2) ** 0.5
 
 
 def main():

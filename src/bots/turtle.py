@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, drop_dead_notes, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .common import BotState, bot_main, drop_dead_notes, defense_train_ok, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -123,9 +123,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                    if math.hypot(a.x - t.x, a.y - t.y) <= config.interact_radius + 10)
 
     def last_stand(t) -> bool:
-        return (town_eta.get(t.id, float("inf")) <= 3
-                and t.population >= config.army_cost
-                and _home_count(t) < town_inbound.get(t.id, 0))
+        return defense_train_ok(t.population, config.army_cost,
+                                config.death_threshold,
+                                town_eta.get(t.id, float("inf")),
+                                _home_count(t), town_inbound.get(t.id, 0),
+                                window=3.0)
 
     # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is

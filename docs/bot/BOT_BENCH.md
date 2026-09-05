@@ -14,12 +14,11 @@ that doesn't exist (demand pricing, muster math, buzzer flips), build it.
 How GTO is pro, in one number: decide-level doctrine fixtures (scripted
 intel in, orders out), parameterized over geometries so passing needs
 the RULE, not the point. Expected to fail where Steps haven't landed —
-the failures are the roadmap. Baseline 6/14: muster 2/6, pricing 2/2
-(pack-rule-adjacent passes, noted), selectivity 1/2 (viability gate real),
-escape 1/2 (established-endures accidental), intel 0/1, endgame 0/1.
-Fail map: muster 2v1/1v3 + poor_unready_first → Step 2; young_flees →
-Step 5 (hopeless needs D<N force-counting); blind_probes → pro recon;
-buzzer_no_settle → Step 6. Never gate on it (a ceiling, not a floor) —
+the failures are the roadmap. Baseline was 6/14; Step 2 pro brought it to 13/15: muster 6/6,
+pricing 3/3, selectivity 2/2, escape 1/2 (established-endures accidental),
+intel 0/1, endgame 1/1 (payback kills buzzer settling — principled).
+Remaining fails: young_flees → Step 5 (hopeless needs D<N
+force-counting, not pop-counting); blind_probes → pro recon owed. Never gate on it (a ceiling, not a floor) —
 judge game truth in the suites; challenge fixtures with numbers.
 
 ## Goal
@@ -136,13 +135,14 @@ Founding costs show at <=100t horizons (~-500 + lost compounding each);
 raid numbers read takes, not sits. recycle horizon 30→60 (idle army
 probes first, founds far ~t55).
 Strategic (focal pro): attrition 14552 / comeback 821 / endurance 7752 /
-_outsettle 1796 (3v1 towns — scout tax in a 200t sprint, timing not shape) /
-guard_duty 2963 (capital holds 300t vs 8000-aggressive) / longpeace 5254 /
+_outsettle 1830 (3v1 towns — scout tax in a 200t sprint, timing not shape) /
+guard_duty 3249 (holds 300t vs 8000-aggressive: outcome-muster +
+war-footing hold, no mystery evac) / longpeace 5254 /
 opening 1391 / siege 5324 / snowball 4851 / staleness 4007 / succession 1826;
-void_contact 5135 (take: scout finds B, raids, +founding) / void_settle 2936
-(3 towns); self-play symmetric; Elo RESOLVED (was all-hold): greedy 1544 /
-aggressive 1543 / pro 1473 / expander 1470 / turtle 1470 — raiders take,
-holders hold. Verdict for Step 5: the old all-hold was attacker-passivity
+void_contact 5136 (take: scout finds B, raids, +founding) / void_settle 2933
+(4 towns); self-play symmetric; Elo: greedy 1515 / aggressive 1515 /
+pro 1501 / turtle 1498 / expander 1470 — raiders take, holders hold,
+pro on top (demand-gated muster). Verdict for Step 5: the old all-hold was attacker-passivity
 (no contact, no takes), not defense-favored mechanics; with contact the
 takes come. empty_3000 rematch: pro 9156 (still sits — last blind bot) /
 turtle 6637 / expander 4227 / aggressive 3766 (took greedy's capital!) /

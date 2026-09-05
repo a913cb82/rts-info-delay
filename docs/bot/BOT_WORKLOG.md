@@ -436,3 +436,33 @@ caught by sniffing passes (same-faction score sharing; empty-field
 buzzer) — exam honest now. Fail map filed in BENCH + Step 2/5/6
 acceptance lines. Next: Step 2 demand gates + trade evaluator for pro
 (exam muster/selectivity are its acceptance).
+
+## Step 2 pro: demand gates + trade evaluator (exam 6/14 -> 13/15, Elo crown)
+
+Pro learns demand: threat trains by outcome rule (train iff D == N-1
+flips take→save; D == N holds for the cheaper mutual — mutual spends a
+non-compounding army, trains spend compounding pop), raid pipeline (pack
+deficit for the priced target), expansion pipeline (void merit or
+contested payback 1e8/P). Shared: `inbound_force` (+counts, feeds
+`inbound_eta`), `defense_train_ok` (turtle's last-stand upgraded to it —
+suites confirm equivalence), unready-weighted raid selection (take needs
+N ≥ S+W+1 with printable-before-arrival; prize clears risk premium, army
+not spent). Exam: muster 6/6, pricing 3/3, selectivity 2/2 (fixture bugs
+fixed en route: same-faction score-sharing, prize-as-spent). Remaining
+exam reds are filed futures (young_flees Step 5, blind_probes recon).
+Guard_duty collapsed 3234→645 on the way — forensics, three real bugs:
+(1) spend-poisoned growth (train -1000 misread as collapse → fake
+un-reinforceable → mystery evac): growth now net of train-spends (own
+spawn events) and capture-halves (halve stripped, chunk-proof), with TDD
+pins; (2) recycle-disband under staging (t31: zero-move home + merge
+with staging known but no field army visible — "no visible army" ≠
+peace): war-footing holds (no home marches, no home merges) unless
+P3b-empty; (3) t38 evac explained by (1), no separate bug. Restored
+3249 (+15). Lesson log: filtered record reads hid `battle` events twice
+(merges look like deaths); cross-version record comparison faked an
+engine ghost (always regenerate before reading); dead-bot pro scores
+3872 (peaceful farming beats broken defense — defense is the tissue).
+Fast 15/15, strategic 13/13, Elo pro top at 1501 (muster discipline
+pays in skirmishes), empty_3000 pro identical 9156 (greedy +490 via the
+shared growth fix). Remain: Step 2 for the other four (per-personality
+bars), then Steps 3-6, recon, pickets.

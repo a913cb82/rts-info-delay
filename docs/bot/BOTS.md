@@ -66,16 +66,27 @@ furniture for scenarios, not a personality. There is no `random` bot
   if the viceroy dies. Builds close (40–140 km), one builder at a time.
 
 ### pro — No Personality
-- Greedy base (1500 trains, recycle, duel home-hold) + leader-targeting +
-  departure-sync + evac, gated by situation: counter-punch rope-a-dope in
-  peer duels (hold-all vs field armies, counter the spent foe), pure
-  pressure in big wars. Duel-only gating throughout (P5–P7 lessons).
+- Demand-gated trains (Step 2): threat muster by outcome rule
+  (`defense_train_ok`: train iff D == N-1 flips take→save, floor or
+  doomed-convert; D == N holds for the mutual, D > N already won,
+  D < N-1 already lost), raid pipeline (pack deficit for the priced
+  target), expansion pipeline (void merit or contested payback 1e8/P).
+  No trains without demand — the always-train era is over.
+- Priced raid selection (unready-weighted: take needs N ≥ S+W+1 with
+  printable-before-arrival, prize clears risk premium) + leader-targeting
+  + departure-sync + rope-a-dope/Evac kept. Duel-only gating (P5–P7).
+- Hold rule: keep min(home, N+1) per threatened town; hopeless towns
+  (D ≤ N-2) keep none. War-footing: no recycle-merges and no settler
+  marches under known threat (guard_duty t31 lesson) — hold instead.
 - Empty-field economy: with no foes anywhere, holds and compounds
-  (matches the 5254 policy optimum exactly). Judged solely on suite +
-  full-game score.
+  (matches the 5254 policy optimum exactly). Exam 13/15 (fails: young
+  evac needs D<N hopeless — Step 5; blind — recon owed).
 
 ## Shared machinery (`common.py`)
 
+- Shared threat math: `inbound_force` (per-town ETA + count, guard-
+  excluded) feeds `inbound_eta`; `defense_train_ok` (outcome-rule
+  muster, shared turtle/pro); `staging_eta` (positioning-threat).
 - `BotState`: seen-only world mirror (holds only delivered updates) +
   `turn/faction`; upsert parser (absolute create/update/remove, unknown
   kinds ignored, deaths clear trackers); `evac_ordered` flag + amnesia
@@ -84,7 +95,9 @@ furniture for scenarios, not a personality. There is no `random` bot
   BUILD/death/arrival); `_pending_trains/_builds` confirmed by own
   `town_update` pop drops; `last_seen` delivery stamps + per-army
   position trails (foe velocity stands in for intent); `_prev_pop/_growth`
-  (per-turn net deltas, reset on turn advance), overcrowding clusters
+  (per-turn net deltas, reset on turn advance, net of train-spends and
+  capture-halves — spends misread as collapse poison hopelessness),
+  overcrowding clusters
   (negative-growth towns within 150 km; smallest per cluster trains),
   memoized `stale_turns` (dist-to-capital/info_speed), fingerprint-gated
   standing-order replay + plan queue + clock effort (see `BOT_TIME.md`).

@@ -125,7 +125,7 @@ class TestAmnesia:
         assert b.world.armies == []
         assert b._army_targets == {}
         assert b._pending_trains == {} and b._pending_builds == {}
-        assert b._prev_pop == {} and b._growth == {9: 0.0}  # fresh batch seeds bookkeeping
+        assert b._prev_pop == {} and b.get_growth(9) == 0.0  # fresh batch seeds bookkeeping
         assert b._last_seen == {("town", 9): 5}
         assert b._trails == {}
         assert b._wave_ids == set() and b._wave_hold_until == -1

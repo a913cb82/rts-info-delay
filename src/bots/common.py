@@ -280,10 +280,13 @@ class BotState:
         # Snapshot prev pops for towns this batch names, then apply absolutely.
         touched_towns, _ = _batch_ids(events)
         prev = {}
+        prev_faction = {}
         for tid in touched_towns:
             t = self.world.get_town(tid)
             if t is not None:
                 prev[tid] = t.population
+                prev_faction[tid] = t.faction
+        known_armies = {a.id for a in self.world.armies}
         for ev in events:
             self._apply_update(ev)
         if events:
@@ -291,15 +294,39 @@ class BotState:
             # world's index wouldn't rebuild without this (mark_dirty
             # contract: production mutation sites all mark).
             self.world.mark_dirty()
+        # Spend-aware growth: own train drops (-cost per own spawn) and
+        # capture halves (faction flip) are not growth. Credits apply in a
+        # pre-pass (pure addition — commutes across same-turn chunks, so
+        # incremental replay matches). A train drop misread as collapse
+        # poisons hopelessness (guard_duty: a correct muster read as -997
+        # and fired a mystery evac).
+        cost = getattr(getattr(self, "config", None), "army_cost", 1000) or 1000
+        for ev in events:
+            if ev.get("kind") == "army_update" and ev.get("faction") == self.faction:
+                eid = ev.get("id")
+                if eid is not None and eid not in known_armies:
+                    a = self.world.get_army(eid)
+                    if a is not None:
+                        near = [t for t in self.world.towns
+                                if t.faction == self.faction and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
+                        if near:
+                            host = min(near, key=lambda t: math.hypot(a.x - t.x, a.y - t.y))
+                            self._growth[host.id] = self._growth.get(host.id, 0.0) + cost
         for tid in touched_towns:
             t = self.world.get_town(tid)
             if t is None:
                 self._growth.pop(tid, None)
                 continue
-            if tid in prev:
-                self._growth[tid] = self._growth.get(tid, 0.0) + (t.population - prev[tid])
-            else:
+            if tid not in prev:
                 self._growth.setdefault(tid, 0.0)
+                continue
+            if tid in prev_faction and prev_faction[tid] != t.faction:
+                # captured: strip the halve, keep the growth (chunk-proof:
+                # same result whether the flip shares a batch or not).
+                eff = getattr(getattr(self, "config", None), "build_efficiency", 0.5) or 0.5
+                self._growth[tid] = self._growth.get(tid, 0.0) + (t.population - prev[tid] * (1.0 - eff))
+                continue
+            self._growth[tid] = self._growth.get(tid, 0.0) + (t.population - prev[tid])
         self._prev_pop = prev
         # Dead-army tracker cleanup happens in _remove_army at apply time.
         # expire pending trains whose pop drop has arrived or timed out
@@ -493,7 +520,8 @@ class BotState:
         return self.time_remaining_ms() < self.YIELD_AT_MS
 
     def get_growth(self, town_id: int) -> float:
-        return self._growth.get(town_id, 0.0)
+        v = self._growth.get(town_id, 0.0)
+        return v if isinstance(v, (int, float)) else 0.0
 
     def overcrowded_clusters(self) -> list[list[Town]]:
         if self._cluster_cache and self._cluster_cache[0] == self.turn:
@@ -902,6 +930,54 @@ def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
     return out
 
 
+def inbound_force(state: "BotState", config: "GameConfig",
+                  max_eta: float = 8.0) -> dict[int, tuple[float, int]]:
+    """Per-own-town inbound threat (ETA, force) by nearest-own-town.
+
+    Same assignment as inbound_eta, plus the count: N raiders imputed to
+    the town nearest each of them. Stationary foe guards sitting on
+    their own towns are excluded (not inbound)."""
+    import math as _math
+    faction = state.faction
+    own_t = state.own_towns()
+    foe_towns = [t for t in state.world.towns if t.faction != faction]
+    out: dict[int, tuple[float, int]] = {}
+    for t in own_t:
+        best = float("inf")
+        n = 0
+        for a in state.world.armies:
+            if a.faction == faction:
+                continue
+            if any(_math.hypot(a.x - u.x, a.y - u.y) <= 15
+                    for u in foe_towns if u.faction == a.faction):
+                continue
+            if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
+                continue
+            eta = _math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
+            if eta < best:
+                best = eta
+            n += 1
+        if best <= max_eta:
+            out[t.id] = (best, n)
+    return out
+
+
+def defense_train_ok(population: float, cost: float, floor: float,
+                     eta: float, home: int, n: int, window: float = 4.0) -> bool:
+    """Defense-train predicate (shared): train iff the marginal army
+    improves the outcome — D == N-1 flips take->save (last-stand: bypass
+    the floor, the town falls anyway, convert), D == N flips mutual->clean
+    (floor applies: don't gut a town to save armies). Otherwise hold:
+    D > N is already won, D < N-1 is already lost (save the armies)."""
+    if eta > window or n < 1:
+        return False
+    if home < n - 1 or home > n:
+        return False
+    if home == n - 1:
+        return population >= cost
+    return population - cost >= floor
+
+
 def inbound_eta(state: "BotState", config: "GameConfig",
                 max_eta: float = 8.0) -> dict[int, float]:
     """Per-own-town inbound threat ETA (nearest-own-town prediction).
@@ -912,27 +988,8 @@ def inbound_eta(state: "BotState", config: "GameConfig",
     (recall/hold, via staging_eta) — mustering costs 1000 against a town
     that may never produce force, while recall is free insurance.
     Returns {town_id: min_eta} for towns with eta <= max_eta."""
-    import math as _math
-    faction = state.faction
-    own_t = state.own_towns()
-    foe_towns = [t for t in state.world.towns if t.faction != faction]
-    out: dict[int, float] = {}
-    for t in own_t:
-        best = float("inf")
-        for a in state.world.armies:
-            if a.faction == faction:
-                continue
-            if any(_math.hypot(a.x - u.x, a.y - u.y) <= 15
-                   for u in foe_towns if u.faction == a.faction):
-                continue
-            if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
-                continue
-            eta = _math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
-            if eta < best:
-                best = eta
-        if best <= max_eta:
-            out[t.id] = best
-    return out
+    return {tid: eta for tid, (eta, _) in
+            inbound_force(state, config, max_eta).items()}
 
 
 def note_wave_watch(state: "BotState") -> bool:

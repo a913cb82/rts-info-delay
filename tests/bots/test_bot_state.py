@@ -841,3 +841,93 @@ class TestStagingEta:
         self._upd(b, 1, [(1, 300, 500, 0, 2000, True),
                          (2, 600, 500, 1, 900, False)])
         assert staging_eta(b, CFG) == {}
+
+
+class TestInboundForce:
+    """inbound_force shares inbound_eta's assignment, plus the count
+    (muster math needs N, not just ETA)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_counts_and_eta(self) -> None:
+        from bots.common import inbound_eta, inbound_force
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 10, "x": 420, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        force = inbound_force(b, CFG)
+        assert set(force) == {1}
+        eta, n = force[1]
+        assert eta == pytest.approx(100.0 / 50.0)
+        assert n == 2
+        assert inbound_eta(b, CFG) == {1: pytest.approx(100.0 / 50.0)}
+
+    def test_stationary_guard_excluded(self) -> None:
+        from bots.common import inbound_force
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 2000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        assert inbound_force(b, CFG) == {}
+
+
+class TestGrowthAccounting:
+    """_growth is a per-turn RATE net of spends: train drops must not
+    poison it (guard_duty: a correct muster crashed growth to -997,
+    faked un-reinforceability, and fired a mystery evac)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _tu(self, tid, pop, turn_extra=None):
+        return {"kind": "town_update", "id": tid, "x": 300, "y": 500,
+                "faction": 0, "population": pop, "alive": True,
+                "is_capital": True}
+
+    def _spawn(self, aid):
+        return {"kind": "army_update", "id": aid, "x": 300, "y": 500,
+                "faction": 0, "alive": True, "is_viceroy": False}
+
+    def test_train_drop_excluded(self) -> None:
+        b = self._bot()
+        b.update(36, [self._tu(1, 3088)])
+        b.update(37, [self._tu(1, 3091)])
+        assert b.get_growth(1) == __import__("pytest").approx(3.0)
+        # t38: TRAIN executes (-1000 pop, own spawn seen same batch).
+        b.update(38, [self._tu(1, 2094), self._spawn(7)])
+        assert b.get_growth(1) == __import__("pytest").approx(3.0)
+
+    def test_rate_not_cumulative(self) -> None:
+        b = self._bot()
+        b.update(10, [self._tu(1, 1000)])
+        for t, p in [(11, 1003), (12, 1006), (13, 1009), (14, 1012)]:
+            b.update(t, [self._tu(1, p)])
+        assert b.get_growth(1) == __import__("pytest").approx(3.0)
+
+    def test_capture_halve_excluded(self) -> None:
+        b = self._bot()
+        b.update(20, [self._tu(1, 2000)])
+        b.update(21, [self._tu(1, 2003)])
+        # captured: pop halves; the halve is not growth (no -998 crater —
+        # only the growth around it counts, chunk-proof).
+        ev = self._tu(1, 1002)
+        b.update(22, [dict(ev, faction=1)])
+        assert b.get_growth(1) == __import__("pytest").approx(0.5)
+        b.update(23, [dict(self._tu(1, 1005), faction=1)])
+        assert b.get_growth(1) == __import__("pytest").approx(3.0)
