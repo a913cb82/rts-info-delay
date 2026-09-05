@@ -753,3 +753,16 @@ threat-gated so S0 safe) pins the last guard; out-of-position losses
 (army away when threat comes) need recall-radius doctrine (filed).
 Cost-500 illusion: bots assumed 500 everywhere, true cost 1000 —
 train_floor cost-aware (void cost+thresh, contested +buffer).
+
+## Regen review game (15 foundings, 0 edge, wars)
+
+Quiet regen (29s, zero clock-deaths — turtle timeouts were my parallel
+load, not bot slowness: cold decides <=4.6ms at 200 towns). Pro 33k /
+expander 68k / greedy 1k / aggressive+turtle eliminated in-game.
+15 foundings all interior (pro east cluster, expander south). Greedy
+dies t1536 (early contact), turtle founds t4605 then expander takes it
+twice (t4896/t5558, eliminated), aggressive dies t5146, expander takes
+pro town t5521 (2360). 18 battles. Placement fixed; wars flow.
+OPEN: pro parallel-packets + ghost/vector/bare gates + reckoning all in
+this game (pro takes? check). Chain/settle binds drifted (-9/-16%,
+projection changes selection — may need re-baseline, flagged).

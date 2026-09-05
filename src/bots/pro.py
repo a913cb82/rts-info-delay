@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -68,6 +68,8 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
     sel = raid_target(state, config, priced=duel_ctx)
+    sels = raid_targets(state, config, 3, priced=duel_ctx) if sel is not None else []
+    marched: dict[int, int] = {}  # target town id -> packet size sent
     _sk = strike_target(state, config)
     sk_march = _sk if _sk is not None and not enemy_armies else None
     # Pack gate: an unaffordable-but-valuable target builds (trains fire),
@@ -161,7 +163,19 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y), default=None)
                 if home is not None and home.population >= 2 * config.army_cost:
                     continue  # solo vs peer with empty field: wait for pack
-            out.extend(order_move(state, config, p, nearest.x, nearest.y))
+            packeted = False
+            for tgt, tneed, _ in [(nearest, need, None)] + [(u, n, s) for (u, n, s) in sels if u.id != nearest.id]:
+                if marched.get(tgt.id, 0) >= tneed:
+                    continue
+                if tgt.id != nearest.id and en_route(state, tgt.x, tgt.y):
+                    continue
+                out.extend(order_move(state, config, p, tgt.x, tgt.y))
+                marched[tgt.id] = marched.get(tgt.id, 0) + 1
+                packeted = True
+                break
+            if packeted:
+                continue
+            continue  # surplus past all needs holds (no over-muster)
         elif enemy_armies:
             forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
@@ -214,7 +228,8 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
         if tgt is None:
             continue
         is_enemy_target = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in enemy_towns)
-        if not is_enemy_target and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
+        rx, ry = state.reckoned_pos(config, p.id)
+        if not is_enemy_target and math.hypot(rx - tgt[0], ry - tgt[1]) < config.interact_radius + 10:
             # War-footing: a home-bound army holds as a defender, never
             # merges — disbanding into +500 under known threat throws the
             # defense away (guard_duty t31). Merges need TRUE void

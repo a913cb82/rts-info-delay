@@ -308,6 +308,7 @@ class BotState:
         self._trails = {}
         self._tip_grace = {}
         self.__dict__.pop("_queue", None)
+        self.__dict__.pop("_march_origin", None)
         self._wave_ids = set()
         self._foe_first_seen = {}
         self._foe_prints = {}
@@ -499,6 +500,35 @@ class BotState:
 
     def note_move(self, army_id: int, tx: float, ty: float):
         self._army_targets[army_id] = (tx, ty)
+        # March origin for dead-reckoning (own intent is exact: the engine
+        # marches deterministically, but delivery goes silent for holding
+        # armies and lags marching ones — botpos can sit 30km behind truth
+        # forever, defeating arrival detection; reckoned_pos fixes it).
+        a = self.world.get_army(army_id)
+        if a is not None:
+            self.__dict__.setdefault("_march_origin", {})[army_id] = (a.x, a.y, self.turn)
+
+    def reckoned_pos(self, config, aid: int) -> tuple[float, float]:
+        """Dead-reckoned own-army position: march origin + speed x elapsed
+        toward the noted dest (capped). Exact for compliant marches."""
+        import math as _math
+        a = self.world.get_army(aid)
+        if a is None:
+            return (0.0, 0.0)
+        tgt = self._army_targets.get(aid)
+        org = self.__dict__.get("_march_origin", {}).get(aid)
+        if tgt is None or org is None:
+            return (a.x, a.y)
+        fx, fy, t0 = org
+        speed = max(1.0, config.army_speed) if config else 50.0
+        dx, dy = tgt[0] - fx, tgt[1] - fy
+        full = _math.hypot(dx, dy)
+        if full < 1e-9:
+            return (a.x, a.y)
+        step = speed * max(0, self.turn - t0)
+        if step >= full:
+            return (tgt[0], tgt[1])
+        return (fx + dx * step / full, fy + dy * step / full)
 
     def note_build(self, army_id: int):
         cap = self.world.faction_capital(self.faction)
@@ -617,7 +647,8 @@ class BotState:
                         continue
                     bx, by = float(parts[2]), float(parts[3])
                     ir = getattr(config, "interact_radius", 10.0) or 10.0
-                    if math.hypot(a.x - bx, a.y - by) > ir + 10:
+                    rx, ry = self.reckoned_pos(config, aid)
+                    if math.hypot(rx - bx, ry - by) > ir + 10:
                         keep.append([self.turn + 3, order, tag])
                         continue
                     out.append(order)
@@ -930,7 +961,8 @@ def order_move(state: "BotState", config, p, tx: float, ty: float) -> list[str]:
     if not ready_to_dispatch(state, config, p):
         return []
     state.note_move(p.id, float(tx), float(ty))
-    return [f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {float(tx):.1f} {float(ty):.1f}"]
+    rx, ry = state.reckoned_pos(config, p.id)
+    return [f"MOVE_TO {p.id} {rx:.1f} {ry:.1f} {float(tx):.1f} {float(ty):.1f}"]
 
 
 def dispatch_settler(state: "BotState", config, p, sx: float, sy: float) -> list[str]:
@@ -1046,23 +1078,45 @@ def drive_scout(state: "BotState", config, p):
     tgt = state.army_target(p.id)
     if tgt is None:
         return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
-    if math.hypot(p.x - tgt[0], p.y - tgt[1]) >= 20:
+    # Arrival on dead-reckoned pos (own march physics exact; botpos lags
+    # 30km+ behind truth and freezes for holding armies).
+    rx, ry = state.reckoned_pos(config, p.id)
+    if math.hypot(rx - tgt[0], ry - tgt[1]) >= 20:
+        state.__dict__.pop("_scout_still", None)
         return []  # mid-hop or waiting arrival-intel: hold
     # arrived: next hop only from quiescent intel (else the order dies in
     # flight); the leg steps exactly when the hop dispatches, never twice
     # on persistent arrival-intel.
     if not ready_to_dispatch(state, config, p):
+        # Still-arrival force: a holding scout goes delivery-silent, its
+        # trail never converges, ready stays false forever — legs stall
+        # one short of unmark and the scout sits at its tip for 1600+
+        # turns (aggressive t1365-t3000). Persistent static arrival
+        # (past delivery lag) forces the leg; phantom-early unmarks are
+        # harmless (tip kept early, army catches up and founds).
+        info = (config.info_speed if config is not None else 150.0) or 150.0
+        cap = state.world.faction_capital(state.faction)
+        exp = math.ceil(math.hypot(p.x - cap.x, p.y - cap.y) / info) if cap else 1
+        st = state.__dict__.get("_scout_still")
+        if st is None or math.hypot(p.x - st[0], p.y - st[1]) > 1e-6:
+            state.__dict__["_scout_still"] = (p.x, p.y, 1)
+            return []
+        if st[2] < exp + 2:
+            state.__dict__["_scout_still"] = (p.x, p.y, st[2] + 1)
+            return []
+        state.__dict__.pop("_scout_still", None)
+    else:
+        state.__dict__.pop("_scout_still", None)
+    if not ready_to_dispatch(state, config, p):
         return []
     state._scout_leg += 1
     if state._scout_leg >= SCOUT_HOPS:
-        # hops exhausted with no contact: builds stage founds on the
-        # kept target (settle-as-scout); normal logic owns again. But a
-        # kept target inside an own town's founding range is a duplicate
-        # merge, not a founding — drop the note so builds don't fire on
-        # it (normal site choice or recycle owns instead). Fallback
-        # founding keeps the S0 contract (sunk march; test-pinned) —
-        # EV-gating lives at dispatch (settle-branch) and arrival
-        # (builds suppressed-gate), not here.
+        # hops exhausted with no contact: convert the tip HERE (drive owns
+        # it end-to-end — handing a kept note to builds loses it 7 ways:
+        # drop_dead, S0 re-steal, quiescence deadlock, grace expiry,
+        # arrival-lag, respin-None, cap-march death-letters). Arrived +
+        # gated -> BUILD now; bad tip -> respin note+march (queued BUILD
+        # fires on arrival); builds stays as backup only.
         state._scout_id = None
         if tgt is not None:
             interact = (config.interact_radius if config is not None
@@ -1071,9 +1125,21 @@ def drive_scout(state: "BotState", config, p):
                    for t in state.world.towns):
                 state._army_targets.pop(p.id, None)
             else:
-                # Kept tip: grace vs drop_dead (delivery lag + arrival
-                # holds fake strandedness the next turns).
                 state._tip_grace[p.id] = state.turn + 20
+                rx, ry = state.reckoned_pos(config, p.id)
+                if math.hypot(rx - tgt[0], ry - tgt[1]) <= interact + 10.0:
+                    foe_known = any(t.faction != state.faction for t in state.world.towns) \
+                        or any(a.faction != state.faction for a in state.world.armies)
+                    demand_ok = (not state._foe_first_seen) or expansion_demand(state, config)
+                    if (not foe_known or demand_ok) and site_pays(state, config, tgt[0], tgt[1]) \
+                            and tip_safe(state, config, tgt[0], tgt[1]):
+                        state.note_build(p.id)
+                        return [f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"]
+                rs = respin_tip(state, config, tgt[0], tgt[1])
+                if rs is not None:
+                    # Full chain: march + scheduled BUILD (fires on arrival
+                    # even if notes die; arrival detection is backup).
+                    return dispatch_settler(state, config, p, rs[0], rs[1])
         return []
     return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, state._scout_leg))
 
@@ -1218,6 +1284,70 @@ def towns_by_train_priority(state: "BotState", conservative: bool = False) -> li
     return cands
 
 
+def fresh_foe_armies(state: "BotState", cutoff: int = 12) -> list:
+    """Foe armies with fresh intel (age <= cutoff turns). Kills ghosts:
+    unobserved departures/deaths freeze last-seen intel (no updates flow
+    outside LOS), and threat/garrison math treated 27-turn-old phantoms
+    as live inbound — aggressive suicided its capital (t1807) over a foe
+    that truth shows nowhere within 400km. Cutoff 12 exceeds max
+    plausible mail lag (map diagonal/150 ~ 10)."""
+    out = []
+    for a in state.world.armies:
+        if a.faction == state.faction:
+            continue
+        age = state.turn - state._last_seen.get(("army", a.id), state.turn)
+        if age <= cutoff:
+            out.append(a)
+    return out
+
+
+def closing_on(state: "BotState", aid: int, tx: float, ty: float) -> bool:
+    """Attack-vector test: foe army aid heads at (tx, ty) (trail heading
+    aligns with bearing + range closing). Transiting scouts (passing by,
+    not attacking) must not trigger deny-converts — bare-convert needs
+    this or close range. No trail (fresh contact) assumes closing."""
+    import math as _math
+    tr = state._trails.get(aid)
+    if not tr or len(tr) < 2:
+        return True
+    (t0, x0, y0), (t1, x1, y1) = tr[-2], tr[-1]
+    dx, dy = x1 - x0, y1 - y0
+    if dx * dx + dy * dy < 1e-9:
+        return True  # stationary foe at range: assume hostile
+    bx, by = tx - x1, ty - y1
+    bl = _math.hypot(bx, by)
+    if bl < 1e-9:
+        return True
+    dl = _math.hypot(dx, dy)
+    closing = (dx * bx + dy * by) / (dl * bl) > 0.5
+    was = _math.hypot(x0 - tx, y0 - ty)
+    return closing and bl <= was
+
+
+def inbound_armies(state: "BotState", config, tid: int) -> list:
+    """Fresh foe armies imputed to own town tid (same assignment as
+    inbound_force: nearest-own-town, guards excluded). For vector tests."""
+    import math as _math
+    own_t = state.own_towns()
+    tgt = next((t for t in own_t if t.id == tid), None)
+    if tgt is None:
+        return []
+    foe_towns = [t for t in state.world.towns if t.faction != state.faction]
+    out = []
+    for a in fresh_foe_armies(state):
+        guarded = False
+        for u in foe_towns:
+            if u.faction == a.faction and _math.hypot(a.x - u.x, a.y - u.y) <= 15:
+                guarded = True
+                break
+        if guarded:
+            continue
+        if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != tid:
+            continue
+        out.append(a)
+    return out
+
+
 def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
     """Per-own-town staging threat ETA from known foe towns.
 
@@ -1283,11 +1413,10 @@ def inbound_force(state: "BotState", config: "GameConfig",
     def _compute():
         own_t = state.own_towns()
         foe_towns = [t for t in state.world.towns if t.faction != faction]
+        foes = fresh_foe_armies(state)
         # Guard set once (armies sitting on their own towns), not per pair.
         guarded = set()
-        for a in state.world.armies:
-            if a.faction == faction:
-                continue
+        for a in foes:
             for u in foe_towns:
                 if u.faction == a.faction and _math.hypot(a.x - u.x, a.y - u.y) <= 15:
                     guarded.add(a.id)
@@ -1302,8 +1431,8 @@ def inbound_force(state: "BotState", config: "GameConfig",
                 break  # timeout guard: partial map stands (threats known so far)
             best = float("inf")
             n = 0
-            for a in state.world.armies:
-                if a.faction == faction or a.id in guarded:
+            for a in foes:
+                if a.id in guarded:
                     continue
                 if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
                     continue
@@ -1510,9 +1639,7 @@ def garrison_map(state: "BotState") -> dict:
         for t in state.world.towns:
             by_faction.setdefault(t.faction, []).append(t)
         counts: dict = {}
-        for a in state.world.armies:
-            if a.faction == state.faction:
-                continue
+        for a in fresh_foe_armies(state):
             same = by_faction.get(a.faction)
             if not same:
                 continue
@@ -1527,12 +1654,14 @@ def foe_garrison(state: "BotState", u) -> int:
     return garrison_map(state).get(u.id, 0)
 
 
-def raid_target(state: "BotState", config, priced: bool = True,
-                margin: float = 200.0):
-    """Priced raid target (unready-weighted) + required force, or None.
+def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
+                 margin: float = 200.0):
+    """Top-k priced raid targets + required forces (ranked). Powers
+    parallel thin-takes: vs ungarrisoned sprawl, need-sized packets hit
+    several towns at once instead of marching the whole pack at one.
 
     Take needs N >= S+W+1 (standing + printable-before-arrival); the prize
-    must clear `margin` (theft pays — the army isn't spent, only risked).
+    must clear `margin` (theft pays — the army is not spent, only risked).
     No fieldable gate: an unaffordable-but-valuable target starts a
     PIPELINE (trains build the pack over turns); callers gate the MARCH
     on need <= free. Unpriced (big-war denial) returns max-pressure."""
@@ -1554,6 +1683,7 @@ def raid_target(state: "BotState", config, priced: bool = True,
     fieldable = [a for a in state.own_armies()
                  if not state.army_has_target(a.id)]
     best = None
+    ranked: list = []
     _big = len(cands) * max(1, len(fieldable)) > 50000
     for i, u in enumerate(cands):
         if _big and i % 8 == 0 and state.should_yield():
@@ -1586,11 +1716,20 @@ def raid_target(state: "BotState", config, priced: bool = True,
                 / (1.0 + max(0, need - len(fieldable)))
             if u.is_capital:
                 score *= 1.5
+            ranked.append((score, u, need, s))
             if best is None or score > best[0]:
                 best = (score, u, need, s)
     if best is None:
         return None
-    return best[1], best[2], best[3]
+    ranked.sort(key=lambda r: -r[0])
+    return [(u, need, s) for _, u, need, s in ranked[:max(1, k)]]
+
+
+def raid_target(state: "BotState", config, priced: bool = True,
+                margin: float = 200.0):
+    """Top-1 priced raid target (raid_targets wrapper; exact-compatible)."""
+    r = raid_targets(state, config, 1, priced, margin)
+    return r[0] if r else None
 
 
 def void_note_busy(state: "BotState") -> bool:
@@ -1782,6 +1921,15 @@ def demand_trains(state: "BotState", config, can_train,
                                 turns_left=config.max_turns - state.turn):
                 want = True
                 bare = (home[t.id] == n - 1)  # doomed-town convert branch
+                if bare:
+                    # Convert needs a REAL attacker: fresh + (close or
+                    # closing-vector). Ghosts and transiting scouts must not
+                    # trigger suicide (aggressive t1807: 27-turn phantom).
+                    speed = max(1.0, config.army_speed)
+                    raiders = inbound_armies(state, config, t.id)
+                    bare = any(math.hypot(a.x - t.x, a.y - t.y) / speed <= 2.0
+                               or closing_on(state, a.id, t.x, t.y)
+                               for a in raiders)
         if deficit[0] > 0:
             want = True
         if expand:
@@ -1850,7 +1998,13 @@ def site_pays(state: "BotState", config, x: float, y: float) -> bool:
         s1 = _crowd_sigma(state, config, t.x, t.y, t.population, extra=new)
         net += base * (1.0 - s1) - base * (1.0 - s0)
     s_new = _crowd_sigma(state, config, x, y, 500.0)
-    net += growth * 500.0 * (1.0 - 500.0 / cap) * (1.0 - s_new)
+    # Colony stream PROJECTED (compounding!): a static 500-pop stream
+    # (~0.5/turn) never repays 1000 sunk, vetoing everything — but the
+    # colony grows (500 -> 1300+ over 1600 turns). Linearized average pop
+    # over horizon (capped), home externality stays static (conservative).
+    horizon = max(1, max_turns - state.turn)
+    avg_pop = min(cap * 0.5, 500.0 * (1.0 + growth * horizon))
+    net += growth * avg_pop * (1.0 - avg_pop / cap) * (1.0 - s_new)
     # Sunk = full settler price (army_cost to print; the 500-pop town is
     # what's gained, counted in net above — not the cost). Cost-aware
     # (was hardcoded 500, half the true 1000 price: over-founded).

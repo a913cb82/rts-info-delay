@@ -211,7 +211,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if state.has_pending_build(p.id):
                 continue
             tgt = state.army_target(p.id)
-            if tgt and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
+            rx, ry = state.reckoned_pos(config, p.id)
+            if tgt and math.hypot(rx - tgt[0], ry - tgt[1]) < config.interact_radius + 10:
                 # threatened: hold as an army (trades the next wave) instead
                 # of disbanding into a town about to be attacked
                 if threatened and any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) <= 20 for t in own_t):

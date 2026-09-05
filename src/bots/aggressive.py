@@ -71,7 +71,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 continue
             # only BUILD if target is not an enemy town (attack needs capture, not BUILD)
             is_enemy_target = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in enemy_towns)
-            if not is_enemy_target and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
+            rx, ry = state.reckoned_pos(config, p.id)
+            if not is_enemy_target and math.hypot(rx - tgt[0], ry - tgt[1]) < config.interact_radius + 10:
                 # War-footing: home-bound armies hold (shared guard_duty
                 # lesson) — merges need TRUE void (never-seen), never
                 # eviction-flicker (shared endgame lesson).

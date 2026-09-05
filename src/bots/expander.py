@@ -74,7 +74,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if tgt is None:
                 continue
             tx, ty = tgt
-            if math.hypot(p.x - tx, p.y - ty) < config.interact_radius + 10:
+            rx, ry = state.reckoned_pos(config, p.id)
+            if math.hypot(rx - tx, ry - ty) < config.interact_radius + 10:
                 # War-footing hold + suppressed-arrival re-decision (shared
                 # Step 2/4-lite lessons): merges need TRUE void; lapsed
                 # void foundings re-task instead of gifting hostages.

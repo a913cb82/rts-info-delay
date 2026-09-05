@@ -941,6 +941,49 @@ class TestSensibleSites:
         ])
         assert b.pop_due_orders(CFG) == ["BUILD 5 900.0 900.0"]
 
+    def test_ghost_threat_ignored(self) -> None:
+        from bots.common import fresh_foe_armies, inbound_force
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        _sync_bot(b, None, 100, [
+            {"kind": "army_update", "id": 9, "x": 600.0, "y": 500.0,
+             "faction": 1, "alive": True, "is_viceroy": False},
+        ])
+        assert len(fresh_foe_armies(b)) == 1
+        _sync_bot(b, None, 200, [])
+        assert fresh_foe_armies(b) == []
+        assert inbound_force(b, CFG) == {}
+
+    def test_closing_vector(self) -> None:
+        from bots.common import closing_on
+        from collections import deque
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        b._trails[9] = deque([(8, 700.0, 500.0), (9, 650.0, 500.0), (10, 600.0, 500.0)], maxlen=4)
+        assert closing_on(b, 9, 500.0, 500.0)
+        b._trails[9] = deque([(8, 600.0, 500.0), (9, 650.0, 500.0), (10, 700.0, 500.0)], maxlen=4)
+        assert not closing_on(b, 9, 500.0, 500.0)
+
+    def test_bare_needs_closing_raider(self) -> None:
+        from bots.common import demand_trains, can_train_standard, DemandParams
+        from collections import deque
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        old_mt, CFG.max_turns = CFG.max_turns, 3000
+        try:
+            _sync_bot(b, None, 100, [
+                {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+                 "faction": 0, "population": 1100, "alive": True,
+                 "is_capital": True},
+                {"kind": "army_update", "id": 9, "x": 700.0, "y": 500.0,
+                 "faction": 1, "alive": True, "is_viceroy": False},
+            ])
+            b._trails[9] = deque([(98, 600.0, 500.0), (99, 650.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
+            assert demand_trains(b, CFG, can_train_standard, DemandParams()) == []
+            b._trails[9] = deque([(98, 800.0, 500.0), (99, 750.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
+            assert demand_trains(b, CFG, can_train_standard, DemandParams()) == ["TRAIN 1"]
+        finally:
+            CFG.max_turns = old_mt
+
     def test_no_reassign_tasked(self) -> None:
         from bots.common import maybe_assign_scout
         b = self._bot([(500.0, 500.0, 0, 5000, True)])
