@@ -2621,3 +2621,4 @@ class TestSettlerFloor:
         b.turn = 2000  # void (no foes): expansion wants, floors block
         out = demand_trains(b, cfg, can_train_standard)
         assert any(o.startswith("TRAIN 1") for o in out), out
+

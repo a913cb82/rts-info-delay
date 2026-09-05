@@ -1269,3 +1269,14 @@ R71: pro0 40 foundings/8 captures (mirror won big), captures to
 t4000, foundings to t8000, zero onesies; 55 pro0 idle + 145km patrol
 churn; turtle ghost t1456. GENERATED r71.
 NEXT: pro0 idle-note typing + mirror-match dynamics.
+
+## Guard-or-rich + r72 (per-loop regen)
+
+DIAGNOSE (r71 mirror): identical until t2500, then pro0 takes pro1's
+stripped capital t2770 (settler-wave left 600-pop towns empty).
+SHIPPED (common.py, green): settler-floor branch needs guard home
+or rich town (>=3000). R72: pro0 28 captures (conqueror) + expander
+29 foundings (settler) — diversity! Captures to t9000, battles to
+t7000, 3x3-onesies (minor), 155km patrol churn (watch). Pro1 still
+falls (positional: corner vs central). GENERATED r72.
+NEXT: patrol churn (155km) + pro1-corner dynamics.

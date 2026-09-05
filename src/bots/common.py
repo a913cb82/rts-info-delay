@@ -2618,7 +2618,11 @@ def demand_trains(state: "BotState", config, can_train,
             deficit[0] = max(0, deficit[0] - 1)
         elif (expand and deficit[0] <= 0
                 and t.population - cost >= config.death_threshold - 1e-9
-                and t.id not in state._pending_trains):
+                and t.id not in state._pending_trains
+                # Guard-or-rich (r71: mirror settler-wave left capitals
+                # empty — pro1 fell with 3 prints, 0 guards. Back-to-back
+                # settler prints need a guard home or a rich town).
+                and (len(state.own_armies()) >= 1 or t.population >= 3000)):
             # Settler floor (r70: losers sit poor — full floors lock the
             # first settler (1500-2000 vs 500-1500 towns). Expansion-only
             # want prints at survive-the-print pricing (pack deficit
