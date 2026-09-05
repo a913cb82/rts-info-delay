@@ -1068,7 +1068,10 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     unnoted field armies sweep the stalest coverage sectors (4x4 grid,
     stamped per payload). Nearest-idle to stalest-cell, one per cell.
     Runs LAST in moves stages (packs/scouts/settlers take theirs first).
-    Notes via order_move (pendulum-breaker + amnesty bound them)."""
+    Notes via order_move (pendulum-breaker + amnesty bound them).
+    Pack-muster guard (r68: coverage scattered a 5/6 pack to patrol
+    sectors — undersized packs hold, then coverage eats them and they
+    never converge): when a priced sel needs everyone, stand down."""
     import math as _math
     idle = [a for a in state.own_armies()
             if not state.army_has_target(a.id)
@@ -1077,6 +1080,16 @@ def coverage_orders(state: "BotState", config) -> list[str]:
             and a.id != getattr(state, "_scout_id2", None)]
     if not idle:
         return []
+    # Pack-muster guard only when packs plausibly need everyone (small
+    # idles; huge idles patrol — holding 12 bodies for a maybe-pack is
+    # worse than sweeping). Full pricing scan, so gate it.
+    if len(idle) <= 12:
+        try:
+            sel = raid_target(state, config, priced=True)
+        except Exception:
+            sel = None
+        if sel is not None and sel[1] >= len(idle):
+            return []  # pack needs everyone
     size = (config.map_size if config is not None
             and getattr(config, "map_size", None) else [1000, 1000])
     n = 4
@@ -2803,6 +2816,14 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
         return False
     arrival = min(dists) / max(1.0, config.army_speed)
     print_turns = (need - len(free_ids)) / max(1, len(towns))
+    # Recon-by-fire (r68: 5/6 packs hold AT the gates forever — stale
+    # premium blocks fair fights (real S often 0-2). Short by <=2 and
+    # already there: attack, intel resolves on contact. Assault-once
+    # (r69: 48 onesies vs real garrisons — re-assaults every 150t):
+    # fresh blood (< 1000t) vetoes.
+    if arrival < 1.0 and 0 < need - len(free_ids) <= 2 \
+            and state.__dict__.get("_bloodied", {}).get(target.id, -10 ** 9) < state.turn - 1000:
+        return True
     # Strict: ties hold (print can lag a turn; arriving exactly-even is
     # a coin flip on intel delay, and flips favor the defender).
     return arrival > print_turns

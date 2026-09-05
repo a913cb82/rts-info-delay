@@ -1246,3 +1246,15 @@ flat (eliminated early — wake never tested). 95 pro noted-idle
 (new form: static + noted + unthreatened; type TBD via traces).
 GENERATED r67 (per-loop regen).
 NEXT: idle-note typing (traced) + snowball structure.
+
+## Pack muster + assault-once + r70 (per-loop regen)
+
+DIAGNOSE (traced): 36 pro pack-notes holding at foe towns — coverage
+scattered mustering packs to patrol sectors (never converging) +
+short packs hold at gates forever (stale premium blocks fair fights).
+SHIPPED (common.py + tests, green): coverage pack-muster guard
+(priced sel needs everyone -> stand down; idle<=12 for scan cost:
+suite 5.2->3.0s), recon-by-fire (short<=2 + there -> assault),
+assault-once (fresh blood <1000t vetoes: r69's 48 onesies).
+R70: 9 captures (to t5000), foundings to t8000, ZERO onesies,
+zero stale-idle; aggressive ghost t1301 (harness). GENERATED r70.

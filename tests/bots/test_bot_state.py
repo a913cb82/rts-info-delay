@@ -2554,3 +2554,51 @@ class TestUnderdog:
         assert _underdog(b2) is False  # 3 towns vs 1
         got2 = {u.id: n for (u, n, _s) in raid_targets(b2, CFG, 3, priced=False)}
         assert got[2] < got2[2], (got, got2)
+
+
+class TestPackMuster:
+    """r68: coverage scattered a 5/6 mustering pack; short packs hold at
+    the gates forever. Guard + recon-by-fire."""
+
+    def test_coverage_stands_down(self) -> None:
+        from bots.common import BotState, coverage_orders
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        evs = [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                "faction": 0, "population": 20000, "alive": True,
+                "is_capital": True},
+               {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                "faction": 1, "population": 60000, "alive": True,
+                "is_capital": False},
+               {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                "faction": 0, "alive": True, "is_viceroy": False}]
+        b.update(1, evs)
+        b.turn = 100
+        # 1 idle vs priced sel needing 2+: pack needs everyone, no patrol
+        out = coverage_orders(b, cfg)
+        assert out == [], out
+
+    def test_close_assault(self) -> None:
+        from bots.common import BotState, jit_ready
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 495, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 496, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        tgt = b.world.get_town(2)
+        assert jit_ready(b, cfg, tgt, 4, [7, 8], 1) is True  # short 2, there
+        assert jit_ready(b, cfg, tgt, 6, [7, 8], 1) is False  # short 4: hold
