@@ -2045,3 +2045,30 @@ class TestAmnesty:
         amnesty_notes(b)
         assert b.army_has_target(7)  # fresh field note stays
         assert b.army_has_target(8)  # home note stays
+
+
+class TestMutualSave:
+    """Convert-deny must yield to mutual-save when a guard is printable
+    in time (convert only when defense impossible)."""
+
+    def test_printable_guard_musters(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        # rich town, 1 raider 2 turns out: print the guard (mutual-save),
+        # don't convert-deny a healthy town.
+        b.update(99, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 5000, "alive": True,
+                       "is_capital": True},
+                      {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                       "faction": 1, "population": 5000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+        assert b.world.get_town(1) is not None  # town survives the decision

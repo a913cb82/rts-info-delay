@@ -1109,3 +1109,22 @@ bots alive, no deaths. Late freeze t6000+ persists (rich towns, big
 garrisons, dark map; buzzer silent t9000+). FILED NEXT: buzzer audit
 (strip-mine flip should force late action) + late-garrison equilibrium.
 GENERATED: r44 (all alive).
+
+## Mutual-save (loop iteration: convert-deny yields)
+
+ANALYSE (r44): greedy "suicide" t1817 = TRAIN (army 14) + capital death
+same turn. Mechanism: bare-convert fired vs 1 raider 110km out; the
+483 remainder died under the 500 threshold. (Convert-deny itself
+defensible when guard-print unsurvivable — the waste was army-14's
+8000t rubble-sit, already fixed.) Also: t6100+ stagnation, pro small,
+no late expansion (filed with teeth below).
+SHIPPED (common.py + test, green): bare convert-deny only when no
+guard printable in time (eta < 1 or pop-cost < death threshold);
+else muster the mutual-save. Unit: rich town + raider at ETA 2 ->
+TRAIN, town lives.
+REMATCH r45: foundings to t3000 (7), 1 capture; turtle 0ms drip-death
+t1840 (infra, filed); greedy line diverged (can't re-verify t1816
+specifically — unit proves mechanism). NO GENERATE (r44 stands: all
+alive, action to t5000).
+FILED NEXT: expansion thaw (nobody founds t3000+; demand war-gating
+vs GTO 20k rule) + late-garrison equilibrium + buzzer audit.

@@ -2344,6 +2344,15 @@ def demand_trains(state: "BotState", config, can_train,
                     bare = any(math.hypot(a.x - t.x, a.y - t.y) / speed <= 2.0
                                or closing_on(state, a.id, t.x, t.y)
                                for a in raiders)
+                if bare:
+                    # Mutual-save beats deny (greedy t1817: converted a
+                    # healthy 1483 capital vs 1 raider 110km out, then the
+                    # 483 remainder died under threshold). Convert-deny only
+                    # when no guard is printable in time (eta < 1) or the
+                    # town can't survive printing one (else print: N-for-N
+                    # mutual saves towns worth more than the muster).
+                    if eta >= 1.0 and t.population - cost >= config.death_threshold:
+                        bare = False
         if deficit[0] > 0:
             want = True
         if expand:
