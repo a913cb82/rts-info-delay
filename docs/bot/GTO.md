@@ -315,3 +315,33 @@ headless endgame value (hub loss vs amnesia, exact trade).
 - **Traffic vs threat:** inbound-vector test before mustering
   (settlers walk toward void, raiders toward ME — turtle spent 10k
   vs settlers).
+- **Underdog variance (r65+):** the favorite plays safe (full needs),
+  the behind-on-towns underdog gambles (need −1, min 1). Desperate
+  takes seed comebacks and tax the leader; symmetric caution would
+  freeze the leaderboard.
+- **Support ratio (r74):** towns ≤ armies + 1, else no new colonies.
+  Unguarded sprawl is future enemy towns (F2 led 28k with 5t/1a,
+  picked apart town by town). Conquests scatter; guards don't.
+- **Survivor gate (r79):** priced raids skip pop < 2× death threshold
+  (takes halve at capture; thin prizes die same turn). Denial keeps
+  thin targets (spite has its own math).
+- **Assault-verify (r84):** foe-belief > 300t stale holds packs
+  (approach re-scouts or FoW-erases). Stale-mirror fratricide (town
+  flipped back unseen) is the bound, not zero.
+- **S0-guard (r83):** lone unscouted army holds the capital (first
+  packs walk into naked capitals t2300+). Scout pipeline untouched
+  (intel first); the guard is for bodies with no mission.
+- **RTS FoW (user):** last-known persists; erase only on observed
+  absence (observer watches ground past mail delay + 2, still silent
+  = gone). Stale-but-unwatched is genuinely unknown (kept).
+- **Muster foresight (r63):** threat window 6 (mail + print + spawn
+  eat 2-3 turns; eta-4 musters lose the race by a turn). Threatened
+  towns train first (offense starves defense under 1/town cap).
+- **Remuster (r51):** S=0 vs a printer needs +1 (observed empty +
+  printing foe = remuster before arrival; onesies never suffice).
+  Sterile-observed still takes cheap.
+- **Stale-age premium (r55):** unseen s = 3 + age//500, cap +3
+  (unseen towns accumulate guards; undersized packs bleed).
+- **Recon-by-fire, assault-once (r68/69):** short-by-≤2 + there =
+  attack (intel resolves on contact); fresh blood (<1000t) vetoes
+  re-assaults (re-feeding real garrisons is onesie farming).
