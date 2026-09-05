@@ -915,3 +915,17 @@ attribution, ONESIES flag >= 3; validated: r17 window counts match
 manual). VIEWER.md recipe updated. Filed next: silence-watch (fog
 eats deep-raid deaths — tombstones reach observers only, ledger.py),
 fog-view per faction (what did the bot know?), 8ms decide ceiling.
+
+## Report format (analysis tooling loop)
+
+USER: build tooling that rederives my feedback (reduce reliance on me).
+NEW: `--format report` (full-game brief, one command): activity
+(prints/foundings/captures/idle-armies/march-km per faction),
+stagnation (static >500t 0-battle armies + where), onesies
+(whole-game autopsy), punishable (empty towns + idle foe stacks
+<300km). Validated on r17: flags pro's 6 idle (5381t @ rubble),
+greedy's 3-print win, 10 punishable empties (town 42: 70km!), both
+onesie sites. Also fixed: captures via new_faction, dead-town owners.
+NEXT (filed): fog-view per faction, battle-flow, silence-watch,
+8ms ceiling; pending pro arrival-release (in tree, tested) rematches
+with the punish-doctrine loop.

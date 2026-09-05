@@ -472,6 +472,130 @@ def autopsy(path: str, t0: int, t1: int) -> str:
     return "\n".join(lines)
 
 
+def report(path: str) -> str:
+    """Full-game brief (loop step 1 in one command): activity, stagnation,
+    onesies, punishable thin towns, verdict lines. Rederives viewer
+    feedback without watching 10000 turns."""
+    import math as _math
+    prints: dict = {}
+    founds: dict = {}
+    caps: dict = {}
+    battled: dict = {}  # army id -> battles joined
+    track: dict = {}  # army id -> [faction, lastx, lasty, static_since, march_km]
+    static_max: dict = {}  # army id -> longest static run (turns)
+    towns: list = []
+    owners: dict = {}  # town id -> last-known faction (dead towns vanish)
+    final: dict = {}
+    losses: dict = {}
+    maxt = 0
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if "world" not in rec:
+                continue
+            t = rec.get("turn", 0)
+            maxt = max(maxt, t)
+            w = rec["world"]
+            towns = w.get("towns", towns)
+            final = w
+            for x in towns:
+                owners[x["id"]] = x["faction"]
+            seen = set()
+            for a in w.get("armies", []):
+                aid, fac, x, y = a["id"], a["faction"], round(a["x"]), round(a["y"])
+                seen.add(aid)
+                if aid not in track:
+                    track[aid] = [fac, x, y, t, 0.0]
+                    static_max[aid] = 0
+                else:
+                    tr = track[aid]
+                    tr[0] = fac
+                    tr[4] += _math.hypot(x - tr[1], y - tr[2])
+                    if x == tr[1] and y == tr[2]:
+                        static_max[aid] = max(static_max[aid], t - tr[3])
+                    else:
+                        tr[1], tr[2], tr[3] = x, y, t
+            for e in rec.get("events", []):
+                k = e.get("kind")
+                if k == "army_spawn":
+                    prints[e.get("faction", "?")] = prints.get(e.get("faction", "?"), 0) + 1
+                elif k == "town_spawn":
+                    founds[e.get("faction", "?")] = founds.get(e.get("faction", "?"), 0) + 1
+                elif k == "town_capture":
+                    # capturer = new owner of the town (event carries town id)
+                    caps[e.get("new_faction", e.get("faction", "?"))] = caps.get(e.get("new_faction", e.get("faction", "?")), 0) + 1
+                elif k == "battle":
+                    fac = {c["id"]: c["faction"] for c in e.get("combatants", [])}
+                    for c in e.get("combatants", []):
+                        battled[c["id"]] = battled.get(c["id"], 0) + 1
+                    for kid in e.get("killed", []):
+                        lf = fac.get(kid)
+                        if lf is None:
+                            continue
+                        site = min(towns, key=lambda u: _math.hypot(u["x"] - e["x"], u["y"] - e["y"]),
+                                   default=None) if towns else None
+                        tid = site["id"] if site else -1
+                        losses.setdefault((lf, tid), []).append(t)
+    feas = {t["faction"] for t in towns} | set(prints) | set(founds)
+    lines = [f"report {path.split('/')[-1]} ({maxt} turns):"]
+    lines.append("activity (prints/foundings/captures):")
+    for f in sorted(feas, key=str):
+        mates = [aid for aid, tr in track.items() if tr[0] == f]
+        idle = sum(1 for aid in mates if static_max.get(aid, 0) > 500 and battled.get(aid, 0) == 0)
+        march = round(sum(tr[4] for aid in mates for tr in [track[aid]]))
+        lines.append(f"  F{f}: {prints.get(f, 0)} prints / {founds.get(f, 0)} foundings / "
+                     f"{caps.get(f, 0)} captures / {idle} idle armies (>500t static, 0 battles) / {march}km marched")
+    lines.append("stagnation (static >500t, 0 battles):")
+    stagn = [(aid, static_max[aid], track[aid]) for aid in track
+             if static_max.get(aid, 0) > 500 and battled.get(aid, 0) == 0]
+    stagn.sort(key=lambda r: -r[1])
+    for aid, run, tr in stagn[:12]:
+        near = min(towns, key=lambda u: _math.hypot(u["x"] - tr[1], u["y"] - tr[2]),
+                   default=None) if towns else None
+        at = f" @ town {near['id']} (F{near['faction']})" if near and _math.hypot(near["x"] - tr[1], near["y"] - tr[2]) < 30 else f" @ void ({tr[1]},{tr[2]})"
+        lines.append(f"  army {aid} (F{tr[0]}) static {run}t{at}")
+    if not stagn:
+        lines.append("  (none)")
+    lines.append("onesies (>=3 losses, one faction, one town):")
+    any1 = False
+    for (lf, tid), ts in sorted(losses.items(), key=lambda kv: -len(kv[1])):
+        if len(ts) < 3:
+            continue
+        owner = owners.get(tid, "?")
+        lines.append(f"  F{lf} lost {len(ts)} @ town {tid} (F{owner}) t{min(ts)}-{max(ts)}")
+        any1 = True
+    if not any1:
+        lines.append("  (none)")
+    lines.append("punishable (final state: foe town, 0 garrison, idle foe stack <300km):")
+    garr: dict = {}
+    for a in final.get("armies", []):
+        for u in towns:
+            if u["faction"] == a["faction"] and _math.hypot(u["x"] - a["x"], u["y"] - a["y"]) <= 15:
+                garr[u["id"]] = garr.get(u["id"], 0) + 1
+                break
+    idle_stacks = [(a["id"], a["faction"], a["x"], a["y"]) for a in final.get("armies", [])
+                   if static_max.get(a["id"], 0) > 500]
+    any2 = False
+    for u in towns:
+        if garr.get(u["id"], 0) > 0:
+            continue
+        for aid, fac, x, y in idle_stacks:
+            if fac == u["faction"]:
+                continue
+            d = _math.hypot(u["x"] - x, u["y"] - y)
+            if d < 300:
+                lines.append(f"  town {u['id']} (F{u['faction']}, pop {round(u['population'])}) empty, "
+                             f"idle F{fac} stack {round(d)}km away (army {aid})")
+                any2 = True
+                break
+    if not any2:
+        lines.append("  (none)")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="ASCII viewer for jsonl recordings")
     ap.add_argument("recording")
@@ -481,15 +605,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--deltas", default="100,10,1", help="score-delta offsets (symmetric past+future, comma-separated)")
-    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy"],
-                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window")
+    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report"],
+                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window; report: full-game brief")
     ap.add_argument("--window", default="", help="autopsy window TURNS, e.g. 7800-8000 (default: last 1000)")
     args = ap.parse_args(argv)
     _COMPACT[0] = args.compact
     if args.format in ("json", "acjson"):
         args.format = "acjson"
-    elif args.format not in ("autopsy",):
+    elif args.format not in ("autopsy", "report"):
         args.format = "ascii"
+    if args.format == "report":
+        print(report(args.recording))
+        return 0
     if args.format == "autopsy":
         if args.window and "-" in args.window:
             t0, t1 = (int(v) for v in args.window.split("-", 1))

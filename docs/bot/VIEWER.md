@@ -33,7 +33,10 @@ kind/faction/pop/ids) plus precomputed geometry (no LLM math):
 
 ## Standard analysis (report card recipe)
 
-1. Quartiles: `--turns 2500,5000,7500,10000 --format acjson --compact`
+1. Report: `--format report` (full-game brief in one command: activity
+   per faction, stagnation list, onesies, punishable thin towns).
+   Start here — it rederives viewer feedback without watching.
+2. Quartiles: `--turns 2500,5000,7500,10000 --format acjson --compact`
    (factions + deltas + clusters tell the arc).
 2. Autopsy: `--format autopsy --window 7800-8000` (death ledger:
    who fed whom where; `ONESIES` flags >= 3 losses by one faction
