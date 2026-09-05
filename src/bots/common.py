@@ -3135,10 +3135,12 @@ def demand_trains(state: "BotState", config, can_train,
         elif (can_train(state, t)
                 and t.population - cost >= floor + params.depth_extra - 1e-9):
             out.append(f"TRAIN {t.id}")
-        elif (not state.own_armies() and can_train(state, t)
+        elif (params.serial and not state.own_armies() and can_train(state, t)
                 and t.population - cost >= config.death_threshold):
             # First-print urgency at emission too (r122: gate said 1500
             # but emission demanded leaving 1500 = real floor 2500).
+            # Serial only (r123: sprawlers compound — early prints spend
+            # the t2000 war-chest; the champ out-grows, not out-prints).
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
