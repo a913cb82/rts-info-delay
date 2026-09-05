@@ -3423,6 +3423,40 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     return arrival > print_turns
 
 
+def second_wind(state: "BotState", config) -> list[str]:
+    """Second-wind protocol (r109: F1/F3 zombified — 3-5 prints ALL game,
+    dead but present from t2000. A faction down to embers with living
+    rivals stops husbanding and gambles: print everything printable,
+    muster every body, march the nearest believed-foe town. Win or die
+    trying — zombies help nobody, least of all the viewer)."""
+    out: list[str] = []
+    own_t = state.own_towns()
+    if len(own_t) > 2 or len(state.own_armies()) > 1:
+        return out
+    if not own_t:
+        return out
+    # Collapse evidence (small-but-healthy openings must NOT trigger:
+    # only fire after losing towns or late (turn>1500 still embered).
+    if not state.__dict__.get("_lost_towns") and state.turn < 1500:
+        return out
+    # Living rivals? (believed foe towns; unknown = assume alive.)
+    foes = [t for t in state.world.towns if t.faction != state.faction]
+    if not foes:
+        return out
+    ours = {t.id for t in own_t}
+    foe_towns = [t for t in foes if t.id not in ours]
+    if not foe_towns:
+        return out
+    home = own_t[0]
+    tgt = min(foe_towns, key=lambda t: (t.x - home.x) ** 2 + (t.y - home.y) ** 2)
+    for t in own_t:
+        if t.population >= config.army_cost and not state.has_pending_build(t.id):
+            out.append(f"TRAIN {t.id}")
+    for a in state.own_armies():
+        out.extend(order_move(state, config, a, tgt.x, tgt.y))
+    return out
+
+
 def hopeless_capital(state: "BotState", config, bar: float = 1700.0) -> bool:
     """D<N hopelessness (shared Step 5): the worst inbound threat cannot
     be met even printing everything printable-in-time (1/town/turn TRAIN

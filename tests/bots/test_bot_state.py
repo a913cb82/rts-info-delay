@@ -2984,3 +2984,38 @@ class TestExploreField:
         b.turn = 10
         b._diffuse_explore_field()
         assert b._explore_at(100, 100) < b._explore_at(900, 900)
+
+
+class TestSecondWind:
+    """Embered factions gamble (no zombies)."""
+
+    def test_collapsed_gambles(self) -> None:
+        from bots.common import BotState, second_wind
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 3000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 0, "population": 2000, "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 200, "y": 500,
+                      "faction": 1, "population": 900, "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        # lose town 2 (collapse evidence), turn late
+        b.update(1600, [{"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                         "faction": 1, "population": 900, "is_capital": False}])
+        out = second_wind(b, CFG)
+        assert any(o.startswith("TRAIN") for o in out)
+        assert any("MOVE_TO" in o for o in out)
+
+    def test_healthy_opening_quiet(self) -> None:
+        from bots.common import BotState, second_wind
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 3000, "is_capital": True},
+                     {"kind": "town_update", "id": 3, "x": 200, "y": 500,
+                      "faction": 1, "population": 900, "is_capital": False}])
+        assert second_wind(b, CFG) == []
