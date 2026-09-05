@@ -2072,3 +2072,48 @@ class TestMutualSave:
         out = demand_trains(b, cfg, lambda s, t: True)
         assert any(o.startswith("TRAIN 1") for o in out), out
         assert b.world.get_town(1) is not None  # town survives the decision
+
+
+class TestBlindEyes:
+    """r45 lesson: noted-but-useless bodies aren't eyes. Dark + scoutless
+    prints eyes directly (1/300t)."""
+
+    def test_dark_scoutless_prints(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 2000  # 3 armies, zero foe intel ever: blind, scoutless
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+    def test_cooldown_holds(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000
+        b.__dict__["_last_scout_print"] = 1900
+        out = demand_trains(b, cfg, lambda s, t: True)
+        # rotation (0 armies < probe+2) still funds one; eyes capped.
+        assert any(o.startswith("TRAIN 1") for o in out), out
+        b.__dict__["_last_scout_print"] = 1500
+        b._pending_trains.clear()
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out

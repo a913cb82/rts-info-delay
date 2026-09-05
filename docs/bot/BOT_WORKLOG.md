@@ -1128,3 +1128,15 @@ specifically — unit proves mechanism). NO GENERATE (r44 stands: all
 alive, action to t5000).
 FILED NEXT: expansion thaw (nobody founds t3000+; demand war-gating
 vs GTO 20k rule) + late-garrison equilibrium + buzzer audit.
+
+## Blind eyes (loop iteration: bodies aren't eyes)
+
+ANALYSE (r45 fog): aggressive sees only its 7 towns at t7000, 3 noted
+armies, total dark beyond — yet prints nothing (3 bodies >= probe+2).
+SHIPPED (common.py + tests, green): blind-eyes print (dark +
+scoutless + affordable -> TRAIN eyes, 1/300t cooldown) in
+demand_trains (all bots); _dark memoized per turn (was O(T^2) hot
+loop — suite 5.1s->3.0s).
+REMATCH r46: foundings t1000-2000 only, 1 capture; turtle 0ms drip
+t1888. Eyes funded but late action still freezing (links downstream
+unverified). NO GENERATE (r44 stands).

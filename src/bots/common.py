@@ -931,6 +931,10 @@ def _dark(state: "BotState", window: int = 300) -> bool:
     """Map-blind: no foe town with fresh intel (r31 lesson — pro sat
     8500 turns seeing only its capital). Darkness re-arms scouting
     post-contact (existing drive machinery, fan-out included)."""
+    return _memoized(state, ("dark", window), lambda: _dark_compute(state, window))
+
+
+def _dark_compute(state: "BotState", window: int) -> bool:
     for t in state.world.towns:
         if t.faction == state.faction:
             continue
@@ -2364,6 +2368,17 @@ def demand_trains(state: "BotState", config, can_train,
         # — one army can't scout-map-raid simultaneously).
         if _dark(state) and len(state.own_armies()) < params.probe_armies + 2:
             want = True
+        # Blind eyes (r45 lesson: 3 noted-but-useless armies >= probe+2,
+        # yet stone blind — bodies aren't eyes). Dark + scoutless +
+        # affordable prints eyes directly, at most 1/300t.
+        if _dark(state) and state._scout_id is None \
+                and getattr(state, "_scout_id2", None) is None \
+                and not state.__dict__.get("_mapper") \
+                and state.turn - state.__dict__.get("_last_scout_print", -10 ** 9) >= 300 \
+                and can_train(state, t) \
+                and t.population - cost >= floor + params.depth_extra - 1e-9:
+            want = True
+            state.__dict__["_last_scout_print"] = state.turn
         if not want:
             continue
         if bare:
