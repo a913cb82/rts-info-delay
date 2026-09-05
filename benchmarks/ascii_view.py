@@ -34,6 +34,14 @@ CAPITAL = "◆"
 CLASH = "*"
 
 
+def pop_bucket(pop: float) -> int:
+    """Log-scale pop bucket 1-9: doublings from founding size (~500).
+    1=0.5k 2=1k 3=2k 4=4k 5=8k 6=16k 7=32k 8=64k 9=128k+."""
+    if pop <= 0:
+        return 0
+    return min(9, max(1, int(math.log2(max(1.0, pop) / 500.0)) + 1))
+
+
 def load_turns(path: str) -> tuple[dict, dict[int, dict]]:
     header: dict = {}
     turns: dict[int, dict] = {}
@@ -87,15 +95,13 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
                 f = t["faction"]
                 if mode == "all":
                     # two-char cells: faction + type/pop (town=F+bucket,
-                    # capital=F+◆, buckets pop/10k capped 9)
+                    # capital=F+◆, buckets log-scale)
                     if t.get("is_capital"):
                         row.append(col(f, f"{f}{CAPITAL}"))
                     else:
-                        bucket = min(9, max(1, int(t["population"] // 10000) + 1)) if t["population"] > 0 else 0
-                        row.append(col(f, f"{f}{bucket}"))
+                        row.append(col(f, f"{f}{pop_bucket(t['population'])}"))
                 elif mode == "pop" and not t.get("is_capital"):
-                    bucket = min(9, max(1, int(t["population"] // 10000) + 1)) if t["population"] > 0 else 0
-                    row.append(col(f, str(bucket)))
+                    row.append(col(f, str(pop_bucket(t["population"]))))
                 elif mode == "faction":
                     row.append(col(f, str(f)))
                 elif t.get("is_capital"):
@@ -145,7 +151,8 @@ def footer(world: dict, header: dict, turn: int, color: bool = True, mode: str =
         parts.append(f"{COLORS[f % len(COLORS)]}{label}{RESET}" if color else label)
     if mode == "all":
         legend = (f"F+T cells: 0-4 faction + type (▲ army, F9 stack of 9+, "
-                  f"F1-F9 town pop/10k, F{CAPITAL} capital)  ** clash")
+                  f"F1-F9 town log-pop, F{CAPITAL} capital)  ** clash\n"
+                  f"log-pop: doublings from 500 (1=0.5k 3=2k 5=8k 7=32k 9=128k+)")
     else:
         legend = f"{TOWN} town  {CAPITAL} capital  {ARMY} army(+xN stack)  {BOLD_RED if color else ''}*{RESET if color else ''} clash  {EMPTY} empty"
     return "  ".join(parts) + "\n" + legend
