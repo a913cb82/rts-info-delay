@@ -51,7 +51,8 @@ Turn-based. Each turn consists of phases:
 - An army dies if any enemy in range has weakness <= its own
 
 #### Captures
-- Enemy army within 10km of a town flips ownership, halves population, removes the capital flag
+- Enemy army within 10km of a town flips ownership, halves population
+- Captured capitals become normal towns
 
 #### Economy
 - Towns grow logistically, with crowding from nearby towns
@@ -64,9 +65,14 @@ Turn-based. Each turn consists of phases:
 ### Details
 
 - Score = Σ town population + 1000 per army. Highest score at end wins.
+- Growth per turn: `g·P·(1 − P/cap) × (1 − Σ crowding)` with `g = 0.001`,
+  `cap = 100000`. Each neighbour within 150km contributes
+  `(1 + 0.01·ln(Pj/Pi)) × (0.1·√min(Pj,Pi) / d)^0.8`. Stacked towns: the
+  smaller dies.
 - Eliminated when no capital and no viceroy in flight.
 - Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
 - `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.
+- Viceroy in flight receives no information during flight, and only information on events which happened after new capital was founded.
 
 | Order          | Syntax                               | Effect                                                       |
 |----------------|--------------------------------------|--------------------------------------------------------------|
