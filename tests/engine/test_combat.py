@@ -361,3 +361,24 @@ class TestCaptureWeakness:
         w.armies.append(Army(id=2, faction=0, x=5, y=0))
         resolve_captures(w, CFG)
         assert w.get_town(0) is not None and w.get_town(0).faction == 0
+
+
+class TestCaptureReadsCombat:
+    """Towns read the combat-phase weakness table (dead armies counted):
+    recomputing on survivors would decide differently here."""
+
+    def test_prew_offering_counts(self) -> None:
+        from engine.combat import resolve_combat, resolve_captures
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns.append(Town(id=0, faction=2, x=52, y=0, population=2000))
+        w.armies.append(Army(id=1, faction=0, x=45, y=0))  # S: pre w1 (D), post w0
+        w.armies.append(Army(id=2, faction=1, x=38, y=0))  # D: dies
+        w.armies.append(Army(id=3, faction=0, x=30, y=0))  # E: S's killer
+        w.armies.append(Army(id=4, faction=1, x=60, y=0))  # R: w0 throughout
+        _, weaknesses = resolve_combat(w, CFG)
+        assert {a.id for a in w.armies} == {1, 3, 4}  # D died, the rest live
+        assert (weaknesses.get(1), weaknesses.get(4)) == (1, 0)
+        resolve_captures(w, CFG, weaknesses)
+        t = w.get_town(0)
+        assert t is not None and t.faction == 1 and t.population == 1000

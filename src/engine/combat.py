@@ -92,25 +92,29 @@ def _compute_weaknesses_and_adj(
 
 def resolve_combat(
     world: World, config: GameConfig
-) -> list[dict]:
-    """Compute deaths from final positions. Returns battle event dicts.
+) -> tuple[list[dict], dict[int, int]]:
+    """Compute deaths from final positions.
 
+    Returns (battle event dicts, weakness table). The table is shared
+    with captures: towns read combat directly (they never contributed —
+    weakness counts enemy armies only). Fast paths return {} (exact:
+    with no enemies anywhere, captures never consult values).
     An army dies if any enemy within interact_radius has weakness ≤ its own.
     Deaths are simultaneous — computed from snapshot of positions.
     """
     events: list[dict] = []
     if not world.armies:
-        return events
+        return events, {}
     radius = config.interact_radius
 
     combat_armies = list(world.armies)
     if not combat_armies:
-        return events
+        return events, {}
     # Fast path (ants-inspired sound skip): single faction means no enemies
     # anywhere, so no deaths — skip weakness/hash entirely. Common early game.
     first_faction = combat_armies[0].faction
     if all(a.faction == first_faction for a in combat_armies):
-        return events
+        return events, {}
 
     # id->army dict: event building below does O(1) lookups instead of
     # O(n) linear scans per member (was O(n^2) total for big battles).
@@ -129,7 +133,7 @@ def resolve_combat(
                 break
 
     if not dead_ids:
-        return events
+        return events, weaknesses
 
     # adj already built by compute_weaknesses — skip O(n²) rebuild
 
@@ -208,7 +212,7 @@ def resolve_combat(
     # Remove dead armies from world (single batch pass)
     world.remove_armies(dead_ids)
 
-    return events
+    return events, weaknesses
 
 
 def _enemies_within_radius(
@@ -226,7 +230,7 @@ def _enemies_within_radius(
     return res
 
 
-def resolve_captures(world: World, config: GameConfig) -> list[dict]:
+def resolve_captures(world: World, config: GameConfig, weaknesses=None) -> list[dict]:
     """Contested captures: the weakest enemy army in range takes the town.
 
     After combat, each town with enemy armies within interact_radius is
@@ -243,7 +247,10 @@ def resolve_captures(world: World, config: GameConfig) -> list[dict]:
 
     radius = config.interact_radius
     R2 = (radius+1e-9)*(radius+1e-9)
-    weaknesses = compute_weaknesses(world.armies, config)
+    if weaknesses is None:
+        # Direct calls (tests) that skip combat: same values combat would
+        # have computed on these armies.
+        weaknesses = compute_weaknesses(world.armies, config)
     # Hoisted bookkeeping: one O(T+A) snapshot instead of per-capture
     # O(T)/O(A) scans (faction_capital + any() checks). Updated per capture.
     # Armies are static during captures, so viceroy presence is precomputed.

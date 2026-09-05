@@ -168,13 +168,13 @@ def step(
     # BUILD-step in economy, not an arrival side effect)
     movement_events = _phase_movement(world, config)
 
-    # Phase 4: Combat
-    combat_events = _phase_combat(world, config)
+    # Phase 4: Combat (towns read its weakness table in 4b)
+    combat_evts, weaknesses = _phase_combat(world, config)
 
     # Phase 4b: Town capture (after combat, before economy)
     # Record factions before capture so TRAIN uses original owner
     pre_capture_factions = {t.id: t.faction for t in world.towns}
-    capture_events = _phase_captures(world, config)
+    capture_events = _phase_captures(world, config, weaknesses)
 
     # Phase 5: Economy
     economy_events = _phase_economy(world, config, ledger=normalized_ledger, turn=normalized_turn, pre_capture_factions=pre_capture_factions)
@@ -183,7 +183,7 @@ def step(
     all_events: list[dict] = []
     all_events.extend(propagation_events)
     all_events.extend(movement_events)
-    all_events.extend(combat_events)
+    all_events.extend(combat_evts)
     all_events.extend(capture_events)
     all_events.extend(economy_events)
 
@@ -608,16 +608,16 @@ def _phase_movement(world: World, config: GameConfig) -> list[dict]:
     return move_armies(world, config)
 
 
-def _phase_combat(world: World, config: GameConfig) -> list[dict]:
-    """Resolve weakness-based simultaneous deaths."""
+def _phase_combat(world: World, config: GameConfig) -> tuple[list[dict], dict]:
+    """Resolve weakness-based simultaneous deaths (+ weakness table)."""
     from engine.combat import resolve_combat
     return resolve_combat(world, config)
 
 
-def _phase_captures(world: World, config: GameConfig) -> list[dict]:
+def _phase_captures(world: World, config: GameConfig, weaknesses=None) -> list[dict]:
     """Capture enemy towns within interact_radius of surviving armies."""
     from engine.combat import resolve_captures
-    return resolve_captures(world, config)
+    return resolve_captures(world, config, weaknesses)
 
 
 def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0, pre_capture_factions: dict[int, int] | None = None) -> list[dict]:
