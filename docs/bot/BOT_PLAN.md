@@ -265,19 +265,20 @@ tables with margin; run benches quiet.
 
 ## Scoreboard to beat (current tree, fog era)
 
-Fast: raid_hold 3657 / recycle 3673 / skip_thin 3446 / settle 2590 /
-chain 4785 / guard 2617 / viable 4238 / pair 4792 / trap 4483 /
-defend 2182 (400t, honest defense) / wake 2121 / cluster 5465 /
-opening 3242 / defense 3305 / endgame 8804 (all raid goals PASS;
-±5s are turn-hash spin noise). Strategic (focal pro):
-attrition 14552 / comeback 821 / endurance 7752 / outsettle 1830 /
-guard_duty 3249 / longpeace 5254 / opening 1391 / siege 5324 /
-snowball 4851 / staleness 4007 / succession 1826;
-void_contact 5136 (take) / void_settle 2933 (4 towns); self-play
-symmetric; Elo greedy 1515 / aggressive 1515 / pro 1501 / turtle 1498 /
-expander 1470 (pro top — muster discipline pays in skirmishes).
-empty_3000 rematch (Step 2 pro): pro 9156 / greedy 4760 /
-aggressive 4873 / expander 4829 / turtle 7055 (8 foundings, 0 takes,
-0 deaths, merges 0; greedy +490 via shared growth-accounting fix).
-Next milestones in order: Step 2 for the other four bots (pro DONE —
-exam muster/selectivity met); then Steps 3–6 (pro recon owed throughout).
+Fast: raid_hold 4658 / recycle 6293 / skip_thin 3888 / settle 3122 /
+chain 5327 / guard 2617 / viable 5251 / pair 5804 / trap 5493 /
+defend 3640 (400t, honest) / wake 2121 / cluster 5465 / opening 5251 /
+defense 1115 (honest mutuals; Step-3 path back) / endgame 5603
+(late pack; Step-3 path back). Strategic: attrition 14552 /
+comeback 821 / endurance 7752 / outsettle 2827 (1 town; race-pending) /
+guard_duty 4701 (war-era; Step-3 path) / longpeace 2887 (recon premium) /
+opening 1391 / siege 5324 / snowball 4851 / staleness 4007 /
+succession 1826; void_contact 4416 (take); self-play symmetric;
+Elo all-draws ~1500 (needs Step-3 contact-timing to discriminate).
+empty_3000: pro ~5000 (recon raids!)/ greedy ~4800-5700 /
+aggressive ~3000 / expander 4829 / turtle ~4700-7200 — sloshes ±2000
+with foundings on/off at veto margins + cadence (variance note in
+worklog); judge mechanisms + suites, not empty-points.
+Next in order: Step 2 expander-done/greedy/aggressive-done/pro-done —
+REMAIN turtle-expansion; Step 5 (exam 16/16); pickets; Steps 3, 4;
+filed strikes/tempo/sites. (Exam 17/18; only young_flees red.)

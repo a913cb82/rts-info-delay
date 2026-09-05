@@ -14,12 +14,10 @@ that doesn't exist (demand pricing, muster math, buzzer flips), build it.
 How GTO is pro, in one number: decide-level doctrine fixtures (scripted
 intel in, orders out), parameterized over geometries so passing needs
 the RULE, not the point. Expected to fail where Steps haven't landed —
-the failures are the roadmap. Baseline was 6/14; Step 2 pro brought it to 13/15, shared rollout
-(calibration + prober + pipeline + bird-in-hand) to 14/16: muster 6/6,
-pricing 3/3, selectivity 3/3 (passive_prize_taken via print calibration),
-escape 1/2 (established-endures accidental), intel 0/1, endgame 1/1.
-Remaining fails: young_flees → Step 5 (hopeless needs D<N
-force-counting, not pop-counting); blind_probes → pro recon owed. Never gate on it (a ceiling, not a floor) —
+the failures are the roadmap. Baseline was 6/14; now 17/18: muster 8/8 (incl. short-clean/long-hold
+pins), pricing 3/3, selectivity 3/3, escape 1/2 (established-endures
+accidental), intel 1/1 (pro recon), endgame 1/1. Sole red: young_flees
+→ Step 5 (hopeless needs D<N force-counting, not pop-counting). Never gate on it (a ceiling, not a floor) —
 judge game truth in the suites; challenge fixtures with numbers.
 
 ## Goal
@@ -122,13 +120,16 @@ New work is judged against this table (live scoreboard: BOT_PLAN.md),
 with margin: `effort()` branches on wall-clock bank, so loaded runs
 wobble (empty_3000 scored 3086 and 3136 on the same tree) — run benches
 quiet, ignore sub-~50 long-game deltas.
-Fast suite: raid_hold 3657 (take) / recycle 3678 (60t, probe-then-found) /
-skip_thin 3446 (take, decoy skipped) / settle 2589 / chain 4783 /
-guard 2620 (holds) / viable 4238 (take) / pair 4791 (take) / trap 4481
-(take, decoy skipped) / defend 2182 (400t now; holds by mutual, hub
-intact — the old 2747 measured an UNTESTED defense: the raider staged
-94km out and never attacked) / wake 2121 / cluster 5465 / opening
-3242 / defense 3305 / endgame 8804.
+Fast suite: raid_hold 4658 (take) / recycle 6293 (60t, lean pipeline) /
+skip_thin 3888 (calibrated need-1 take) / settle 3122 / chain 5327 /
+guard 2617 (holds) / viable 5251 (take) / pair 5804 (take) / trap 5493
+(take, decoy skipped) / defend 3640 (400t; clean-wins keep it fat —
+the old 2747 measured an UNTESTED defense) / wake 2121 / cluster 5465 /
+opening 5251 (recon finds fast) / defense 1115 (honest mutual-saves;
+Step-3 concentration is the path back) / endgame 5603 (late-arrival
+pack; Step-3 timing is the path back). Short-horizon clean (D==N
+trains) lifted the raid board ~+500-1000 across the board; ±5s are
+spin noise. History below is record, not binding.
 Since landing: movement streams fixed (bots see own armies — foundings
 work, E1 done), scout-first probing restored all raid takes (pair/viable/
 raid_hold/trap/skip_thin goal-PASS), quiescence gating steadied orders.
