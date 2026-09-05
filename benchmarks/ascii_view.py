@@ -159,6 +159,62 @@ def footer(world: dict, header: dict, turn: int, color: bool = True, mode: str =
     return "  ".join(parts) + "\n" + legend
 
 
+def as_json(world: dict, header: dict, turn: int, gx: int, gy: int, mode: str) -> str:
+    """Augmented Cartesian JSON: sparse non-empty cells, each tagged with
+    cartesian grid coords plus full entity data (kind, faction, pop,
+    count, ids). Same quantization + collision priority as the grid."""
+    w, h = header.get("map_size", [1000, 1000])
+    towns: dict[tuple[int, int], list[dict]] = {}
+    armies: dict[tuple[int, int], list[dict]] = {}
+    for t in world.get("towns", []):
+        towns.setdefault(quantize(t["x"], t["y"], w, h, gx, gy), []).append(t)
+    for a in world.get("armies", []):
+        armies.setdefault(quantize(a["x"], a["y"], w, h, gx, gy), []).append(a)
+    cells = []
+    for cy in range(gy):
+        for cx in range(gx):
+            key = (cx, cy)
+            ts = towns.get(key, [])
+            aa = armies.get(key, [])
+            if not ts and not aa:
+                continue
+            facs = {t["faction"] for t in ts} | {a["faction"] for a in aa}
+            cell: dict = {"x": cx, "y": cy}
+            if len(facs) >= 2:
+                cell.update(kind="clash", factions=sorted(facs),
+                            town_ids=[t["id"] for t in ts],
+                            army_ids=[a["id"] for a in aa])
+            elif ts:
+                t = max(ts, key=lambda t: t["population"])
+                cell.update(kind="capital" if t.get("is_capital") else "town",
+                            faction=t["faction"], pop=round(t["population"]),
+                            town_ids=[t["id"] for t in ts],
+                            bucket=pop_bucket(t["population"]))
+            else:
+                f0 = aa[0]["faction"]
+                if not all(a["faction"] == f0 for a in aa):
+                    cell.update(kind="clash", factions=sorted(facs),
+                                army_ids=[a["id"] for a in aa])
+                else:
+                    cell.update(kind="stack" if len(aa) >= 3 else "army",
+                                faction=f0, count=len(aa),
+                                army_ids=[a["id"] for a in aa])
+            cells.append(cell)
+    facs_out = {}
+    for f in sorted({t["faction"] for t in world.get("towns", [])} |
+                     {a["faction"] for a in world.get("armies", [])}):
+        cap = next((t for t in world["towns"] if t["faction"] == f and t.get("is_capital")), None)
+        facs_out[str(f)] = {
+            "pop": round(sum(t["population"] for t in world["towns"] if t["faction"] == f)),
+            "towns": sum(1 for t in world["towns"] if t["faction"] == f),
+            "armies": sum(1 for a in world["armies"] if a["faction"] == f),
+            "capital_pop": round(cap["population"]) if cap else 0,
+        }
+    return json.dumps({"turn": turn, "grid": {"w": gx, "h": gy, "map": [w, h]},
+                       "mode": mode, "cells": cells, "factions": facs_out},
+                      indent=1)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="ASCII viewer for jsonl recordings")
     ap.add_argument("recording")
@@ -166,6 +222,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="100x40", help="GRID WxH (default 100x40)")
     ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all"])
     ap.add_argument("--no-color", action="store_true")
+    ap.add_argument("--format", default="text", choices=["text", "json"],
+                    help="text: ascii grid; json: Augmented Cartesian JSON (sparse cells with x/y + data)")
     args = ap.parse_args(argv)
     gx, gy = (int(v) for v in args.size.lower().split("x"))
     color = not args.no_color and sys.stdout.isatty()
@@ -182,6 +240,9 @@ def main(argv: list[str] | None = None) -> int:
             near = min(turns, key=lambda k: abs(k - t))
             print(f"(turn {t} missing, showing {near})", file=sys.stderr)
             t = near
+        if args.format == "json":
+            print(as_json(turns[t], header, t, gx, gy, args.mode))
+            continue
         print(render(turns[t], header, gx, gy, args.mode, color))
         print(footer(turns[t], header, t, color, args.mode))
         print()
