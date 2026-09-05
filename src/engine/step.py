@@ -746,6 +746,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
                 break
         if dest is not None:
             dest.is_capital = True
+            dest.population += config.army_cost * config.build_efficiency
             world.mark_dirty()
             events.append({"kind": "town_spawn", "id": dest.id, "faction": dest.faction,
                            "x": dest.x, "y": dest.y, "population": dest.population,

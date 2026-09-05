@@ -544,7 +544,7 @@ def test_move_capital_far_exclave_promotes():
     assert len(engine.towns) == 2
     dest = next(x for x in engine.towns if x.id == 2)
     assert dest.is_capital
-    assert dest.population < 2400  # merge promotes, not pop-adds (+500)
+    assert 2500 <= dest.population < 2700  # merge promotes AND pop-adds (+500) (+500)
     old = next(x for x in engine.towns if x.id == 1)
     assert not old.is_capital
     assert not [a for a in engine.armies if a.is_viceroy]
