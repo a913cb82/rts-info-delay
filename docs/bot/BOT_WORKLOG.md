@@ -1258,3 +1258,14 @@ suite 5.2->3.0s), recon-by-fire (short<=2 + there -> assault),
 assault-once (fresh blood <1000t vetoes: r69's 48 onesies).
 R70: 9 captures (to t5000), foundings to t8000, ZERO onesies,
 zero stale-idle; aggressive ghost t1301 (harness). GENERATED r70.
+
+## Greedy retired; double-pro era + r71 (per-loop regen)
+
+RETIRED greedy (deleted src/bots/greedy.py; tests/benches re-pinned
+to pro; BOTS.md roster + README lineup updated; history kept).
+Canonical lineup: pro, pro, aggressive, expander, turtle. Settler
+floor shipped (expansion prints at survive-pricing; losers unthawed).
+R71: pro0 40 foundings/8 captures (mirror won big), captures to
+t4000, foundings to t8000, zero onesies; 55 pro0 idle + 145km patrol
+churn; turtle ghost t1456. GENERATED r71.
+NEXT: pro0 idle-note typing + mirror-match dynamics.

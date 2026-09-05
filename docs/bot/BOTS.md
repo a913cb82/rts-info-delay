@@ -12,7 +12,7 @@ Five bots (`src/bots/`), distinct characters. `stub` is passive harness
 furniture for scenarios, not a personality. There is no `random` bot
 (retired pre-campaign, replaced by `pro`).
 
-### greedy — The Raider
+### greedy — RETIRED (replaced by 2nd pro; history below kept)
 - Step 2 on shared demand API (present-biased params): rich-only incident
   muster (depth +500), transfer-positive raids only (margin 500),
   cherry-pick expansion (payback x2), one prober breaking the scout

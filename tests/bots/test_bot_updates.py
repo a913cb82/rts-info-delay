@@ -217,7 +217,7 @@ class TestMigratedMachinery:
 
 
 class TestDecideRobustness:
-    @pytest.mark.parametrize("mod", ["pro", "greedy", "aggressive", "expander", "turtle"])
+    @pytest.mark.parametrize("mod", ["pro", "pro", "aggressive", "expander", "turtle"])
     def test_empty_world_decide_returns_list(self, mod) -> None:
         import importlib
         decide = importlib.import_module(f"bots.{mod}").decide_orders

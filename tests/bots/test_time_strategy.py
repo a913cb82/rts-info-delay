@@ -1,7 +1,7 @@
 """Ideas 4+5+6: quiet-turn skip, plan queue, clock-aware effort."""
 import time
 from bots.common import BotState
-from bots import greedy
+from bots import pro
 from engine.config import GameConfig
 from engine.world import Town, Army
 
@@ -32,16 +32,16 @@ def test_idea4_quiet_turn_replays_standing_orders():
     """Idea 4: quiet turns replay cached orders without running decide."""
     st = _state()
     evts: list = []
-    orders1 = st.cached_or_decide(greedy.decide_orders, CFG, evts)
-    orders2 = st.cached_or_decide(greedy.decide_orders, CFG, evts)
+    orders1 = st.cached_or_decide(pro.decide_orders, CFG, evts)
+    orders2 = st.cached_or_decide(pro.decide_orders, CFG, evts)
     assert orders1 == orders2
-    assert orders1 == greedy.decide_orders(_state(), CFG)
+    assert orders1 == pro.decide_orders(_state(), CFG)
 
 
 def test_idea4_affordability_change_forces_decide():
     """Idea 4: growth crossing a quantum re-decides even with no events."""
     st = _state()
-    st.cached_or_decide(greedy.decide_orders, CFG, [])
+    st.cached_or_decide(pro.decide_orders, CFG, [])
     calls = []
     def spy(state, cfg):
         calls.append(1)
@@ -58,7 +58,7 @@ def test_idea4_affordability_change_forces_decide():
 def test_idea4_military_busts_cache():
     """Idea 4: any military event forces a fresh decide."""
     st = _state()
-    st.cached_or_decide(greedy.decide_orders, CFG, [])
+    st.cached_or_decide(pro.decide_orders, CFG, [])
     calls = []
     def spy(state, cfg):
         calls.append(1)
@@ -111,10 +111,10 @@ def test_idea6_low_clock_trains_only():
     """Idea 6: low clock issues a safe-only subset (trains) of full orders."""
     st = _state()
     st.clock_budget_ms = 100.0
-    full = greedy.decide_orders(st, CFG)
+    full = pro.decide_orders(st, CFG)
     st2 = _state()
     st2.clock_budget_ms = 5.0
-    low = greedy.decide_orders(st2, CFG)
+    low = pro.decide_orders(st2, CFG)
     assert low, "expected at least trains on this rich state"
     assert all(o.startswith("TRAIN") for o in low)
     assert set(low) <= set(full)

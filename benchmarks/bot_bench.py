@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from bots.common import BotState
 from engine.config import GameConfig
 from engine.world import Town
-import bots.greedy as greedy
 import bots.expander as expander
 import bots.aggressive as aggressive
 import bots.turtle as turtle
@@ -22,7 +21,6 @@ import bots.pro as pro_mod
 
 CFG = GameConfig()
 TIERS = {
-    "greedy": greedy.decide_orders,
     "expander": expander.decide_orders,
     "aggressive": aggressive.decide_orders,
     "turtle": turtle.decide_orders,

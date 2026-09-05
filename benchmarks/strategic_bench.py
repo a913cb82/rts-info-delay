@@ -157,7 +157,7 @@ def _attacker_won(record):
     return t is not None and t["faction"] == 0
 
 
-def section_elo(bots=("pro", "greedy", "aggressive", "turtle", "expander")):
+def section_elo(bots=("pro", "pro", "aggressive", "turtle", "expander")):
     print("== Elo lite (home-and-away raid, K=16 per side-game) ==")
     import itertools
     elo = {b: 1500.0 for b in bots}

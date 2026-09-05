@@ -1,6 +1,6 @@
 # Bots
 
-Five demo bots (`src/bots/`: pro, greedy, aggressive, expander, turtle)
+Four demo bots (`src/bots/`: pro, aggressive, expander, turtle) — canonical lineup runs pro twice (factions 0+1)
 playing a fully deterministic strategy game under fog of war. This folder
 is organized around one thing: **the improvement loop**. Everything else
 is one iteration of it, plus logs.
@@ -44,7 +44,7 @@ per change (before → after numbers). Full detail: `BOT_PLAN.md` (The loop).
 
 ## Last iteration (one page, rots fast — see worklog head)
 
-- **Personalities:** 0=pro (GTO reference) 1=greedy (skipper) 2=aggressive
+- **Personalities:** 0=pro + 1=pro (GTO reference, mirror match) 2=aggressive
   (predator) 3=expander (sprawl) 4=turtle (fortress). `stub` is passive
   harness furniture. No randomness anywhere, ever.
 - **Intel model:** snapshots, late — LOS 150km eyes, 150km/turn mail,

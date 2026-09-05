@@ -2616,6 +2616,15 @@ def demand_trains(state: "BotState", config, can_train,
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
+        elif (expand and deficit[0] <= 0
+                and t.population - cost >= config.death_threshold - 1e-9
+                and t.id not in state._pending_trains):
+            # Settler floor (r70: losers sit poor — full floors lock the
+            # first settler (1500-2000 vs 500-1500 towns). Expansion-only
+            # want prints at survive-the-print pricing (pack deficit
+            # excluded: musters keep full floors). Engine-validity only.
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
     return out
 
 

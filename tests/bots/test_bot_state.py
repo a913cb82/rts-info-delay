@@ -1495,12 +1495,12 @@ class TestMergeHorizon:
         return b
 
     def test_short_holds(self) -> None:
-        from bots.greedy import _stage_builds
+        from bots.pro import _stage_builds
         b = self._bot(CFG, 490)
         assert _stage_builds(b, CFG) == []
 
     def test_long_merges(self) -> None:
-        from bots.greedy import _stage_builds
+        from bots.pro import _stage_builds
         from engine.config import GameConfig
         long_cfg = GameConfig()
         long_cfg.max_turns = 3000
@@ -2602,3 +2602,22 @@ class TestPackMuster:
         tgt = b.world.get_town(2)
         assert jit_ready(b, cfg, tgt, 4, [7, 8], 1) is True  # short 2, there
         assert jit_ready(b, cfg, tgt, 6, [7, 8], 1) is False  # short 4: hold
+
+
+class TestSettlerFloor:
+    """r70: losers sit poor (floors lock the first settler). Expansion
+    prints at survive-the-print pricing."""
+
+    def test_poor_expansion_prints(self) -> None:
+        from bots.common import BotState, demand_trains, can_train_standard
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1600, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000  # void (no foes): expansion wants, floors block
+        out = demand_trains(b, cfg, can_train_standard)
+        assert any(o.startswith("TRAIN 1") for o in out), out
