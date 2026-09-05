@@ -35,8 +35,16 @@ is the complete reference for bot improvement work.
 - **Strategy backbone:** compound → expand on payback math → fortress at
   saturation → production war → strip-mine flip. Full doctrine: `GTO.md`.
 
-## Workflow (gates for every change)
+## Workflow (the improvement loop, gates for every change)
 
+1. Run a real game (`empty_3000` ~4s; `empty_10000` ~30s, quiet).
+2. Analyse (ACJSON quartiles + ascii_view): per-bot report card in worklog.
+3. Brainstorm ideas per bot (doctrine first; personalities skewed, pro reference).
+4. Bench (edit fast/slow suites if new coverage needed; fog-era table binding).
+5. Iterate one idea per bot (measure vs table + rematch; suites twice, quiet).
+6. Repeat. Full loop: `BOT_PLAN.md` (The loop).
+
+Per-change gates:
 1. Fast suite (`benchmarks/scenario_bench.py`, ~1.5s) per change.
 2. Strategic suite (`benchmarks/strategic_bench.py`, ~10s) at milestones.
 3. `empty_3000` rematch read as a trade ledger (~4s).

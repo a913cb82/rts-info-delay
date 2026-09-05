@@ -63,6 +63,21 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 
 ## Open work, in order
 
+**The loop (how bots improve).** Repeat forever, in order:
+1. **Run** a real game (`empty_3000` fast ledger ~4s; `empty_10000`
+   full read ~30s, quiet box). Recordings are the ground truth.
+2. **Analyse** (ACJSON quartiles 2500/5000/7500/10000 + ascii_view):
+   per-bot story (what did each do well/badly?), war forensics (who
+   attacked what with what, trade math), intel gaps (what did the
+   winner never see?). Encode as a worklog entry + report card.
+3. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md
+   §9 personalities stay skewed, pro stays reference).
+4. **Bench** (edit fast/slow suites if the idea needs new coverage:
+   new scenario or exam drill, fog-era table stays binding).
+5. **Iterate** each idea per bot (one idea, one bot, measure vs table
+   + rematch; suites twice, quiet box — JIT first-runs lie).
+6. **Repeat** (re-run the real game; new behavior, new analysis).
+
 **Step 0 — housekeeping.** DONE (fog era): EVENT_REWORK landed, both
 suites re-baselined as the binding table (BOT_BENCH.md fog-era section);
 wake and defense fixed themselves via re-observation under S; endgame

@@ -801,3 +801,21 @@ OPEN: snipe doctrine (expander should scout+rush rich capitals; pro
 capital guard), recall-radius (out-of-position losses), chain/settle
 re-baseline (-9/-16%), greedy expansion volume, packet effectiveness
 in wars.
+
+## Report card, review game (loop iteration: run->analyse->filed)
+
+ACJSON quartiles 2500/5000/7500/10000 + ascii. Pro 121k (5-town east
+cluster, compounding, 2 late turtle takes) beats expander 76k (13
+thin, 9 clusters). Turtle breakout (1->4) then eaten; greedy t1536,
+aggressive t3456 (both real closing attackers, correct denies).
+Per-bot: pro (economy brilliant, defense vacant — 88k capital, 18
+idle guards, never raids); expander (sprawl perfect, vision zero —
+never scouted the prize, 37 unused armies); turtle (bold breakout,
+no cover — sited 78km from pro); greedy/aggressive (positioned
+wrong, denied right). Cross-cutting: NOBODY scouts the enemy (all
+views[] own towns); clusters diagnose (offsets, singletons, frag);
+deltas separate tick (+-14/turn) from trend (+1.4k/century).
+FILED (loop step 3): expander deep-scout + capital-rush trigger;
+pro snipe-interdiction + counter-raid vs dispersed swarm; turtle
+breakout distance-or-escort; recall-radius/scout-timing (empty-home
+deaths); chain/settle re-baseline (-9/-16%).
