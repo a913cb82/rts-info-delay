@@ -596,6 +596,82 @@ def report(path: str) -> str:
     return "\n".join(lines)
 
 
+def fog(path: str, faction: int, turn: int) -> str:
+    """What faction F had observed by turn T (bot-view replay): per town
+    last-seen pop/faction/alive + staleness + GHOSTS (dead-unseen) +
+    MISSED (alive-unseen). Answers 'what did the bot see?' without
+    guessing from truth."""
+    import math as _math
+    los = 150.0
+    seen: dict = {}  # town id -> [turn, pop, faction, alive]
+    aseens: dict = {}  # foe army id -> [turn, x, y]
+    lastpos: dict = {}  # town id -> (x, y) last truth position
+    truth_towns: list = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if "world" not in rec:
+                los = float(rec.get("line_of_sight", los) or los)
+                continue
+            t = rec.get("turn", 0)
+            if t > turn:
+                break
+            w = rec["world"]
+            truth_towns = w.get("towns", truth_towns)
+            for x in truth_towns:
+                lastpos[x["id"]] = (x["x"], x["y"])
+            obs = [(x["x"], x["y"]) for x in w.get("towns", []) if x["faction"] == faction]
+            obs += [(a["x"], a["y"]) for a in w.get("armies", []) if a["faction"] == faction]
+            if not obs:
+                continue
+            for u in w.get("towns", []):
+                if min(_math.hypot(u["x"] - ox, u["y"] - oy) for ox, oy in obs) <= los:
+                    seen[u["id"]] = [t, round(u["population"]), u["faction"], True]
+            live = {x["id"] for x in w.get("towns", [])}
+            for tid, (st, sp, sf, sa) in list(seen.items()):
+                if tid not in live and sa and tid in lastpos:
+                    # vanished: death observed iff eyes on the site now
+                    tx, ty = lastpos[tid]
+                    if min(_math.hypot(tx - ox, ty - oy) for ox, oy in obs) <= los:
+                        seen[tid] = [t, 0, sf, False]
+            for a in w.get("armies", []):
+                if a["faction"] == faction:
+                    continue
+                if min((_math.hypot(a["x"] - ox, a["y"] - oy) for ox, oy in obs), default=1e18) <= los:
+                    aseens[a["id"]] = [t, round(a["x"]), round(a["y"])]
+    lines = [f"fog F{faction} @ t{turn} (LOS {los:.0f}):"]
+    lines.append("towns observed:")
+    for tid, (st, sp, sf, sa) in sorted(seen.items()):
+        age = turn - st
+        live_now = any(x["id"] == tid for x in truth_towns)
+        tag = ""
+        if not sa and live_now:
+            tag = "  <-- GHOST? (seen dead, alive now: refounded unseen)"
+        elif sa and not live_now:
+            tag = "  <-- GHOST (dead unseen: bot still sees it alive!)"
+        elif age > 150:
+            tag = f"  <-- stale ({age}t)"
+        lines.append(f"  town {tid}: F{sf} pop {sp} seen t{st}{' DEAD' if not sa else ''}{tag}")
+    lines.append("truth towns never observed:")
+    any_m = False
+    for u in truth_towns:
+        if u["id"] not in seen:
+            lines.append(f"  town {u['id']}: F{u['faction']} pop {round(u['population'])} @ ({round(u['x'])},{round(u['y'])})")
+            any_m = True
+    if not any_m:
+        lines.append("  (none)")
+    lines.append("foe armies last seen:")
+    if aseens:
+        for aid, (st, x, y) in sorted(aseens.items()):
+            lines.append(f"  army {aid}: t{st} @ ({x},{y}) ({turn - st}t ago)")
+    else:
+        lines.append("  (none)")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="ASCII viewer for jsonl recordings")
     ap.add_argument("recording")
@@ -605,15 +681,34 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--deltas", default="100,10,1", help="score-delta offsets (symmetric past+future, comma-separated)")
-    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report"],
-                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window; report: full-game brief")
+    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report", "fog"],
+                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window; report: full-game brief; fog: what a faction observed (--faction, --turn)")
+    ap.add_argument("--faction", default="0", help="fog format: faction to observe as")
     ap.add_argument("--window", default="", help="autopsy window TURNS, e.g. 7800-8000 (default: last 1000)")
     args = ap.parse_args(argv)
     _COMPACT[0] = args.compact
     if args.format in ("json", "acjson"):
         args.format = "acjson"
-    elif args.format not in ("autopsy", "report"):
+    elif args.format not in ("autopsy", "report", "fog"):
         args.format = "ascii"
+    if args.format == "fog":
+        t = int(args.turns.split(",")[0]) if args.turns != "last" else -1
+        if t < 0:
+            maxt = 0
+            with open(args.recording) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                        if "world" in r:
+                            maxt = max(maxt, r.get("turn", 0))
+                    except Exception:
+                        pass
+            t = maxt
+        print(fog(args.recording, int(args.faction), t))
+        return 0
     if args.format == "report":
         print(report(args.recording))
         return 0

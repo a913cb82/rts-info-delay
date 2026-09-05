@@ -944,3 +944,14 @@ BOT-VIEW (stale intel lock), unknowable from truth snapshots.
 FILED NEXT: fog-view (replay per-faction observed world from the
 recording) to SEE the lock, then kill it. Lesson: no more blind
 mechanisms — visibility first.
+
+## Fog-view (analysis tooling loop)
+
+NEW: `--format fog --faction F --turns T` (bot-view replay: observed
+towns + staleness + GHOST/MISSED tags + foe-army sightings). First
+use (pro t6000) NARROWED the 6-stack pin: ghost-town lock EXCLUDED
+(pro saw town 1 die t2216 — knows rubble!), thin towns CONFIRMED
+visible fresh (42/39/12/50), zero foe armies seen 941t+. Logic marches
+when observed (repro) -> REMAINS: packet/note dynamics in bot-view
+(stale-note siege? never-released packets?). Next loop kills it with
+fog + report in hand. VIEWER.md updated.

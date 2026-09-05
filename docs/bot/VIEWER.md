@@ -38,10 +38,11 @@ kind/faction/pop/ids) plus precomputed geometry (no LLM math):
    Start here — it rederives viewer feedback without watching.
 2. Quartiles: `--turns 2500,5000,7500,10000 --format acjson --compact`
    (factions + deltas + clusters tell the arc).
-2. Autopsy: `--format autopsy --window 7800-8000` (death ledger:
+2. Fog (`--format fog --faction F --turns T`: what the bot saw — ghosts/staleness first, truth second).
+3. Autopsy: `--format autopsy --window 7800-8000` (death ledger:
    who fed whom where; `ONESIES` flags >= 3 losses by one faction
    at one town — the suicide detector; default last 1000 turns).
-3. Full sweep (11 snapshots) when quartiles show something odd.
-4. ascii `--mode all` at war turns (who stood where).
-5. Event ledger (`town_spawn/death/capture`, battles) per millennium.
-6. Per-bot well/badly + filed ideas → worklog report card.
+4. Full sweep (11 snapshots) when quartiles show something odd.
+5. ascii `--mode all` at war turns (who stood where).
+6. Event ledger (`town_spawn/death/capture`, battles) per millennium.
+7. Per-bot well/badly + filed ideas → worklog report card.
