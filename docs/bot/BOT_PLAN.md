@@ -9,12 +9,14 @@ compact form; GTO.md is the detailed form).
 
 Pro converges to true GTO play (`GTO.md`); every other bot converges to
 GTO skewed by its personality — same optimal backbone, documented bias
-parameters (`GTO.md` §9): greedy present-biased, turtle risk-averse,
-expander slot-hungry, aggressive initiative-hungry. A personality is a
-parameter shift, never a different game: all five muster, +1, price, and
-time correctly; they differ only in what they systematically
-over/under-buy. Every step below serves that convergence (pro pays full
-price on time; the others deviate on schedule, not by error).
+parameters (`GTO.md` §9): turtle risk-averse (plays tall), expander
+slot-hungry (plays wide), aggressive initiative-hungry. The canonical
+lineup runs pro twice (mirror match). Greedy retired (present-bias
+folded into underdog variance). A personality is a parameter shift,
+never a different game: all four muster, +1, price, and time correctly;
+they differ only in what they systematically over/under-buy. Every step
+below serves that convergence (pro pays full price on time; the others
+deviate on schedule, not by error).
 
 None of this is fixed. GTO.md is mutable and will need updating as game
 dynamics reveal more complexity — and so does this plan, and every doc
