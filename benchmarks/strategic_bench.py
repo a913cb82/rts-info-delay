@@ -44,7 +44,11 @@ def final_holdings(record, faction):
 def section_maps():
     print("== strategic maps (focal pro, score) ==")
     total = 0.0
+    # Corr-cut (BOT_BENCH): NaN (comeback/opening) + negative-rho.
+    SKIP = {"comeback", "opening", "guard_duty", "attrition"}
     for path in sorted(STRAT_DIR.glob("*.json")):
+        if path.stem in SKIP:
+            continue
         d = json.loads(path.read_text())
         rec = "/tmp/strat_record.jsonl"
         ms = play(d, d["teams"], rec)
@@ -178,11 +182,35 @@ def section_elo(bots=("pro", "pro", "aggressive", "turtle", "expander")):
     return total
 
 
+def section_ffa():
+    """FFA agency maps (corr-validated: feast +0.56, open +0.43, n=17).
+    '?' runs workspace pro; refs pinned."""
+    import sys as _sys
+    sys.path.insert(0, str(ROOT / "benchmarks"))
+    from ffa_bench import resolve
+    print("== ffa agency (focal pro) ==")
+    total = 0.0
+    for path in sorted((ROOT / "maps" / "ffa").glob("*.json")):
+        d = json.loads(path.read_text())
+        cfg = GameConfig.from_dict({k: v for k, v in d.items()
+                                    if k not in ("teams", "focal", "note")})
+        cmds = {int(f): resolve(spec, "pro") for f, spec in d["teams"].items()}
+        t0 = time.perf_counter()
+        scores = run_game(cfg, cmds, None)
+        ms = (time.perf_counter() - t0) * 1000
+        total += ms
+        print(f"{path.stem:16} focal {scores.get(0, 0):7.0f}  {ms:7.0f}ms")
+    print(f"-- ffa total {total / 1000:.1f}s --")
+    return total
+
+
 def main():
     want = sys.argv[1] if len(sys.argv) > 1 else "all"
     t0 = time.perf_counter()
     if want in ("all", "maps"):
         section_maps()
+    if want in ("all", "ffa"):
+        section_ffa()
     if want in ("all", "optimum"):
         section_optimum()
     if want in ("all", "selfplay"):

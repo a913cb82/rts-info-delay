@@ -47,6 +47,10 @@ def main():
             pass
     results = []
     total_ms = 0.0
+    # Corr-cut (BOT_BENCH): negative-rho maps mislead (elo-validated n=17).
+    SKIP = {"turtle_wake", "expander_settle", "turtle_cluster",
+            "expander_chain", "turtle_defend", "pro_endgame"}
+    files = [p for p in files if p.stem not in SKIP]
     for path in files:
         try:
             score, ms = run_scenario(path, py)

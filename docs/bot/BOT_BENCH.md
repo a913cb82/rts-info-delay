@@ -308,3 +308,30 @@ Historical bots run FULLY on-commit (worktree engine + brains, current
 venv python). Wire protocol drift can kill ancients against the HEAD
 engine — deaths count (0 score), noted not excused. Engine stays HEAD
 only as the referee.
+
+## Correlation rebuild (n=17 bots, Spearman vs FFA elo)
+
+Measured with `benchmarks/corr.py` (every map x 17 historic bots).
+Sprints <3000t don't separate (old bots sleep — all tie at standby
+scores); 3000t single-slot F0 works (same slot = fair, rotation 5x
+cost unjustified). Contested maps are noise (brawl -0.83 at n=6);
+agency-dominated maps predict (feast/open).
+KEEP (rho>0.15): ffa/feast +0.56, strategic/snowball +0.44,
+ffa/open +0.43, scenarios/aggressive_pair +0.31,
+strategic/endurance +0.21, scenarios/aggressive_starve_trap +0.19,
+strategic/void_contact +0.19, strategic/expander_outsettle +0.16.
+CUT (misleading): turtle_cluster -0.50, expander_settle -0.48,
+turtle_wake -0.42, expander_chain -0.41, turtle_defend -0.49,
+pro_endgame -0.33, attrition -0.24, guard_duty -0.21.
+CUT (zero signal): comeback/opening (constant scores, NaN).
+FAST (5s): positive-rho scenario maps only. SLOW (30s): kept
+strategic maps + feast/open + selfplay; elo-lite stays (direct Elo).
+
+## Cheap suite (<5s, rho +0.59*): feast + snowball
+
+`benchmarks/cheap.py [--bot X]`: ffa/feast-2000 (~3s, agency vs
+passives + one live mid) + strategic/snowball (~0.8s, solo closing
+drill), composite = z-sum with frozen corr baselines. *+0.59 measured
+at feast-3000t; 2000t separation confirmed on 4 diverse bots
+(champ leads) — full re-validation deferred (compute costs!).
+2000t favors turtles slightly (attackers en route) — known bias.

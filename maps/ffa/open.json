@@ -1,0 +1,31 @@
+{
+ "army_cost": 1000,
+ "army_speed": 50.0,
+ "build_efficiency": 0.5,
+ "crowding_asymmetry": 0.01,
+ "crowding_decay": 0.8,
+ "equilibrium_spacing": 0.1,
+ "info_speed": 150.0,
+ "interact_radius": 10.0,
+ "line_of_sight": 150.0,
+ "main_time_ms": 1000.0,
+ "map": "x,y,type,population\n500.0,780.0,A,500\n233.7,586.5,B,500\n335.4,273.5,C,500\n664.6,273.5,D,500\n766.3,586.5,E,500",
+ "map_size": [
+  1000,
+  1000
+ ],
+ "max_turns": 3000,
+ "population_cap": 100000.0,
+ "population_growth": 0.001,
+ "time_increment_ms": 10.0,
+ "turn_time_ms": 100,
+ "teams": {
+  "0": "?",
+  "1": "turtle-050d575",
+  "2": "turtle-050d575",
+  "3": "turtle-050d575",
+  "4": "turtle-050d575"
+ },
+ "focal": 0,
+ "note": "pure expansion"
+}
