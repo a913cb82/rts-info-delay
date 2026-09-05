@@ -2820,9 +2820,11 @@ def expansion_demand(state: "BotState", config,
     # Support ratio (r74 lead-change: F2 led 28k with 5 towns + 1 army,
     # expander picked them one by one — unconquerable sprawl is just
     # future enemy towns. Every town needs a guard or accept the loss:
-    # no new colonies while towns outnumber armies + 1). Settlers en
+    # no new colonies while towns outnumber armies + 1). Parallel
+    # sprawl opts out (r63 lesson: expander's colonies are TRIPWIRES,
+    # not fortresses — best historical Elo sprawled naked). Settlers en
     # route count (pending builds are bodies with jobs).
-    if len(state.own_towns()) > len(state.own_armies()) + 1:
+    if params.serial and len(state.own_towns()) > len(state.own_armies()) + 1:
         return False
     turns_left = config.max_turns - state.turn
     if turns_left < chor:
