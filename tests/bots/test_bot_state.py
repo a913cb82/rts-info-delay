@@ -979,8 +979,19 @@ class TestSensibleSites:
             ])
             b._trails[9] = deque([(98, 600.0, 500.0), (99, 650.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
             assert demand_trains(b, CFG, can_train_standard, DemandParams()) == []
-            b._trails[9] = deque([(98, 800.0, 500.0), (99, 750.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
-            assert demand_trains(b, CFG, can_train_standard, DemandParams()) == ["TRAIN 1"]
+            # Fresh bot: per-turn memo caches force (trails mutate per
+            # update in production, never mid-turn).
+            b2 = BotState()
+            b2.init(CFG, 0)
+            _sync_bot(b2, None, 100, [
+                {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+                 "faction": 0, "population": 1100, "alive": True,
+                 "is_capital": True},
+                {"kind": "army_update", "id": 9, "x": 700.0, "y": 500.0,
+                 "faction": 1, "alive": True, "is_viceroy": False},
+            ])
+            b2._trails[9] = deque([(98, 800.0, 500.0), (99, 750.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
+            assert demand_trains(b2, CFG, can_train_standard, DemandParams()) == ["TRAIN 1"]
         finally:
             CFG.max_turns = old_mt
 
@@ -1238,7 +1249,10 @@ class TestGraveMemory:
         assert b._bloodied.get(2) == 2  # grave recorded at the foe town
         assert probe_ok(b, (tgt, 5, 0)) is False  # onesie suppressed
         b.turn = 200
-        assert probe_ok(b, (tgt, 5, 0)) is True  # grave fades after 150t
+        b.update(200, [{"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                        "faction": 1, "population": 8000, "alive": True,
+                        "is_capital": False}])
+        assert probe_ok(b, (tgt, 5, 0)) is True  # grave faded + fresh empty
 
     def test_death_imputes_garrison(self) -> None:
         from bots.common import foe_garrison
@@ -1475,7 +1489,10 @@ class TestConquestGuard:
                        "faction": 0, "population": 1600, "alive": True,
                        "is_capital": False}])
         held = hold_defenders(b, CFG, {})
+        # No peacetime notes (reverted): old conquests release; the
+        # coverage home-firewall holds town-sitters implicitly.
         assert held == set(), held
+        assert not b.army_has_target(7)
 
 
 class TestMergeHorizon:
@@ -2368,11 +2385,12 @@ class TestCoverage:
         b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
-                     {"kind": "army_update", "id": 7, "x": 100, "y": 100,
+                     {"kind": "army_update", "id": 7, "x": 400, "y": 400,
                       "faction": 0, "alive": True, "is_viceroy": False},
-                     {"kind": "army_update", "id": 8, "x": 100, "y": 100,
+                     {"kind": "army_update", "id": 8, "x": 410, "y": 410,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 500  # only home sector stamped; 15 sectors unvisited
+        # field bodies (home firewall holds town-sitters implicitly)
         out = coverage_orders(b, cfg)
         assert any("MOVE_TO" in o for o in out), out
 
@@ -2801,3 +2819,84 @@ class TestLostTowns:
         assert assault_verified(b, b.world.get_town(2)) is True  # 98t fresh
         b.turn = 500
         assert assault_verified(b, b.world.get_town(2)) is False  # stale ex-own
+
+
+class TestNakedGarrison:
+    """r92: expander 3t/0a sat naked (peace demand never musters). Naked
+    towns print one guard when affordable."""
+
+    def test_naked_prints_guard(self) -> None:
+        from bots.common import BotState, demand_trains, can_train_standard
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000  # rich, naked, peace: guard
+        out = demand_trains(b, cfg, can_train_standard)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestVelocityEta:
+    """User: react to attacks intelligently (direction from displacement).
+    Closing projects; transit excludes."""
+
+    def test_closing_projects(self) -> None:
+        from bots.common import foe_velocity, velocity_eta
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        b.update(2, [{"kind": "army_update", "id": 9, "x": 650, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        vx, vy = foe_velocity(b, 9)
+        assert vx < 0 and abs(vy) < 1e-9, (vx, vy)  # westward 50/t
+        eta = velocity_eta(vx, vy, 650, 500, 300, 500, 50.0)
+        assert eta is not None and abs(eta - 7.0) < 0.5, eta
+
+    def test_transit_excludes(self) -> None:
+        from bots.common import foe_velocity, velocity_eta
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 500, "y": 800,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        b.update(2, [{"kind": "army_update", "id": 9, "x": 550, "y": 800,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        vx, vy = foe_velocity(b, 9)
+        assert velocity_eta(vx, vy, 550, 800, 300, 500, 50.0) is None
+
+
+class TestCapitalTimely:
+    """User: sub-1500 towns print when the only timely capital guard."""
+
+    def test_timely_neighbor_prints(self) -> None:
+        from bots.common import BotState, demand_trains, can_train_standard
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        # capital threatened (raider ETA ~3), poor neighbor (1200) close.
+        b.update(99, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 5000, "alive": True,
+                       "is_capital": True},
+                      {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                       "faction": 0, "population": 1200, "alive": True,
+                       "is_capital": False},
+                      {"kind": "town_update", "id": 9, "x": 900, "y": 900,
+                       "faction": 1, "population": 5000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "army_update", "id": 9, "x": 450, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        out = demand_trains(b, cfg, can_train_standard)
+        assert any(o == "TRAIN 2" for o in out), out

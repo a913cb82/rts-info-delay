@@ -1382,3 +1382,16 @@ verify (<150t for _lost_towns; tracked on seen mine->foe).
 R92 ~= R91 (seed-stable): same 8-fratricide = UNKNOWABLE fast flip
 (retaken unseen in 56t; even 150t stale kills). Accepted as the
 bound (perfect intel impossible). NO GENERATE (r86 stands).
+
+## Velocity intent + capital-timely + r94 (per-loop regen)
+
+SHIPPED (common.py + tests, green): foe_velocity (trail displacement,
+capped) + velocity_eta (closing projects, transit excludes) wired
+into inbound_force (all bots react to direction, not just distance);
+_capital_timely (user: sub-1500 towns print when the only timely
+capital guard — floors yield to survival); naked-garrison want;
+coverage home-firewall (peacetime-notes tried+reverted: cascaded
+through pricing/strike/recall/packets — no-note holds instead).
+R94 health: watch (0 suicides, 0 train-deaths, 2 onesies, 2 quiet);
+snowball t5000+ (worse game than r86 twin-giants, but current tree).
+GENERATED r94 (per-loop regen).

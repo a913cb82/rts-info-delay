@@ -1092,7 +1092,13 @@ def coverage_orders(state: "BotState", config) -> list[str]:
             if not state.army_has_target(a.id)
             and not getattr(a, "is_viceroy", False)
             and a.id != state._scout_id
-            and a.id != getattr(state, "_scout_id2", None)]
+            and a.id != getattr(state, "_scout_id2", None)
+            # Home firewall (r93: coverage patrolled guards away -> naked
+            # towns reprinted (82-print treadmill). Home bodies hold
+            # position implicitly (no note = no cascade); packs grab them
+            # when needed (unnoted). Patrols use field bodies only.
+            and not any(_math.hypot(a.x - t.x, a.y - t.y) <= 20
+                        for t in state.world.towns if t.faction == state.faction)]
     # Parking lot (r89: 29 patrols parked on centroids — arrived notes
     # freeze (quiescence: arrived → silent → not-ready → no re-task).
     # Noted-but-arrived AT a sector centroid is a parked patrol (pack
@@ -1989,6 +1995,45 @@ def buzzer_active(state: "BotState", config) -> bool:
     return max_turns - state.turn <= max(20, max_turns // 10)
 
 
+def foe_velocity(state: "BotState", aid: int) -> tuple[float, float]:
+    """Enemy velocity from displacement between observations (user: react
+    to attacks intelligently — direction + target from how far it moved
+    since last seen). Trail delta, capped at army speed; (0,0) when
+    unknown/stationary."""
+    import math as _math
+    trail = state._trails.get(aid) or ()
+    if len(trail) >= 2:
+        (t0, x0, y0), (t1, x1, y1) = trail[-2], trail[-1]
+        dt = t1 - t0
+        if dt > 0 and (x1 != x0 or y1 != y0):
+            vx, vy = (x1 - x0) / dt, (y1 - y0) / dt
+            sp = _math.hypot(vx, vy)
+            cfg_sp = 50.0
+            try:
+                cfg_sp = max(1.0, state.config.army_speed)
+            except Exception:
+                pass
+            if sp > cfg_sp:
+                vx, vy = vx / sp * cfg_sp, vy / sp * cfg_sp
+            return vx, vy
+    return (0.0, 0.0)
+
+
+def velocity_eta(vx: float, vy: float, ax: float, ay: float,
+                 tx: float, ty: float, speed: float) -> float | None:
+    """Turns for a foe at (ax,ay) moving (vx,vy) to reach town (tx,ty).
+    None when not closing (transit — distance-ETA overstates these)."""
+    import math as _math
+    dx, dy = tx - ax, ty - ay
+    dist = _math.hypot(dx, dy)
+    if dist < 1e-9:
+        return 0.0
+    v_toward = (vx * dx + vy * dy) / dist  # closing speed
+    if v_toward <= 0.05 * speed:
+        return None  # not closing: transit or holding
+    return dist / max(v_toward, 0.05 * speed)
+
+
 def inbound_force(state: "BotState", config: "GameConfig",
                   max_eta: float = 8.0) -> dict[int, tuple[float, int]]:
     """Per-own-town inbound threat (ETA, force) by nearest-own-town.
@@ -2031,7 +2076,17 @@ def inbound_force(state: "BotState", config: "GameConfig",
             for a in foes:
                 if nearest.get(a.id) != t.id:
                     continue
+                # Velocity-aware ETA (user: react intelligently — direction
+                # from displacement). Known velocity: closing -> project,
+                # not closing -> transit (exclude, don't muster for it).
+                # Unknown (stale trails) -> legacy distance-ETA.
                 eta = _math.hypot(a.x - t.x, a.y - t.y) / speed
+                vx, vy = foe_velocity(state, a.id)
+                if vx != 0.0 or vy != 0.0:
+                    veta = velocity_eta(vx, vy, a.x, a.y, t.x, t.y, speed)
+                    if veta is None:
+                        continue  # transit past, not inbound
+                    eta = veta
                 if eta < best:
                     best = eta
                 n += 1
@@ -2313,10 +2368,16 @@ def pack_print(state: "BotState", config, sel, free_n, can_train) -> list[str]:
 
 
 def probe_ok(state: "BotState", sel) -> bool:
-    """Lone-probe gate: visibly-empty (s == 0) AND no fresh grave.
-    A probe that died at the target within 150 turns means garrison the
-    intel missed — hold for the full pack instead of re-feeding onesies."""
-    return sel[2] == 0 and state.__dict__.get("_bloodied", {}).get(sel[0].id, -10**9) < state.turn - 150
+    """Lone-probe gate: visibly-empty (s == 0) AND no fresh grave AND
+    FRESH emptiness (r93: 4 probe-mutuals vs turtle's guard — stale s=0
+    hid the remustered guard; blood faded between feeds). A probe that
+    died at the target within 150 turns means garrison the intel
+    missed — hold for the full pack instead of re-feeding onesies."""
+    if sel[2] != 0:
+        return False
+    if state.__dict__.get("_bloodied", {}).get(sel[0].id, -10**9) >= state.turn - 150:
+        return False
+    return state.turn - state._last_seen.get(("town", sel[0].id), -10 ** 9) <= 100
 
 
 def _underdog(state: "BotState") -> bool:
@@ -2362,8 +2423,10 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         cands = [t for t in cands if t.population >= _survive]
     if not cands:
         return None
-    fieldable = [a for a in state.own_armies()
-                 if not state.army_has_target(a.id)]
+    # Pricing arrival over ALL armies (r93: peacetime home-notes emptied
+    # fieldable -> arrival inf -> sel None -> no packs/probes ever. Pricing
+    # is not gating: callers gate the MARCH on need <= free separately).
+    fieldable = [a for a in state.own_armies() if not getattr(a, "is_viceroy", False)]
     best = None
     ranked: list = []
     _big = len(cands) * max(1, len(fieldable)) > 50000
@@ -2579,6 +2642,33 @@ class DemandParams:
     serial: bool = True
 
 
+def _capital_timely(state: "BotState", config, t, eta_n, cost: float) -> bool:
+    """Only-timely-guard test: capital threatened, this town's fresh
+    guard (print 1t + march) arrives no later than the threat, and no
+    other own town fields a timely guard (else THEY print at floors)."""
+    import math as _math
+    cap = state.world.faction_capital(state.faction)
+    if cap is None or t.id == cap.id:
+        return False
+    eta, _n = eta_n
+    force = inbound_force(state, config)
+    cap_eta = force.get(cap.id, (float("inf"), 0))[0]
+    if cap_eta == float("inf"):
+        return False  # capital not threatened: no exception
+    speed = max(1.0, config.army_speed)
+    mine = _math.hypot(t.x - cap.x, t.y - cap.y) / speed + 1.0
+    if mine > cap_eta + 1e-9:
+        return False  # arrives late: no exception
+    for u in state.own_towns():
+        if u.id in (t.id, cap.id):
+            continue
+        if u.population - cost >= config.death_threshold:
+            ou = _math.hypot(u.x - cap.x, u.y - cap.y) / speed + 1.0
+            if ou <= cap_eta + 1e-9:
+                return False  # other town covers it: no exception
+    return True
+
+
 def demand_trains(state: "BotState", config, can_train,
                   params: "DemandParams | None" = None) -> list[str]:
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
@@ -2650,6 +2740,12 @@ def demand_trains(state: "BotState", config, can_train,
         eta_n = force.get(t.id)
         want = False
         bare = False
+        # Naked garrison (r92: expander 3t/0a sat naked, towns fell —
+        # peace demand never musters guards (no threat seen). A town with
+        # zero home armies prints one guard when affordable (deterrence;
+        # onesies bounce off guards, walk into empties). Full floors.
+        if eta_n is None and home.get(t.id, 0) == 0:
+            want = True
         if eta_n is None:
             _g = guard_force.get(t.id)
             if _g is not None and home.get(t.id, 0) == 0 and _g[1] == 1 \
@@ -2719,6 +2815,15 @@ def demand_trains(state: "BotState", config, can_train,
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
+        elif (eta_n is not None and t.population >= cost
+                and _capital_timely(state, config, t, eta_n, cost)):
+            # Capital-defense exception (user: a <1500 town prints when
+            # it's the only timely guard for the capital. Floors protect
+            # growth; the capital's survival outranks them. Marches via
+            # reinforce_orders (Meeting); town may drop below threshold
+            # (accepted trade: town for capital).
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
         elif (expand and deficit[0] <= 0
                 and t.population - cost >= config.death_threshold - 1e-9
                 and t.id not in state._pending_trains
@@ -3112,8 +3217,9 @@ def strike_target(state: "BotState", config, buzzer_window: int = 30,
              if t.population * (1.0 - eff) > cost * eff + 200]
     if not cands:
         return None
-    fieldable = [a for a in state.own_armies()
-                 if not state.army_has_target(a.id)]
+    # Pricing over ALL armies (r93 cascade: home-notes blind executable
+    # checks; callers gate the march separately).
+    fieldable = [a for a in state.own_armies() if not getattr(a, "is_viceroy", False)]
     if not fieldable:
         return None
     best = None
@@ -3173,7 +3279,9 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
     min(home, N+1) — the +1th is highest-leverage; beyond it extras are
     free. Hopeless towns (D <= N-2) keep none — defenders retreat via
     normal logic instead of annihilating in place. Buzzer adds a blind
-    guard (one home per rich town — cheap now, snipers come)."""
+    guard (one home per rich town — cheap now, snipers come). (Peacetime
+    home-notes TRIED + REVERTED (r93 cascade: notes broke pricing,
+    strike, recall, packets). Home firewall lives in coverage_orders.)"""
     held: set = set()
     for t in state.own_towns():
         if t.id not in force:
@@ -3206,3 +3314,4 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
             if here:
                 held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
     return held
+

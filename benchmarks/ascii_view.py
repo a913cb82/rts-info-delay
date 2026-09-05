@@ -726,6 +726,115 @@ def flip(path: str, faction: int, t0: int, t1: int) -> str:
     return "\n".join(out)
 
 
+def health(path: str) -> str:
+    """Bot-error indicators in one command (self-diagnosis): onesies,
+    idle>100t, churn, pure-1v1s, mover-dies suicides, quiet windows
+    (500t, no foundings/captures), punishable, verdict. Thresholds +
+    meanings: docs/bot/INDICATORS.md."""
+    import math as _math
+    header, turns = load_turns(path)
+    if not turns:
+        return "no turns found"
+    maxt = max(turns)
+    evmap: dict = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if "world" in r:
+                evmap[r.get("turn", 0)] = r.get("events", [])
+    out = [f"health {path.split('/')[-1]} ({maxt} turns):"]
+    # 1v1s + mover-dies (loser moved last = suicide march).
+    tracks: dict = {}
+    for t in sorted(turns):
+        for a in turns[t]["armies"]:
+            tracks.setdefault(a["id"], {})[t] = (a["x"], a["y"])
+    ts = sorted(turns)
+    def pos_at(aid, t):
+        for x in reversed([y for y in ts if y <= t][-3:]):
+            if x in tracks.get(aid, {}):
+                return tracks[aid][x]
+        return None
+    onev1 = suic = 0
+    for t in ts:
+        for e in evmap.get(t, []):
+            if e.get("kind") != "battle" or len(e.get("combatants", [])) != 2:
+                continue
+            onev1 += 1
+            a, b = e["combatants"][0]["id"], e["combatants"][1]["id"]
+            killed = set(e.get("killed", []))
+            ma, mb = 0, 0
+            pa, qa = pos_at(a, t), pos_at(a, t - 1)
+            pb, qb = pos_at(b, t), pos_at(b, t - 1)
+            if pa and qa:
+                ma = _math.hypot(pa[0] - qa[0], pa[1] - qa[1])
+            if pb and qb:
+                mb = _math.hypot(pb[0] - qb[0], pb[1] - qb[1])
+            mover = None
+            if ma > 5 >= mb:
+                mover = a
+            elif mb > 5 >= ma:
+                mover = b
+            if mover is not None and mover in killed and len(killed) == 1:
+                suic += 1
+    out.append(f"1v1s: {onev1} pure (mover-dies suicides: {suic})")
+    # Quiet windows (500t blocks, no foundings/captures, rivals alive).
+    blocks = []
+    for m in range(1000, maxt, 500):  # skip startup (t<1000 always quiet)
+        f = s = 0
+        alive = set()
+        for t in ts:
+            if not (m <= t < m + 500):
+                continue
+            for x in turns[t]["towns"]:
+                alive.add(x["faction"])
+            for e in evmap.get(t, []):
+                if e.get("kind") == "town_spawn":
+                    f += 1
+                if e.get("kind") == "town_capture":
+                    s += 1
+        if f == 0 and s == 0 and len(alive) > 1:
+            blocks.append(f"{m}-{m + 500}")
+    out.append(f"quiet (no found/cap, rivals alive): {', '.join(blocks) if blocks else 'none'}")
+    # Onesies (losses>=3, one faction, one town).
+    losses: dict = {}
+    for t in ts:
+        w = turns[t]
+        towns = {x["id"]: x for x in w["towns"]}
+        for e in evmap.get(t, []):
+            if e.get("kind") != "battle":
+                continue
+            site = min(towns.values(), key=lambda u: _math.hypot(u["x"] - e["x"], u["y"] - e["y"])) if towns else None
+            tid = site["id"] if site else -1
+            for c in e.get("combatants", []):
+                if c["id"] in (e.get("killed", []) or []):
+                    losses.setdefault((c["faction"], tid), []).append(t)
+    ones = [(k, len(v)) for k, v in losses.items() if len(v) >= 3]
+    out.append(f"onesies (>=3): {len(ones)}" + (f" e.g. F{ones[0][0][0]}x{ones[0][1]} @ town{ones[0][0][1]}" if ones else ""))
+    # TRAIN-deaths (town dies of overtraining: army_spawn + town_death
+    # same town within 2 turns, no battle/capture). Bot error, always.
+    spawns: dict = {}  # town-id-ish key -> turn (army_spawn near a town)
+    traindeath = 0
+    for t in ts:
+        w = turns[t]
+        towns = {x["id"]: x for x in w["towns"]}
+        for e in evmap.get(t, []):
+            if e.get("kind") == "army_spawn":
+                site = min(towns.values(), key=lambda u: _math.hypot(u["x"] - e["x"], u["y"] - e["y"])) if towns else None
+                if site and _math.hypot(site["x"] - e["x"], site["y"] - e["y"]) < 15:
+                    spawns[site["id"]] = t
+            if e.get("kind") == "town_death" and e.get("id") in spawns and t - spawns[e["id"]] <= 2:
+                traindeath += 1
+    out.append(f"train-deaths: {traindeath}")
+    out.append("verdict: " + ("SICK" if (suic > 0 or traindeath > 0 or len(ones) > 2 or len(blocks) > 6) else ("watch" if (onev1 > 10 or ones or blocks) else "healthy")))
+    return "\n".join(out)
+
+
 def fog(path: str, faction: int, turn: int) -> str:
     """What faction F had observed by turn T (bot-view replay): per town
     last-seen pop/faction/alive + staleness + GHOSTS (dead-unseen) +
@@ -811,7 +920,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--deltas", default="100,10,1", help="score-delta offsets (symmetric past+future, comma-separated)")
-    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report", "fog", "lead", "flip"],
+    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json", "autopsy", "report", "fog", "lead", "flip", "health"],
                     help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias); autopsy: death ledger over --window; report: full-game brief; fog: what a faction observed (--faction, --turn); lead: score timeline + lead flips; flip: events around a flip window (--window A-B, --faction F context)")
     ap.add_argument("--faction", default="0", help="fog format: faction to observe as")
     ap.add_argument("--window", default="", help="autopsy window TURNS, e.g. 7800-8000 (default: last 1000)")
@@ -819,7 +928,7 @@ def main(argv: list[str] | None = None) -> int:
     _COMPACT[0] = args.compact
     if args.format in ("json", "acjson"):
         args.format = "acjson"
-    elif args.format not in ("autopsy", "report", "fog", "lead", "flip"):
+    elif args.format not in ("autopsy", "report", "fog", "lead", "flip", "health"):
         args.format = "ascii"
     if args.format == "fog":
         t = int(args.turns.split(",")[0]) if args.turns != "last" else -1
@@ -844,6 +953,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.format == "lead":
         print(lead(args.recording))
+        return 0
+    if args.format == "health":
+        print(health(args.recording))
         return 0
     if args.format == "flip":
         if args.window and "-" in args.window:
