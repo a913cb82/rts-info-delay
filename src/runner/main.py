@@ -223,6 +223,10 @@ class BotProcess:
         be indistinguishable from being outplayed in post-game analysis.
         """
         if timed_out:
+            print(f"TIMEOUT F{self.faction} turn={turn} elapsed={elapsed_ms:.1f} "
+                  f"budget={budget_ms:.1f} main={self.main_ms:.1f} "
+                  f"clock={self.clock_ms:.1f} byo={self.in_byoyomi}",
+                  file=sys.stderr)
             if use_clock:
                 self.main_ms = 0.0
                 self.clock_ms = 0.0
@@ -245,11 +249,16 @@ class BotProcess:
                 # (Overrunning the budget dies above, so the crossing turn
                 # is never punished beyond entering the period.)
                 self.main_ms -= elapsed_ms
-                if self.main_ms <= 0:
+                # Early byo-yomi: enter when main is too small for even
+                # the fastest bot (r119: crossing-turn budget=0 kills bots
+                # at ~0.8ms/turn with 2ms main remaining — the crossing
+                # turn never gets a chance to set the clock).
+                if self.main_ms <= 0 or self.main_ms <= inc:
                     self.main_ms = 0.0
                     self.in_byoyomi = True
                     self.clock_ms = cap
             else:
+                prev_clock = self.clock_ms
                 self.clock_ms = min(cap, budget_ms - elapsed_ms + inc)
                 if self.clock_ms <= 0.0:
                     # Floor (hiccup recovery) only on spikes (elapsed > a
@@ -554,6 +563,10 @@ def run_game(
                 orders_dict[faction] = []
                 continue
             budget_ms = max(0.0, float(bp.turn_budget()))
+            if budget_ms <= 1.0 and bp.in_byoyomi:
+                print(f"DEBUG pre-write: turn={turn} faction={faction} "
+                      f"budget={budget_ms:.1f} clock={bp.clock_ms:.1f}",
+                      file=sys.stderr)
             if not bp._write_block(turn, deliver(faction, world, ledger, turn), budget_ms, True):
                 bp.alive = False
                 try:
