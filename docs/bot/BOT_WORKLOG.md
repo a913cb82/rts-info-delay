@@ -1417,3 +1417,12 @@ TOOLS: health quiet blocks flag battles (bN = fought stalemate vs !
 = dead peace; r96's mid-game is peer equilibrium, not idleness).
 R96: FIVE flips (F0->F3->F1->F2->F4->F0), turtle leads t5000-6000
 tall (11.8k), multi-polar to t6000; health watch. GENERATED r96.
+
+## Threat-diffusion + tall-guard + r97 (per-loop regen)
+
+SHIPPED (common.py/turtle.py + tests, green): _threat_field (foe-
+army sinks, x0.7/10t, 3x3 blur) steers fully-blocked scout rays
+(gradient descent over 5 candidates); tall-guard minimum (turtle
+keeps 1 home ALWAYS — r96 F4 beheaded at 12k with 0 guard).
+R97 health: watch (0 onesies, 0 suicides, 0 train-deaths, 3 dead-
+peace quiets); pro0-vs-pro1 duel to t7000. GENERATED r97.

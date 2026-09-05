@@ -2945,3 +2945,28 @@ class TestSiteField:
         b.turn = 3
         b._diffuse_site_field()
         assert b._field_at(800, 800) < 0
+
+
+class TestThreatField:
+    """Cool grids: threat diffusion steers blocked scout rays."""
+
+    def test_threat_steers_ray(self) -> None:
+        from bots.common import scout_hop_target
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 500, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 500, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 10
+        b._diffuse_threat_field()
+        assert b._threat_at(500, 500) == 0.0  # no foes: flat
+        b.update(11, [{"kind": "army_update", "id": 9, "x": 800, "y": 800,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 20
+        b._diffuse_threat_field()
+        assert b._threat_at(800, 800) < 0  # sink splatted + blurred

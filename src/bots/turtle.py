@@ -170,7 +170,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _want_home = 2 if (threatened and cap is not None and cap.population >= 3000) else 1
     _foe_known = any(t.faction != faction for t in state.world.towns) \
         or any(a.faction != faction for a in state.world.armies)
-    need_garrison = cap is not None and _home_cap < _want_home and (threatened or not _foe_known)
+    # Tall-guard minimum (r96: F4 led tall with 0 guard, beheaded t6865
+    # at 12k. Tall needs 1 home ALWAYS, not only when threatened/dark).
+    need_garrison = cap is not None and (_home_cap < 1 or (_home_cap < _want_home and (threatened or not _foe_known)))
 
     # Forward picket (owed): single-town turtle posts one idle army 100km
     # out while the universe is dark (zero foe intel — towns AND armies).

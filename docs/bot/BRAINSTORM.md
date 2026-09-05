@@ -60,3 +60,15 @@ build-cap, pack-cap scale, scout cadence + foe-bend, guard-or-rich,
 settler/second-body floors, capital-timely, naked-garrison,
 hopeless→evac for all four, foe velocity ETA, probe-fresh, lead/
 flip/health/churn tools, INDICATORS.md, greedy retired, double-pro.
+
+## r96 loop (watch->story->right/wrong->brainstorm)
+
+WATCH: 5 flips, turtle leads t5000, multi-polar to t6000, watch-health.
+STORY: F4 tall-leader beheaded t6865 (12k, 0a — fortress with no
+guard!); F1 mutual t4222 then stripped t4904; F0 wins t7000+.
+RIGHT: turtle tall play (led!), F1 mutual-save, F0 pack timing.
+WRONG: F4 zero-guard tall (tall needs 1 guard, not 0!); F1 no second
+body post-mutual; F0 28-idle pile (rotation vs holds).
+IDEAS: tall-guard minimum (turtle keeps 1 home ALWAYS, even dark);
+post-mutual remuster priority (threat-first covers? verify!);
+threat-diffusion field (below).

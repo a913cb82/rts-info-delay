@@ -422,6 +422,47 @@ class BotState:
         except Exception:
             return 0.0
 
+    def _diffuse_threat_field(self) -> None:
+        """Threat diffusion field (cool grids: foe armies as moving danger
+        sinks, fast decay (x0.7/10t — armies move!), 3x3 blur. Scout hops
+        and settler tips sample it (gradient descent away from danger),
+        replacing binary bends with smooth cost."""
+        try:
+            n = 10
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            f = self.__dict__.setdefault("_threat_field", {})
+            for k in list(f):
+                f[k] *= 0.7
+                if abs(f[k]) < 0.01:
+                    del f[k]
+            for a in self.world.armies:
+                if a.faction == self.faction:
+                    continue
+                cx = min(n - 1, max(0, int(a.x / size[0] * n)))
+                cy = min(n - 1, max(0, int(a.y / size[1] * n)))
+                f[(cx, cy)] = f.get((cx, cy), 0.0) - 1.0
+            blur: dict = {}
+            for (cx, cy), v in f.items():
+                for nx in (cx - 1, cx, cx + 1):
+                    for ny in (cy - 1, cy, cy + 1):
+                        if 0 <= nx < n and 0 <= ny < n:
+                            w = 0.5 if (nx, ny) == (cx, cy) else 0.0625
+                            blur[(nx, ny)] = blur.get((nx, ny), 0.0) + v * w
+            self.__dict__["_threat_field"] = blur
+        except Exception:
+            pass
+
+    def _threat_at(self, x: float, y: float) -> float:
+        """Sample the threat field (negative near foe armies)."""
+        try:
+            n = 10
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            cx = min(n - 1, max(0, int(x / size[0] * n)))
+            cy = min(n - 1, max(0, int(y / size[1] * n)))
+            return self.__dict__.get("_threat_field", {}).get((cx, cy), 0.0)
+        except Exception:
+            return 0.0
+
     def _apply_update(self, ev: dict) -> None:
         """Upsert one state update (absolute). Unknown kinds ignored."""
         from collections import deque
@@ -570,6 +611,7 @@ class BotState:
             self._growth = {}
             if turn % 10 == 0:
                 self._diffuse_site_field()  # diffusion ticks 10t (perf)
+                self._diffuse_threat_field()
         self.turn = turn
         self._last_turn = turn
         # Snapshot prev pops for towns this batch names, then apply absolutely.
@@ -1111,8 +1153,21 @@ def scout_hop_target(state: "BotState", config, p, hop: int, gen: int = 0) -> tu
         ty = min(size[1] - 20.0, max(20.0, p.y + SCOUT_HOP_KM * math.sin(ang)))
         if all(_seg_dist(p.x, p.y, tx, ty, qx, qy) >= r for qx, qy, r in known):
             return (tx, ty)
-    return (min(size[0] - 20.0, max(20.0, p.x + SCOUT_HOP_KM * math.cos(base))),
-            min(size[1] - 20.0, max(20.0, p.y + SCOUT_HOP_KM * math.sin(base))))
+    # All bent-blocked: gradient descent on the threat field (cool grids
+    # — smooth danger cost picks the least-bad ray instead of blundering
+    # into the base ray).
+    cands = []
+    for turn in (0.0, math.pi / 4, -math.pi / 4, math.pi / 2, -math.pi / 2):
+        ang = base + turn
+        tx = min(size[0] - 20.0, max(20.0, p.x + SCOUT_HOP_KM * math.cos(ang)))
+        ty = min(size[1] - 20.0, max(20.0, p.y + SCOUT_HOP_KM * math.sin(ang)))
+        try:
+            cost = -state._threat_at(tx, ty)
+        except Exception:
+            cost = 0.0
+        cands.append((cost, tx, ty))
+    cands.sort()
+    return (cands[0][1], cands[0][2])
 
 
 def _scout_slot(state: "BotState", pid: int) -> int:

@@ -8,18 +8,24 @@ is one iteration of it, plus logs.
 ## The loop (the main event)
 
 Repeat forever:
-1. **Analyse** the current canonical game (`recordings/empty_10000.jsonl`
+1. **Watch** the current canonical game (`recordings/empty_10000.jsonl`
    — the viewer location; `benchmarks/ascii_view.py`, how: `VIEWER.md`):
-   per-bot story — what did each do well/badly? War forensics (who
-   attacked what, trade math). Intel gaps (what did the winner never
-   see?). Write the report card.
-2. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md §9
-   personalities stay skewed, pro stays reference).
-3. **Bench** (edit fast/slow suites if an idea needs new coverage; the
-   fog-era table stays binding).
-4. **Iterate** one idea per bot (measure vs table + rematch; suites
+   `report` (activity/stagnation), `lead` (timeline + flips), `health`
+   (indicators — see INDICATORS.md).
+2. **Story** per bot: what did each do, turn by turn? (`flip --faction
+   F` for collapses/rises, `fog` for what it saw, `autopsy` for deaths.)
+   Write the report card.
+3. **Right/wrong**: for each bot, what worked (improve the correct
+   decisions!) and what failed (lead flips get full audits: what did
+   the loser do wrong / winner do right?).
+4. **Brainstorm** ideas per bot from the mistakes + improvements
+   (doctrine first, code second; GTO.md §9 personalities stay skewed,
+   pro stays reference). Log sparks in BRAINSTORM.md.
+5. **Bench** (cut_scenario N turns before an issue for targeted repro;
+   edit fast/slow suites if an idea needs new coverage).
+6. **Iterate** one idea per bot (measure vs table + rematch; suites
    twice, quiet box — JIT first-runs lie).
-5. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
+7. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
    and write it to BOTH viewer locations (`recordings/empty_10000.jsonl`
    for ascii_view + `viewer/public/empty_10000.jsonl` for the web UI —
    the UI serves its own bundled copy, stale copies lie!). Verify:
