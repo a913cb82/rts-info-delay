@@ -590,6 +590,17 @@ class BotState:
                     t.is_capital = bool(ev.get("is_capital", t.is_capital))
             self._last_seen[("town", eid)] = self.turn
             self._first_seen.setdefault(("town", eid), self.turn)
+            # Drop-watch (r119: ghost towns compound monotonically; live
+            # towns sawtooth (prints). A >20% drop below max-seen = activity
+            # = somebody home).
+            _tp = float(ev.get("population", 0.0))
+            _mx = self.__dict__.setdefault("_town_maxpop", {})
+            if _tp > _mx.get(eid, 0.0):
+                _mx[eid] = _tp
+            elif _tp < 0.8 * _mx.get(eid, 0.0):
+                _tf = ev.get("faction", None)
+                if _tf is not None and int(_tf) != self.faction:
+                    self.__dict__.setdefault("_foe_active", {})[int(_tf)] = self.turn
             self._stamp_cover(float(ev.get("x", 0.0)), float(ev.get("y", 0.0)))
         elif kind == "army_update":
             if ev.get("alive") is False:
@@ -759,6 +770,7 @@ class BotState:
                     eid = ev.get("id")
                     if eid is not None and eid not in known_armies:
                         self._foe_prints[ef] = self._foe_prints.get(ef, 0) + 1
+                        self.__dict__.setdefault("_foe_last_print", {})[ef] = self.turn
             if ev.get("kind") == "army_update" and ev.get("faction") == self.faction:
                 eid = ev.get("id")
                 if eid is not None and eid not in known_armies:
@@ -2657,7 +2669,14 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
     must clear `margin` (theft pays — the army is not spent, only risked).
     No fieldable gate: an unaffordable-but-valuable target starts a
     PIPELINE (trains build the pack over turns); callers gate the MARCH
-    on need <= free. Unpriced (big-war denial) returns max-pressure."""
+    on need <= free. Unpriced (big-war denial) returns max-pressure.
+    Memoized per args (r119: 4x/turn hog; pure vs world+intel)."""
+    return _memoized(state, ("raid_targets", k, priced, margin),
+                     lambda: _raid_targets(state, config, k, priced, margin))
+
+
+def _raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
+                  margin: float = 200.0):
     faction = state.faction
     eff = config.build_efficiency
     cost = config.army_cost
@@ -2721,6 +2740,10 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         # +1; sterile-observed foes still take cheap.
         if foe_print_factor(state, u.faction) > 0.3:
             need += 1
+        # Ghost-feast (r119: dead rivals' towns are free land — walk in
+        # with 1, don't muster packs against the defenseless).
+        if u.faction in dead_foes(state):
+            need = 1
         # Underdog aggression (r65 lesson: winner-takes-all by t6000,
         # late dead. GTO variance: the favorite plays safe, the underdog
         # gambles). Behind on towns -> need -1 (min 1): desperate takes
@@ -2733,10 +2756,8 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         # runaways and seeds three-way races).
         _pops: dict[int, float] = {}
         _dead2 = dead_foes(state)
-        for _t in state.world.towns:
-            if _t.faction != faction and _t.faction in _dead2:
-                continue  # hate the living (r114)
-            _pops[_t.faction] = _pops.get(_t.faction, 0.0) + _t.population
+        _pops = {k: v for k, v in town_pops(state).items()
+                 if k == faction or k not in _dead2}
         _foe_pops = {k: v for k, v in _pops.items() if k != faction}
         if _foe_pops and u.faction == max(_foe_pops, key=_foe_pops.get):
             _mine = _pops.get(faction, 0.0)
@@ -3452,6 +3473,17 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     return arrival > print_turns
 
 
+def town_pops(state: "BotState") -> dict:
+    """Per-faction believed pops, memoized per turn (r119: speed =
+    survival — early clock is ~0ms and wobble kills)."""
+    def _compute():
+        pops: dict = {}
+        for t in state.world.towns:
+            pops[t.faction] = pops.get(t.faction, 0.0) + t.population
+        return pops
+    return _memoized(state, "town_pops", _compute)
+
+
 def dead_foes(state: "BotState", config=None) -> set:
     """Factions that look dead (r113: SICK — 3 ghosts by t1750, survivors
     froze 8500t vs dead rivals' towns: stale threat never clears, packs
@@ -3461,17 +3493,32 @@ def dead_foes(state: "BotState", config=None) -> set:
     # Young games keep full caution (no history to judge by).
     if state.turn < 2000:
         return set()
-    live_army_factions = {a.faction for a in state.world.armies}
-    out = set()
-    foe_factions = ({t.faction for t in state.world.towns} |
-                    {a.faction for a in state.world.armies}) - {state.faction}
-    seen = state.__dict__.get("_foe_army_seen", {})
-    for f in foe_factions:
-        if f in live_army_factions:
-            continue
-        if state.turn - seen.get(f, -10**9) > 2000:
-            out.add(f)
-    return out
+    def _compute():
+        live_army_factions = {a.faction for a in state.world.armies}
+        out = set()
+        foe_factions = ({t.faction for t in state.world.towns} |
+                        {a.faction for a in state.world.armies}) - {state.faction}
+        seen = state.__dict__.get("_foe_army_seen", {})
+        last_print = state.__dict__.get("_foe_last_print", {})
+        for f in foe_factions:
+            if f in live_army_factions:
+                continue
+            # Printing foes are alive (r119: a printer fielding nothing
+            # right now still remusters — ghost-feast is for the silent).
+            if state.turn - last_print.get(f, -10**9) <= 2000:
+                continue
+            # Active towns are alive (pop-drop = prints at home).
+            _active = state.__dict__.get("_foe_active", {})
+            if state.turn - _active.get(f, -10**9) <= 2000:
+                continue
+            # Recently-met foes are alive (no history to judge — grace).
+            _first = state.__dict__.get("_foe_first_seen", {})
+            if state.turn - _first.get(f, state.turn) <= 2000:
+                continue
+            if state.turn - seen.get(f, -10**9) > 2000:
+                out.add(f)
+        return out
+    return _memoized(state, "dead_foes", _compute)
 
 
 def victory_lap(state: "BotState", config) -> list[str]:
@@ -3505,12 +3552,8 @@ def bloodlust(state: "BotState", config) -> bool:
     t4000 then coasts 6000t. A 3x population lead drops every brake:
     no verify windows, no overkill caps, no stale premiums — end it.
     Believed pops via world towns (mirror holds the living)."""
-    pops: dict[int, float] = {}
-    _dead = dead_foes(state)
-    for t in state.world.towns:
-        if t.faction != state.faction and t.faction in _dead:
-            continue  # ghost empires compound but don't lead (r114)
-        pops[t.faction] = pops.get(t.faction, 0.0) + t.population
+    pops = {k: v for k, v in town_pops(state).items()
+            if k == state.faction or k not in dead_foes(state)}
     mine = pops.get(state.faction, 0.0)
     foes = [v for k, v in pops.items() if k != state.faction]
     return bool(foes) and mine >= 3.0 * max(foes)

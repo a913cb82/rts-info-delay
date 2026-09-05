@@ -2231,6 +2231,8 @@ class TestRemusterGuard:
         b.turn = 9900
         b._foe_first_seen[1] = 100
         b._foe_prints[1] = foe_prints
+        if foe_prints:
+            b.__dict__.setdefault("_foe_last_print", {})[1] = 9850
         return b, cfg
 
     def test_printer_costs_extra(self) -> None:

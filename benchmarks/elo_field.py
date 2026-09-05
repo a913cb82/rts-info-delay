@@ -105,9 +105,15 @@ def main(argv=None) -> int:
            if k != "type"}
     cfg = GameConfig.from_dict(cfg)
     t0 = time.perf_counter()
+    games_log = ROOT / "benchmarks" / "elo_games.jsonl"
     for i in range(args.games):
         scores = run_game(cfg, cmds, None)
-        update(elo, field, {f: float(scores.get(f, 0)) for f in field})
+        scores = {f: float(scores.get(f, 0)) for f in field}
+        update(elo, field, scores)
+        # Append-only game record (elo never resets; history recomputable).
+        with open(games_log, "a") as fh:
+            fh.write(json.dumps({"ts": time.time(), "field": field,
+                                 "scores": scores}) + "\n")
         ranked = sorted(scores, key=lambda f: -scores[f])
         print(f"game {i + 1}: " + " ".join(f"{field[f]}:{round(scores[f])}" for f in ranked), flush=True)
     Path(args.elo).write_text(json.dumps(elo, indent=1))
