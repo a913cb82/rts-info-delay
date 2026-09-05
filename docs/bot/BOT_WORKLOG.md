@@ -877,3 +877,26 @@ HONEST: two-scout machinery correct but still invisible pre-t2000 (no
 early prints — economy question, filed next). Real wins this loop:
 clock discipline at 97-town scale + first all-survive canonical.
 GENERATED: r11 -> recordings/empty_10000.jsonl.
+
+## Grave-memory vs onesies (loop iteration)
+
+ANALYSE (user: pro sits 8v2 then suicides onesies t7750-7917): forensics
+says INVERTED — expander fed 11 onesies (armies 130-140) into pro's
+2-guard capital (51,58); pro's 6 idle squatted dead-greedy's capital.
+IDEA: grave-memory (dead armies tell no tales -> remember where).
+CHANGE (common.py): _bloodied map (note-target first, trail second) +
+probe_ok gate (4 bots) + foe_garrison imputes >=1 at graves (both
+pricers). Tests: grave-memory + garrison-impute. Benches green.
+REMATCHES (wobble honest): r12/r15 clean line == r11 (bitwise! blood
+never fires there); r13/r14/r16 diverged lines (butterfly, not code).
+r13: onesies 11->7. r16 (need-feed): ZERO window battles (2 total!).
+r17 calm line: 10 onesies persist. MECHANISM (ledger.py:325):
+tombstones tag OBSERVERS of the site — deep-raider deaths are seen by
+the victim only, never delivered home. Blood works when deaths are
+observed (close wars), silent when fog eats them (deep raids). FILED:
+silence-watch (overdue army => presumed dead => blood); ghost-slot
+audit (unseen deaths may stick scout slots); wobble study (lines
+diverge run-to-run, magnitude game-scale); decide <8ms @100 towns
+(bank math: 13ms vs 10ms grant drains to 0ms deaths t3300-4100).
+GENERATED: r17 -> recordings/empty_10000.jsonl (calm line, all survive,
+machinery armed).

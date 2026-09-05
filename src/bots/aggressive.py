@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -45,7 +45,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     pack_building = sel is not None and sel[1] > free_n \
         and not jit_ready(state, config, sel[0], sel[1], free_ids,
         sel[0].faction)
-    probe_armed = pack_building and sel[2] == 0
+    probe_armed = pack_building and probe_ok(state, sel)
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
     out.extend(recall_deficit(state, config))

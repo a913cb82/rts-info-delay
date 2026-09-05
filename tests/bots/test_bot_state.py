@@ -1199,6 +1199,48 @@ class TestProbeSingular:
         assert any(o.startswith("MOVE_TO 8 ") and "350.0" in o for o in orders), orders
 
 
+class TestGraveMemory:
+    """Anti-onesie: our army dying at a foe town bloodies it — lone
+    probes hold for the pack instead of re-feeding stale s=0."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 349, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        return b
+
+    def test_death_bloodies_probe_gate(self) -> None:
+        from bots.common import probe_ok
+        b = self._bot()
+        tgt = b.world.get_town(2)
+        assert probe_ok(b, (tgt, 5, 0)) is True  # visibly empty: probe away
+        b.update(2, [{"kind": "army_update", "id": 7, "faction": 0,
+                      "alive": False}])
+        assert b._bloodied.get(2) == 2  # grave recorded at the foe town
+        assert probe_ok(b, (tgt, 5, 0)) is False  # onesie suppressed
+        b.turn = 200
+        assert probe_ok(b, (tgt, 5, 0)) is True  # grave fades after 150t
+
+    def test_death_imputes_garrison(self) -> None:
+        from bots.common import foe_garrison
+        b = self._bot()
+        tgt = b.world.get_town(2)
+        assert foe_garrison(b, tgt) == 0
+        b.update(2, [{"kind": "army_update", "id": 7, "faction": 0,
+                      "alive": False}])
+        assert foe_garrison(b, tgt) == 1  # stale 0 overridden by grave
+        b.turn = 200
+        assert foe_garrison(b, tgt) == 0  # fades with the grave
+
+
 class TestSitePays:
     """Founding veto (fratricide): NET empire growth with the colony
     minus without must clear amortized founding cost."""

@@ -275,6 +275,7 @@ class BotState:
         self._scout_gen: int = -1  # probe generation (first assign -> 0, legacy ray)
         self._scout_gen1: int = 0
         self._scout_gen2: int = 0
+        self._bloodied: dict[int, int] = {}  # foe town id -> turn our army died there
         self._tip_grace: dict = {}  # army_id -> turn until which drop_dead spares its note
         self._scout_leg: int = 0
         self._scout_leg2: int = 0
@@ -323,6 +324,7 @@ class BotState:
         self._wave_ids = set()
         self._foe_first_seen = {}
         self._foe_prints = {}
+        self._bloodied = {}
         self._picket = None
         self._draining = False
         self._scout_id = None
@@ -391,6 +393,35 @@ class BotState:
         self._prev_pop.pop(tid, None)
 
     def _remove_army(self, aid: int) -> None:
+        # Grave memory (anti-onesie): our army dying at a known foe town
+        # means garrison the intel missed — bloodied towns refuse lone
+        # probes until a full pack is ready (dead armies tell no tales,
+        # so without this the stale s=0 re-arms the probe forever).
+        a = self.world.get_army(aid)
+        tr = self._trails.get(aid)
+        if a is not None and a.faction == self.faction:
+            interact = 10.0
+            if self.config is not None:
+                interact = float(getattr(self.config, "interact_radius", 10.0) or 10.0)
+            # Candidate death sites: NOTE target first (where it was sent —
+            # exact even in fog), last-seen trail second (stale by mail lag).
+            sites = []
+            tgt = self._army_targets.get(aid)
+            if tgt is not None:
+                sites.append(tgt)
+            if tr:
+                sites.append((tr[-1][1], tr[-1][2]))
+            for sx, sy in sites:
+                hit = False
+                for t in self.world.towns:
+                    if t.faction != self.faction and abs(t.x - sx) < interact + 15 \
+                            and abs(t.y - sy) < interact + 15 \
+                            and math.hypot(t.x - sx, t.y - sy) <= interact + 15:
+                        self._bloodied[t.id] = self.turn
+                        hit = True
+                        break
+                if hit:
+                    break
         self.world.remove_army(aid)
         self._army_targets.pop(aid, None)
         self._trails.pop(aid, None)
@@ -1739,8 +1770,21 @@ def garrison_map(state: "BotState") -> dict:
 
 
 def foe_garrison(state: "BotState", u) -> int:
-    """Standing defenders imputed to foe town u (nearest same-faction town)."""
-    return garrison_map(state).get(u.id, 0)
+    """Standing defenders imputed to foe town u (nearest same-faction town).
+    Grave-memory prices in: bloodied (our army died here <150t ago) imputes
+    >= 1 — dead armies tell no tales, so stale s=0 would otherwise keep
+    approving onesie raids into unseen garrisons."""
+    s = garrison_map(state).get(u.id, 0)
+    if state.__dict__.get("_bloodied", {}).get(u.id, -10**9) >= state.turn - 150:
+        s = max(s, 1)
+    return s
+
+
+def probe_ok(state: "BotState", sel) -> bool:
+    """Lone-probe gate: visibly-empty (s == 0) AND no fresh grave.
+    A probe that died at the target within 150 turns means garrison the
+    intel missed — hold for the full pack instead of re-feeding onesies."""
+    return sel[2] == 0 and state.__dict__.get("_bloodied", {}).get(sel[0].id, -10**9) < state.turn - 150
 
 
 def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -88,7 +88,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # means one: a probe already en route suppresses duplicates (per-turn
     # flags trickle-donate into garrisoning foes — endgame lesson).
     # Far unknowns hold for the pack (no 600km donations into printers).
-    probe_armed = pack_building and sel[2] == 0
+    probe_armed = pack_building and probe_ok(state, sel)
     probe_tgt = sel[0] if probe_armed else None
     probe_reach = 6.0 * max(1.0, config.army_speed)
     # Meeting (Step 3): deficit-threats recall settlers first (bodies
