@@ -931,3 +931,37 @@ class TestGrowthAccounting:
         assert b.get_growth(1) == __import__("pytest").approx(0.5)
         b.update(23, [dict(self._tu(1, 1005), faction=1)])
         assert b.get_growth(1) == __import__("pytest").approx(3.0)
+
+
+class TestPrintCalibration:
+    """W (printable-before-arrival) calibrates on observed foe prints:
+    sterile-observed factions count zero (unready = can't OR won't);
+    fresh intel assumes live (dark-spring grace)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _town(self, tid, faction):
+        return {"kind": "town_update", "id": tid, "x": 600, "y": 500,
+                "faction": faction, "population": 3000, "alive": True,
+                "is_capital": False}
+
+    def test_sterile_goes_passive(self) -> None:
+        from bots.common import foe_print_factor
+        b = self._bot()
+        b.update(1, [self._town(2, 1)])
+        assert foe_print_factor(b, 1) == 1.0  # grace: assume live
+        b.update(25, [self._town(2, 1)])
+        assert foe_print_factor(b, 1) == 0.0  # 24 sterile turns: passive
+
+    def test_print_seen_stays_live(self) -> None:
+        from bots.common import foe_print_factor
+        b = self._bot()
+        b.update(1, [self._town(2, 1)])
+        b.update(25, [self._town(2, 1),
+                      {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        assert foe_print_factor(b, 1) == 1.0

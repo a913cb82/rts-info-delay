@@ -466,3 +466,33 @@ Fast 15/15, strategic 13/13, Elo pro top at 1501 (muster discipline
 pays in skirmishes), empty_3000 pro identical 9156 (greedy +490 via the
 shared growth fix). Remain: Step 2 for the other four (per-personality
 bars), then Steps 3-6, recon, pickets.
+
+## Step 2 greedy: shared demand API + calibration (exam 14/16, Elo top)
+
+Extracted pro's demand machinery to shared parameterized API
+(`raid_target`+margin, `expansion_demand`+payback_mult, `demand_trains`
++depth_extra/threat_window/probe_armies, `hold_defenders`,
+`can_train_standard` merging the duplicated 1500-rule) — pro rewired
+identical (exam + suites confirm). Greedy on present-biased params
+(depth +500 rich-only muster, margin 500 transfer-positive, payback x2
+cherry-pick, 1 prober). Three shared fixes en route, each convicted by
+a red-then-green: (1) void serialization — a scout's own hop note
+blocked the settler pipeline (recycle -1024): void expands unserialized
+(colonies ARE the void economy), contested keeps one-at-a-time;
+(2) pipeline chicken-and-egg (need > fieldable → no target → no deficit
+→ no pack, forever): selection values, marching gates on need ≤ free,
+plus bird-in-hand discount (executable now beats pipeline later);
+(3) pack deadlock vs passive prizes (skip_thin: need-2 hold forever, no
+2nd affordable): foe-print calibration (`_foe_first_seen/_foe_prints`
+tracking + `foe_print_factor`, grace 20) zeroes W for sterile factions —
+unready means can't OR won't. (4) scout paradox (no army→no intel→no
+demand→no army, skip_thin went passive 2296): `probe_armies` trains the
+first prober (pairs with S0; pro/turtle pass 0 until recon). skip_thin
+3446→3888 (calibrated need-1 take t28, decoy skipped — honest gain).
+Infra tests caught real invariants (trains-stage atomicity — removed the
+in-loop yield; trains-must-exist on rich state — pipeline provides).
+Class-body scare: a module-level insert mid-class gutted BotState
+(51 red) — reverted by relocation; suites are the net. Fast 15/15,
+voids steady, Elo greedy top 1530 (aggressive 1529→1501 shuffles against
+the new holds — its rollout is next), empty greedy 4835 (+75, same
+lineage). Remain: aggressive/expander/turtle Step 2, recon, Steps 3-6.

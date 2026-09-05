@@ -140,6 +140,8 @@ class BotState:
         self._trails: dict = {}  # army_id -> deque[(turn, x, y)] (velocity)
         self._wave_ids: set = set()
         self._wave_hold_until: int = -1
+        self._foe_first_seen: dict[int, int] = {}  # faction -> turn first observed
+        self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
         self._scout_leg: int = 0
         self._stale_key = None
@@ -177,6 +179,8 @@ class BotState:
         self._last_seen = {}
         self._trails = {}
         self._wave_ids = set()
+        self._foe_first_seen = {}
+        self._foe_prints = {}
         self._scout_id = None
         self._scout_leg = 0
         self._wave_hold_until = -1
@@ -302,6 +306,13 @@ class BotState:
         # and fired a mystery evac).
         cost = getattr(getattr(self, "config", None), "army_cost", 1000) or 1000
         for ev in events:
+            ef = ev.get("faction")
+            if isinstance(ef, int) and ef != self.faction:
+                self._foe_first_seen.setdefault(ef, self.turn)
+                if ev.get("kind") == "army_update":
+                    eid = ev.get("id")
+                    if eid is not None and eid not in known_armies:
+                        self._foe_prints[ef] = self._foe_prints.get(ef, 0) + 1
             if ev.get("kind") == "army_update" and ev.get("faction") == self.faction:
                 eid = ev.get("id")
                 if eid is not None and eid not in known_armies:
@@ -404,6 +415,8 @@ class BotState:
             tuple(sorted(self._pending_trains.items())),
             tuple(sorted(self._pending_builds.items())),
             tuple(sorted(self._army_targets.items())),
+            tuple(sorted(self._foe_first_seen.items())),
+            tuple(sorted(self._foe_prints.items())),
             self._scout_id,
             self.turn // 25,
         )
@@ -930,6 +943,19 @@ def staging_eta(state: "BotState", config: "GameConfig") -> dict[int, float]:
     return out
 
 
+def foe_print_factor(state: "BotState", faction: int, grace: int = 20) -> float:
+    """Opponent print calibration for W (printable-before-arrival).
+
+    Factions that have fielded force count full; sterile-observed factions
+    (towns seen grace+ turns, zero prints) count zero — unready means
+    can't print OR won't print. Fresh intel assumes live (dark-spring
+    grace: absence of evidence is not evidence yet)."""
+    if state._foe_prints.get(faction, 0) > 0:
+        return 1.0
+    first = state._foe_first_seen.get(faction, state.turn)
+    return 1.0 if state.turn - first < grace else 0.0
+
+
 def inbound_force(state: "BotState", config: "GameConfig",
                   max_eta: float = 8.0) -> dict[int, tuple[float, int]]:
     """Per-own-town inbound threat (ETA, force) by nearest-own-town.
@@ -1124,3 +1150,210 @@ def bot_main(decide_fn):
             sys.stdout.write(o + "\n")
         sys.stdout.write("go\n")
         sys.stdout.flush()
+
+
+# ── Step 2 demand API (shared, parameterized personalities) ──
+# Personalities are parameter shifts on this backbone (GTO.md s9): pro
+# pays full price on time; the others deviate on schedule via depth_extra
+# (muster cushion), raid_margin (theft bar), payback_mult (expansion
+# patience) — never by different rules.
+
+def home_count(state: "BotState", t, radius: float = 20.0) -> int:
+    return sum(1 for a in state.own_armies()
+               if math.hypot(a.x - t.x, a.y - t.y) <= radius)
+
+
+def foe_garrison(state: "BotState", u) -> int:
+    """Standing defenders imputed to foe town u (nearest same-faction town)."""
+    n = 0
+    for a in state.world.armies:
+        if a.faction == state.faction or a.faction != u.faction:
+            continue
+        same = [t for t in state.world.towns if t.faction == u.faction]
+        if min(same, key=lambda t: math.hypot(a.x - t.x, a.y - t.y)).id == u.id:
+            n += 1
+    return n
+
+
+def raid_target(state: "BotState", config, priced: bool = True,
+                margin: float = 200.0):
+    """Priced raid target (unready-weighted) + required force, or None.
+
+    Take needs N >= S+W+1 (standing + printable-before-arrival); the prize
+    must clear `margin` (theft pays — the army isn't spent, only risked).
+    No fieldable gate: an unaffordable-but-valuable target starts a
+    PIPELINE (trains build the pack over turns); callers gate the MARCH
+    on need <= free. Unpriced (big-war denial) returns max-pressure."""
+    faction = state.faction
+    eff = config.build_efficiency
+    cost = config.army_cost
+    floor = config.death_threshold
+    enemy_towns = [t for t in state.world.towns if t.faction != faction]
+    war_foes = {t.faction for t in enemy_towns} | {
+        a.faction for a in state.world.armies if a.faction != faction}
+    duel_ctx = len(war_foes) <= 1
+    if duel_ctx:
+        cands = [t for t in enemy_towns
+                 if t.population * (1.0 - eff) > cost * eff + 200]
+    else:
+        cands = list(enemy_towns)
+    if not cands:
+        return None
+    fieldable = [a for a in state.own_armies()
+                 if not state.army_has_target(a.id)]
+    best = None
+    for u in cands:
+        s = foe_garrison(state, u)
+        printable = max(0.0, (u.population - cost - floor) / cost)
+        arrival_t = min((math.hypot(a.x - u.x, a.y - u.y)
+                         for a in fieldable),
+                        default=float("inf")) / max(1.0, config.army_speed)
+        w = min(printable, arrival_t) * foe_print_factor(state, u.faction)
+        need = int(s + w + 1)
+        prize = u.population * (1.0 - eff)
+        dist = min((math.hypot(a.x - u.x, a.y - u.y) for a in fieldable),
+                   default=float("inf"))
+        if not priced:
+            score = u.population / (1.0 + dist / 300.0)
+            if best is None or score > best[0]:
+                best = (score, u, need)
+        elif prize > margin:
+            # Bird-in-hand: an executable take now beats a bigger prize
+            # after print-turns (opportunity cost + compounding). Pipeline
+            # targets discount by turns-to-ready.
+            score = prize / (1.0 + dist / 300.0) / (1.0 + s + w) \
+                / (1.0 + max(0, need - len(fieldable)))
+            if best is None or score > best[0]:
+                best = (score, u, need)
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
+def void_note_busy(state: "BotState") -> bool:
+    """An expansion is already in flight (a note to nowhere-known)."""
+    towns = list(state.world.towns)
+    for a in state.own_armies():
+        tgt = state.army_target(a.id)
+        if tgt and all(math.hypot(tgt[0] - t.x, tgt[1] - t.y) > 20
+                       for t in towns):
+            return True
+    return False
+
+
+def expansion_demand(state: "BotState", config, payback_mult: float = 1.0) -> bool:
+    """Settler pipeline demand: void expands on logistic merit — colonies
+    ARE the void economy, so no serialization (a scout's own hop note
+    must not block the settler pipeline); contested expands only past
+    the payback bar (1e8/P, scaled by personality patience) with one
+    expansion in flight at a time — darkness shields growers, contest
+    prices expansion. The buzzer falls out (turns_left -> 0)."""
+    foe_known = any(t.faction != state.faction for t in state.world.towns) \
+        or any(a.faction != state.faction for a in state.world.armies)
+    if not foe_known:
+        return True
+    if void_note_busy(state):
+        return False
+    turns_left = config.max_turns - state.turn
+    payers = [t.population for t in state.own_towns()]
+    return bool(payers) and turns_left >= payback_mult * 1e8 / max(payers)
+
+
+def can_train_standard(state: "BotState", town) -> bool:
+    """Comfort gates (pro/greedy shared): 1500-90000, no double-order,
+    far towns need proportionally more (messenger+muster depth)."""
+    if town.population < 1500 or town.population > 90000:
+        return False
+    if town.id in state._pending_trains and state.turn <= state._pending_trains[town.id]:
+        return False
+    cap = state.world.faction_capital(state.faction)
+    if cap:
+        dist = math.hypot(cap.x - town.x, cap.y - town.y)
+        if dist > 100 and town.population < 1500 + int(dist / 150 * 400):
+            return False
+    return True
+
+
+def demand_trains(state: "BotState", config, can_train,
+                  *, depth_extra: float = 0.0, raid_margin: float = 200.0,
+                  payback_mult: float = 1.0, threat_window: float = 4.0,
+                  probe_armies: int = 0) -> list[str]:
+    """Demand-gated trains (shared Step 2 core): threat muster by outcome
+    rule, raid pipeline (pack deficit for the priced target), expansion
+    pipeline (void merit / contested payback), plus the prober pipeline
+    (`probe_armies`: scouting needs an army, armies need demand — the
+    first prober breaks the cycle; pairs with S0 scouting, so only bots
+    that scout pass >0). One train per town max (engine cap);
+    `depth_extra` thickens the muster cushion per personality; trains are
+    fungible across demands (deficit shared)."""
+    out: list[str] = []
+    cost = config.army_cost
+    floor = config.death_threshold
+    force = inbound_force(state, config)
+    home = {t.id: home_count(state, t) for t in state.own_towns()}
+    sel = raid_target(state, config, margin=raid_margin)
+    if sel is not None:
+        _, need = sel
+        fieldable = sum(1 for a in state.own_armies()
+                        if not state.army_has_target(a.id))
+        deficit = [max(0, need - fieldable)]
+    else:
+        deficit = [0]
+    expand = expansion_demand(state, config, payback_mult)
+    cands = sorted(state.own_towns(),
+                   key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
+                                  state.get_growth(t.id), t.population))
+    # No in-loop yield: the trains stage is atomic (anytime prefix
+    # property) — trains are cheap, and a partial muster is worse than
+    # a late one.
+    for t in cands:
+        if t.id in state._pending_trains and state.turn <= state._pending_trains[t.id]:
+            continue
+        eta_n = force.get(t.id)
+        want = False
+        bare = False
+        if eta_n is not None:
+            eta, n = eta_n
+            if defense_train_ok(t.population, cost, floor + depth_extra, eta,
+                                home[t.id], n, window=threat_window):
+                want = True
+                bare = (home[t.id] == n - 1)  # doomed-town convert branch
+        if deficit[0] > 0:
+            want = True
+        if expand:
+            want = True
+        if len(state.own_armies()) < probe_armies:
+            want = True
+        if not want:
+            continue
+        if bare:
+            if t.population >= cost:
+                out.append(f"TRAIN {t.id}")
+                state.note_train(t.id)
+                deficit[0] = max(0, deficit[0] - 1)
+        elif (can_train(state, t)
+                and t.population - cost >= floor + depth_extra - 1e-9):
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
+            deficit[0] = max(0, deficit[0] - 1)
+    return out
+
+
+def hold_defenders(state: "BotState", config, force: dict) -> set:
+    """Hold-set (shared Step 2 core): per threatened town keep
+    min(home, N+1) — the +1th is highest-leverage; beyond it extras are
+    free. Hopeless towns (D <= N-2) keep none — defenders retreat via
+    normal logic instead of annihilating in place."""
+    held: set = set()
+    for t in state.own_towns():
+        if t.id not in force:
+            continue
+        _, n = force[t.id]
+        here = sorted((a for a in state.own_armies()
+                       if math.hypot(a.x - t.x, a.y - t.y) <= 20.0),
+                      key=lambda a: math.hypot(a.x - t.x, a.y - t.y))
+        if len(here) <= n - 2:
+            continue  # hopeless: retreat, don't annihilate
+        for a in here[:min(len(here), n + 1)]:
+            held.add(a.id)
+    return held

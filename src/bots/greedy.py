@@ -3,27 +3,16 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, drive_scout, drop_dead_notes, find_build_site, inbound_eta, maybe_assign_scout, note_wave_watch, order_move, should_hold_home
-
-
-def _can_train_greedy(state: BotState, town) -> bool:
-    if town.population < 1500 or town.population > 90000:
-        return False
-    if town.id in state._pending_trains and state.turn <= state._pending_trains[town.id]:
-        return False
-    cap = state.world.faction_capital(state.faction)
-    if cap:
-        dist = math.hypot(cap.x - town.x, cap.y - town.y)
-        if dist > 100 and town.population < 1500 + int(dist / 150 * 400):
-            return False
-    return True
+from .common import BotForecast, BotState, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
-    # greedy prioritises overcrowded reps first
-    cands = [t for t in state.own_towns() if _can_train_greedy(state, t)]
-    cands.sort(key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1, state.get_growth(t.id), t.population))
-    return [f"TRAIN {t.id}" for t in cands]
+    # Step 2, greedy params (present-biased skipper): rich-only incident
+    # muster (depth +500), transfer-positive raids only (margin 500),
+    # cherry-pick expansion (payback x2). No P3b — void settlers need trains.
+    return demand_trains(state, config, can_train_standard,
+                         depth_extra=500.0, raid_margin=500.0, payback_mult=2.0,
+                         probe_armies=1)
 
 
 def _army_targets(state: BotState, config: GameConfig):
@@ -38,6 +27,12 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     enemy_towns, enemy_armies = _army_targets(state, config)
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
+    force = inbound_force(state, config)
+    held = hold_defenders(state, config, force)
+    sel = raid_target(state, config, margin=500.0)
+    free_n = sum(1 for a in state.own_armies()
+                 if not state.army_has_target(a.id) and a.id not in held)
+    pack_building = sel is not None and sel[1] > free_n
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -47,22 +42,18 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             continue
         if state.army_has_target(p.id):
             continue  # handled by the builds stage
-        # G-defense: keep >=1 home vs inbound/second wave (viability-gating
-        # the attack removed the accidental counter-march that used to
-        # intercept wave 2 mid-field).
+        # G-defense (shared hold-set) + second-wave watch legacy.
+        if p.id in held:
+            continue
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
-        # G1: viability gate — duel-only (P7: in big wars denial-raids on
-        # small towns erase foe production; gating cost pro 2185).
-        war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
-        if len(war_foes) <= 1:
-            viable = [t for t in enemy_towns
-                      if t.population * (1.0 - config.build_efficiency)
-                      > config.army_cost * config.build_efficiency + 200]
-        else:
-            viable = list(enemy_towns)
-        if viable:
-            nearest = min(viable, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
+        # Priced takes only (transfer-positive): march the selected victim
+        # when the pack is ready, else hold while trains build it.
+        # Viability lives inside raid_target (duel-gated).
+        if pack_building:
+            continue
+        if sel is not None:
+            nearest, _ = sel
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             fc = BotForecast(state, config)
@@ -75,14 +66,17 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             if maybe_assign_scout(state, config, p):
                 out.extend(drive_scout(state, config, p) or [])
                 continue
-            # G2: recycle — no foes and no site: march home for +500 pop-add
-            # (builds stage BUILDs on arrival since target is an own town).
-            site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id)
+            # G2: settle on demand (cherry-pick x2) — else recycle home,
+            # peace-only (war-footing holds; disbanding feeds merges).
+            site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
+                if expansion_demand(state, config, payback_mult=2.0) else None
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
             elif state.own_towns():
-                home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
-                out.extend(order_move(state, config, p, home.x, home.y))
+                foe_known = bool(enemy_towns) or bool(enemy_armies)
+                if not foe_known:
+                    home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - t.y))
+                    out.extend(order_move(state, config, p, home.x, home.y))
     return out
 
 
@@ -106,6 +100,14 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
             continue
         is_enemy_target = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in enemy_towns)
         if not is_enemy_target and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
+            # War-footing: home-bound armies hold as defenders (shared
+            # guard_duty lesson) — merge only in true peace.
+            foe_known = bool(enemy_towns) or any(
+                a.faction != faction for a in state.world.armies)
+            own_home = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20
+                           for t in state.world.towns if t.faction == faction)
+            if foe_known and own_home:
+                continue
             out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
     return out
 

@@ -14,9 +14,10 @@ that doesn't exist (demand pricing, muster math, buzzer flips), build it.
 How GTO is pro, in one number: decide-level doctrine fixtures (scripted
 intel in, orders out), parameterized over geometries so passing needs
 the RULE, not the point. Expected to fail where Steps haven't landed —
-the failures are the roadmap. Baseline was 6/14; Step 2 pro brought it to 13/15: muster 6/6,
-pricing 3/3, selectivity 2/2, escape 1/2 (established-endures accidental),
-intel 0/1, endgame 1/1 (payback kills buzzer settling — principled).
+the failures are the roadmap. Baseline was 6/14; Step 2 pro brought it to 13/15, shared rollout
+(calibration + prober + pipeline + bird-in-hand) to 14/16: muster 6/6,
+pricing 3/3, selectivity 3/3 (passive_prize_taken via print calibration),
+escape 1/2 (established-endures accidental), intel 0/1, endgame 1/1.
 Remaining fails: young_flees → Step 5 (hopeless needs D<N
 force-counting, not pop-counting); blind_probes → pro recon owed. Never gate on it (a ceiling, not a floor) —
 judge game truth in the suites; challenge fixtures with numbers.

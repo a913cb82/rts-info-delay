@@ -139,6 +139,27 @@ def exam_selectivity():
     check("selectivity", "thin_skipped", o,
           lambda o: not any("400" in m for m in _moves(o)),
           f"raids a starving decoy; orders={o}")
+    # Rich PASSIVE prize (3000, sterile-observed 24 turns, zero prints):
+    # W calibrates to zero — the lone army takes it (need 1, not 2).
+    b = _state(
+        [(1, 300, 500, 0, 20000, True), (2, 600, 500, 1, 3000, False)],
+        [(7, 300, 500, 0)], turn=1)
+    b.update(25,
+             [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                "faction": 0, "population": 20000, "alive": True,
+                "is_capital": True},
+              {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                "faction": 1, "population": 3000, "alive": True,
+                "is_capital": False},
+              {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                "faction": 0, "alive": True, "is_viceroy": False}])
+    # Quiescence needs the refreshed intel to settle (static confirmed):
+    # decide two turns later, no new events.
+    b.update(27, [])
+    o = decide_orders(b, CFG)
+    check("selectivity", "passive_prize_taken", o,
+          lambda o: any("600" in m for m in _moves(o)),
+          f"holds vs a sterile prize (pack deadlock); orders={o}")
 
 
 # ── Escape: young flees, established endures (Step 5) ──

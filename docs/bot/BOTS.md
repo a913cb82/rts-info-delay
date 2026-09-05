@@ -13,16 +13,18 @@ furniture for scenarios, not a personality. There is no `random` bot
 (retired pre-campaign, replaced by `pro`).
 
 ### greedy — The Raider
-- Trains most eagerly: custom 1500 floor (vs 1600 shared) + overcrowding
-  reps + pending guard. Same 1500 + distance rule, no fudge beyond it.
-- Attacks nearest *viable* town: `pop × 0.5 > 700`, i.e. target pop > 1400
-  (captured-half must clear the death floor + margin). Duel-only gating —
-  in multi-faction wars every town is viable (denial-raids pay there).
+- Step 2 on shared demand API (present-biased params): rich-only incident
+  muster (depth +500), transfer-positive raids only (margin 500),
+  cherry-pick expansion (payback x2), one prober breaking the scout
+  paradox (no army→no intel→no demand). No P3b — void settlers need trains.
+- Raids the priced take (unready-weighted `raid_target`), marches when
+  the pack is ready, holds while trains build it (pack gate — the
+  skip_thin deadlock class). Pack deadlock vs passive prizes solved by
+  print calibration (`foe_print_factor`: sterile-observed factions count
+  zero printable — unready means can't OR won't).
 - No actionable contact → first settler probes (S0 scout: 50 km hops,
-  rubble-avoiding, found-fallback); later settlers expand (sites 80–300
-  km); no site → march home for the +500 pop-add recycle. Holds one home
-  vs inbound/second-wave (shared defense trio, below — ungated, unlike
-  pro's duel-only hold).
+  rubble-avoiding, found-fallback); later settlers expand on demand;
+  recycle/merge peace-only (war-footing holds — shared guard_duty lesson).
 
 ### aggressive — The Conqueror
 - Trains via `can_train_here` non-conservative (peak preserved except
