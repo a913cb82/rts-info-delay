@@ -2859,6 +2859,16 @@ def reinforce_orders(state: "BotState", config) -> list:
     return out
 
 
+def assault_verified(state: "BotState", target) -> bool:
+    """Pre-assault re-verify (r84: fratricide onesies vs stale-mirror
+    towns that flipped back unseen). Foe-belief older than 300t holds
+    the pack (approach re-scouts: observers near refresh or FoW-erase
+    clears); fresh intel assaults. Never-seen (constructed) counts."""
+    if ("town", target.id) not in state._last_seen:
+        return True
+    return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 300
+
+
 def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
               foe_faction: int | None = None) -> bool:
     """Just-in-time packs (Step 3 tempo): march iff the pack is complete
@@ -2869,7 +2879,7 @@ def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
     by the pack cap (demand_trains), not here. foe_faction reserved for
     reactive calibration (currently unused — gap-stable default)."""
     if need <= len(free_ids):
-        return True
+        return assault_verified(state, target)
     towns = state.own_towns()
     if not towns or not free_ids:
         return False

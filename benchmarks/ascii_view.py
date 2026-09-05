@@ -551,8 +551,12 @@ def report(path: str) -> str:
         mates = [aid for aid, tr in track.items() if tr[0] == f]
         idle = sum(1 for aid in mates if static_max.get(aid, 0) > 500 and battled.get(aid, 0) == 0)
         march = round(sum(tr[4] for aid in mates for tr in [track[aid]]))
+        # Churn rate (r85: mobility vs waste): km per army per 100t
+        # (march speed 50/t = 5000/100t). Sustained >100 with zero
+        # takes = shuttling; war mobility runs 100-500 with takes.
+        churn = round(march / max(1, len(mates)) / max(1, maxt) * 100, 1) if mates else 0
         lines.append(f"  F{f}: {prints.get(f, 0)} prints / {founds.get(f, 0)} foundings / "
-                     f"{caps.get(f, 0)} captures / {idle} idle armies (>500t static, 0 battles) / {march}km marched")
+                     f"{caps.get(f, 0)} captures / {idle} idle armies (>500t static, 0 battles) / {march}km marched / churn {churn}")
     lines.append("stagnation (static >500t, 0 battles):")
     stagn = [(aid, static_max[aid], track[aid]) for aid in track
              if static_max.get(aid, 0) > 500 and battled.get(aid, 0) == 0]

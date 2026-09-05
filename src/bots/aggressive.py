@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotForecast, BotState, DemandParams, bot_main, evac_plan, hopeless_capital, coverage_orders, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, assault_verified, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -140,8 +140,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if sel is not None:
             # A3: leader-targeting survives inside raid_target's pressure
             # branch (big wars); duels march the priced take at +1.
+            # Stale-belief targets hold for re-verify (fratricide).
             nearest, _, _ = sel
-            out.extend(order_move(state, config, p, nearest.x, nearest.y))
+            if assault_verified(state, nearest):
+                out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))

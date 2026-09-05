@@ -2688,3 +2688,28 @@ class TestSupportRatio:
                        "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 12
         assert expansion_demand(b, CFG) is True  # 3 towns, 2 armies
+
+
+class TestAssaultVerify:
+    """r84: fratricide onesies vs stale-mirror towns that flipped back.
+    Foe-belief older than 300t holds the pack."""
+
+    def test_stale_sel_holds(self) -> None:
+        from bots.common import jit_ready, assault_verified
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 500  # foe-belief 499t stale
+        assert assault_verified(b, b.world.get_town(2)) is False
+        assert jit_ready(b, CFG, b.world.get_town(2), 1, [7], 1) is False
+        b.update(500, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                        "faction": 1, "population": 60000, "alive": True,
+                        "is_capital": False}])
+        assert assault_verified(b, b.world.get_town(2)) is True

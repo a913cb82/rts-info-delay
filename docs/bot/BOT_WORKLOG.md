@@ -1331,3 +1331,15 @@ pro spacing 120, redeploy-stickiness (breaker 1000t), S0-guard
 (lone unscouted army holds capital; scout pipeline untouched).
 R84: pro0-vs-pro1 mirror duel to t10000 (3 flips, pro1 wins 25t),
 zero real onesies, all-but-ghost alive. GENERATED r84.
+
+## Assault-verify + churn metric (r84 stands)
+
+SHIPPED (common.py/aggressive/pro/expander + tests, green):
+assault_verified (foe-belief >300t stale holds packs; wired into
+jit_ready full-packs + all three flush sites + aggressive march).
+TOOLS: churn rate (km/army/100t) in report (r85 calibration: war
+mobility 100-500 with takes; shuttling is takes-less motion).
+R85: aggressive snowball 473k (early bloodbath t4000-5000); mutual
+3v3 battle (fair fight, not suicide). NO GENERATE (r84 stands:
+mirror duel to buzzer beats snowball).
+OPEN: early bloodbath t3000-4000 (thin capitals + first packs).
