@@ -14,10 +14,11 @@ that doesn't exist (demand pricing, muster math, buzzer flips), build it.
 How GTO is pro, in one number: decide-level doctrine fixtures (scripted
 intel in, orders out), parameterized over geometries so passing needs
 the RULE, not the point. Expected to fail where Steps haven't landed —
-the failures are the roadmap. Baseline was 6/14; now 17/18: muster 8/8 (incl. short-clean/long-hold
-pins), pricing 3/3, selectivity 3/3, escape 1/2 (established-endures
-accidental), intel 1/1 (pro recon), endgame 1/1. Sole red: young_flees
-→ Step 5 (hopeless needs D<N force-counting, not pop-counting). Never gate on it (a ceiling, not a floor) —
+the failures are the roadmap. Baseline was 6/14; now 23/23 ALL GREEN: muster 10/10 (horizon +
+deterrent + JIT pins), pricing 3/3, selectivity 4/4 (snipe tie-break),
+escape 2/2, intel 1/1, endgame 3/3 (no-settle split + blitz +
+buzzer strikes). The instrument is complete; extend it (new doctrine
+-> new fixtures) as the frontier moves. Never gate on it (a ceiling, not a floor) —
 judge game truth in the suites; challenge fixtures with numbers.
 
 ## Goal
@@ -126,16 +127,13 @@ unrepeatable). Judge RELATIVE (ranks/margins) + mechanisms + suites;
 absolute shortfalls up to ~1000 on war maps are doctrine-redistribution
 until a mechanism says otherwise. Re-run STRATEGIC every commit; run
 suites twice post-change (JIT first-runs lie).
-Fast suite: raid_hold 4658 (take) / recycle 6293 (60t, lean pipeline) /
-skip_thin 3888 (calibrated need-1 take) / settle 3122 / chain 5327 /
-guard 2617 (holds) / viable 5251 (take) / pair 5804 (take) / trap 5493
-(take, decoy skipped) / defend 3640 (400t; clean-wins keep it fat —
-the old 2747 measured an UNTESTED defense) / wake 2121 / cluster 5465 /
-opening 5251 (recon finds fast) / defense 1115 (honest mutual-saves;
-Step-3 concentration is the path back) / endgame 5603 (late-arrival
-pack; Step-3 timing is the path back). Short-horizon clean (D==N
-trains) lifted the raid board ~+500-1000 across the board; ±5s are
-spin noise. History below is record, not binding.
+Fast suite: raid_hold 4658 / recycle 6083 / skip_thin 3888 / settle 3122 /
+chain 5327 / guard 2631 / viable 5251 / pair 5798 / trap 5494 /
+defend 2904 (400t, pickets) / wake 2121 / cluster 5465 /
+opening 5251 / defense 1115 (honest mutuals; concentration filed) /
+endgame 7708 (strikes take; filed mass next). Known wobblers (cadence):
+recycle +-200, guard_duty +-500, void_contact +-300, longpeace +-500 —
+run quiet, judge with margin. History below is record, not binding.
 Since landing: movement streams fixed (bots see own armies — foundings
 work, E1 done), scout-first probing restored all raid takes (pair/viable/
 raid_hold/trap/skip_thin goal-PASS), quiescence gating steadied orders.

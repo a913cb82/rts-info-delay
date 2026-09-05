@@ -127,22 +127,19 @@ fire during arrival-waits on fresh orders, the army marches on
 engine-side, quiescence blocks doomed re-dispatches; pure bookkeeping
 churn, no strand, no delay. Worklog has the numbers.
 
-**Step 3 — meeting forecast + computed arrival-sync.** Deterministic
-meeting prediction from known speeds (path-blocking auto-intercepts, so
-forecasting is enough to force field battles); release own packs on
-computed coincident arrivals (perfect own-info — the arrival-sync that
-can work, since the old one died on stale *foe* intel). Punish
-foe 1v1-acceptance by adding one anywhere on your path (print-capped at
-one per town per turn, so pack-building starts early).
+**Step 3 — meeting + tempo. DONE:** recall_deficit (deficit + fresh
+staging) + reinforce_orders (cross-town surplus→deficit, in-time) +
+jit_ready packs (march iff complete or completes en route; pack cap 6
+pre-siege) + probe singularity shared. REMAIN filed: Step-3v2 field
+intercept (same-speed meetings rarely pay; town-reinforcement covers
+the common case), S0 probe tempo (risk unpriced), raid-window urgency
+(folded into strikes).
 
-**Step 4 — post-capture doctrine.** Assign every surviving attacker at
-once: nearest viable next target in reach → found nearby → march home to
-recycle. (Greedy's kill-runt-then-found was emergent; make it policy for
-all raiders.) Includes garrisoning fresh conquests through their
-starvation window. Also covers suppressed arrivals: an army whose BUILD
-is refused near a known foe gets an explicit decision (besiege / leave /
-capture by waiting) — never silence and drift (the empty_3000 take was
-accidental drift after a correct refusal).
+**Step 4 — post-capture doctrine. DONE (compositional):** veterans hold
+conquests (war-footing no-merge) + conquest guards (_taken_at, 25 turns)
++ sel-chains re-raid when priced + suppressed-arrival lite (builds
+re-decision: demand+site re-check, drop-and-retask, no hostage gifts).
+(Besiege/leave/wait all emerge from holds+marches; no separate engine.)
 
 **Step 5 — evac v2 + capital game.** Earlier-and-stricter evac gates
 (1-turn lead now required; failure beheads permanently); viceroy routing
@@ -157,10 +154,18 @@ into escorted exodus, leave the husk); pro computed (hub future vs
 amnesia); greedy latest (compounding over beheading risk); aggressive
 almost never (fights headless); expander moves hub by geometry (centroid).
 Rule of thumb: escape young, endure established.
+DONE: hopeless D<N (exam), evac_plan drain-and-flee (turtle any-doom +
+pro computed-endure), snipe 1.5x (exam), standing guards (asymmetric),
+war-print towns. REMAIN filed: settler-hunting (needs Step-3v2),
+greedy-late-evac + expander-centroid (character), evac-routing exactness
+(centroid-away suffices).
 
-**Step 6 — siege craft (pro, last).** Engineered 2v1 *at the town* via
-staggered computed arrivals; takes in symmetric endgames; anti-standoff
-play (recognize compounding races, be the first to add the second army).
+**Step 6 — buzzer + strikes. DONE minimal:** buzzer defense (blind
+guards + arrival caps + no-settle; muster stays demand-gated (strip-mine
+is self-tax without strikes)); strike doctrine (S+1 blitz ≤2 turns +
+W=0 buzzer ≤30t, singularity-shared, strike-deficit; exam endgame 3/3).
+REMAIN filed: Step-6-siege-mass + multi-prong (needs mass first),
+first-strike exact timing, endgame flip timing.
 
 Explicitly parked: crowding-weapon colonies (weak math), settler-escort
 bodyguards (messenger lag wins; exodus convoys under Step 5 are the live
@@ -268,20 +273,20 @@ tables with margin; run benches quiet.
 
 ## Scoreboard to beat (current tree, fog era)
 
-Fast: raid_hold 4658 / recycle 6293 / skip_thin 3888 / settle 3122 /
-chain 5327 / guard 2617 / viable 5251 / pair 5804 / trap 5493 /
-defend 3640 (400t, honest) / wake 2121 / cluster 5465 / opening 5251 /
-defense 1115 (honest mutuals; Step-3 path back) / endgame 5603
-(late pack; Step-3 path back). Strategic: attrition 14552 /
-comeback 821 / endurance 7752 / outsettle 2827 (1 town; race-pending) /
-guard_duty 4701 (war-era; Step-3 path) / longpeace 2887 (recon premium) /
-opening 1391 / siege 5324 / snowball 4851 / staleness 4007 /
-succession 1826; void_contact 4416 (take); self-play symmetric;
-Elo all-draws ~1500 (needs Step-3 contact-timing to discriminate).
-empty_3000: pro ~5000 (recon raids!)/ greedy ~4800-5700 /
-aggressive ~3000 / expander 4829 / turtle ~4700-7200 — sloshes ±2000
-with foundings on/off at veto margins + cadence (variance note in
-worklog); judge mechanisms + suites, not empty-points.
-Next in order: Step 2 expander-done/greedy/aggressive-done/pro-done —
-REMAIN turtle-expansion; Step 5 (exam 16/16); pickets; Steps 3, 4;
-filed strikes/tempo/sites. (Exam 17/18; only young_flees red.)
+Fast: raid_hold 4658 / recycle 6083 / skip_thin 3888 / settle 3122 /
+chain 5327 / guard 2631 / viable 5251 / pair 5798 / trap 5494 /
+defend 2904 (400t, pickets) / wake 2121 / cluster 5465 / opening 5251 /
+defense 1115 (honest mutuals; concentration filed) / endgame 7708
+(strikes take; filed mass next). Strategic: attrition 9411 (close
+Red-Queen win) / comeback 821 / endurance 6256 / outsettle 2827 /
+guard_duty 5227 (war-era, wobbles) / longpeace 4191 / opening 1391 /
+siege 5008 / snowball 6096 / staleness 5470 / succession 1826 /
+void_contact 5711 (take, wobbles); self-play symmetric;
+Elo all-draws ~1500 (needs contact-timing to discriminate).
+empty_3000: pro 6263 / greedy 5688 / aggressive 3089 / expander 5200 /
+turtle 2297 (equilibrium-tight, zero battles; sloshes ±2000 — judge
+mechanisms + suites, not empty-points).
+Next in order: ALL plan Steps substantially DONE (2 all-five, 3 meeting,
+4 compositional, 5 hopeless/evac/snipe/guards, 6 buzzer/strikes; recon +
+pickets shipped). REMAIN filed-futures (see Steps + GTO s12 + worklog).
+(Exam 23/23 all green.)

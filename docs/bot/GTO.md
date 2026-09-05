@@ -277,7 +277,27 @@ needed); aggressive↔expander (stripping rate vs print rate).
 ## 11. Open questions
 
 Exact summer timing (first +EV scout turn as a function of map density);
-buzzer flip timing; counter-intel value (needs evaluator first —
-parked); crowding-weapon recheck under dense-phase math (parked, weak);
-three-body combat doctrine (neutral in range shifts weaknesses, crushes
-bystanders); headless endgame value (hub loss vs amnesia, exact trade).
+counter-intel value (needs evaluator first — parked); crowding-weapon
+recheck under dense-phase math (parked, weak); three-body combat
+doctrine (neutral in range shifts weaknesses, crushes bystanders);
+headless endgame value (hub loss vs amnesia, exact trade).
+
+## 12. Validated addenda (implementation campaign)
+
+- **Equilibrium-tight:** all-credible defense + no unready prizes =
+  zero battles (correct!). Strikes decline (no cracks); compounding
+  decides. Forcing needs MASS (muster-up + multi-prong at buzzer).
+- **Red Queen:** every bot improving tightens symmetric wars (margins
+  compress; old fat margins unrepeatable). Judge relative + mechanisms.
+- **Short-clean / long-mutual:** D==N trains iff turns_left ≤ 500
+  (clean saves standing armies (terminal); mutual spends static (cheap
+  long)). Deterrence needs overmatch (1.5×; peers mutual-accept!).
+- **Strikes:** blitz (S+1, arrival ≤ 2, outruns intel) + buzzer (W=0,
+  arrival ≤ turns_left ≤ 30). One per target (singularity). Windows!
+- **Calibration:** unready = can't print OR won't (sterile 20+ turns).
+  Fresh intel assumes live (dark-spring grace).
+- **Site NET:** colony − home-crowding-externality > amortized (500/H).
+  Fratricide dominates full-map expansion (never-seen voids excepted).
+- **Merges:** home-capital merges need turns_left ≥ 500 (else treadmill).
+- **JIT packs:** march iff complete or completes en route (long leave,
+  short dash); pack cap 6 pre-siege (decline giant races).
