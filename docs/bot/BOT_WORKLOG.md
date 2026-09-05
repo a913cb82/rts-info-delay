@@ -1343,3 +1343,15 @@ R85: aggressive snowball 473k (early bloodbath t4000-5000); mutual
 3v3 battle (fair fight, not suicide). NO GENERATE (r84 stands:
 mirror duel to buzzer beats snowball).
 OPEN: early bloodbath t3000-4000 (thin capitals + first packs).
+
+## r86 (per-loop regen): twin-giant duel
+
+R86: pro0 (4t/203k) vs pro1 (3t/188k) tall-giant duel to t10000
+(3 flips); aggressive's 25+19 "onesies" are full-pack wars vs real
+garrisons (churn 3.4, needs met — attrition, not suicide). Churn
+2-5 across the board, 3 idle, expander ghost t1960 (harness).
+GENERATED r86 (best finale yet: two giants standing).
+IDEAS AUDIT: behavior mechanisms exhausted (see GTO addenda);
+remaining opens are harness (ghosts/turn-order, filed 5x), map luck
+(corner/edge), and wobble (which twin wins). Loop idles until new
+evidence.
