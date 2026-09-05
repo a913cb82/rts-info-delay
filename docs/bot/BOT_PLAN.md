@@ -76,8 +76,9 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 4. **Iterate** each idea per bot (one idea, one bot, measure vs table
    + rematch; suites twice, quiet box — JIT first-runs lie).
 5. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
-   into the viewer location (`recordings/empty_10000.jsonl`) — the loop
-   ends where the next begins. (`empty_3000` retired.)
+   into BOTH viewer locations (`recordings/empty_10000.jsonl` +
+   `viewer/public/empty_10000.jsonl` — the web UI serves its own copy!)
+   — the loop ends where the next begins. (`empty_3000` retired.)
 
 **Step 0 — housekeeping.** DONE (fog era): EVENT_REWORK landed, both
 suites re-baselined as the binding table (BOT_BENCH.md fog-era section);
