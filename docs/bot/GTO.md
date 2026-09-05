@@ -5,6 +5,12 @@ numbers. Personalities are parameter shifts on this backbone (section 8),
 never a different game. Mechanics reference: `BOTS.md`. Open build steps:
 `BOT_PLAN.md`. Numbers: `BOT_BENCH.md`. History: `BOT_WORKLOG.md`.
 
+Status: **living hypothesis, not scripture.** Every claim here is a bet
+priced from current measurements; landing Steps, bench numbers, and game
+timelines are expected to overturn parts of it. When they do, update this
+file first (it steers everything downstream) and log the change in the
+worklog. Challenge entries with numbers, not arguments.
+
 Scope: empty-map ladder (`empty_3000`, theoretical `empty_10000`,
 `empty_100000`), symmetric starts. Contact-heavy and asymmetric maps
 shift timings, not principles.

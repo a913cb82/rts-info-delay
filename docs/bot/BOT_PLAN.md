@@ -16,6 +16,12 @@ time correctly; they differ only in what they systematically
 over/under-buy. Every step below serves that convergence (pro pays full
 price on time; the others deviate on schedule, not by error).
 
+None of this is fixed. GTO.md is mutable and will need updating as game
+dynamics reveal more complexity — and so does this plan, and every doc
+around it. When a bench number or game timeline contradicts a doctrine
+point, the doctrine changes (with a worklog entry), not the evidence.
+Treat anything here that hasn't been re-confirmed recently as suspect.
+
 ## Doctrine (settled)
 
 1. **N+1, N, or 0 — never partial.** Equal numbers annihilate (1v1 *and*
