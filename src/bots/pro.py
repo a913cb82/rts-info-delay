@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .common import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -45,7 +45,21 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
                         and t.population - config.army_cost >= config.death_threshold - 1e-9:
                     return [f"TRAIN {t.id}"]
         return []
-    return demand_trains(state, config, can_train_standard)
+    out = demand_trains(state, config, can_train_standard)
+    # Scout-print (r31 lesson): blind + scoutless + affordable -> print
+    # eyes (darkness re-arms scouting, but prints must fund it; the S0
+    # prober only covers true void, not post-contact blindness).
+    if not out and _dark(state) and state._scout_id is None \
+            and getattr(state, "_scout_id2", None) is None \
+            and not state.__dict__.get("_mapper") and not state._pending_trains:
+        cands = sorted((t for t in state.own_towns()
+                        if can_train_standard(state, t)
+                        and t.population - config.army_cost >= config.death_threshold - 1e-9),
+                       key=lambda t: -t.population)
+        if cands:
+            out.append(f"TRAIN {cands[0].id}")
+            state.note_train(cands[0].id)
+    return out
 
 
 def _army_targets(state: BotState, config: GameConfig):

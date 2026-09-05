@@ -22,16 +22,12 @@ def run_scenario(path, py):
     cfg = GameConfig.from_dict({k: v for k, v in d.items()
                                 if k not in ("teams", "focal", "goal")})
     bots = {int(f): [py, "-m", f"bots.{name}"] for f, name in d["teams"].items()}
-    rec = Path("/tmp/scen_record.jsonl")
     t0 = time.perf_counter()
-    run_game(cfg, bots, rec)
+    # No recording (scores come back directly — the old write+reparse of
+    # full JSONL cost ~0.5s/suite and broke the 5s budget in send-all era).
+    scores = run_game(cfg, bots, None)
     ms = (time.perf_counter() - t0) * 1000
-    lines = Path(rec).read_text().splitlines()
-    world = json.loads(lines[-1])["world"]
-    f = d["focal"]
-    score = (sum(x["population"] for x in world["towns"] if x["faction"] == f) +
-             1000 * sum(1 for x in world["armies"] if x["faction"] == f))
-    return score, ms
+    return scores[d["focal"]], ms
 
 
 def main():

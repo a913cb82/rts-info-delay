@@ -901,6 +901,18 @@ SCOUT_HOPS = 12
 SCOUT_HOP_KM = 50.0
 
 
+def _dark(state: "BotState", window: int = 300) -> bool:
+    """Map-blind: no foe town with fresh intel (r31 lesson — pro sat
+    8500 turns seeing only its capital). Darkness re-arms scouting
+    post-contact (existing drive machinery, fan-out included)."""
+    for t in state.world.towns:
+        if t.faction == state.faction:
+            continue
+        if state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= window:
+            return False
+    return True
+
+
 def _scout_contact(state: "BotState", config) -> bool:
     """True iff raid/defense logic should own all armies: a viable town
     (duel-core gate; everything in multi-foe wars) or any foe army."""
@@ -991,8 +1003,10 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
                 continue
         if state.turn < SCOUT_MIN_TURN:
             return False
-        if p.is_viceroy or _scout_contact(state, config):
+        if p.is_viceroy:
             return False
+        if _scout_contact(state, config) and not _dark(state):
+            return False  # owned by raid/defense — unless blind (re-arm)
         if state.army_has_target(p.id):
             # Tasked armies are owned (kept scout tips go to builds, packs
             # to war): re-assigning steals the tip every hop-12 unmark and
@@ -1020,26 +1034,22 @@ def _expected_delay(state: "BotState", config, x: float, y: float) -> int:
 
 
 def ready_to_dispatch(state: "BotState", config, p) -> bool:
-    """Quiescence gate: order MOVE_TO only from converged intel.
+    """Freshness gate: order MOVE_TO when intel is fresh enough.
 
-    The messenger from-check allows ~1 turn of movement; intel older
-    than that vs a marching army is a guaranteed dead letter (which then
-    strands the army behind a stale note). Converged = trail newest age
-    >= 2x expected delay (nothing in flight), or a noted arrival aged >=
-    delay (truth static at note since before intel). No trail = idle."""
+    Send-all era (was: quiescence — order only when the trail went
+    quiet, proving nothing in flight). Every-turn delivery keeps trails
+    permanently fresh, so quiescence almost never passed and armies
+    froze on live notes (pro scout-7: 8000 turns, same order, no moves).
+    Inverted rule: order from fresh intel (lag within 3x expected +
+    margin); hold only when ancient (mail broken, don't compound error).
+    Re-notes are idempotent, so stacking risk is nil."""
     tr = state._trails.get(p.id)
     if not tr or len(tr) < 2:
         # never (or once) seen: idle/spawn-stationary by construction.
         return True
     t_new, x, y = tr[-1]
     d = _expected_delay(state, config, x, y)
-    if state.turn - t_new >= 2 * d:
-        return True
-    tgt = state.army_target(p.id)
-    if (tgt is not None and math.hypot(x - tgt[0], y - tgt[1]) <= 20
-            and state.turn - t_new >= d):
-        return True
-    return False
+    return state.turn - t_new <= 3 * d + 2
 
 
 def order_move(state: "BotState", config, p, tx: float, ty: float) -> list[str]:

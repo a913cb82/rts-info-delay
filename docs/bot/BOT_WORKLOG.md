@@ -1054,3 +1054,17 @@ Tests: ~15 rewritten (silence pins -> announce pins). Suites green.
 REMATCH r31: ALL ALIVE, pro 100k wins but INACTIVE (4 prints/50km).
 Onesies persist (33+18 expander). Substrate done; bots must use it.
 GENERATED: r31 (caveat: pro passive line).
+
+## Fresh-positive quiescence + suite speedup (loop iteration)
+
+PIN (r32 trace): scout-7 marked 8000t, same note/order, zero moves —
+send-all keeps trails fresh so quiescence (order-on-quiet) never
+passed. FIX: ready_to_dispatch inverted (order when lag within 3x
+expected+2; hold only when ancient). Precedent: order_march_exact
+already bypassed for the same deadlock. Tests: ready/drive timing
+rewritten (prompt dispatch). SUITE: recording-less scoring (same
+formula) 4.3s->2.3s (send-all I/O was the cost). skip_thin 2150 vs
+table 3888 IDENTICAL on baseline (send-all-era drift, filed).
+REMATCH r33: movement FLOWS (pro 54k km, 265k win; mapper-33 cycling;
+zero onesies/punishable/sustained-opportunities). All bots alive.
+GENERATED: r33 -> both locations.

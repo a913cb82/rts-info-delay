@@ -101,9 +101,10 @@ clock <budget_ms>
 go
 ```
 
-Events: `town_update` (`id,x,y,faction,population,is_capital`, pop 0 =
-dead) and `army_update` (`id,x,y,faction,alive,is_viceroy`).
-`end` instead of a block means the game is over (or you are muted mid-flight: no block at all).
+Events sent for every entity visible, delayed by `info_speed`
+- `town_update` (`id,x,y,faction,population,is_capital`, pop 0 = dead)
+- `army_update` (`id,x,y,faction,alive,is_viceroy`).
+- `end` instead of a block means the game is over (or you are muted mid-flight: no block at all).
 
 ### Output Format
 

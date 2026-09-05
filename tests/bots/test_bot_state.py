@@ -1798,3 +1798,50 @@ class TestHeartbeatConsume:
         b.turn = 840
         silence_watch(b, CFG)
         assert b.world.get_army(7) is not None
+
+
+class TestDarkScout:
+    """r31 lesson: post-contact blindness re-arms scouting (fund the eyes)."""
+
+    def test_dark_releases_scout_gate(self) -> None:
+        from bots.common import BotState, maybe_assign_scout, _dark
+        b = BotState()
+        b.init(CFG, 0)
+        # contact (viable foe town) but its intel stale -> dark -> scout anyway
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 500
+        assert _dark(b) is True
+        assert maybe_assign_scout(b, CFG, b.world.get_army(7)) is True
+
+    def test_fresh_blocks_scout_gate(self) -> None:
+        from bots.common import BotState, maybe_assign_scout, _dark
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        assert _dark(b) is False
+
+    def test_dark_prints_eyes(self) -> None:
+        from bots.common import BotState
+        from bots.pro import _stage_trains
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 500  # no foes ever seen: dark
+        out = _stage_trains(b, CFG)
+        assert any(o.startswith("TRAIN 1") for o in out), out
