@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""ASCII viewer for jsonl game recordings.
+
+Usage:
+    python benchmarks/ascii_view.py recordings/empty_10000.jsonl --turns 1000,5000,10000 [--size 100x40] [--mode glyph|pop|faction]
+
+Quantizes the map into an X by Y grid and draws one glyph per cell:
+    empty   : '·'
+    army    : '▲' (faction color)
+    stack   : '▲' + xN label (3+ same-faction armies in one cell)
+    town    : '●' (faction color)
+    capital : '◆' (faction color)
+    clash   : '*' (2+ factions in one cell — battles at a glance)
+
+Priority on collision: clash > capital > town > stack > army.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import sys
+
+# ANSI faction colors (match viewer palette order 0..4)
+COLORS = ["\033[94m", "\033[92m", "\033[91m", "\033[93m", "\033[95m"]
+RESET = "\033[0m"
+DIM = "\033[2m"
+BOLD_RED = "\033[1;91m"
+
+EMPTY = "·"
+ARMY = "▲"
+TOWN = "●"
+CAPITAL = "◆"
+CLASH = "*"
+
+
+def load_turns(path: str) -> tuple[dict, dict[int, dict]]:
+    header: dict = {}
+    turns: dict[int, dict] = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if "world" not in rec:
+                header = rec
+                continue
+            turns[rec["turn"]] = rec["world"]
+    return header, turns
+
+
+def quantize(x: float, y: float, w: float, h: float, gx: int, gy: int) -> tuple[int, int]:
+    cx = min(gx - 1, max(0, int(x / w * gx)))
+    cy = min(gy - 1, max(0, int(y / h * gy)))
+    return cx, cy
+
+
+def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool = True) -> str:
+    w, h = header.get("map_size", [1000, 1000])
+    # cell -> entities
+    towns: dict[tuple[int, int], list[dict]] = {}
+    armies: dict[tuple[int, int], list[dict]] = {}
+    for t in world.get("towns", []):
+        towns.setdefault(quantize(t["x"], t["y"], w, h, gx, gy), []).append(t)
+    for a in world.get("armies", []):
+        armies.setdefault(quantize(a["x"], a["y"], w, h, gx, gy), []).append(a)
+
+    def col(f: int, s: str) -> str:
+        return f"{COLORS[f % len(COLORS)]}{s}{RESET}" if color else s
+
+    lines: list[str] = []
+    for cy in range(gy):
+        row: list[str] = []
+        for cx in range(gx):
+            key = (cx, cy)
+            ts = towns.get(key, [])
+            aa = armies.get(key, [])
+            facs = {t["faction"] for t in ts} | {a["faction"] for a in aa}
+            if len(facs) >= 2:
+                row.append(f"{BOLD_RED}{CLASH}{RESET}" if color else CLASH)
+            elif ts:
+                t = max(ts, key=lambda t: t["population"])
+                f = t["faction"]
+                if mode == "pop" and not t.get("is_capital"):
+                    bucket = min(9, max(1, int(t["population"] // 10000) + 1)) if t["population"] > 0 else 0
+                    row.append(col(f, str(bucket)))
+                elif mode == "faction":
+                    row.append(col(f, str(f)))
+                elif t.get("is_capital"):
+                    row.append(col(f, CAPITAL))
+                else:
+                    row.append(col(f, TOWN))
+            elif aa:
+                f0 = aa[0]["faction"]
+                same = all(a["faction"] == f0 for a in aa)
+                if not same:
+                    row.append(f"{BOLD_RED}{CLASH}{RESET}" if color else CLASH)
+                elif mode == "faction":
+                    row.append(col(f0, str(f0)))
+                elif mode == "pop":
+                    row.append(f"{DIM}{ARMY}{RESET}" if color else ARMY)
+                elif len(aa) >= 3:
+                    # stack label overflows the cell (no padding — rows stay
+                    # aligned, the xN just sticks out right, capped at edge)
+                    row.append(col(f0, ARMY) + (f"x{len(aa)}" if cx + 4 < gx else ""))
+                else:
+                    row.append(col(f0, ARMY))
+            else:
+                row.append(f"{DIM}{EMPTY}{RESET}" if color else EMPTY)
+        # strip padding artifacts, join
+        lines.append("".join(row))
+    return "\n".join(lines)
+
+
+def footer(world: dict, header: dict, turn: int, color: bool = True) -> str:
+    cost = header.get("army_cost", 1000)
+    parts = [f"turn {turn}"]
+    for f in sorted({t["faction"] for t in world.get("towns", [])} |
+                    {a["faction"] for a in world.get("armies", [])}):
+        pop = sum(t["population"] for t in world["towns"] if t["faction"] == f)
+        nt = sum(1 for t in world["towns"] if t["faction"] == f)
+        na = sum(1 for a in world["armies"] if a["faction"] == f)
+        label = f"F{f} pop={pop:.0f} towns={nt} armies={na}"
+        parts.append(f"{COLORS[f % len(COLORS)]}{label}{RESET}" if color else label)
+    legend = f"{TOWN} town  {CAPITAL} capital  {ARMY} army(+xN stack)  {BOLD_RED if color else ''}*{RESET if color else ''} clash  {EMPTY} empty"
+    return "  ".join(parts) + "\n" + legend
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="ASCII viewer for jsonl recordings")
+    ap.add_argument("recording")
+    ap.add_argument("--turns", default="0", help="comma-separated turn numbers (default: last)")
+    ap.add_argument("--size", default="100x40", help="GRID WxH (default 100x40)")
+    ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction"])
+    ap.add_argument("--no-color", action="store_true")
+    args = ap.parse_args(argv)
+    gx, gy = (int(v) for v in args.size.lower().split("x"))
+    color = not args.no_color and sys.stdout.isatty()
+    header, turns = load_turns(args.recording)
+    if not turns:
+        print("no turns found", file=sys.stderr)
+        return 1
+    if args.turns == "last":
+        wanted = [max(turns)]
+    else:
+        wanted = [int(t) for t in args.turns.split(",")]
+    for t in wanted:
+        if t not in turns:
+            near = min(turns, key=lambda k: abs(k - t))
+            print(f"(turn {t} missing, showing {near})", file=sys.stderr)
+            t = near
+        print(render(turns[t], header, gx, gy, args.mode, color))
+        print(footer(turns[t], header, t, color))
+        print()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
