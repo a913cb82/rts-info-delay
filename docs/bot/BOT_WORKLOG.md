@@ -1355,3 +1355,18 @@ IDEAS AUDIT: behavior mechanisms exhausted (see GTO addenda);
 remaining opens are harness (ghosts/turn-order, filed 5x), map luck
 (corner/edge), and wobble (which twin wins). Loop idles until new
 evidence.
+
+## Parking-lot fix + 1v1/sync/verify tuning (r86 stands)
+
+DIAGNOSE (r89 truth): 29 F2 armies parked on coverage centroids
+(arrived notes freeze via quiescence; amnesty cycles too slow).
+SHIPPED: coverage re-tasks noted-but-arrived centroid notes (pack
+notes point at towns — safe). R90: idle 25->4 (patrols move: churn
+442 = work, not waste).
+SHIPPED: scout hops bend off observed foe armies (r86's 6 field-1v1
+scout-meetings); sync_hold arrival-sync (far leaves first; pro+
+expander flushes); micro-patrols (leftovers sweep ≤150km; report
+idle threshold 500t->100t); assault-verify 300->800t (r88 endgame
+freeze); S0-guard (coverage lone-army holds capital).
+R90: F2 snowball (early bloodbath t4000-5000 persists as the open
+item). NO GENERATE (r86 twin-giants stands).

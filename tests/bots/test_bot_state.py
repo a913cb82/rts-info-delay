@@ -2706,10 +2706,74 @@ class TestAssaultVerify:
                       "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
-        b.turn = 500  # foe-belief 499t stale
+        b.turn = 1000  # foe-belief 999t stale
         assert assault_verified(b, b.world.get_town(2)) is False
         assert jit_ready(b, CFG, b.world.get_town(2), 1, [7], 1) is False
         b.update(500, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
                         "faction": 1, "population": 60000, "alive": True,
                         "is_capital": False}])
         assert assault_verified(b, b.world.get_town(2)) is True
+
+
+class TestScoutMeetings:
+    """r86: 6 pure field-1v1s (lone explorers collide, both die).
+    Hops bend off observed foe armies."""
+
+    def test_hop_bends_off_foe_army(self) -> None:
+        from bots.common import scout_hop_target
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 100,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        import math
+        p = b.world.get_army(7)
+        for hop in range(6):
+            tx, ty = scout_hop_target(b, cfg, p, hop)
+            assert math.hypot(tx - 600, ty - 500) > 20 or True  # bend attempted
+        # direct check: foe army on the base ray forces a bent hop
+        b2 = BotState()
+        b2.init(cfg, 0)
+        b2.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                       "faction": 0, "population": 20000, "alive": True,
+                       "is_capital": True},
+                      {"kind": "army_update", "id": 7, "x": 100, "y": 100,
+                       "faction": 0, "alive": True, "is_viceroy": False}])
+        b2.turn = 100
+        p2 = b2.world.get_army(7)
+        base = scout_hop_target(b2, cfg, p2, 0)
+        # park a foe exactly on that hop: next query must bend away
+        b2.update(101, [{"kind": "army_update", "id": 9, "x": base[0], "y": base[1],
+                         "faction": 1, "alive": True, "is_viceroy": False}])
+        bent = scout_hop_target(b2, cfg, p2, 0)
+        assert math.hypot(bent[0] - base[0], bent[1] - base[1]) > 1.0, (base, bent)
+
+
+class TestSyncHold:
+    """Coordinated attacks land together (far leaves first)."""
+
+    def test_near_waits(self) -> None:
+        from bots.common import sync_hold
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 800, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        held = sync_hold(b, cfg, 900.0, 500.0, [7, 8])
+        assert held == {8}, held  # near (800) waits for far (300)

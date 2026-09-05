@@ -1035,6 +1035,13 @@ def scout_hop_target(state: "BotState", config, p, hop: int, gen: int = 0) -> tu
         if (aid != p.id and tgt is not None
                 and math.hypot(tgt[0] - p.x, tgt[1] - p.y) >= interact + 15.0):
             known.append((tgt[0], tgt[1], 20.0))
+    # Scout-meetings (r86: 6 pure field-1v1s, both die — lone explorers
+    # collide in the void). Bend hops off observed foe armies too (30km
+    # clearance; stale positions still repel — a moved foe leaves the
+    # ray safe, a stayed foe kills the scout).
+    for a in state.world.armies:
+        if a.faction != f and a.id != p.id:
+            known.append((a.x, a.y, 30.0))
     base = f * (2 * math.pi / 5) + gen * 2.399963 + hop * 0.35
     # Fan-out: each probe generation rotates the ray by the golden angle
     # (successive scouts cover different country), and each leg spirals
@@ -1082,6 +1089,35 @@ def coverage_orders(state: "BotState", config) -> list[str]:
             and not getattr(a, "is_viceroy", False)
             and a.id != state._scout_id
             and a.id != getattr(state, "_scout_id2", None)]
+    # Parking lot (r89: 29 patrols parked on centroids — arrived notes
+    # freeze (quiescence: arrived → silent → not-ready → no re-task).
+    # Noted-but-arrived AT a sector centroid is a parked patrol (pack
+    # notes point at towns, never centroids): re-task it now.
+    size0 = (config.map_size if config is not None
+             and getattr(config, "map_size", None) else [1000, 1000])
+    n0 = 4
+    cents = [((cx + 0.5) / n0 * size0[0], (cy + 0.5) / n0 * size0[1])
+             for cx in range(n0) for cy in range(n0)]
+    for a in state.own_armies():
+        if getattr(a, "is_viceroy", False) or a.id == state._scout_id \
+                or a.id == getattr(state, "_scout_id2", None):
+            continue
+        if not state.army_has_target(a.id) or state.has_pending_build(a.id):
+            continue
+        tgt = state.army_target(a.id)
+        if tgt is None:
+            continue
+        if not any(_math.hypot(tgt[0] - cx, tgt[1] - cy) < 40 for cx, cy in cents):
+            continue  # not a patrol note (packs point at towns)
+        try:
+            rx, ry = state.reckoned_pos(config, a.id)
+        except Exception:
+            rx, ry = a.x, a.y
+        if _math.hypot(rx - tgt[0], ry - tgt[1]) >= 30:
+            continue  # still en route
+        state._army_targets.pop(a.id, None)  # parked: re-task below
+        state.__dict__.get("_march_origin", {}).pop(a.id, None)
+        idle.append(a)
     if not idle:
         return []
     # S0-guard (r83: early bloodbath — first print scouts, capital naked,
@@ -1129,9 +1165,21 @@ def coverage_orders(state: "BotState", config) -> list[str]:
             continue  # far cells wait for a nearer body (below)
         out.extend(order_move(state, config, p, tx, ty))
         free.remove(p)
-    # (leftovers hold: positioned for packs, no far churn — except one
-    # rotating far patrol per 500t (r73: nearby-only blinded everyone,
-    # action died t3000. Far eyes on rotation, not every leftover).)
+    # (leftovers micro-patrol: nearest stale cell within 150km (busy +
+    # positioned, no churn). Doctrine: idle >few turns is suspicious —
+    # every body works every turn. One rotating far patrol per 500t
+    # covers far eyes (r73).)
+    if free:
+        for _, tx, ty in cells:
+            if not free:
+                break
+            p = min(free, key=lambda a: _math.hypot(a.x - tx, a.y - ty))
+            if _math.hypot(p.x - tx, p.y - ty) < 30:
+                continue
+            if _math.hypot(p.x - tx, p.y - ty) > 150:
+                continue  # micro only; far eyes rotate below
+            out.extend(order_move(state, config, p, tx, ty))
+            free.remove(p)
     if free and state.turn % 500 == (state.faction * 137) % 500:
         for _, tx, ty in cells:
             if not free:
@@ -2861,12 +2909,39 @@ def reinforce_orders(state: "BotState", config) -> list:
 
 def assault_verified(state: "BotState", target) -> bool:
     """Pre-assault re-verify (r84: fratricide onesies vs stale-mirror
-    towns that flipped back unseen). Foe-belief older than 300t holds
+    towns that flipped back unseen). Foe-belief older than 800t holds
     the pack (approach re-scouts: observers near refresh or FoW-erase
-    clears); fresh intel assaults. Never-seen (constructed) counts."""
+    clears); fresh intel assaults. Never-seen (constructed) counts.
+    Window 800t (r88: 300t froze the endgame — stale intel + verify =
+    peace; fratricide needs ancient ghosts, not fresh-ish intel)."""
     if ("town", target.id) not in state._last_seen:
         return True
-    return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 300
+    return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
+
+
+def sync_hold(state: "BotState", config, tx: float, ty: float,
+              members: list) -> set:
+    """Arrival-sync hold-set (coordinated attacks land together: far
+    armies leave first, near armies wait — piecemeal arrival dies in
+    detail). Members whose travel is >1 turn shorter than the pack's
+    longest hold this turn (re-decided each turn; the gap closes)."""
+    import math as _math
+    speed = max(1.0, config.army_speed)
+    by_id = {a.id: a for a in state.own_armies()}
+    arrs = {}
+    for aid in members:
+        a = by_id.get(aid)
+        if a is None:
+            continue
+        try:
+            rx, ry = state.reckoned_pos(config, aid)
+        except Exception:
+            rx, ry = a.x, a.y
+        arrs[aid] = _math.hypot(rx - tx, ry - ty) / speed
+    if not arrs:
+        return set()
+    latest = max(arrs.values())
+    return {aid for aid, arr in arrs.items() if latest - arr > 1.0}
 
 
 def jit_ready(state: "BotState", config, target, need: int, free_ids: list,
