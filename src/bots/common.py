@@ -2221,6 +2221,16 @@ def probe_ok(state: "BotState", sel) -> bool:
     return sel[2] == 0 and state.__dict__.get("_bloodied", {}).get(sel[0].id, -10**9) < state.turn - 150
 
 
+def _underdog(state: "BotState") -> bool:
+    """Behind on towns vs the best-known foe (comeback variance)."""
+    mine = sum(1 for t in state.world.towns if t.faction == state.faction)
+    foes: dict = {}
+    for t in state.world.towns:
+        if t.faction != state.faction:
+            foes[t.faction] = foes.get(t.faction, 0) + 1
+    return bool(foes) and mine < max(foes.values())
+
+
 def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                  margin: float = 200.0):
     """Top-k priced raid targets + required forces (ranked). Powers
@@ -2286,6 +2296,12 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         # +1; sterile-observed foes still take cheap.
         if foe_print_factor(state, u.faction) > 0.3:
             need += 1
+        # Underdog aggression (r65 lesson: winner-takes-all by t6000,
+        # late dead. GTO variance: the favorite plays safe, the underdog
+        # gambles). Behind on towns -> need -1 (min 1): desperate takes
+        # seed comebacks and tax the leader.
+        if _underdog(state):
+            need = max(1, need - 1)
         if not priced:
             score = u.population / (1.0 + dist / 300.0)
             ranked.append((score, u, need, s))

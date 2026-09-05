@@ -2505,3 +2505,52 @@ class TestMusterWindow:
         b.turn = 100  # raider 300km out (ETA 6): muster the guard
         out = demand_trains(b, cfg, can_train_standard)
         assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestUnderdog:
+    """r65: winner-takes-all by t6000. Underdogs gamble (need -1)."""
+
+    def test_behind_gambles(self) -> None:
+        from bots.common import raid_targets, _underdog
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 520, "y": 520,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 500, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 520, "y": 520,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        assert _underdog(b) is True  # 1 town vs 2
+        got = {u.id: n for (u, n, _s) in raid_targets(b, CFG, 3, priced=False)}
+        b2 = BotState()
+        b2.init(CFG, 0)
+        b2.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 20000, "alive": True,
+                       "is_capital": True},
+                      {"kind": "town_update", "id": 4, "x": 320, "y": 520,
+                       "faction": 0, "population": 20000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "town_update", "id": 5, "x": 340, "y": 540,
+                       "faction": 0, "population": 20000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                       "faction": 1, "population": 60000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                       "faction": 0, "alive": True, "is_viceroy": False},
+                      {"kind": "army_update", "id": 8, "x": 500, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b2.turn = 100
+        assert _underdog(b2) is False  # 3 towns vs 1
+        got2 = {u.id: n for (u, n, _s) in raid_targets(b2, CFG, 3, priced=False)}
+        assert got[2] < got2[2], (got, got2)

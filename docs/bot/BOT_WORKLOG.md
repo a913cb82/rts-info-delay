@@ -1226,3 +1226,13 @@ R65: pro 19 foundings/8 captures/34 battles (defends, then snowballs
 506k; 45 garrison-idle). Spread to t6000 (r63 reached t8000 — late
 action still the gap). GENERATED r65 (per-loop regen).
 NEXT: snowball/balance (winner-takes-all by t6000, late dead).
+
+## Underdog aggression + r66 (per-loop regen)
+
+SHIPPED (common.py + test, green): _underdog (behind on towns vs
+best-known foe) -> raid need -1, min 1 (GTO variance: favorite safe,
+underdog gambles). R66: pro 4 captures as underdog (gambles work),
+expander 16/4, captures to t5000, foundings to t6000, zero onesies,
+2 stale-idle. Snowball persists (128k vs ~0) but taxed.
+GENERATED r66 (per-loop regen).
+NEXT: turtle passivity (5 prints, never sprawls) + patrol churn.
