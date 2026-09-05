@@ -108,7 +108,7 @@ discs on purpose — needs the evaluator first so we know what secrecy is
 worth). Retired from this list: per-faction sent-tracking for landing
 fog — the rework's send-state + S + amnesia solved it in the engine.
 
-## empty_3000 findings → per-bot items (3000t rematch evidence)
+## empty_3000 findings → per-bot items (3000t rematch evidence, PRE-SCOUT game — re-analysis below supersedes for the scout era)
 
 The whole game: 15000 pop_changes, 9 spawns, 42 moves, **0 battles, 0
 captures, 0 ownership changes**. All five towns sit 329 km from their
@@ -148,6 +148,49 @@ This is the Step 2 scouting prerequisite with hard evidence behind it.
 Also check site-search edge pull (two of six excursion endpoints hug map
 edges; the max-dist-from-towns scorer pulls outward — verify interior
 coverage).
+
+## empty_3000 re-analysis → new items (merged-phase engine, 3136-lineage)
+
+Same scores as the scoreboard (pro 9156 / turtle 6637 / expander 4227 /
+aggressive 3766 / greedy 3136), new mechanisms. Full timeline in the
+worklog; items:
+
+- **Shared — probe memory (NEW, Step 2 scouting).** Second probes fly
+the identical deterministic ray and merge into own towns (+506 ×2,
++500 — 90-turn marches for zero expansion). The settle-as-scout
+fallback founds on the kept hop target, bypassing find_build_site's
+<20km town skip. Fix: remember probe endpoints (own foundings +
+in-flight settler destinations); bend rays off own towns too; check
+own-town proximity before fallback founding.
+- **Shared — scout/note-drop tension (NEW, S0 followup).** Arrival
+waits (~delay ×2 + quiescence, static by design) sit inside
+drop_dead_notes' exp_delay+2 margin → suspected mid-probe note drops
+→ turn-hashed resettle → drunk-walk doglegs. Fix: exempt the marked
+scout's kept hop target until arrival-intel converges; confirm with
+bot-side logging before/after.
+- **Shared — turn-hashed sites (NEW, minor).** find_build_site hashes
+the decision turn: same situation, different turn → different site.
+Harmless for first picks, harmful after note-drops (retarget
+roulette). Fix: hash (army, leg) or remember the chosen site.
+- **Greedy — thin-capital pricing (Step 2 evidence).** Floor-trains at
+1500 leave ~500 capitals exposed ~1000 turns; the t2835 take killed
+one (460 <500 → starvation, headless + armless = terminal, no recap
+possible). Demand gates must price capital buffer, not just
+affordability; expansion ledger ≈ -5800 terminal vs holding.
+- **Aggressive — suppressed-arrival doctrine (NEW, Step 4-adjacent).**
+The only take in 3000 turns was accidental drift (BUILD refused +
+no orders → last target walks in) after the viability gate correctly
+refused. Gap: an arrival whose BUILD is suppressed needs an explicit
+decision (besiege / leave / capture by waiting), never silence.
+- **Turtle — no mission, no train (extends picket item).** Four
+peace-trains at 2600 → four static armies (score-neutral, zero
+optionality). Peace bar must require a mission (picket/recycle/
+counter-raid) or hold the pop compounding.
+- **Pro — recon still owed (strengthened).** Won by doing nothing;
+blind in any contact game. Unchanged item, new exhibit.
+- **Methods — load noise.** Same tree+map scored 3086 and 3136 across
+two regens (one clock-driven missed order, −50 downstream). Judge
+tables with margin; run benches quiet.
 
 ## Metrics (read every bench as these, not just score)
 

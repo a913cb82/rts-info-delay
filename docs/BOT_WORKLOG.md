@@ -330,3 +330,32 @@ comparison, not nondeterminism (seed-sweep + hash checks identical).
 Open next: Step 2 demand gates + trade evaluator; pro recon; turtle
 pickets; far-defended raid guard (outsettle scout would donate vs
 pickets — meeting forecast territory).
+
+## empty_3000 re-analysis (merged-phase engine; record 3136-lineage)
+
+Regen twice: same tree+map gave greedy 3086 AND 3136. First divergence
+t2243 — one greedy MOVE_TO issued in one run, not the other, from
+identical intel. Refines the old "false alarm" verdict (seed-sweeps are
+identical *unloaded*): `effort()` branches on wall-clock bank (<25ms →
+degraded policy), so loaded campaigns wobble. Methods consequence: long-
+game scores carry ±~50 load noise; judge benches with margin, run quiet.
+Timeline (16 spawns, 8 foundings, 1 capture, 11 deaths — still a quiet
+game, but a real one): greedy settles t1173; aggressive+expander probe-
+found t1266/t1270 (void-mirror, same turn); turtle settles t1676; second
+probes t2256/t2260/t2281 all MERGE into own towns (+506/+506/+500 —
+deterministic repeat rays, no probe memory); greedy near-settles t2590;
+aggressive blunders into greedy's capital t2835 (capture halves 920→460
+<500 → instant starvation; greedy headless, armless, terminal); aggressive
+founds on the rubble t2840; expander corner-treks t2966; turtle trains 4
+guards t2849–58 that never move. Pro: zero trains, zero armies, wins
+9156 by compounding alone. Expansion ledger (rough, pro-as-control ×6.1
+from t1110): greedy's three -1000 spends cost ~-6100/-2200/-1700 terminal
+for +2414/+1100/+723 gained ≈ **-5800 net vs holding** — distance +
+horizon price everything (Step 2 evidence). Kill anatomy: aggressive's
+A1 viability gate CORRECTLY refused the raid (460 < 700); the take came
+from arrival-suppressed drift (BUILD refused near known foe, no orders
+→ last target walks in). Accidental, unpriced, effective. Suspected
+drunk-walk mechanism for army18's dogleg: scout arrival-waits (~2+2+
+quiescence turns static) sit inside drop_dead_notes' exp_delay+2 margin
+(≈4 near home) → mid-probe note drop → turn-hashed find_build_site
+resettles → new heading. Needs bot-side logging to convict.

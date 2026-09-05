@@ -99,7 +99,10 @@ aggressive 1500 / turtle 1499 / expander 1499 — nobody concedes anything.
 
 ## Fog era (EVENT_REWORK landed — BINDING table, current tree)
 
-New work is judged against this table (live scoreboard: BOT_PLAN.md).
+New work is judged against this table (live scoreboard: BOT_PLAN.md),
+with margin: `effort()` branches on wall-clock bank, so loaded runs
+wobble (empty_3000 scored 3086 and 3136 on the same tree) — run benches
+quiet, ignore sub-~50 long-game deltas.
 Fast suite: raid_hold 3657 (take) / recycle 3678 (60t, probe-then-found) /
 skip_thin 3446 (take, decoy skipped) / settle 2589 / chain 4783 /
 guard 2620 (holds) / viable 4238 (take) / pair 4791 (take) / trap 4481
