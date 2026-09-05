@@ -171,7 +171,9 @@ class TestTombstones:
         assert deaths[0].payload["id"] == 2
         assert deaths[0].visible_to == {0}
 
-    def test_unobserved_death_silent(self) -> None:
+    def test_unobserved_death_tells_owner(self) -> None:
+        # Command net: unwitnessed own deaths still reach home (kills
+        # the fresh-ghost class); strangers stay silent.
         w = _world(towns=[_town(1, 0, 0, cap=True)],
                    armies=[_army(7, 500, 0)])  # self-observed while alive
         lg = Ledger(CFG.info_speed, 1414)
@@ -179,7 +181,8 @@ class TestTombstones:
         w.armies = []  # dies 500 km from the only watcher
         lg.generate(w, turn=6, line_of_sight=LOS)
         deaths = [e for e in _updates(lg) if e.payload.get("alive") is False]
-        assert deaths == []
+        assert len(deaths) == 1
+        assert deaths[0].visible_to == {0}
 
     def test_reappearing_id_stays_coherent(self) -> None:
         # Ids are never reused (world rule); if one ever reappears the

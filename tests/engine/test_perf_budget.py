@@ -14,7 +14,7 @@ import time
 import numpy as np
 
 from engine.config import GameConfig
-from engine.delivery import SendState, build_updates
+from engine.delivery import build_updates
 from engine.ledger import Ledger
 from engine.world import Army, Town, World
 
@@ -93,7 +93,7 @@ def test_heavy_delivery_budget() -> None:
     for f in range(5):
         c = next(t for t in w.towns if t.faction == f and t.is_capital)
         caps[f] = (c.x, c.y)
-    states = {f: SendState() for f in range(5)}
+    states = {f: None for f in range(5)}
     for f in range(5):  # warm send-states (steady state)
         build_updates(lg, f, states[f], 0, caps[f], 21.0)
     ms = _med(lambda: [build_updates(lg, f, states[f], 0, caps[f], 21.0)

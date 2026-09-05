@@ -24,7 +24,7 @@ class TestLedgerMedium:
 
     def test_G7_event_visible_after_delay(self) -> None:
         """G7: Update visible after correct delay (tag+delay delivery)."""
-        from engine.delivery import SendState, build_updates
+        from engine.delivery import build_updates
         w = World()
         w.map_size = [1000, 1000]
         w.towns = [Town(id=1, faction=0, x=50, y=0, population=2000, is_capital=True)]
@@ -32,7 +32,7 @@ class TestLedgerMedium:
         ledger = Ledger(150.0, 1414)
         ledger.generate(w, turn=0, line_of_sight=150.0)
         # dist = 50, delay = 50/150 = 0.33 → visible at t >= 0.33
-        got = build_updates(ledger, 0, SendState(), 0, (50.0, 0.0), 1.0)
+        got = build_updates(ledger, 0, 0, (50.0, 0.0), 1.0)
         assert any(u["id"] == 7 for u in got)
 
     def test_G8_old_events_evicted(self) -> None:
@@ -227,7 +227,7 @@ class TestInfoDelayMedium:
 
     def test_I7_far_event_delayed(self) -> None:
         """I7: Update delayed 2 turns if far (tag+delay delivery)."""
-        from engine.delivery import SendState, build_updates
+        from engine.delivery import build_updates
         from engine.ledger import Ledger
 
         w = World()
@@ -237,8 +237,8 @@ class TestInfoDelayMedium:
         ledger = Ledger(150.0, 1414)
         ledger.generate(w, turn=0, line_of_sight=400.0)
         # Capital at (300, 0), info_speed 150
-        got_t1 = build_updates(ledger, 0, SendState(), 0, (300.0, 0.0), 1.0)
-        got_t2 = build_updates(ledger, 0, SendState(), 0, (300.0, 0.0), 2.0)
+        got_t1 = build_updates(ledger, 0, 0, (300.0, 0.0), 1.0)
+        got_t2 = build_updates(ledger, 0, 0, (300.0, 0.0), 2.0)
         assert not [u for u in got_t1 if u["id"] == 7]  # not yet
         assert [u["id"] for u in got_t2 if u["id"] == 7] == [7]  # arrived
 

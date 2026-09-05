@@ -105,7 +105,7 @@ class TestIntegration:
 
     def test_bot_sees_delayed_world(self) -> None:
         """Z5: Each faction's delivery holds only its own observations."""
-        from engine.delivery import SendState, build_updates
+        from engine.delivery import build_updates
         csv = "0,0,A,2000\n300,0,B,2000\n"  # two far-apart capitals
         csv += "50,0,a,\n"  # faction 0 army
         csv += "350,0,b,\n"  # faction 1 army
@@ -113,8 +113,8 @@ class TestIntegration:
         cap0 = next(t.id for t in w.towns if t.faction == 0 and t.is_capital)
         cap1 = next(t.id for t in w.towns if t.faction == 1 and t.is_capital)
         # At turn 1: own capitals immediate (dist 0), far side held (300 km).
-        u0 = build_updates(ledger, 0, SendState(), ledger.S.get(0, 0), (0.0, 0.0), 1.0)
-        u1 = build_updates(ledger, 1, SendState(), ledger.S.get(1, 0), (300.0, 0.0), 1.0)
+        u0 = build_updates(ledger, 0, ledger.S.get(0, 0), (0.0, 0.0), 1.0)
+        u1 = build_updates(ledger, 1, ledger.S.get(1, 0), (300.0, 0.0), 1.0)
         assert cap0 in {u["id"] for u in u0 if u["kind"] == "town_update"}
         assert cap1 in {u["id"] for u in u1 if u["kind"] == "town_update"}
         assert cap1 not in {u["id"] for u in u0}

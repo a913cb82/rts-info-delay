@@ -245,7 +245,6 @@ class TestBotProtocol:
 def test_deliver_ignores_old_kinds():
     """New boundary: legacy event kinds riding the ledger are invisible to
     tag-aware delivery (only town/army updates deliver)."""
-    from engine.delivery import SendState
     from engine.world import World, Town, Army
     from engine.ledger import Event, EventKind, Ledger
     from runner.main import deliver
@@ -255,8 +254,8 @@ def test_deliver_ignores_old_kinds():
     lg = Ledger(GameConfig().info_speed, 1414)
     lg.log(Event(turn=1, x=0, y=0, kind=EventKind.ARMY_UPDATE, payload={"id": 99}))
     lg.generate(w, turn=1, line_of_sight=150.0)
-    out = deliver(0, w, lg, 1, SendState())
-    assert 99 not in [u["id"] for u in out if u.get("kind") != "visible"]  # untagged: tag gate withholds
+    out = deliver(0, w, lg, 1)
+    assert 99 not in [u["id"] for u in out]  # untagged: tag gate withholds
     assert [u["id"] for u in out if u.get("kind") == "town_update"] == [1]
 
 

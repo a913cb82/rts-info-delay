@@ -198,7 +198,7 @@ def bench_builder_full():
     """
     import gc, json, sys
     from engine.ledger import Ledger
-    from engine.delivery import SendState, build_updates
+    from engine.delivery import build_updates
     # --- heavy rig ---
     w = World(); w.map_size = [1000, 1000]
     rng = np.random.default_rng(3)
@@ -216,13 +216,12 @@ def bench_builder_full():
     for f in range(5):
         c = next(t for t in w.towns if t.faction == f and t.is_capital)
         caps[f] = (c.x, c.y)
-    cold = [build_updates(lg, f, SendState(), 0, caps[f], 21.0) for f in range(5)]
-    states = {f: SendState() for f in range(5)}
+    cold = [build_updates(lg, f, 0, caps[f], 21.0) for f in range(5)]
     for f in range(5):
-        build_updates(lg, f, states[f], 0, caps[f], 21.0)
-    bench("builder heavy delivery x5 warm", lambda: [build_updates(lg, f, states[f], 0, caps[f], 21.0) for f in range(5)], repeat=5)
+        build_updates(lg, f, 0, caps[f], 21.0)
+    bench("builder heavy delivery x5 warm", lambda: [build_updates(lg, f, 0, caps[f], 21.0) for f in range(5)], repeat=5)
     cold_b = [len(json.dumps(u).encode()) for u in cold]
-    warm = [build_updates(lg, f, states[f], 0, caps[f], 21.0) for f in range(5)]
+    warm = [build_updates(lg, f, 0, caps[f], 21.0) for f in range(5)]
     warm_b = [len(json.dumps(u).encode()) for u in warm]
     print(f"builder heavy wire/faction cold {sum(cold_b)//5} B (n={[len(u) for u in cold]}) "
           f"warm {sum(warm_b)//5} B (n={[len(u) for u in warm]})")

@@ -425,9 +425,8 @@ class TestCommands:
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
         # During flight → deliver returns [] (mute is the I/O skip)
-        from engine.delivery import SendState
         from runner.main import deliver
-        assert deliver(0, w, ledger, 2, SendState()) == []
+        assert deliver(0, w, ledger, 2) == []
 
     def test_move_capital_insufficient_pop(self) -> None:
         """O10b: MOVE_CAPITAL when capital pop < army_cost → rejected."""

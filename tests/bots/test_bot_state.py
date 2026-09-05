@@ -18,7 +18,7 @@ import pytest
 from engine.config import GameConfig
 from engine.world import World, Town, Army, StandingOrder, CommandType
 from engine.step import step
-from engine.delivery import SendState, build_updates
+from engine.delivery import build_updates
 from engine.ledger import Ledger
 from bots.common import BotState
 
@@ -394,7 +394,7 @@ def test_capital_death_no_events():
 
     # Bot with dead capital and no remaining entities observes nothing:
     # the tombstone is untagged, so delivery is silent.
-    assert build_updates(ledger, 0, SendState(), 0, (0.0, 0.0), 1.0) == []
+    assert build_updates(ledger, 0, 0, (0.0, 0.0), 1.0) == []
 
 
 # ── Enemy visibility ──
@@ -414,7 +414,7 @@ def test_enemy_town_visible_from_own_capital():
 
     # dist=100, info_speed=150 → release at 1 + 100/150 ≈ 1.67
     # Need now >= 1.67 for delivery
-    got = build_updates(ledger, 0, SendState(), 0, (100.0, 100.0), 2.0)
+    got = build_updates(ledger, 0, 0, (100.0, 100.0), 2.0)
     spawns = [u for u in got if u["kind"] == "army_update"]
     assert len(spawns) >= 1
 
@@ -431,7 +431,7 @@ def test_enemy_town_far_not_visible():
     )
     step(engine, CFG, ledger, turn=1, orders={})
 
-    got = build_updates(ledger, 0, SendState(), 0, (100.0, 100.0), 1.0)
+    got = build_updates(ledger, 0, 0, (100.0, 100.0), 1.0)
     assert not [u for u in got if u["kind"] == "army_update"]
     assert not [u for u in got if u.get("id") == 2]
 
@@ -1765,22 +1765,22 @@ class TestGhostClean:
         assert b.army_has_target(7)
 
 
-class TestVisibleAffirm:
-    """Presence affirmations: absence-as-signal (seen vs unseen)."""
+class TestHeartbeatConsume:
+    """Heartbeats (same two events): re-announced snapshots refresh
+    seen-age, so absence past 25t means unseen, not static."""
 
-    def test_visible_refreshes_last_seen(self) -> None:
+    def test_reannounce_refreshes_last_seen(self) -> None:
         from bots.common import BotState
         b = BotState()
         b.init(CFG, 0)
+        upd = {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+               "faction": 0, "alive": True, "is_viceroy": False}
         b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
                       "faction": 0, "population": 20000, "alive": True,
-                      "is_capital": True}])
-        b.update(50, [{"kind": "visible", "turn": 49, "armies": [7, 9],
-                       "towns": [2]}])
-        assert b._last_seen[("army", 7)] == 49
-        assert b._last_seen[("army", 9)] == 49
-        assert b._last_seen[("town", 2)] == 49
-        assert b.__dict__.get("_visible_turn") == 49
+                      "is_capital": True}, dict(upd)])
+        assert b._last_seen[("army", 7)] == 1
+        b.update(26, [dict(upd, **{})])
+        assert b._last_seen[("army", 7)] == 26  # heartbeat refreshes
 
     def test_affirmed_army_survives_silence(self) -> None:
         from bots.common import BotState, silence_watch
@@ -1792,9 +1792,9 @@ class TestVisibleAffirm:
                      {"kind": "army_update", "id": 7, "x": 600, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.note_move(7, 900.0, 500.0)
-        # static holder, affirmed recently: NOT a ghost (no clean).
-        b.update(840, [{"kind": "visible", "turn": 839, "armies": [7],
-                        "towns": []}])
+        # static holder, heartbeat at 839: NOT a ghost (no clean).
+        b.update(839, [{"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                        "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 840
         silence_watch(b, CFG)
         assert b.world.get_army(7) is not None

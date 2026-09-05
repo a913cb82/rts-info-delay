@@ -344,20 +344,6 @@ class BotState:
         from collections import deque
         kind = ev.get("kind")
         eid = ev.get("id")
-        if kind == "visible":
-            # Presence affirmation (absence-as-signal): refresh last-seen
-            # for affirmed ids at the event's turn (send-time truth, mail
-            # lag applies — staleness math stays honest). Ids in mirror
-            # but long-unaffirmed are UNSEEN (not 'static').
-            vt = int(ev.get("turn", self.turn))
-            for aid in ev.get("armies", []) or []:
-                if self._last_seen.get(("army", aid), -10 ** 9) < vt:
-                    self._last_seen[("army", aid)] = vt
-            for tid in ev.get("towns", []) or []:
-                if self._last_seen.get(("town", tid), -10 ** 9) < vt:
-                    self._last_seen[("town", tid)] = vt
-            self.__dict__["_visible_turn"] = vt
-            return
         if eid is None:
             return
         if kind == "town_update":

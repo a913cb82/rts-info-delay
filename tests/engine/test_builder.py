@@ -7,7 +7,7 @@ per entity per payload and send-state diffing (slim wire).
 import json
 
 from engine.config import GameConfig
-from engine.delivery import SendState, build_updates
+from engine.delivery import build_updates
 from engine.ledger import EventKind, Ledger
 from engine.world import Army, Town, World
 
@@ -35,8 +35,8 @@ def _gen(lg, w, turn, los=LOS):
     lg.generate(w, turn=turn, line_of_sight=los)
 
 
-def _build(lg, faction, state, S, capital, now):
-    return build_updates(lg, faction, state, S, capital, now)
+def _build(lg, faction, S, capital, now):
+    return build_updates(lg, faction, S, capital, now)
 
 
 class TestShapes:
@@ -44,7 +44,7 @@ class TestShapes:
         w = _world(towns=[_town(1, 0, 0, cap=True)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        (u,) = _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)
+        (u,) = _build(lg, 0, 0, (0.0, 0.0), 6.0)
         assert u == {"kind": "town_update", "id": 1, "x": 0.0, "y": 0.0,
                      "faction": 0, "population": 2000, "is_capital": True}
 
@@ -53,7 +53,7 @@ class TestShapes:
                    armies=[_army(7, 10, 0, viceroy=True)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        got = {u["id"]: u for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)
+        got = {u["id"]: u for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)
                if u["kind"] == "army_update"}
         assert got[7] == {"kind": "army_update", "id": 7, "x": 10.0, "y": 0.0,
                           "faction": 0, "alive": True, "is_viceroy": True}
@@ -65,32 +65,31 @@ class TestShapes:
         w.armies[0].target_x, w.armies[0].target_y, w.armies[0].has_target = 500.0, 0.0, True
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0):
+        for u in _build(lg, 0, 0, (0.0, 0.0), 6.0):
             assert "target_x" not in u and "has_target" not in u
 
 
-class TestSendOnce:
-    def test_second_identical_call_silent(self) -> None:
+class TestSendAll:
+    def test_identical_calls_repeat(self) -> None:
+        # Send-all: no silence — identical calls repeat (absence = signal).
         w = _world(towns=[_town(1, 0, 0, cap=True)],
                    armies=[_army(7, 10, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        state = SendState()
-        first = _build(lg, 0, state, 0, (0.0, 0.0), 6.0)
+        first = _build(lg, 0, 0, (0.0, 0.0), 6.0)
         assert len(first) == 2
-        assert _build(lg, 0, state, 0, (0.0, 0.0), 6.0) == []
+        assert _build(lg, 0, 0, (0.0, 0.0), 6.0) == first
 
-    def test_changed_emits_unchanged_silent(self) -> None:
+    def test_changed_and_unchanged_emit(self) -> None:
         w = _world(towns=[_town(1, 0, 0, pop=2000.0, cap=True),
                           _town(2, 100, 0, pop=2000.0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        state = SendState()
-        assert len(_build(lg, 0, state, 0, (0.0, 0.0), 6.0)) == 2
+        assert len(_build(lg, 0, 0, (0.0, 0.0), 6.0)) == 2
         w.towns[1].population = 2100.0
         _gen(lg, w, 6)
-        got = _build(lg, 0, state, 0, (0.0, 0.0), 7.0)
-        assert [u["id"] for u in got] == [2]
+        got = _build(lg, 0, 0, (0.0, 0.0), 7.0)
+        assert sorted(u["id"] for u in got) == [1, 2]
 
     def test_newest_wins_three_eligible_one_delivered(self) -> None:
         # Uniqueness: window holds three passing entries for one entity —
@@ -100,41 +99,40 @@ class TestSendOnce:
         for t, pop in ((5, 2000.0), (6, 2100.0), (7, 2200.0)):
             w.towns[0].population = pop
             _gen(lg, w, t)
-        got = _build(lg, 0, SendState(), 0, (0.0, 0.0), 7.0)
+        got = _build(lg, 0, 0, (0.0, 0.0), 7.0)
         assert len(got) == 1
         assert got[0]["population"] == 2200
 
-    def test_known_death_emits_once_then_silent(self) -> None:
+    def test_known_death_reannounces(self) -> None:
         w = _world(towns=[_town(1, 0, 0, cap=True)],
                    armies=[_army(7, 100, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        state = SendState()
-        _build(lg, 0, state, 0, (0.0, 0.0), 5.0)
+        _build(lg, 0, 0, (0.0, 0.0), 5.0)
         w.armies = []
         _gen(lg, w, 6)
-        got = _build(lg, 0, state, 0, (0.0, 0.0), 7.0)
+        got = _build(lg, 0, 0, (0.0, 0.0), 7.0)
         assert [u for u in got if u["kind"] == "army_update"] == [
             {"kind": "army_update", "id": 7, "x": 100.0, "y": 0.0,
              "faction": 0, "alive": False, "is_viceroy": False}]
-        assert _build(lg, 0, state, 0, (0.0, 0.0), 7.0) == []
+        # tombstone persists (newest passing row) — bots idempotent.
+        assert _build(lg, 0, 0, (0.0, 0.0), 7.0) == got
 
-    def test_unknown_death_emits_once_for_tolerance(self) -> None:
-        # A death for an entity never delivered still goes out once (differs
-        # from nothing); the parser ignores unknown removals.
+    def test_unknown_death_announces(self) -> None:
+        # A death for an entity never delivered still goes out (differs
+        # from nothing); the parser ignores unknown removals. Repeats.
         w = _world(towns=[_town(1, 0, 0, cap=True)],
                    armies=[_army(7, 100, 0, faction=1)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        state = SendState()
-        _build(lg, 0, state, 0, (0.0, 0.0), 5.0)  # live foe held by delay
+        _build(lg, 0, 0, (0.0, 0.0), 5.0)  # live foe held by delay
         w.armies = []
         _gen(lg, w, 6)
-        got = _build(lg, 0, state, 0, (0.0, 0.0), 7.0)
+        got = _build(lg, 0, 0, (0.0, 0.0), 7.0)
         deaths = [u for u in got if u.get("alive") is False]
         assert len(deaths) == 1
         assert deaths[0]["id"] == 7
-        assert _build(lg, 0, state, 0, (0.0, 0.0), 7.0) == []
+        assert _build(lg, 0, 0, (0.0, 0.0), 7.0) == got
 
 
 class TestGates:
@@ -143,10 +141,9 @@ class TestGates:
                    armies=[_army(7, 160, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5, los=200.0)
-        state = SendState()
-        assert [u for u in _build(lg, 0, state, 0, (0.0, 0.0), 6.0)
+        assert [u for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)
                 if u["kind"] == "army_update"] == []
-        got = [u for u in _build(lg, 0, state, 0, (0.0, 0.0), 7.0)
+        got = [u for u in _build(lg, 0, 0, (0.0, 0.0), 7.0)
                if u["kind"] == "army_update"]
         assert len(got) == 1  # released S+1.07, present S+2
 
@@ -155,11 +152,10 @@ class TestGates:
                    armies=[_army(7, 300, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5, los=400.0)
-        state = SendState()
         # From (0,0): release at 5+2=7. From (150,0): release at 5+1=6.
-        assert [u for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)
+        assert [u for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)
                 if u["kind"] == "army_update"] == []
-        got = [u for u in _build(lg, 0, state, 0, (150.0, 0.0), 6.0)
+        got = [u for u in _build(lg, 0, 0, (150.0, 0.0), 6.0)
                if u["kind"] == "army_update"]
         assert len(got) == 1
 
@@ -168,7 +164,7 @@ class TestGates:
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 4)
         _gen(lg, w, 5)
-        got = _build(lg, 0, SendState(), 5, (0.0, 0.0), 6.0)
+        got = _build(lg, 0, 5, (0.0, 0.0), 6.0)
         assert [u["id"] for u in got] == [1]
         assert lg.events[0].turn == 4  # the t=4 entry stayed home
 
@@ -178,9 +174,9 @@ class TestGates:
                    armies=[_army(7, 150, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5, los=200.0)
-        assert len([u for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)
+        assert len([u for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)
                     if u["kind"] == "army_update"]) == 1
-        assert [u for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0 - 2e-9)
+        assert [u for u in _build(lg, 0, 0, (0.0, 0.0), 6.0 - 2e-9)
                 if u["kind"] == "army_update"] == []
 
 
@@ -189,7 +185,7 @@ class TestFogPipeline:
         w = _world(towns=[_town(1, 0, 0, cap=True), _town(2, 500, 0, faction=1)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        ids = {u["id"] for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 5.0)}
+        ids = {u["id"] for u in _build(lg, 0, 0, (0.0, 0.0), 5.0)}
         assert ids == {1}  # foe town outside every fac0 disc
 
     def test_anchor_shapes(self) -> None:
@@ -204,7 +200,7 @@ class TestFogPipeline:
                 armies=[_army(20 + i, x, y, faction=f) for i, (x, y, f) in enumerate(anchors["armies"])])
             lg = Ledger(CFG.info_speed, 1414)
             _gen(lg, w, 5)
-            ids = {u["id"] for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)}
+            ids = {u["id"] for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)}
             assert 2 in ids, anchors
 
     def test_own_entities_always(self) -> None:
@@ -212,7 +208,7 @@ class TestFogPipeline:
                    armies=[_army(7, 140, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        ids = {u["id"] for u in _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)}
+        ids = {u["id"] for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)}
         assert ids == {1, 7}
 
 
@@ -222,13 +218,11 @@ class TestEpochs:
                           _town(2, 500, 0, faction=1, cap=True)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        s0 = SendState()
-        s1 = SendState()
-        assert {u["id"] for u in _build(lg, 0, s0, 0, (0.0, 0.0), 5.0)} == {1}
-        assert {u["id"] for u in _build(lg, 1, s1, 0, (500.0, 0.0), 5.0)} == {2}
-        # Same turn, same ledger, neither disturbs the other.
-        assert _build(lg, 0, s0, 0, (0.0, 0.0), 5.0) == []
-        assert _build(lg, 1, s1, 0, (500.0, 0.0), 5.0) == []
+        assert {u["id"] for u in _build(lg, 0, 0, (0.0, 0.0), 5.0)} == {1}
+        assert {u["id"] for u in _build(lg, 1, 0, (500.0, 0.0), 5.0)} == {2}
+        # Same turn, same ledger, neither disturbs the other (repeats).
+        assert {u["id"] for u in _build(lg, 0, 0, (0.0, 0.0), 5.0)} == {1}
+        assert {u["id"] for u in _build(lg, 1, 0, (500.0, 0.0), 5.0)} == {2}
 
     def test_time_shifted_observation(self) -> None:
         w = _world(towns=[_town(1, 0, 0, cap=True), _town(2, 500, 0, faction=1, cap=True),
@@ -238,8 +232,7 @@ class TestEpochs:
         w.armies.append(_army(7, 300, 0, faction=0))  # scout arrives t6
         _gen(lg, w, 6)
         _gen(lg, w, 10)
-        s0 = SendState()
-        got = {u["id"]: u for u in _build(lg, 0, s0, 0, (0.0, 0.0), 10.0)}
+        got = {u["id"]: u for u in _build(lg, 0, 0, (0.0, 0.0), 10.0)}
         assert 3 in got  # first delivered now, current truth
         assert got[3]["faction"] == 2
 
@@ -250,7 +243,7 @@ class TestEpochs:
         for t in range(1, 11):
             w.towns[0].population = 2000.0 + 10 * t
             _gen(lg, w, t)
-        got = _build(lg, 0, SendState(), 8, (0.0, 0.0), 12.0)
+        got = _build(lg, 0, 8, (0.0, 0.0), 12.0)
         assert len(got) == 1
         assert got[0]["population"] == 2100  # newest passing entry wins
 
@@ -259,21 +252,21 @@ class TestEpochs:
                    armies=[_army(7, 140, 0), _army(8, 120, 0, faction=1)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        a = json.dumps(_build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0), sort_keys=True)
-        b = json.dumps(_build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0), sort_keys=True)
+        a = json.dumps(_build(lg, 0, 0, (0.0, 0.0), 6.0), sort_keys=True)
+        b = json.dumps(_build(lg, 0, 0, (0.0, 0.0), 6.0), sort_keys=True)
         assert a == b
 
     def test_empty_world(self) -> None:
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, _world(), 5)
-        assert _build(lg, 0, SendState(), 0, (0.0, 0.0), 5.0) == []
+        assert _build(lg, 0, 0, (0.0, 0.0), 5.0) == []
 
     def test_no_capital_fallback_geometry(self) -> None:
         # Builder takes capital xy as a param; (0,0) fallback works.
         w = _world(towns=[_town(1, 100, 0)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        got = _build(lg, 0, SendState(), 0, (0.0, 0.0), 6.0)
+        got = _build(lg, 0, 0, (0.0, 0.0), 6.0)
         assert [u["id"] for u in got] == [1]  # 100/150 < 1 turn
 
 
@@ -284,7 +277,7 @@ class TestCounterIntel:
                    armies=[_army(7, 490, 0, faction=0, viceroy=True)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5)
-        foe = {u["id"]: u for u in _build(lg, 1, SendState(), 0, (500.0, 0.0), 6.0)}
+        foe = {u["id"]: u for u in _build(lg, 1, 0, (500.0, 0.0), 6.0)}
         assert foe[7]["is_viceroy"] is True
 
     def test_founding_birth_carries_capital_flag(self) -> None:
@@ -293,7 +286,7 @@ class TestCounterIntel:
                    armies=[_army(7, 200, 0, faction=1)])
         lg = Ledger(CFG.info_speed, 1414)
         _gen(lg, w, 5, los=250.0)
-        foe = {u["id"]: u for u in _build(lg, 1, SendState(), 0, (0.0, 0.0), 7.0)}
+        foe = {u["id"]: u for u in _build(lg, 1, 0, (0.0, 0.0), 7.0)}
         assert foe[9]["is_capital"] is True
 
 
@@ -311,7 +304,7 @@ class TestFirstTurn:
         for t in w.towns:
             if not t.is_capital:
                 continue
-            got = {u["id"]: u for u in _build(lg, t.faction, SendState(), 0, (t.x, t.y), 1.0)}
+            got = {u["id"]: u for u in _build(lg, t.faction, 0, (t.x, t.y), 1.0)}
             assert t.id in got, f"faction {t.faction} missing own capital"
             assert got[t.id]["is_capital"] is True
 
@@ -321,7 +314,7 @@ class TestDifferential:
         # The numba kernel must agree with the reference scan bit-for-bit:
         # moves (incl. boundary), deaths (watched + unwatched), pop changes,
         # captures, S jumps, capital moves.
-        from engine.delivery import SendState, build_updates_scan
+        from engine.delivery import build_updates_scan
         w = _world(towns=[_town(1, 0, 0, pop=2000.0, cap=True),
                           _town(2, 90, 120, faction=1, pop=2000.0),  # exactly at LOS
                           _town(3, 400, 0, faction=1, pop=3000.0)],
@@ -343,8 +336,8 @@ class TestDifferential:
                                          (0, 3, (150.0, 0.0), 5.0),
                                          (1, 0, (400.0, 0.0), 4.0),
                                          (1, 0, (0.0, 0.0), 2.0)):
-            a = json.dumps(build_updates_scan(lg, faction, {}, S, capital, now), sort_keys=True)
-            b = json.dumps(_build(lg, faction, SendState(), S, capital, now), sort_keys=True)
+            a = json.dumps(build_updates_scan(lg, faction, S, capital, now), sort_keys=True)
+            b = json.dumps(_build(lg, faction, S, capital, now), sort_keys=True)
             assert a == b, (faction, S, capital, now)
 
 
@@ -357,14 +350,13 @@ class TestMovementStreams:
         w = _world(towns=[_town(1, 200, 500, cap=True)],
                    armies=[_army(7, 200, 500)])
         lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
         seen: list[tuple] = []
         a = w.armies[0]
         for t in range(1, 8):
             a.x += 10.0  # 10km/turn march east (stays near capital: delay 1)
             _gen(lg, w, t)
             lg.evict(float(t))
-            for u in _build(lg, 0, st, 0, (200.0, 500.0), float(t)):
+            for u in _build(lg, 0, 0, (200.0, 500.0), float(t)):
                 if u["kind"] == "army_update":
                     seen.append((round(u["x"]), round(u["y"])))
         # Six, not seven: exact-delay release means the now-turn's own
@@ -373,15 +365,14 @@ class TestMovementStreams:
         assert seen == [(210, 500), (220, 500), (230, 500), (240, 500),
                         (250, 500), (260, 500)]
 
-    def test_stationary_army_stays_silent(self) -> None:
-        # The dedup fix must not re-break slim wire: static entities send
-        # once, then silence (warm steady-state ~empty).
+    def test_stationary_army_announces(self) -> None:
+        # Send-all era: static entities announce every turn (no slim
+        # wire) — absence always means not-visible.
         w = _world(towns=[_town(1, 0, 0, cap=True)],
                    armies=[_army(7, 10, 0)])
         lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
         _gen(lg, w, 5)
-        n1 = len(_build(lg, 0, st, 0, (0.0, 0.0), 6.0))
+        n1 = len(_build(lg, 0, 0, (0.0, 0.0), 6.0))
         _gen(lg, w, 6)
-        n2 = len(_build(lg, 0, st, 0, (0.0, 0.0), 7.0))
-        assert (n1, n2) == (2, 0)
+        n2 = len(_build(lg, 0, 0, (0.0, 0.0), 7.0))
+        assert (n1, n2) == (2, 2)

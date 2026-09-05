@@ -1041,3 +1041,16 @@ r30: only REAL overspends die now (exp 16>17ms @158k sprawl — the
 filed 8ms ceiling). REMATCHES: r27 (exp 319k), r28 (4-way), r29
 (4 competitive + exp-coast), r30 (exp wipe). GENERATED: r29.
 Caveat: expander ghosts t2713+ (coasting 99k).
+
+## Send-all + SendState removal (user-ordered simplicity loop)
+
+USER: 2 events only, every visible entity every turn; bot owns
+MOVE_CAPITAL resets; no heartbeat complexity. SHIPPED: build_updates
+emits all valid rows (dedup/heartbeat/SendState deleted); deliver/
+note_landing simplified (S kept as game rule); command-net loss
+reports kept (owner tombstones + ex-owner capture notes — the one hole
+absence can't fill: live ids elsewhere give no signal home).
+Tests: ~15 rewritten (silence pins -> announce pins). Suites green.
+REMATCH r31: ALL ALIVE, pro 100k wins but INACTIVE (4 prints/50km).
+Onesies persist (33+18 expander). Substrate done; bots must use it.
+GENERATED: r31 (caveat: pro passive line).

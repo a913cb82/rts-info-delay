@@ -70,9 +70,10 @@ def _passes(ev, faction: int, s: int, cap_x: float, cap_y: float, now: float, in
     return t + math.hypot(dx, dy) / info <= now + 1e-9
 
 
-def build_updates_scan(ledger, faction: int, send_state: dict, s: int,
+def build_updates_scan(ledger, faction: int, s: int,
                        capital: tuple[float, float], now: float) -> list[dict]:
-    """Reference builder: naive window scan (correctness anchor for fast)."""
+    """Reference builder: naive window scan (correctness anchor for fast).
+    Send-all era: newest passing entry per entity, always emitted."""
     cap_x, cap_y = capital
     info = ledger.info_speed or 150.0
     # Newest-first single pass: the first passing entry per entity wins
@@ -92,10 +93,6 @@ def build_updates_scan(ledger, faction: int, send_state: dict, s: int,
     for k in reversed(keys):
         ev = chosen[k]
         snap = dict(ev.payload)
-        cur = (snap, ev.x, ev.y)
-        if send_state.get(k) == cur:
-            continue
-        send_state[k] = cur
         d = {"kind": "town_update" if ev.kind is _TOWN else "army_update",
              "id": ev.payload["id"], "x": ev.x, "y": ev.y}
         d.update(snap)
@@ -103,30 +100,11 @@ def build_updates_scan(ledger, faction: int, send_state: dict, s: int,
     return out
 
 
-class SendState:
-    """Per-faction last-delivered snapshots (runner-owned, reset at S).
-
-    snaps maps entity key -> last (payload, x, y); deliv parallels the ledger's
-    dense entity rows with the last-delivered column seq (-1 = nothing).
-    Seqs identify immutable log entries, so the vectorized seq compare is
-    exact; the payload compare on the changed subset keeps static entities
-    silent across turns. reset() is the mandatory counterpart of bot
-    amnesia at landing.
-    """
-
-    def __init__(self) -> None:
-        self.snaps: dict = {}
-        self.deliv = np.full(0, -1, dtype=np.int64)
-
-    def reset(self) -> None:
-        self.snaps.clear()
-        if self.deliv.shape[0]:
-            self.deliv.fill(-1)
-
-
-def build_updates(ledger, faction: int, send_state: SendState, s: int,
+def build_updates(ledger, faction: int, s: int,
                   capital: tuple[float, float], now: float) -> list[dict]:
-    """Build one faction's wire updates (columnar + numba; spike winner)."""
+    """Build one faction's wire updates: EVERY visible entity, EVERY turn.
+    No dedup, no heartbeat windows — max simplicity. Absence of an id
+    means not-visible (signal); bots diff against their mirrors."""
     turns, xs, ys, rows, tags, seqs, pays, n_rows, _chg = ledger.columns()
     n = turns.shape[0]
     if n == 0 or n_rows == 0:
@@ -136,38 +114,13 @@ def build_updates(ledger, faction: int, send_state: SendState, s: int,
     best_idx = np.full(n_rows, -1, dtype=np.int64)
     _newest_passing(turns, xs, ys, rows, tags, 1 << int(faction), int(s),
                     float(cap_x), float(cap_y), float(now), float(info), best_idx)
-    deliv = send_state.deliv
-    if deliv.shape[0] < n_rows:
-        deliv = np.pad(deliv, (0, n_rows - deliv.shape[0]), constant_values=-1)
-        send_state.deliv = deliv
-    valid = best_idx >= 0
-    if not valid.any():
-        return []
-    seq_best = seqs[np.maximum(best_idx, 0)]
-    changed = valid & (seq_best != deliv)
-    cand = np.nonzero(changed)[0]
-    if cand.shape[0] == 0:
-        return []
     keys_of = ledger._c_key_of
-    snaps = send_state.snaps
     picked = []
-    for r in cand.tolist():
+    for r in np.nonzero(best_idx >= 0)[0].tolist():
         i = int(best_idx[r])
         key = keys_of[r]
         snap = pays[i]
-        # Payloads carry no position (armies especially) — dedup on
-        # (payload, x, y), or every move after the first delivered
-        # snapshot reads as "same value" and movement goes silent.
-        cur = (snap, float(xs[i]), float(ys[i]))
-        if snaps.get(key) == cur:
-            deliv[r] = int(seqs[i])  # same value, newer entry: advance
-            continue
-        snaps[key] = (dict(snap), float(xs[i]), float(ys[i]))
-        deliv[r] = int(seqs[i])
         picked.append((i, key, snap))
-    # Column order == ledger order for update entries: generate() logs with
-    # nondecreasing turns (true in the loop; pinned by the turn-order test),
-    # so insertion order is canonical. No sorted-insert ever reorders them.
     picked.sort(key=lambda t: t[0])
     out = []
     for i, key, snap in picked:

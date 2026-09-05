@@ -279,6 +279,11 @@ class Ledger:
             live.add(key)
             positions[key] = (t.x, t.y, t.faction)
             vis = vis_of(i, t.faction)
+            # Command net: the ex-owner hears of a capture (flipped
+            # faction since last generate) — losses are reported home.
+            old = self._known_pos.get(key)
+            if old is not None and old[2] != t.faction and old[2] in facs:
+                vis = set(vis) | {old[2]}
             payload = {"id": t.id, "faction": t.faction,
                        "population": int(round(t.population)),
                        "is_capital": bool(t.is_capital)}
@@ -312,11 +317,16 @@ class Ledger:
                            anc_y, los2, full_mask, gmasks)
             for gi, key in enumerate(gone):
                 m = int(gmasks[gi])
-                if not m:
-                    continue
-                vis = {f for f in facs if (m >> f) & 1}
                 kind, eid = key
                 x, y, fac = self._known_pos.get(key, (0.0, 0.0, -1))
+                vis = {f for f in facs if (m >> f) & 1}
+                # Command net: owners always hear of own losses (death
+                # news is not sight-gated home — unwitnessed deaths
+                # otherwise haunt mirrors forever as fresh ghosts).
+                if fac in facs:
+                    vis.add(fac)
+                if not vis:
+                    continue
                 if kind == "town":
                     payload = {"id": eid, "faction": fac, "population": 0,
                                "is_capital": False}

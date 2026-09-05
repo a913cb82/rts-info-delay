@@ -4,7 +4,6 @@ Drives step() + runner.deliver() in run_game order (payloads pre-step,
 landing detection post-step). No subprocesses: deterministic and fast.
 """
 from engine.config import GameConfig
-from engine.delivery import SendState
 from engine.ledger import EventKind, Ledger
 from engine.world import Army, Town, World
 from runner.main import deliver, note_landing
@@ -58,13 +57,12 @@ class TestFlightE2E:
         w = _world()
         lg = Ledger(CFG.info_speed, 1414)
         lg.generate(w, turn=0, line_of_sight=CFG.line_of_sight)  # pre-game (run_game invariant)
-        st = {0: SendState(), 1: SendState()}
         seen = {0: [], 1: []}  # (turn, payload) for stream-jump checks
 
         def payloads(turn):
             out = {}
             for f in (0, 1):
-                out[f] = deliver(f, w, lg, turn, st[f])
+                out[f] = deliver(f, w, lg, turn)
                 if out[f]:
                     seen[f].append(turn)
             return out
@@ -75,23 +73,23 @@ class TestFlightE2E:
         e1 = step(w, CFG, lg, turn=1,
                   orders={0: ["MOVE_CAPITAL 150 100"],
                           1: ["MOVE_TO 10 110 0 100 0", "MOVE_TO 9 120 20 150 100"]})
-        assert note_landing(e1, 0, 1, lg, st[0]) is False
+        assert note_landing(e1, 0, 1, lg) is False
         # T2: muted (viceroy marching); scout-foe duel + capture happen.
         p2 = payloads(2)
         assert p2[0] == [], "muted in flight"
         e2 = step(w, CFG, lg, turn=2, orders={})
-        assert note_landing(e2, 0, 2, lg, st[0]) is False
+        assert note_landing(e2, 0, 2, lg) is False
         # T3-T4: still muted (arrival is T5 movement; 180 km at 50/turn).
         for t, ev in ((3, None), (4, None)):
             p = payloads(t)
             assert p[0] == [], "muted in flight"
             e = step(w, CFG, lg, turn=t, orders={})
-            assert note_landing(e, 0, t, lg, st[0]) is False
+            assert note_landing(e, 0, t, lg) is False
         # T5: arrival + founding in economy.
         p5 = payloads(5)
         assert p5[0] == [], "muted until founded"
         e5 = step(w, CFG, lg, turn=5, orders={})
-        assert note_landing(e5, 0, 5, lg, st[0]) is True
+        assert note_landing(e5, 0, 5, lg) is True
         assert lg.S[0] == 5
         # T6: stream resumes with a jump; S-rule only.
         p6 = payloads(6)
@@ -127,52 +125,44 @@ class TestFlightE2E:
         w.armies = [Army(id=9, faction=1, x=5, y=0)]
         lg = Ledger(CFG.info_speed, 1414)
         lg.generate(w, turn=0, line_of_sight=CFG.line_of_sight)
-        st = SendState()
-        p1 = deliver(0, w, lg, 1, st)
+        p1 = deliver(0, w, lg, 1)
         assert p1, "T1 pre-step payload present"
         e1 = step(w, CFG, lg, turn=1, orders={0: ["MOVE_CAPITAL 150 0"]})
-        assert note_landing(e1, 0, 1, lg, st) is False
+        assert note_landing(e1, 0, 1, lg) is False
         assert not [a for a in w.armies if a.is_viceroy], "intent dropped, no viceroy"
-        p2 = deliver(0, w, lg, 2, st)
+        p2 = deliver(0, w, lg, 2)
         assert p2, "T2 payload normal (no mute without flight)"
         assert lg.S.get(0, 0) == 0
 
-    def test_note_landing_resets_send_state(self) -> None:
+    def test_note_landing_sets_S(self) -> None:
+        # Landing sets the delay epoch S; the bot resets its own
+        # knowledge (engine holds no per-faction send state).
         w = _world()
         lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
-        st.snaps[("town", 1)] = {"id": 1}
         ev = [{"kind": "town_spawn", "id": 9, "faction": 0, "x": 150.0,
                "y": 0.0, "is_capital": True}]
-        assert note_landing(ev, 0, 4, lg, st) is True
+        assert note_landing(ev, 0, 4, lg) is True
         assert lg.S[0] == 4
-        assert st.snaps == {}
         # Wrong faction: untouched.
-        st.snaps[("town", 1)] = {"id": 1}
-        assert note_landing(ev, 1, 4, lg, st) is False
-        assert st.snaps == {("town", 1): {"id": 1}}
+        assert note_landing(ev, 1, 4, lg) is False
 
 
 class TestLoopPins:
     def test_stationary_reannounces_after_reset(self) -> None:
-        # The reset counterpart: a town unchanged for 100 turns re-announces
-        # exactly once post-S (stagnant-town hole closed).
+        # Send-all era: a stationary town announces EVERY turn (no dedup,
+        # no reset-dependence) — absence always means not-visible.
         w = World()
         w.map_size = [1000, 1000]
         w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True)]
         lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
         for t in range(1, 50):
             lg.generate(w, turn=t, line_of_sight=150.0)
-            deliver(0, w, lg, t, st)
+            got = deliver(0, w, lg, t)
+            assert [u["id"] for u in got] == [1]
         lg.set_landing(0, 50)
-        st.reset()
         lg.generate(w, turn=50, line_of_sight=150.0)
-        got = deliver(0, w, lg, 50, st)
-        assert [u["id"] for u in got if u.get("kind") != "visible"] == [1]
-        again = deliver(0, w, lg, 50, st)
-        assert [u for u in again if u.get("kind") != "visible"] == []  # values deduped...
-        assert any(u.get("kind") == "visible" for u in again)  # ...but presence affirmed
+        got = deliver(0, w, lg, 50)
+        assert [u["id"] for u in got] == [1]
 
     def test_stationary_appears_at_exact_release(self) -> None:
         # Armies unmoved for 100 turns appear at exactly S+ceil(dist/info).
@@ -185,14 +175,10 @@ class TestLoopPins:
         lg.set_landing(0, 10)
         for t in range(10, 115):
             lg.generate(w, turn=t, line_of_sight=500.0)
-        st = SendState()
-        assert 7 not in {u["id"] for u in deliver(0, w, lg, 11, st) if u.get("kind") != "visible"}  # 160km: S+2
-        st = SendState()
-        assert 7 in {u["id"] for u in deliver(0, w, lg, 12, st) if u.get("kind") != "visible"}
-        st = SendState()
-        assert 8 not in {u["id"] for u in deliver(0, w, lg, 12, st) if u.get("kind") != "visible"}  # 310km: S+3
-        st = SendState()
-        assert 8 in {u["id"] for u in deliver(0, w, lg, 13, st) if u.get("kind") != "visible"}
+        assert 7 not in {u["id"] for u in deliver(0, w, lg, 11) if u.get("kind") != "visible"}  # 160km: S+2
+        assert 7 in {u["id"] for u in deliver(0, w, lg, 12) if u.get("kind") != "visible"}
+        assert 8 not in {u["id"] for u in deliver(0, w, lg, 12) if u.get("kind") != "visible"}  # 310km: S+3
+        assert 8 in {u["id"] for u in deliver(0, w, lg, 13) if u.get("kind") != "visible"}
 
     def test_fog_purity(self) -> None:
         # Never observed => never delivered, over a whole game.
@@ -201,11 +187,10 @@ class TestLoopPins:
         w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True),
                    Town(id=2, faction=1, x=900, y=900, population=2000, is_capital=True)]
         lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
         seen = set()
         for t in range(1, 21):
             lg.generate(w, turn=t, line_of_sight=150.0)
-            for u in deliver(0, w, lg, t, st):
+            for u in deliver(0, w, lg, t):
                 if u.get("kind") != "visible":
                     seen.add(u["id"])
         assert 2 not in seen
@@ -220,7 +205,7 @@ class TestDeliver:
         w.armies = [Army(id=7, faction=0, x=0, y=0, is_viceroy=True)]
         lg = Ledger(CFG.info_speed, 1414)
         lg.generate(w, turn=1, line_of_sight=150.0)
-        assert deliver(0, w, lg, 1, SendState()) == []
+        assert deliver(0, w, lg, 1) == []
 
     def test_no_capital_uses_origin(self) -> None:
         w = World()
@@ -228,40 +213,47 @@ class TestDeliver:
         w.armies = [Army(id=7, faction=0, x=100, y=0)]
         lg = Ledger(CFG.info_speed, 1414)
         lg.generate(w, turn=1, line_of_sight=150.0)
-        got = deliver(0, w, lg, 2, SendState())
+        got = deliver(0, w, lg, 2)
         assert [u["id"] for u in got if u["kind"] == "army_update"] == [7]
 
 
-class TestVisibleAffirm:
-    """Presence affirmations: every delivery names currently-visible foe
-    ids (absence-as-signal), own armies always (command net)."""
+class TestSendAll:
+    """Max simplicity: every visible entity every turn (no dedup, no
+    heartbeat windows). Absence of an id means not-visible."""
 
-    def test_affirms_visible_foes(self) -> None:
+    def _world(self):
         w = World()
         w.map_size = [1000, 1000]
-        w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True),
-                   Town(id=2, faction=1, x=100, y=0, population=2000, is_capital=True)]
-        w.armies = [Army(id=7, faction=1, x=100, y=0, is_viceroy=False),
-                    Army(id=8, faction=0, x=500, y=500, is_viceroy=False)]
-        lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
-        lg.generate(w, turn=1, line_of_sight=150.0)
-        got = [u for u in deliver(0, w, lg, 1, st) if u.get("kind") == "visible"]
-        assert len(got) == 1
-        assert 7 in got[0]["armies"]  # foe in LOS affirmed
-        assert 2 in got[0]["towns"]
-        assert 8 in got[0]["armies"]  # own affirmed (command net)
+        w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True)]
+        w.armies = [Army(id=7, faction=0, x=10, y=0, is_viceroy=False)]
+        return w
 
-    def test_silent_when_blind(self) -> None:
-        w = World()
-        w.map_size = [1000, 1000]
-        w.towns = [Town(id=1, faction=0, x=0, y=0, population=2000, is_capital=True),
-                   Town(id=2, faction=1, x=900, y=900, population=2000, is_capital=True)]
-        w.armies = [Army(id=7, faction=1, x=900, y=900, is_viceroy=False)]
+    def test_static_announces_every_turn(self) -> None:
+        w = self._world()
         lg = Ledger(CFG.info_speed, 1414)
-        st = SendState()
+        for t in range(1, 6):
+            lg.generate(w, turn=t, line_of_sight=150.0)
+            got = deliver(0, w, lg, t)
+            # 10km mail delay: due from t2, then every turn.
+            if t >= 2:
+                assert 7 in [u.get("id") for u in got]
+
+    def test_gone_stays_silent(self) -> None:
+        w = self._world()
+        lg = Ledger(CFG.info_speed, 1414)
         lg.generate(w, turn=1, line_of_sight=150.0)
-        got = [u for u in deliver(0, w, lg, 1, st) if u.get("kind") == "visible"]
-        assert len(got) == 1
-        assert 7 not in got[0]["armies"]  # unseen foe: absence is signal
-        assert 2 not in got[0]["towns"]
+        deliver(0, w, lg, 1)
+        w.armies[0].x = 900.0  # marched far out of sight, then died
+        w.armies[0].y = 900.0
+        lg.generate(w, turn=2, line_of_sight=150.0)
+        deliver(0, w, lg, 2)
+        w.armies = []  # died unseen far away: owner told via command net
+        for t in range(3, 10):
+            lg.generate(w, turn=t, line_of_sight=150.0)
+            got = deliver(0, w, lg, t)
+            live = [u for u in got if u.get("id") == 7 and u.get("alive", True)]
+            assert live == [] or all(u["x"] == 10.0 for u in live)  # stale at worst
+        # ...and the command-net tombstone reported the loss home.
+        lg.generate(w, turn=12, line_of_sight=150.0)
+        got = deliver(0, w, lg, 12)
+        assert any(u.get("id") == 7 and u.get("alive") is False for u in got)
