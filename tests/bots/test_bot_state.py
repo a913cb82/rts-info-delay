@@ -2900,3 +2900,48 @@ class TestCapitalTimely:
         b.turn = 100
         out = demand_trains(b, cfg, can_train_standard)
         assert any(o == "TRAIN 2" for o in out), out
+
+
+class TestCollapseWatch:
+    """BRAINSTORM #2 (r95 F0 town4): declining towns don't print."""
+
+    def test_declining_skips(self) -> None:
+        from bots.common import BotState, demand_trains, can_train_standard
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 19900, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000  # declining (-100/turn), peace: no prints
+        b._scout_id = 7  # eyes covered (isolate collapse watch)
+        out = demand_trains(b, cfg, can_train_standard)
+        assert not any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestSiteField:
+    """User: diffusion sources/sinks for siting (support+, danger-,
+    decay + blur, persisted per turn)."""
+
+    def test_field_remembers_danger(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 800, "y": 800,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 2
+        b._diffuse_site_field()
+        assert b._field_at(800, 800) < b._field_at(100, 100)  # sink < source
+        # danger gone from mirror, memory persists (decayed, blurred)
+        b.world.towns = [t for t in b.world.towns if t.id != 2]
+        b.turn = 3
+        b._diffuse_site_field()
+        assert b._field_at(800, 800) < 0

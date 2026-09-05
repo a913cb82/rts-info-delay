@@ -233,7 +233,12 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         # unsupported). More smaller towns compound faster, but each pays
         # full sunk (army_cost) and needs its own 65km+ of land.
         far = max(0.0, (d_own - 150.0) / 75.0) if own else 0.0
-        cands.append((x, y, min_dist, crowding + guns + room + far, d_own))
+        # Diffusion memory (user: support glows, danger shadows persist
+        # across turns — stale danger remembered where scouts died).
+        # Quantized (site-stability: headings hold unless memory shifts
+        # a lot — 0.25 steps don't flip rankings on noise).
+        field = -round(state._field_at(x, y) * 4.0) / 4.0 * 0.3
+        cands.append((x, y, min_dist, crowding + guns + room + far + field, d_own))
         # No early break: the first spins are not the best (room-passing
         # spins hide late in the sequence — collect all 16, sort picks).
     if not cands:
@@ -368,6 +373,54 @@ class BotState:
             self.__dict__.setdefault("_cover", {})[(cx, cy)] = self.turn
         except Exception:
             pass
+
+    def _diffuse_site_field(self) -> None:
+        """Siting diffusion field (user: sources/sinks with memory).
+        10x10 grid, persisted per turn: own towns splat +1 (support
+        source), foe towns -2 and foe armies -1 (danger sinks), everything
+        decays x0.98 (memory fades), then one 3x3 blur (diffusion spreads
+        intel to neighbors — danger casts a shadow, support a glow).
+        find_build_site samples it (stale danger remembered where scouts
+        died; support glows near the empire)."""
+        try:
+            n = 10
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            f = self.__dict__.setdefault("_site_field", {})
+            for k in list(f):
+                f[k] *= 0.85  # per-10t tick
+                if abs(f[k]) < 0.01:
+                    del f[k]
+            for t in self.world.towns:
+                cx = min(n - 1, max(0, int(t.x / size[0] * n)))
+                cy = min(n - 1, max(0, int(t.y / size[1] * n)))
+                f[(cx, cy)] = f.get((cx, cy), 0.0) + (1.0 if t.faction == self.faction else -2.0)
+            for a in self.world.armies:
+                if a.faction == self.faction:
+                    continue
+                cx = min(n - 1, max(0, int(a.x / size[0] * n)))
+                cy = min(n - 1, max(0, int(a.y / size[1] * n)))
+                f[(cx, cy)] = f.get((cx, cy), 0.0) - 1.0
+            blur: dict = {}
+            for (cx, cy), v in f.items():
+                for nx in (cx - 1, cx, cx + 1):
+                    for ny in (cy - 1, cy, cy + 1):
+                        if 0 <= nx < n and 0 <= ny < n:
+                            w = 0.5 if (nx, ny) == (cx, cy) else 0.0625
+                            blur[(nx, ny)] = blur.get((nx, ny), 0.0) + v * w
+            self.__dict__["_site_field"] = blur
+        except Exception:
+            pass
+
+    def _field_at(self, x: float, y: float) -> float:
+        """Sample the siting diffusion field (support+, danger-)."""
+        try:
+            n = 10
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            cx = min(n - 1, max(0, int(x / size[0] * n)))
+            cy = min(n - 1, max(0, int(y / size[1] * n)))
+            return self.__dict__.get("_site_field", {}).get((cx, cy), 0.0)
+        except Exception:
+            return 0.0
 
     def _apply_update(self, ev: dict) -> None:
         """Upsert one state update (absolute). Unknown kinds ignored."""
@@ -515,6 +568,8 @@ class BotState:
         # advance.
         if turn != self.turn:
             self._growth = {}
+            if turn % 10 == 0:
+                self._diffuse_site_field()  # diffusion ticks 10t (perf)
         self.turn = turn
         self._last_turn = turn
         # Snapshot prev pops for towns this batch names, then apply absolutely.
@@ -1162,18 +1217,39 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     cells.sort(key=lambda c: -c[0])
     out: list[str] = []
     free = list(idle)
-    # Nearby-first (r72: 155km patrol churn — patrols chased staleness
-    # map-wide. Sweep stalest within 300km; only go far when home
-    # ground is fresh. Nearby = observable + defensible (doctrine).)
-    for _, tx, ty in cells:
-        if not free:
-            break
-        p = min(free, key=lambda a: _math.hypot(a.x - tx, a.y - ty))
+    # Diffusion gradient (user: scouting flows down the freshness field).
+    # Per-army descent: from the army's cell, step to the stalest
+    # 8-neighbor (3 steps) — patrols push into stale frontiers instead
+    # of teleport-assigning to global-stalest (which re-treads). Cells
+    # within 300km only (nearby-first); leftovers micro (150km).
+    stale = {(cx, cy): state.turn - cover.get((cx, cy), -10 ** 9)
+             for cx in range(n) for cy in range(n)}
+    def _cell(x, y):
+        return (min(n - 1, max(0, int(x / size[0] * n))),
+                min(n - 1, max(0, int(y / size[1] * n))))
+    claimed: set = set()
+    for p in list(free):
+        cx, cy = _cell(p.x, p.y)
+        for _ in range(3):
+            opts = [(stale.get((nx, ny), 10 ** 9), nx, ny)
+                    for nx in (cx - 1, cx, cx + 1) for ny in (cy - 1, cy, cy + 1)
+                    if 0 <= nx < n and 0 <= ny < n and (nx, ny) != (cx, cy)
+                    and (nx, ny) not in claimed]
+            if not opts:
+                break
+            opts.sort(reverse=True)
+            if opts[0][0] <= stale.get((cx, cy), 10 ** 9):
+                break  # local freshest: hold the gradient here
+            _, cx, cy = opts[0]
+        if (cx, cy) in claimed:
+            continue
+        tx, ty = (cx + 0.5) / n * size[0], (cy + 0.5) / n * size[1]
         if _math.hypot(p.x - tx, p.y - ty) < 30:
-            continue  # cell already has a body: keep sweeping elsewhere
+            continue
         if _math.hypot(p.x - tx, p.y - ty) > 300:
-            continue  # far cells wait for a nearer body (below)
+            continue
         out.extend(order_move(state, config, p, tx, ty))
+        claimed.add((cx, cy))
         free.remove(p)
     # (leftovers micro-patrol: nearest stale cell within 150km (busy +
     # positioned, no churn). Doctrine: idle >few turns is suspicious —
@@ -2471,6 +2547,11 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         if _underdog(state):
             need = max(1, need - 1)
         if not priced:
+            # Denial needs survivors too (r95: F0's 6 thin takes all died
+            # same turn — spite vs 400-pop towns buys nothing). Skip
+            # unsurvivable targets in unpriced mode as well.
+            if u.population < 2 * config.death_threshold:
+                continue
             score = u.population / (1.0 + dist / 300.0)
             ranked.append((score, u, need, s))
             if best is None or score > best[0]:
@@ -2804,6 +2885,12 @@ def demand_trains(state: "BotState", config, can_train,
             want = True
             state.__dict__["_last_scout_print"] = state.turn
         if not want:
+            continue
+        # Crowding-collapse watch (r95 F0 town4 via BRAINSTORM #2:
+        # declining towns must not print (except bare converts + capital
+        # defense, handled above) — feeding a collapse donates. Threat
+        # musters still fire (eta_n set); everything else stands down.
+        if eta_n is None and (state.get_growth(t.id) or 0.0) < -1.0:
             continue
         if bare:
             if t.population >= cost:

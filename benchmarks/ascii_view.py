@@ -786,7 +786,7 @@ def health(path: str) -> str:
     # Quiet windows (500t blocks, no foundings/captures, rivals alive).
     blocks = []
     for m in range(1000, maxt, 500):  # skip startup (t<1000 always quiet)
-        f = s = 0
+        f = s = bb = 0
         alive = set()
         for t in ts:
             if not (m <= t < m + 500):
@@ -798,8 +798,12 @@ def health(path: str) -> str:
                     f += 1
                 if e.get("kind") == "town_capture":
                     s += 1
+                if e.get("kind") == "battle":
+                    bb += 1
         if f == 0 and s == 0 and len(alive) > 1:
-            blocks.append(f"{m}-{m + 500}")
+            # fought stalemate (battles, no takes) vs dead peace: mass/
+            # siege prescription, not scouts (r96: peer equilibrium).
+            blocks.append(f"{m}-{m + 500}{'!' if bb == 0 else f'(b{bb})'}")
     out.append(f"quiet (no found/cap, rivals alive): {', '.join(blocks) if blocks else 'none'}")
     # Onesies (losses>=3, one faction, one town).
     losses: dict = {}

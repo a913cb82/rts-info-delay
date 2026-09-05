@@ -1405,3 +1405,15 @@ R95 health: watch (0 onesies, 0 suicides, 0 train-deaths, 1 quiet
 block t1500-2000) — cleanest yet. Snowball t4000+ persists (early
 bloodbath structural: thin vs first packs; all mitigations active).
 GENERATED r95 (per-loop regen).
+
+## Diffusion scouting/siting + r96 (per-loop regen)
+
+SHIPPED (common.py + tests, green): coverage diffusion-gradient
+descent (3-step stalest-neighbor flow into frontiers); siting
+diffusion field (10x10, own +1 / foe-town -2 / foe-army -1, x0.85
+per 10t, 3x3 blur; quantized 0.25 x0.3 term in site scoring —
+stale danger remembered where scouts died).
+TOOLS: health quiet blocks flag battles (bN = fought stalemate vs !
+= dead peace; r96's mid-game is peer equilibrium, not idleness).
+R96: FIVE flips (F0->F3->F1->F2->F4->F0), turtle leads t5000-6000
+tall (11.8k), multi-polar to t6000; health watch. GENERATED r96.
