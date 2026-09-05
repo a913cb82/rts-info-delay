@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import type { TownState, ArmyState, AnimBattle } from "../src/types";
 import { factionColor, factionColors } from "../src/color";
+import { clusterArmies } from "../src/render-entities";
 
 /* ── Town radius (V2) ── */
 
@@ -91,6 +92,32 @@ describe("army stacking", () => {
     ];
     const groups = groupArmies(armies);
     expect(groups.size).toBe(2);
+  });
+});
+
+describe("clusterArmies (radius stacking)", () => {
+  it("clusters same-faction armies within radius", () => {
+    const out = clusterArmies([
+      { x: 50, y: 50, faction: 0 },
+      { x: 55, y: 52, faction: 0 },
+      { x: 200, y: 200, faction: 0 },
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out[0].members).toHaveLength(2);
+  });
+  it("splits different factions at same point", () => {
+    const out = clusterArmies([
+      { x: 50, y: 50, faction: 0 },
+      { x: 50, y: 50, faction: 1 },
+    ]);
+    expect(out).toHaveLength(2);
+  });
+  it("centroid tracks members", () => {
+    const out = clusterArmies([
+      { x: 0, y: 0, faction: 2 },
+      { x: 6, y: 0, faction: 2 },
+    ]);
+    expect(out[0].x).toBeCloseTo(3);
   });
 });
 

@@ -12,7 +12,7 @@ import type { PanZoom } from "./transform.js";
 import { factionColor } from "./color.js";
 import { parseJSONL, separateConfigTurns } from "./loader.js";
 import { buildArmyAnim, buildTownAnim } from "./animation.js";
-import { townRadius, toggleFactionSelection, fogDiscs } from "./render-entities.js";
+import { townRadius, toggleFactionSelection, fogDiscs, clusterArmies } from "./render-entities.js";
 
 /* ── State ── */
 
@@ -205,12 +205,15 @@ function drawFog(): void {
   fctx.setTransform(panZoom.scale, 0, 0, panZoom.scale, panZoom.tx, panZoom.ty);
   fctx.fillStyle = "rgba(75, 75, 75, 0.38)";
   fctx.fillRect(0, 0, mapSize[0], mapSize[1]);
+  // Binary reveal (no stacking): all discs in ONE path, single fill —
+  // overlaps union instead of accumulating brightness.
   fctx.globalCompositeOperation = "destination-out";
+  fctx.beginPath();
   for (const d of discs) {
-    fctx.beginPath();
+    fctx.moveTo(d.x + d.r, d.y);
     fctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-    fctx.fill();
   }
+  fctx.fill();
   fctx.restore();
   // blit over the map background, under the SVG entities
   ctx.save();
@@ -264,7 +267,20 @@ function draw(): void {
   for (const a of armies) {
     const p = animProgress >= 1 ? 1 : animProgress;
     const { x, y, alpha } = stagedArmyPos(a, p);
-    drawArmy(x, y, a.faction, alpha);
+    (a as { _sx?: number; _sy?: number; _salpha?: number })._sx = x;
+    (a as { _sx?: number; _sy?: number; _salpha?: number })._sy = y;
+    (a as { _sx?: number; _sy?: number; _salpha?: number })._salpha = alpha;
+  }
+  for (const s of clusterArmies(
+    armies.map((a) => ({
+      x: (a as { _sx?: number })._sx ?? 0,
+      y: (a as { _sy?: number })._sy ?? 0,
+      faction: a.faction,
+      ref: a,
+    })),
+  )) {
+    const alpha = Math.min(...s.members.map((m) => (m.ref as { _salpha?: number })._salpha ?? 1));
+    drawArmyStack(s.x, s.y, s.faction, s.members.map((m) => m.ref), alpha);
   }
 
   for (const b of battles) drawBattle(b.x, b.y, b.combatants.length, b.killed.length);
@@ -410,17 +426,45 @@ function drawTown(t: AnimTown, eased: number, x: number, y: number, pop: number)
   worldG.appendChild(g);
 }
 
-function drawArmy(x: number, y: number, faction: number, alpha: number): void {
+function drawArmyStack(x: number, y: number, faction: number, members: AnimArmy[], alpha: number): void {
   const col = factionColor(faction, factionCount);
   const sz = 14;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.classList.add("entity");
   if (alpha < 1) g.setAttribute("opacity", String(alpha));
-  const pg = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-  pg.setAttribute("points", `${x},${y - sz} ${x - sz * 0.86},${y + sz * 0.5} ${x + sz * 0.86},${y + sz * 0.5}`);
-  pg.setAttribute("fill", col); pg.setAttribute("stroke", "white"); pg.setAttribute("stroke-width", "1");
-  g.appendChild(pg);
-  g.addEventListener("mouseenter", (e) => showTooltip(e, `Army\nFaction ${faction}\n(${x.toFixed(0)}, ${y.toFixed(0)})`));
+  const n = members.length;
+  const tri = (tx: number, ty: number): void => {
+    const pg = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    pg.setAttribute("points", `${tx},${ty - sz} ${tx - sz * 0.86},${ty + sz * 0.5} ${tx + sz * 0.86},${ty + sz * 0.5}`);
+    pg.setAttribute("fill", col); pg.setAttribute("stroke", "white"); pg.setAttribute("stroke-width", "1");
+    g.appendChild(pg);
+  };
+  if (n === 1) {
+    tri(x, y);
+  } else {
+    // stack: up to 3 full-size triangles, back-to-front diagonal offset
+    // (reference: rl_game viewer — reads as depth, no size change).
+    const shown = Math.min(n, 3);
+    const off = 5;
+    for (let i = shown - 1; i >= 0; i--) tri(x + i * off, y - i * off);
+    // count badge ×N above the stack
+    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    txt.setAttribute("x", String(x));
+    txt.setAttribute("y", String(y - sz - (shown - 1) * off - 4));
+    txt.setAttribute("text-anchor", "middle");
+    txt.setAttribute("font-size", "11");
+    txt.setAttribute("font-weight", "bold");
+    txt.setAttribute("fill", "#111");
+    txt.setAttribute("stroke", "white");
+    txt.setAttribute("stroke-width", "2.5");
+    txt.setAttribute("paint-order", "stroke");
+    txt.textContent = `×${n}`;
+    g.appendChild(txt);
+  }
+  const ids = members.map((m) => m.id).join(", ");
+  g.addEventListener("mouseenter", (e) => showTooltip(e, n === 1
+    ? `Army ${members[0]?.id ?? "?"}\nFaction ${faction}\n(${x.toFixed(0)}, ${y.toFixed(0)})`
+    : `Stack ×${n}\nFaction ${faction}\nArmies ${ids}\n(${x.toFixed(0)}, ${y.toFixed(0)})`));
   g.addEventListener("mouseleave", hideTooltip);
   worldG.appendChild(g);
 }

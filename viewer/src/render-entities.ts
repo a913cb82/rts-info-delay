@@ -19,6 +19,30 @@ export function groupArmies(armies: ArmyState[]): Map<string, ArmyState[]> {
   return groups;
 }
 
+/** Cluster same-faction armies within radius (world units) for stacked
+rendering (reference: rl_game viewer — up to 3 offset triangles + count).
+Returns clusters with centroid + members. */
+export function clusterArmies<T extends { x: number; y: number; faction: number }>(
+  armies: T[],
+  radius = 9,
+): { x: number; y: number; faction: number; members: T[] }[] {
+  const out: { x: number; y: number; faction: number; members: T[] }[] = [];
+  for (const a of armies) {
+    const hit = out.find(
+      (s) => s.faction === a.faction && Math.hypot(s.x - a.x, s.y - a.y) <= radius,
+    );
+    if (hit) {
+      hit.members.push(a);
+      const n = hit.members.length;
+      hit.x = (hit.x * (n - 1) + a.x) / n;
+      hit.y = (hit.y * (n - 1) + a.y) / n;
+    } else {
+      out.push({ x: a.x, y: a.y, faction: a.faction, members: [a] });
+    }
+  }
+  return out;
+}
+
 /** Compute sidebar per-faction counts and score. */
 export function computeSidebar(
   towns: TownState[],
