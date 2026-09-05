@@ -190,6 +190,11 @@ def main():
     if want in ("all", "elo"):
         section_elo()
     print(f"===== strategic suite wall {(time.perf_counter() - t0):.1f}s =====")
+    wall = time.perf_counter() - t0
+    budget = 30.0
+    print(f"===== budget {budget:.0f}s {'PASS' if wall <= budget else 'FAIL'} =====")
+    if wall > budget:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

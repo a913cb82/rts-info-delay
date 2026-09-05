@@ -35,6 +35,7 @@ def run_scenario(path, py):
 
 
 def main():
+    t0 = time.time()
     want = sys.argv[1] if len(sys.argv) > 1 else "all"
     files = sorted(SCEN_DIR.glob("*.json"))
     if want != "all":
@@ -60,6 +61,11 @@ def main():
         results.append((path.stem, score, ms))
         print(f"{path.stem:24} score {score:7.0f}  {ms:7.0f}ms")
     print(f"--- {len(results)} scenarios in {total_ms / 1000:.1f}s ---")
+    wall = time.time() - t0
+    budget = 5.0
+    print(f"--- wall {wall:.1f}s / budget {budget:.0f}s {'PASS' if wall <= budget else 'FAIL'} ---")
+    if wall > budget:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
