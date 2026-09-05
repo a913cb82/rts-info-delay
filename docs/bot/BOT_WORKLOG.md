@@ -601,3 +601,20 @@ note stands). Step 5 remain: evac v2 gates/routing (personality evac
 table filed), capital-sniping weights, settler-hunting (all need Step-3
 meeting intel to aim). Next: turtle pickets (owed), then Step 3 (timing/
 concentration — the defense/endgame/guard paths back), Step 4, filed.
+
+## Turtle pickets shipped (owed) + Step 5Done
+
+Forward tripwire pickets: single-town turtle posts one idle army 100km
+out while the universe is dark (zero foe intel); FIRST foe intel (town
+or army — threat located, tripwire spent) recalls it; 100-turn silent
+expiry rotates home as guard (no blind re-posting); dead slot frees;
+posted pickets skip builds (never settle). TDD (designate/hold/recall/
+expiry/death/staging-recall/no-designate-threatened). Intel-gating was
+the fix that mattered (first version recalled on armies-only → picket
+sat out a staging while home fell). Costs: defend 3640->2904 (picket
+out during staging window, recalled t16 — same lineage, muster does the
+work); empty turtle -2419 insurance premium (100 dark turns of picket
+instead of settler in a peaceful equilibrium that never raids — premium
+pays when raids come (Elo/guard/defend)). GTO note: pickets insure
+raids; peaceful-dark taxes them; Nash would mix, deterministic bots pay
+the premium (documented, not solved).

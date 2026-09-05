@@ -167,11 +167,52 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if any(math.hypot(a.x - t.x, a.y - t.y) <= 20 for t in own_t)] if own_t else []
     need_garrison = threatened and not home and cap is not None
 
+    # Forward picket (owed): single-town turtle posts one idle army 100km
+    # out while the universe is dark (zero foe intel — towns AND armies).
+    # The FIRST foe intel (even a town: threat located, tripwire spent)
+    # recalls it (muster/concentration need every body); expiry (100 turns
+    # silent) rotates it home as guard with no blind re-posting. Posted
+    # pickets skip the builds loop below.
+    _PICKET_DIST = 100.0
+    _PICKET_EXPIRY = 100
+    _foe_intel = any(t.faction != faction for t in state.world.towns) \
+        or any(a.faction != faction for a in state.world.armies)
+    if state._picket is not None:
+        _pid, _since = state._picket
+        _pa = state.world.get_army(_pid)
+        if _pa is None or _pa.faction != faction:
+            state._picket = None
+        elif _foe_intel or state.turn - _since > _PICKET_EXPIRY:
+            _home = min(own_t, key=lambda t: math.hypot(_pa.x - t.x, _pa.y - t.y))
+            _orders = order_move(state, config, _pa, _home.x, _home.y)
+            if _orders:
+                out.extend(_orders)
+                state._picket = None
+    if state._picket is None and len(own_t) == 1 and not _foe_intel:
+        _cands = sorted((a for a in state.own_armies()
+                         if not a.is_viceroy and not state.army_has_target(a.id)),
+                        key=lambda a: (min(math.hypot(a.x - t.x, a.y - t.y) for t in own_t), a.id))
+        if _cands:
+            _p = _cands[0]
+            # Dark universe: faction-ray (blind guess, either side can be
+            # wrong — recall-on-intel bounds the cost to a march).
+            _ang = faction * (2 * math.pi / 5)
+            _dx, _dy = math.cos(_ang), math.sin(_ang)
+            _dist = math.hypot(_dx, _dy) or 1.0
+            _wx = min(980.0, max(20.0, own_t[0].x + _dx / _dist * _PICKET_DIST))
+            _wy = min(980.0, max(20.0, own_t[0].y + _dy / _dist * _PICKET_DIST))
+            _orders = order_move(state, config, _p, _wx, _wy)
+            if _orders:
+                out.extend(_orders)
+                state._picket = (_p.id, state.turn)
+
     # one builder at a time
     built = False
     for p in sorted(state.own_armies(), key=lambda a: min((math.hypot(a.x - t.x, a.y - t.y) for t in own_t), default=0)):
         if p.is_viceroy and state.army_has_target(p.id):
             continue
+        if state._picket is not None and p.id == state._picket[0]:
+            continue  # posted picket: picket block owns it, never settle it
         # recall first: threatened settlers abort and come home (2v1 beats
         # waves, 1v1 only trades — every home army counts). Skipped when
         # hopeless: the settler lineages instead.

@@ -144,6 +144,7 @@ class BotState:
         self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
         self._scout_leg: int = 0
+        self._picket: tuple | None = None  # turtle forward tripwire (army_id, since_turn)
         self._stale_key = None
         self._standing_orders: tuple | None = None  # idea 4: (orders, fingerprint)
         self._plan: tuple | None = None  # idea 5: (orders, valid_until_turn)
@@ -181,6 +182,7 @@ class BotState:
         self._wave_ids = set()
         self._foe_first_seen = {}
         self._foe_prints = {}
+        self._picket = None
         self._scout_id = None
         self._scout_leg = 0
         self._wave_hold_until = -1
@@ -417,6 +419,7 @@ class BotState:
             tuple(sorted(self._army_targets.items())),
             tuple(sorted(self._foe_first_seen.items())),
             tuple(sorted(self._foe_prints.items())),
+            self._picket,
             self._scout_id,
             self.turn // 25,
         )
