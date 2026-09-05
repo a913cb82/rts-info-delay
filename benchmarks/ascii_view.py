@@ -219,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="ASCII viewer for jsonl recordings")
     ap.add_argument("recording")
     ap.add_argument("--turns", default="0", help="comma-separated turn numbers (default: last)")
-    ap.add_argument("--size", default="100x40", help="GRID WxH (default 100x40)")
+    ap.add_argument("--size", default="50x50", help="GRID WxH (default 50x50, square like the map)")
     ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all"])
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json"],
