@@ -8,20 +8,22 @@ is one iteration of it, plus logs.
 ## The loop (the main event)
 
 Repeat forever:
-1. **Run** a real game (`empty_10000` ~30s, quiet box — the interesting
-   one; `empty_3000` retired, too short for wars/scouting to matter).
-2. **Analyse** (`benchmarks/ascii_view.py` — how: `VIEWER.md`): per-bot story — what did
-   each do well/badly? War forensics (who attacked what, trade math).
-   Intel gaps (what did the winner never see?). Write the report card.
-3. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md §9
+1. **Analyse** the current canonical game (`recordings/empty_10000.jsonl`
+   — the viewer location; `benchmarks/ascii_view.py`, how: `VIEWER.md`):
+   per-bot story — what did each do well/badly? War forensics (who
+   attacked what, trade math). Intel gaps (what did the winner never
+   see?). Write the report card.
+2. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md §9
    personalities stay skewed, pro stays reference).
-4. **Bench** (edit fast/slow suites if an idea needs new coverage; the
+3. **Bench** (edit fast/slow suites if an idea needs new coverage; the
    fog-era table stays binding).
-5. **Iterate** one idea per bot (measure vs table + rematch; suites
+4. **Iterate** one idea per bot (measure vs table + rematch; suites
    twice, quiet box — JIT first-runs lie).
-6. **Repeat** (re-run the real game; new behavior, new analysis).
+5. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
+   and write it to the viewer location (`recordings/empty_10000.jsonl`)
+   — the loop ends where the next begins. (`empty_3000` retired.)
 
-Per-change gates: fast suite per change (~1.5s); strategic at milestones
+Per-iteration gates (every loop through step 4): fast suite per change (~1.5s); strategic at milestones
 (~10s); `pytest` green; judge vs fog-era table with margin; worklog entry
 per change (before → after numbers). Full detail: `BOT_PLAN.md` (The loop).
 

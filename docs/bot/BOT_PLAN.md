@@ -64,19 +64,20 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 ## Iteration backlog (this loop's open work, in order)
 
 **The loop (how bots improve).** Repeat forever, in order:
-1. **Run** a real game (`empty_10000` full read ~30s, quiet box —
-   the interesting one; `empty_3000` retired). Recordings are the ground truth.
-2. **Analyse** (`benchmarks/ascii_view.py` — how: `VIEWER.md`):
+1. **Analyse** the current canonical game (`recordings/empty_10000.jsonl`
+   — the viewer location; `benchmarks/ascii_view.py`, how: `VIEWER.md`):
    per-bot story (what did each do well/badly?), war forensics (who
    attacked what with what, trade math), intel gaps (what did the
    winner never see?). Encode as a worklog entry + report card.
-3. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md
+2. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md
    §9 personalities stay skewed, pro stays reference).
-4. **Bench** (edit fast/slow suites if the idea needs new coverage:
+3. **Bench** (edit fast/slow suites if the idea needs new coverage:
    new scenario or exam drill, fog-era table stays binding).
-5. **Iterate** each idea per bot (one idea, one bot, measure vs table
+4. **Iterate** each idea per bot (one idea, one bot, measure vs table
    + rematch; suites twice, quiet box — JIT first-runs lie).
-6. **Repeat** (re-run the real game; new behavior, new analysis).
+5. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
+   into the viewer location (`recordings/empty_10000.jsonl`) — the loop
+   ends where the next begins. (`empty_3000` retired.)
 
 **Step 0 — housekeeping.** DONE (fog era): EVENT_REWORK landed, both
 suites re-baselined as the binding table (BOT_BENCH.md fog-era section);
