@@ -1022,5 +1022,5 @@ wave); one-sided 51-drip REPLACED by mutual siege (17+16 @ town 0)
 TIMING VERDICT (traced decides: 0.2ms med, 0.9 max — never compute):
 0ms deaths are harness (cold-start numba eats 1s main; single hiccup
 -> zero-recovery spiral). FILED (infra): warm subprocesses / bigger
-main / bank floor; pop_change is 99% of events (throttleniosk candidate).
+main / bank floor; pop_change is 99% of events (throttle candidate).
 GENERATED: r26 (current tree; turtle ghosts t1903+, caveat logged).
