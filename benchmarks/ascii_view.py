@@ -222,9 +222,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="100x40", help="GRID WxH (default 100x40)")
     ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all"])
     ap.add_argument("--no-color", action="store_true")
-    ap.add_argument("--format", default="text", choices=["text", "json"],
-                    help="text: ascii grid; json: Augmented Cartesian JSON (sparse cells with x/y + data)")
+    ap.add_argument("--format", default="ascii", choices=["ascii", "acjson", "text", "json"],
+                    help="ascii: text grid (text kept as alias); acjson: Augmented Cartesian JSON (json kept as alias)")
     args = ap.parse_args(argv)
+    if args.format in ("json", "acjson"):
+        args.format = "acjson"
+    else:
+        args.format = "ascii"
     gx, gy = (int(v) for v in args.size.lower().split("x"))
     color = not args.no_color and sys.stdout.isatty()
     header, turns = load_turns(args.recording)
@@ -240,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
             near = min(turns, key=lambda k: abs(k - t))
             print(f"(turn {t} missing, showing {near})", file=sys.stderr)
             t = near
-        if args.format == "json":
+        if args.format == "acjson":
             print(as_json(turns[t], header, t, gx, gy, args.mode))
             continue
         print(render(turns[t], header, gx, gy, args.mode, color))
