@@ -2369,11 +2369,28 @@ class TestCoverage:
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
                      {"kind": "army_update", "id": 7, "x": 100, "y": 100,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 100, "y": 100,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 500  # only home sector stamped; 15 sectors unvisited
         out = coverage_orders(b, cfg)
-        assert any("MOVE_TO 7" in o for o in out), out
-        assert b.army_has_target(7)
+        assert any("MOVE_TO" in o for o in out), out
+
+    def test_sole_army_guards(self) -> None:
+        from bots.common import BotState, coverage_orders
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 600,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 500  # S0-guard: lone army returns to the capital
+        out = coverage_orders(b, cfg)
+        assert any("MOVE_TO 7" in o and "100.0 100.0" in o for o in out), out
 
 
 class TestSneakySettle:

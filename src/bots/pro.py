@@ -193,12 +193,14 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             if maybe_assign_scout(state, config, p):
                 out.extend(drive_scout(state, config, p) or [])
                 continue
-            # G2: settle on demand only (same gate as trains: void merit
+            # Spacing (r80: pro1 self-crowded (colonies <150km crush
+            # growth -> poverty -> death). rmin 120 clears the crowding
+            # range; near-support still pulls inside rmax).
             # or contested payback) — else recycle home for +500 pop-add,
             # but ONLY in true peace: marching home under known threat
             # just delivers defenders to the builds-merge (guard_duty t31).
             # In war-footing the army holds position (staying is the order).
-            site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
+            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=300, salt=11, who=p.id) \
                 if expansion_demand(state, config) else None
             # Site veto (fratricide): even a demanded colony must clear
             # growth>margin at its site (shared empty_3000 lesson).

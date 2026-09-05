@@ -605,9 +605,10 @@ class BotState:
         hist.append((round(tx / 50.0), round(ty / 50.0), self.turn))
         while len(hist) > 4:
             hist.pop(0)
-        # Flip-flop (3+ distinct in 300t) OR alternation (A..A revisit:
-        # r75's 1.4M km shuttle ran 2 targets, never 3 distinct).
-        if len(hist) == 4 and hist[-1][2] - hist[0][2] <= 300 \
+        # Flip-flop (3+ distinct in 1000t) OR alternation (A..A revisit:
+        # r75's 1.4M km shuttle ran 2 targets; r81's redeploys drift sel
+        # every 500t — wide windows catch slow drift and fast shuttles).
+        if len(hist) == 4 and hist[-1][2] - hist[0][2] <= 1000 \
                 and (len({h[:2] for h in hist}) >= 3
                      or hist[-1][:2] == hist[-3][:2] != hist[-2][:2]):
             home = min((t for t in self.world.towns if t.faction == self.faction),
@@ -1083,6 +1084,15 @@ def coverage_orders(state: "BotState", config) -> list[str]:
             and a.id != getattr(state, "_scout_id2", None)]
     if not idle:
         return []
+    # S0-guard (r83: early bloodbath — first print scouts, capital naked,
+    # first packs walk in t2300+. The lone first army holds the capital;
+    # scouting starts with the second print).
+    if len(idle) == 1 and len(state.own_armies()) == 1:
+        cap = state.world.faction_capital(state.faction)
+        sole = idle[0]
+        if cap is not None and _math.hypot(sole.x - cap.x, sole.y - cap.y) > 20:
+            return order_move(state, config, sole, cap.x, cap.y)
+        return []
     # Pack-muster guard only when packs plausibly need everyone (small
     # idles; huge idles patrol — holding 12 bodies for a maybe-pack is
     # worse than sweeping). Full pricing scan, so gate it.
@@ -1183,6 +1193,8 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
     # scout — exile colonies seed comebacks; lots of small = growth).
     if not state.own_towns():
         return False
+    # (No S0-guard here: scouts are often sole + foes-known; blocking
+    # them blinds. The coverage S0-guard holds unscouted lone armies.)
     for slot, sid in ((1, state._scout_id), (2, getattr(state, "_scout_id2", None))):
         if sid is not None:
             # Dead scout frees the slot (else one death ends scouting forever).

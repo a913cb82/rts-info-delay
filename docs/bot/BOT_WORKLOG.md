@@ -1317,3 +1317,17 @@ keeps them).
 R80: three-way race to t10000 (pro0 14t/110k, expander 1t/88k,
 aggressive 1t/84k), final flip t10000, no onesies, all bots alive.
 Pro1/turtle fall (corner/edge positions). GENERATED r80.
+
+## S0-guard + lead/flip tools + r84 (per-loop regen)
+
+TOOLS (user: build analysis toolset): `--format lead` (millennium
+table + FLIP lines) and `--format flip --faction F --window A-B`
+(F's lost/took/battles + town/army arc) in ascii_view.py; VIEWER.md
+recipes. Used immediately: F2's r74 collapse typed (thin sprawl,
+picked apart) -> support-ratio gate (towns <= armies+1).
+SHIPPED: threat-first trains, tall-turtle (endure, 1-2 garrison,
+safe-only settle), survivor gate (priced pop >= 2x threshold),
+pro spacing 120, redeploy-stickiness (breaker 1000t), S0-guard
+(lone unscouted army holds capital; scout pipeline untouched).
+R84: pro0-vs-pro1 mirror duel to t10000 (3 flips, pro1 wins 25t),
+zero real onesies, all-but-ghost alive. GENERATED r84.
