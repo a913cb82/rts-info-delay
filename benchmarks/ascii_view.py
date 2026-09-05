@@ -69,6 +69,13 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
     # cell -> entities
     towns: dict[tuple[int, int], list[dict]] = {}
     armies: dict[tuple[int, int], list[dict]] = {}
+    cmap: dict[int, str] = {}
+    if mode == "cluster":
+        rel = _relations(world)
+        for f in rel["factions"].values():
+            for i, c in enumerate(f["clusters"]):
+                for mid in c["members"]:
+                    cmap[mid] = chr(ord("A") + i) if i < 26 else "?"
     for t in world.get("towns", []):
         towns.setdefault(quantize(t["x"], t["y"], w, h, gx, gy), []).append(t)
     for a in world.get("armies", []):
@@ -93,7 +100,13 @@ def render(world: dict, header: dict, gx: int, gy: int, mode: str, color: bool =
             elif ts:
                 t = max(ts, key=lambda t: t["population"])
                 f = t["faction"]
-                if mode == "all":
+                if mode == "cluster":
+                    lab = cmap.get(t["id"])
+                    if t.get("is_capital"):
+                        row.append(col(f, f"{f}{CAPITAL}"))
+                    else:
+                        row.append(col(f, f"{f}{lab}") if lab else col(f, TOWN))
+                elif mode == "all":
                     # two-char cells: faction + type/pop (town=F+bucket,
                     # capital=F+◆, buckets log-scale)
                     if t.get("is_capital"):
@@ -170,6 +183,16 @@ def _compass(dx: float, dy: float) -> str:
     return names[int((ang + 22.5) % 360 // 45)]
 
 
+def _cluster_of(world: dict, tid: int) -> str | None:
+    """Cluster letter (A=biggest) for a town id, via _relations."""
+    rel = _relations(world)
+    for f in rel["factions"].values():
+        for i, c in enumerate(f["clusters"]):
+            if tid in c["members"]:
+                return chr(ord("A") + i) if i < 26 else "?"
+    return None
+
+
 def _relations(world: dict) -> dict:
     """Precomputed spatial relations (no LLM math needed — the GeoJSON
     trap: models can't 'just look at coords and know'). Per town:
@@ -232,14 +255,36 @@ def _relations(world: dict) -> dict:
                         grown = True
             mx = sum(m["x"] for m in members) / len(members)
             my = sum(m["y"] for m in members) / len(members)
+            rad = max(round(math.hypot(m["x"] - mx, m["y"] - my)) for m in members)
             clusters.append({"n": len(members),
                              "pop": round(sum(m["population"] for m in members)),
                              "centroid": [round(mx), round(my)],
+                             "radius": rad,
                              "members": [m["id"] for m in members]})
         clusters.sort(key=lambda c: -c["pop"])
+        for i, c in enumerate(clusters):
+            # label + capital-relative bearing ("C0, 5 towns NW of capital")
+            c["label"] = f"C{i}"
+            if cap:
+                c["from_capital"] = {"dist": round(math.hypot(c["centroid"][0] - cap["x"], c["centroid"][1] - cap["y"])),
+                                       "dir": _compass(c["centroid"][0] - cap["x"], c["centroid"][1] - cap["y"])}
         rel["factions"][str(f)] = {"centroid": [round(cx), round(cy)],
                                     "spread": round(spread), "neighbors": neigh,
                                     "capital_offset": cap_off, "clusters": clusters}
+    # nearest-foe-cluster per cluster ("which enemy blob threatens mine")
+    allc = [(f, c) for f in rel["factions"] for c in rel["factions"][f]["clusters"]]
+    for f, c in allc:
+        best = None
+        for g, o in allc:
+            if g == f:
+                continue
+            d = math.hypot(o["centroid"][0] - c["centroid"][0], o["centroid"][1] - c["centroid"][1])
+            if best is None or d < best[0]:
+                best = (d, g, o)
+        if best:
+            d, g, o = best
+            c["foe"] = {"faction": int(g), "cluster": o["label"], "dist": round(d),
+                          "dir": _compass(o["centroid"][0] - c["centroid"][0], o["centroid"][1] - c["centroid"][1])}
     return rel
 
 
@@ -381,7 +426,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("recording")
     ap.add_argument("--turns", default="0", help="comma-separated turn numbers (default: last)")
     ap.add_argument("--size", default="50x50", help="GRID WxH (default 50x50, square like the map)")
-    ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all"])
+    ap.add_argument("--mode", default="glyph", choices=["glyph", "pop", "faction", "all", "cluster"])
     ap.add_argument("--no-color", action="store_true")
     ap.add_argument("--compact", action="store_true", help="compact JSON (no indent, token discipline)")
     ap.add_argument("--deltas", default="100,10,1", help="score-delta offsets (symmetric past+future, comma-separated)")
