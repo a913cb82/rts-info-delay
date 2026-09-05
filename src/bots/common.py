@@ -200,7 +200,10 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         # GTO placement: don't found under foe guns (pro t4655 colony
         # died in 5 turns — founded in greedy's face). Penalty ∝ foe
         # towns + armies within strike range (LOS), same shape as
-        # crowding so the two trade off in one currency.
+        # crowding so the two trade off in one currency. Foe-shadow
+        # (doctrine: settle AWAY from believed enemies): known foe towns
+        # repel out to 300km (beyond-LOS shadow — direction matters even
+        # when guns can't reach yet).
         los = getattr(config, "line_of_sight", None) or 150.0
         for t in state.world.towns:
             if t.faction == state.faction:
@@ -209,6 +212,8 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
             if 1 < dist < los:
                 d_eq = 0.1 * math.sqrt(max(0.0, min(t.population, 500)))
                 guns += (d_eq / dist) ** 0.8
+            elif los <= dist < 300.0:
+                guns += 0.5 * (300.0 - dist) / 300.0
         for a in state.world.armies:
             if a.faction == state.faction:
                 continue
@@ -220,13 +225,14 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         # room ideal) in crowding currency.
         edge = min(x, th - x, y, th - y)
         room = max(0.0, (150.0 - edge) / 150.0)
-        # Near-support (GTO crowding strategy: settle as close to existing
+        # Near-support (doctrine: not too far — quickly noticed and
+        # defended. GTO crowding strategy: settle as close to existing
         # towns as the 65km floor allows — closer = cheaper march +
         # reinforcement; the floor + crowding price the packing, distance
-        # beyond 150km pays a soft support penalty (far colonies die
+        # beyond 150km pays a STEEP support penalty (far colonies die
         # unsupported). More smaller towns compound faster, but each pays
         # full sunk (army_cost) and needs its own 65km+ of land.
-        far = max(0.0, (d_own - 150.0) / 150.0) if own else 0.0
+        far = max(0.0, (d_own - 150.0) / 75.0) if own else 0.0
         cands.append((x, y, min_dist, crowding + guns + room + far, d_own))
         # No early break: the first spins are not the best (room-passing
         # spins hide late in the sequence — collect all 16, sort picks).
@@ -350,6 +356,19 @@ class BotState:
         # faction ray (gen 0); each new scout rotates by the golden angle
         self._wave_hold_until = -1
 
+    def _stamp_cover(self, x: float, y: float) -> None:
+        """Sector coverage stamp (doctrine: idle patrols sweep stalest
+        ground). 4x4 sectors over the map; every observed position marks
+        its sector seen-this-turn."""
+        try:
+            size = self.config.map_size if self.config is not None else [1000, 1000]
+            n = 4
+            cx = min(n - 1, max(0, int(x / size[0] * n)))
+            cy = min(n - 1, max(0, int(y / size[1] * n)))
+            self.__dict__.setdefault("_cover", {})[(cx, cy)] = self.turn
+        except Exception:
+            pass
+
     def _apply_update(self, ev: dict) -> None:
         """Upsert one state update (absolute). Unknown kinds ignored."""
         from collections import deque
@@ -376,6 +395,7 @@ class BotState:
                     t.is_capital = bool(ev.get("is_capital", t.is_capital))
             self._last_seen[("town", eid)] = self.turn
             self._first_seen.setdefault(("town", eid), self.turn)
+            self._stamp_cover(float(ev.get("x", 0.0)), float(ev.get("y", 0.0)))
         elif kind == "army_update":
             if ev.get("alive") is False:
                 self._remove_army(eid)
@@ -397,6 +417,7 @@ class BotState:
                 tr.append((self.turn, a.x, a.y))
             self._last_seen[("army", eid)] = self.turn
             self._first_seen.setdefault(("army", eid), self.turn)
+            self._stamp_cover(float(ev.get("x", 0.0)), float(ev.get("y", 0.0)))
         # else: tolerant — battles are gone, unknown kinds ignored.
 
     def _remove_town(self, tid: int) -> None:
@@ -575,6 +596,25 @@ class BotState:
         self.world._turn = turn
 
     def note_move(self, army_id: int, tx: float, ty: float):
+        # Pendulum-breaker (r56 lesson: pro marched 91km for 1 capture).
+        # Target flip-flop (3+ distinct notes within 300t) stands the army
+        # down at its nearest own town (fresh origin: amnesty-exempt 300t).
+        # Shuttles waste marches; standing down frees the body for real
+        # tasking next rotation.
+        hist = self.__dict__.setdefault("_note_hist", {}).setdefault(army_id, [])
+        hist.append((round(tx / 50.0), round(ty / 50.0), self.turn))
+        while len(hist) > 4:
+            hist.pop(0)
+        if len(hist) == 4 and hist[-1][2] - hist[0][2] <= 300 \
+                and len({h[:2] for h in hist}) >= 3:
+            home = min((t for t in self.world.towns if t.faction == self.faction),
+                       key=lambda t: __import__("math").hypot(
+                           (self.world.get_army(army_id) or t).x - t.x,
+                           (self.world.get_army(army_id) or t).y - t.y),
+                       default=None)
+            if home is not None:
+                tx, ty = home.x, home.y
+                hist.clear()
         self._army_targets[army_id] = (tx, ty)
         # March origin for dead-reckoning (own intent is exact: the engine
         # marches deterministically, but delivery goes silent for holding
@@ -607,6 +647,19 @@ class BotState:
         return (fx + dx * step / full, fy + dy * step / full)
 
     def note_build(self, army_id: int):
+        # BUILD-retry cap (r62 lesson: 103 armies re-BUILDing failed
+        # sites 1500t+ — each BUILD refreshes pending, never expiring).
+        # 3 tries at a site, then abandon (pop note+pending: re-decide
+        # settles elsewhere or patrols). Success founds (town_spawn) and
+        # the army leaves the pending set via expiry.
+        tries = self.__dict__.setdefault("_build_tries", {})
+        tries[army_id] = tries.get(army_id, 0) + 1
+        if tries[army_id] > 3:
+            tries.pop(army_id, None)
+            self._pending_builds.pop(army_id, None)
+            self._army_targets.pop(army_id, None)
+            self.__dict__.get("_march_origin", {}).pop(army_id, None)
+            return
         cap = self.world.faction_capital(self.faction)
         tgt = self._army_targets.get(army_id) or self.army_target(army_id)
         if cap and tgt:
@@ -1010,12 +1063,52 @@ def _scout_unmark(state: "BotState", slot: int) -> None:
         state._scout_leg = 0
 
 
+def coverage_orders(state: "BotState", config) -> list[str]:
+    """Idle patrols (doctrine: idle armies explore, never sit). Leftover
+    unnoted field armies sweep the stalest coverage sectors (4x4 grid,
+    stamped per payload). Nearest-idle to stalest-cell, one per cell.
+    Runs LAST in moves stages (packs/scouts/settlers take theirs first).
+    Notes via order_move (pendulum-breaker + amnesty bound them)."""
+    import math as _math
+    idle = [a for a in state.own_armies()
+            if not state.army_has_target(a.id)
+            and not getattr(a, "is_viceroy", False)
+            and a.id != state._scout_id
+            and a.id != getattr(state, "_scout_id2", None)]
+    if not idle:
+        return []
+    size = (config.map_size if config is not None
+            and getattr(config, "map_size", None) else [1000, 1000])
+    n = 4
+    cover = state.__dict__.get("_cover", {})
+    cells = []
+    for cx in range(n):
+        for cy in range(n):
+            seen = cover.get((cx, cy), -10 ** 9)
+            cells.append((state.turn - seen, (cx + 0.5) / n * size[0],
+                          (cy + 0.5) / n * size[1]))
+    cells.sort(key=lambda c: -c[0])
+    out: list[str] = []
+    free = list(idle)
+    for _, tx, ty in cells:
+        if not free:
+            break
+        p = min(free, key=lambda a: _math.hypot(a.x - tx, a.y - ty))
+        if _math.hypot(p.x - tx, p.y - ty) < 30:
+            continue  # cell already has a body: keep sweeping elsewhere
+        out.extend(order_move(state, config, p, tx, ty))
+        free.remove(p)
+    return out
+
+
 def maybe_schedule_scout(state: "BotState", config):
     """Cartographic schedule (r35 lesson): neighbors-fresh != covered —
-    fronts go blind and 94k rocks sit unpunished. Every ~1500t per
-    faction (offset), one surplus idle army scouts (fresh gen ray,
-    existing fan machinery). Skips when a pack needs everyone."""
-    if state.turn % 1500 != (state.faction * 300) % 1500:
+    fronts go blind and 94k rocks sit unpunished. Dark peace scouts
+    every 500t (r58 lesson: 1500t cadence leaves empires blind all
+    game); contact keeps 1500t. One surplus idle army per slot (fresh
+    gen ray, existing fan machinery). Skips when a pack needs everyone."""
+    period = 500 if _dark(state) else 1500
+    if state.turn % period != (state.faction * 300) % period:
         return None
     if state._scout_id is not None and getattr(state, "_scout_id2", None) is not None:
         return None
@@ -1052,6 +1145,10 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
     # (S0 contract, test-pinned) — and t1495's deny-convert was CORRECT
     # (1096 pop can't print a guard vs N=1 inbound anyway; convert
     # denies). Stay-behind lives in settled play (2+ armies), not probe.
+    # Refound imperative (r61 + doctrine: townless armies settle, not
+    # scout — exile colonies seed comebacks; lots of small = growth).
+    if not state.own_towns():
+        return False
     for slot, sid in ((1, state._scout_id), (2, getattr(state, "_scout_id2", None))):
         if sid is not None:
             # Dead scout frees the slot (else one death ends scouting forever).
@@ -1179,8 +1276,55 @@ def silence_watch(state: "BotState", config) -> None:
     and drops the note — silence is the signal dead armies can't send.
     Marching armies report flowing snapshots (trail fresh); holders with
     home notes never match foe towns; scouts exempt (still-arrival
-    silence is normal). Piggybacks drop_dead_notes (all five, per turn)."""
+    silence is normal). Piggybacks drop_dead_notes (all five, per turn).
+    Town-forget via observed absence (RTS FoW: last-known persists;
+    erase only when re-watched ground is empty). A mirror foe unseen
+    while an own observer (town or reckoned army) watches its ground
+    long enough for news to arrive (age > dist/info + 1) is GONE —
+    towns to graves, armies dropped. Stale-but-unwatched intel is kept
+    (genuinely unknown). Replaces wall-clock forgetting (r59)."""
     import math as _math
+    los = float(getattr(config, "line_of_sight", 150.0) or 150.0)
+    info = max(1.0, float(getattr(config, "info_speed", 150.0) or 150.0))
+    observers = [(t.x, t.y) for t in state.world.towns if t.faction == state.faction]
+    for a in state.own_armies():
+        try:
+            observers.append(state.reckoned_pos(config, a.id))
+        except Exception:
+            observers.append((a.x, a.y))
+    for t in list(state.world.towns):
+        if t.faction == state.faction:
+            continue
+        if ("town", t.id) not in state._last_seen:
+            continue  # never observed (constructed worlds): not stale
+        last = state._last_seen.get(("town", t.id), -10 ** 9)
+        if last >= state.turn:
+            continue
+        for ox, oy in observers:
+            if _math.hypot(ox - t.x, oy - t.y) <= los \
+                    and state.turn - last > _math.hypot(ox - t.x, oy - t.y) / info + 2:
+                state.__dict__.setdefault("_grave_pos", {})[t.id] = (t.x, t.y)
+                try:
+                    state.world.towns.remove(t)
+                except ValueError:
+                    pass
+                break
+    for a in list(state.world.armies):
+        if a.faction == state.faction:
+            continue
+        if ("army", a.id) not in state._last_seen:
+            continue
+        last = state._last_seen.get(("army", a.id), -10 ** 9)
+        if last >= state.turn:
+            continue
+        for ox, oy in observers:
+            if _math.hypot(ox - a.x, oy - a.y) <= los \
+                    and state.turn - last > _math.hypot(ox - a.x, oy - a.y) / info + 2:
+                try:
+                    state._remove_army(a.id)
+                except Exception:
+                    pass
+                break
     cap = state.world.faction_capital(state.faction)
     if cap is None:
         return
@@ -2208,8 +2352,9 @@ def expansion_demand(state: "BotState", config,
     (-500 + ~1/turn): settle-branch passes void_horizon=500, S0-fallback
     keeps 0 (capability contract: probe-then-found is recycle's goal).
     Contested: expand iff the colony stream beats the home marginal
-    stream (rate comparison on TRUE spend-aware growth — a fresh site at
-    ~0.75/turn vs a crowded home at ~0.3) with horizon to amortize
+    stream (rate comparison on TRUE spend-aware growth — a fresh small
+    colony grows ~1.2/turn uncrowded (doctrine: lots of small = great
+    growth) vs a crowded home at ~0.3) with horizon to amortize
     (payback_mult scales patience) and one in flight at a time (serial;
     sprawl personalities parallelize). Darkness shields growers; the
     buzzer falls out."""
@@ -2247,9 +2392,11 @@ def expansion_demand(state: "BotState", config,
     total_pop = sum(t.population for t in state.own_towns())
     if total_pop < 20000:
         return True
-    home_rate = max((state.get_growth(t.id) or 3.0) for t in state.own_towns()) \
-        if state.own_towns() else 3.0
-    return 0.75 > home_rate
+    # Median home (r61 lesson: max-growth vetoes everything — one fast
+    # uncrowded home blocks colonies forever; a crowded median justifies).
+    rates = sorted((state.get_growth(t.id) or 3.0) for t in state.own_towns())
+    home_rate = rates[len(rates) // 2] if rates else 3.0
+    return 1.2 > home_rate
 
 
 def train_floor(state: "BotState", config) -> float:
@@ -2338,9 +2485,12 @@ def demand_trains(state: "BotState", config, can_train,
         _, need, _ = sel
         fieldable = sum(1 for a in state.own_armies()
                         if not state.army_has_target(a.id))
-        # Pack cap 6 (pre-siege): beyond-need races decline (don't chase
-        # receding needs into treadmills; siege raises the cap later).
-        deficit = [max(0, min(need, 6) - fieldable)]
+        # Pack cap (pre-siege): beyond-need races decline (don't chase
+        # receding needs into treadmills). Empire-scaled (r57 lesson:
+        # flat 6 + needs 10-12 = permanent peace, zero captures): big
+        # empires field big packs (3 + 2/town); small bots stay capped.
+        pack_cap = 3 + 2 * len(state.own_towns())
+        deficit = [max(0, min(need, pack_cap) - fieldable)]
     else:
         deficit = [0]
     # Strike deficit (windows close!): pack for blitz/buzzer takes too.
@@ -2349,7 +2499,7 @@ def demand_trains(state: "BotState", config, can_train,
         _, sk_need = sk
         _fieldable = sum(1 for a in state.own_armies()
                          if not state.army_has_target(a.id))
-        deficit[0] = max(deficit[0], min(sk_need, 6) - _fieldable, 0)
+        deficit[0] = max(deficit[0], min(sk_need, 3 + 2 * len(state.own_towns())) - _fieldable, 0)
     expand = expansion_demand(state, config, params)
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,

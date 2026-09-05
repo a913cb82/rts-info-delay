@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout
+from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -250,13 +250,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))
                 built = True
-        # garrison remainder
+        # garrison remainder: idle patrols (doctrine), not home-sit.
+        # (coverage_orders batches leftovers below; threatened home
+        # armies already continued above.)
         if not built or state.army_has_target(p.id):
             continue
-        if own_t:
-            nearest = min(own_t, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
-            if math.hypot(p.x - nearest.x, p.y - nearest.y) > 20:
-                out.extend(order_move(state, config, p, nearest.x, nearest.y))
+    # Idle patrols last (doctrine: leftovers sweep stalest sectors).
+    out.extend(coverage_orders(state, config))
     return out
 
 

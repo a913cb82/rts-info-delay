@@ -1196,3 +1196,20 @@ premium (unseen s = 3 + age//500 cap +3; r55 bled 43 undersized
 packs vs real garrison 8). R55: prints sane, idle ~0. R56: onesies
 gone, but action thin (needs big + 3 ghosted bots). Ghosts remain
 the #1 action-killer (harness dead-on-arrival, filed).
+
+## Burn-down: FoW-erase, coverage, sneaky-settle, build-cap -> r63 LIVE
+
+- FoW-erase (user): RTS-correct — last-known persists; watched-but-
+  empty ground erases (age > dist/info + 2). Replaced wall-clock
+  forgetting. 2 tests re-pinned to RTS semantics.
+- Coverage (user): 4x4 sector stamps per payload; coverage_orders
+  sweeps stalest cells with leftover idle (all five moves stages
+  last; greedy/turtle home-sit recalls removed).
+- Sneaky-settle (user): townless scout-decline (refound first),
+  colony 1.2 races median home, foe-shadow to 300km, far-support x2.
+- Build-cap: 3 BUILD tries then abandon (r62: 103 self-refreshing).
+- Empire pack cap (3+2/town); scout cadence 500t dark.
+R63: 74 foundings (to t8000), 8 captures (to t5000), battles
+t2000-6000, 2 idle, 1x3-onesie (own-town), no punishable. Expander
+snowball (256k; all rivals 0) + late ghost t8438 (harness, filed).
+GENERATED r63 (action all game; balance next).

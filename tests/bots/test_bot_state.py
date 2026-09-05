@@ -1667,9 +1667,12 @@ class TestSilenceWatch:
         b.note_move(7, 350.0, 500.0)
         b.turn = 500  # far past 2x round-trip + margin, trail silent
         silence_watch(b, CFG)
-        assert b._bloodied.get(2) == 500
+        # RTS FoW: army standing on the ground 499t with zero news
+        # means the town is GONE (send-all reports watched live
+        # towns every turn) — erased to grave, blood moot.
+        assert b.world.get_town(2) is None
+        assert 2 in b.__dict__.get("_grave_pos", {})
         assert not b.army_has_target(7)
-        assert probe_ok(b, (b.world.get_town(2), 5, 0)) is False
 
     def test_fresh_notes_spared(self) -> None:
         from bots.common import BotState, silence_watch
@@ -2294,3 +2297,162 @@ class TestStalePremium:
         assert foe_garrison(b, b.world.get_town(2)) == 3 + 3
         b.turn = 400
         assert foe_garrison(b, b.world.get_town(2)) == 3
+
+
+class TestPendulumBreak:
+    """r56 lesson: pro marched 91km for 1 capture. Flip-flop stands down."""
+
+    def test_flip_flop_stands_down(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        for i, (x, y) in enumerate([(900, 500), (300, 900), (900, 900), (900, 500)]):
+            b.turn = 100 + i * 50
+            b.note_move(7, float(x), float(y))
+        assert b.army_target(7) == (300.0, 500.0)  # stood down home
+
+
+class TestTownForget:
+    """RTS FoW: last-known persists; watched-but-empty ground erases.
+    25 armies sat 4000t on town-4's grave (r59) — observers on the
+    grave must erase it."""
+
+    def test_watched_grave_erases(self) -> None:
+        from bots.common import silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 320, "y": 500,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        # town 2 seen t1, army watches its ground since; t100: erase.
+        b.turn = 100
+        silence_watch(b, CFG)
+        assert b.world.get_town(2) is None
+        assert b.world.get_town(1) is not None  # own stays
+        assert 2 in b.__dict__.get("_grave_pos", {})  # grave kept
+
+    def test_unwatched_stale_kept(self) -> None:
+        from bots.common import silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 2000  # far outside LOS: genuinely unknown, kept
+        silence_watch(b, CFG)
+        assert b.world.get_town(2) is not None
+
+
+class TestCoverage:
+    """Doctrine: idle armies patrol stalest sectors, never sit."""
+
+    def test_idle_sweeps_stale(self) -> None:
+        from bots.common import BotState, coverage_orders
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 100,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 500  # only home sector stamped; 15 sectors unvisited
+        out = coverage_orders(b, cfg)
+        assert any("MOVE_TO 7" in o for o in out), out
+        assert b.army_has_target(7)
+
+
+class TestSneakySettle:
+    """Doctrine: lots of small settlements = growth. Townless refounds
+    (scout declines); small colonies race homes at 1.2."""
+
+    def test_townless_settles_not_scouts(self) -> None:
+        from bots.common import maybe_assign_scout
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 9, "x": 800, "y": 200,
+                      "faction": 4, "population": 50000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 70, "x": 200, "y": 800,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 6000
+        assert maybe_assign_scout(b, CFG, b.world.get_army(70)) is False
+
+    def test_colony_races_home(self) -> None:
+        from bots.common import expansion_demand
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 30000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.update(5, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 30100, "alive": True,
+                      "is_capital": True}])
+        b.update(5, [{"kind": "town_update", "id": 3, "x": 200, "y": 200,
+                      "faction": 0, "population": 40000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 10
+        # single fast home (median still fast): demand correctly False.
+
+
+class TestSafeSettle:
+    """Doctrine: settle away from believed enemies, near home."""
+
+    def test_foe_shadow_repels(self) -> None:
+        from bots.common import find_build_site
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 20000, "alive": True,
+                      "is_capital": False}])
+        import math
+        for who in range(5):
+            s = find_build_site(b, cfg, 300, 500, rmin=80, rmax=300,
+                                salt=11, who=who)
+            assert s is not None
+            # site must not sit between home and the foe (shadow side)
+            assert not (s[0] > 450 and abs(s[1] - 500) < 150), s
+
+
+class TestBuildCap:
+    """r62 lesson: 103 armies re-BUILDing failed sites 1500t+. 3 tries
+    then abandon."""
+
+    def test_build_abandons(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 600.0, 500.0)
+        for _ in range(3):
+            b.note_build(7)
+        assert b.has_pending_build(7)
+        b.note_build(7)  # 4th: abandon
+        assert not b.has_pending_build(7)
+        assert not b.army_has_target(7)

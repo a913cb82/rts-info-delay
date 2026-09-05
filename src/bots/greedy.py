@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import BotForecast, BotState, DemandParams, bot_main, coverage_orders, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -101,8 +101,11 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             elif state.own_towns():
                 foe_known = bool(enemy_towns) or bool(enemy_armies)
                 if not foe_known:
-                    home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - t.y))
-                    out.extend(order_move(state, config, p, home.x, home.y))
+                    # Idle patrols (doctrine): sweep stalest sectors, don't
+                    # sit home (coverage_orders batches leftovers below).
+                    pass
+    # Idle patrols last (doctrine: leftovers sweep stalest sectors).
+    out.extend(coverage_orders(state, config))
     return out
 
 
