@@ -322,6 +322,8 @@ class BotState:
         self._draining = False
         self._scout_id = None
         self._scout_leg = 0
+        self._scout_gen = -1  # probe generation: first probe flies the legacy
+        # faction ray (gen 0); each new scout rotates by the golden angle
         self._wave_hold_until = -1
 
     def _apply_update(self, ev: dict) -> None:
@@ -891,7 +893,11 @@ def scout_hop_target(state: "BotState", config, p, hop: int) -> tuple[float, flo
         if (aid != p.id and tgt is not None
                 and math.hypot(tgt[0] - p.x, tgt[1] - p.y) >= interact + 15.0):
             known.append((tgt[0], tgt[1], 20.0))
-    base = f * (2 * math.pi / 5)
+    base = f * (2 * math.pi / 5) + getattr(state, "_scout_gen", -1) * 2.399963 \
+        + hop * 0.35
+    # Fan-out: each probe generation rotates the ray by the golden angle
+    # (successive scouts cover different country), and each leg spirals
+    # ~20 deg so one probe sweeps area instead of flying one straight ray.
     for turn in (0.0, math.pi / 4, -math.pi / 4, math.pi / 2, -math.pi / 2):
         ang = base + turn
         tx = min(size[0] - 20.0, max(20.0, p.x + SCOUT_HOP_KM * math.cos(ang)))
@@ -932,6 +938,7 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
     # denies). Stay-behind lives in settled play (2+ armies), not probe.
     state._scout_id = p.id
     state._scout_leg = 0
+    state._scout_gen = getattr(state, "_scout_gen", -1) + 1
     return True
 
 
@@ -1459,15 +1466,20 @@ def inbound_force(state: "BotState", config: "GameConfig",
         # 5ms+; normal states never check the clock here, keeping
         # scripted-clock tests exact).
         big = len(own_t) * len(state.world.armies) > 50000
+        # Nearest-own-town per foe, computed ONCE (not per town-foe pair:
+        # 43 towns x 20 foes x 43 scan = 37k pairs blew the 16ms budget).
+        nearest: dict[int, int] = {}
+        for a in foes:
+            if a.id in guarded:
+                continue
+            nearest[a.id] = min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id
         for i, t in enumerate(own_t):
             if big and i % 16 == 0 and state.should_yield():
                 break  # timeout guard: partial map stands (threats known so far)
             best = float("inf")
             n = 0
             for a in foes:
-                if a.id in guarded:
-                    continue
-                if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
+                if nearest.get(a.id) != t.id:
                     continue
                 eta = _math.hypot(a.x - t.x, a.y - t.y) / speed
                 if eta < best:

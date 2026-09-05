@@ -836,3 +836,23 @@ clusters all inward, 37 unused); turtle (bold breakout, no cover);
 greedy/aggressive (positioned wrong, denied right). Nobody scouts
 foes (all views[] own). FILED: expander deep-scout+rush; pro
 interdiction+counter-raid; turtle cover; recall-radius; re-baseline.
+
+## Fan-out scouts (loop iteration: idea->bench->rematch->fix->rematch)
+
+IDEA (user): scouts cluster on one ray — spread out, scout the map.
+CHANGE (common.py): probe generation counter (_scout_gen, first probe
+keeps legacy ray); hop base rotates golden-angle per generation +
+0.35 rad/leg spiral (287km reach, full sweep over 12 hops). One test
+expectation updated (leg-1 spiral coord, math verified).
+BENCH: scout 21/21, pytest all green, fast 2.3/5s PASS, strat 4.8/30s.
+REMATCH r8: expander 165k, 43 towns, 3 eliminations — BUT bot-3 timeout
+death t8967 (17>16ms; unmanaged coast). Cause: inbound_force nearest-
+town scan per (town,foe) pair O(T^2.A). FIX: hoist to once-per-foe
+(cold 16->1.9ms, same semantics, orders identical).
+REMATCH r9: NO deaths; greedy 96k (1 town, ate everyone) / expander
+56k-24t / pro 0t-10a / turtle 1t / aggressive 0. Early contact t2000
+both games (vs late r7), war eras t5000-9000, a predator wins big.
+FINDING: fan-out transforms peaceful-compound into early-contact wars;
+winners chaotic (r8 expander, r9 greedy). Filed next: rush doctrine
+(armies exist, unused), deep-scout capital mapping, wobble study (how
+much is clock-order vs doctrine?).

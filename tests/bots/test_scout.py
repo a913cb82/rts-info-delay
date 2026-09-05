@@ -105,7 +105,8 @@ class TestDrive:
         assert drive_scout(b, CFG, b.world.get_army(7)) == []
         _feed(b, 9, towns=[(1, 200, 500, 0, 3000, True)])
         orders = drive_scout(b, CFG, b.world.get_army(7))
-        assert orders == ["MOVE_TO 7 250.0 500.0 300.0 500.0"]
+        # fan-out spiral: leg 1 bends +0.35 rad off the faction ray.
+        assert orders == ["MOVE_TO 7 250.0 500.0 297.0 517.1"]
         assert b._scout_id == 7 and b._scout_leg == 1
 
     def test_final_arrival_unmarks_keeps_target(self) -> None:
