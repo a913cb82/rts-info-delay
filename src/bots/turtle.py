@@ -167,7 +167,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # an enemy you can't see (stops the t1+t2 double-tap with zero intel).
     # Single-town factions always picket (their only production); multi-town
     # factions hoard until a threat shows (cluster cap).
-    picket_out = any_threat or (len(own_t) <= 1 and len(state.own_armies()) == 0)
+    # Picket depth (turtle-kill lesson: lone picket mutuals, snipe follows.
+    # Rich singletons picket two — mutual leaves one.)
+    _rich_single = (len(own_t) <= 1 and own_t and own_t[0].population >= 2500)
+    picket_out = any_threat or (len(own_t) <= 1 and len(state.own_armies()) == 0) \
+        or (_rich_single and len(state.own_armies()) == 1)
     if relaxed_ids and picket_out:
         cands = sorted((t for t in own_t
                         if t.id in relaxed_ids
