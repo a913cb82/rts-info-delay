@@ -3473,6 +3473,18 @@ def assault_verified(state: "BotState", target) -> bool:
     # Never overrides ex-own (fratricide guard stands).)
     if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults"):
         return True
+    # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
+    # champs expand 4t/0a and get away with it vs patient bots). A town
+    # first-seen young (<400t) with no foe army near it is a naked
+    # colony — strike without waiting for re-verify. Never overrides
+    # ex-own (fratricide guard stands).
+    _fs = state._first_seen.get(("town", target.id))
+    if _fs is not None and state.turn - _fs <= 400:
+        import math as _m
+        if not any(a.faction != state.faction
+                   and _m.hypot(a.x - target.x, a.y - target.y) <= 150.0
+                   for a in state.world.armies):
+            return True
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
 
 
