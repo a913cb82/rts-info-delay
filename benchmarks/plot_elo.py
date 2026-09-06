@@ -42,6 +42,9 @@ def main(argv=None) -> int:
     short = [s[:7] for s in commits]
     plt.figure(figsize=(10, 6))
     for name, pts in sorted(by_bot.items()):
+        pts = [p for p in pts if p[3] >= 2]
+        if not pts:
+            continue
         pts = sorted(pts)
         xs = [idx[sha] for _, sha, _, _ in pts]
         ys = [e for _, _, e, _ in pts]
@@ -51,7 +54,7 @@ def main(argv=None) -> int:
             plt.annotate(str(g), (x, y), fontsize=7, alpha=0.7)
     plt.xticks(range(len(commits)), short, rotation=45, ha="right")
     plt.xlabel("commit (chronological)")
-    plt.ylabel("Elo")
+    plt.ylabel("ordinal (mu-3sig)")
     plt.title("Bot skill over commits (OpenSkill ordinal)")
     plt.legend(fontsize=8)
     plt.grid(alpha=0.3)
