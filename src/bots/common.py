@@ -1995,7 +1995,8 @@ def drive_scout(state: "BotState", config, p):
                     foe_known = any(t.faction != state.faction for t in state.world.towns) \
                         or any(a.faction != state.faction for a in state.world.armies)
                     demand_ok = (not state._foe_first_seen) or expansion_demand(state, config)
-                    if (not foe_known or demand_ok) and site_pays(state, config, tgt[0], tgt[1]) \
+                    if (not foe_known or demand_ok) and reprint_ok(state, config) \
+                            and site_pays(state, config, tgt[0], tgt[1]) \
                             and tip_safe(state, config, tgt[0], tgt[1]):
                         state.note_build(p.id)
                         return [f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"]
@@ -2900,10 +2901,7 @@ def expansion_demand(state: "BotState", config,
                 return False
             if not params.serial:
                 return True  # sprawl expands thin by design
-            rich = max((t.population for t in state.own_towns()), default=0)
-            cost = getattr(config, "army_cost", 500) or 500
-            thresh = getattr(config, "death_threshold", 500) or 500
-            return rich >= cost + thresh + cost + thresh
+            return reprint_ok(state, config)
     # War-print (fortress-phase): threatened with horizon prints towns
     # for capacity (military, bypasses veto downstream).
     if war_print_need(state, config):
@@ -2937,12 +2935,8 @@ def expansion_demand(state: "BotState", config,
     # Reprint rule, contested (zero lesson: contact-game founding
     # strands the same way — 2 poor towns, 0 armies, capital starves.
     # Serial personalities expand only from strength everywhere.)
-    if params.serial:
-        _rich = max((t.population for t in state.own_towns()), default=0)
-        _cost = getattr(config, "army_cost", 500) or 500
-        _thresh = getattr(config, "death_threshold", 500) or 500
-        if _rich < _cost + _thresh + _cost + _thresh:
-            return False
+    if params.serial and not reprint_ok(state, config):
+        return False
     total_pop = sum(t.population for t in state.own_towns())
     if total_pop < 20000:
         return True
@@ -2951,6 +2945,16 @@ def expansion_demand(state: "BotState", config,
     rates = sorted((state.get_growth(t.id) or 3.0) for t in state.own_towns())
     home_rate = rates[len(rates) // 2] if rates else 3.0
     return 1.2 > home_rate
+
+
+def reprint_ok(state: "BotState", config) -> bool:
+    """Reprint funds (shared): the richest own town holds floor + cost
+    + threshold after the expansion spend (settling must not strand the
+    empire naked under the train floor). Serial gate lives with callers."""
+    rich = max((t.population for t in state.own_towns()), default=0)
+    cost = getattr(config, "army_cost", 500) or 500
+    thresh = getattr(config, "death_threshold", 500) or 500
+    return rich >= cost + thresh + cost + thresh
 
 
 def train_floor(state: "BotState", config) -> float:
