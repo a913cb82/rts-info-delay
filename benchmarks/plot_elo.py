@@ -42,7 +42,7 @@ def main(argv=None) -> int:
     short = [s[:7] for s in commits]
     plt.figure(figsize=(10, 6))
     for name, pts in sorted(by_bot.items()):
-        pts = [p for p in pts if p[3] >= 2]
+        pts = [p for p in pts if p[3] >= 1]
         if not pts:
             continue
         pts = sorted(pts)

@@ -42,21 +42,37 @@ def bots_at(commit: str) -> list[str]:
     return sorted(names)
 
 
+def brain_hash(commit: str, bot: str) -> str:
+    """Content hash of the bot's brain (bot file + common + engine).
+    Identical brains across commits = one candidate (first commit kept)."""
+    # Brain = bot file + shared common (engine is the referee; bot
+    # decisions come from bots/. Bot file + common hash).
+    out = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "-r", commit,
+                          "--", "src/bots/"],
+                         capture_output=True, text=True).stdout
+    blobs = sorted(l.split()[2] for l in out.splitlines()
+                   if l.strip() and (l.split(None, 3)[3].endswith(f"/{bot}.py")
+                                     or l.split(None, 3)[3].endswith("/common.py")))
+    import hashlib
+    return hashlib.sha1("".join(blobs).encode()).hexdigest()[:10]
+
+
 def pool() -> list[str]:
     """Valid name-sha across evenly-spaced history + HEAD."""
     commits = all_commits()
     picks = set()
-    # ~12 evenly spaced + last 6 (recent matters most)
-    idx = sorted(set([int(i * (len(commits) - 1) / 11) for i in range(12)] +
-                     list(range(max(0, len(commits) - 6), len(commits)))))
-    for i in idx:
-        c = commits[i]
+    # EVERY commit with bots (full population, random included),
+    # deduplicated by brain content (identical code = one candidate).
+    seen: dict[str, str] = {}
+    for c in commits:
         sha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", c],
                              capture_output=True, text=True).stdout.strip()
         for b in bots_at(c):
-            if b == "random" and i < len(commits) - 6:
-                continue
-            picks.add(f"{b}-{sha}")
+            h = brain_hash(c, b)
+            key = f"{b}@{h}"
+            if key not in seen:
+                seen[key] = f"{b}-{sha}"
+    picks.update(seen.values())
     # HEAD short sha
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                           capture_output=True, text=True).stdout.strip()
@@ -103,37 +119,15 @@ def main(argv=None) -> int:
     ap.add_argument("--n", type=int, default=1)
     ap.add_argument("--play", type=int, default=0)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--survey", action="store_true",
-                      help="fields of never-played bots first (cover the pool)")
     args = ap.parse_args(argv)
     m = BradleyTerryFull()
     elo = ratings()
     cands = pool()
     print(f"pool: {len(cands)} bots", flush=True)
     rng = random.Random(args.seed)
-    import subprocess as _sp
-    _head = _sp.run(['git', '-C', str(ROOT), 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
-    _headbots = [c for c in cands if c.endswith(_head)]
     fields = []
-    unplayed = [c for c in cands if elo.get(c, {}).get("games", 0) == 0]
-    rng.shuffle(unplayed)
-    for i in range(max(args.n, args.play)):
-        if args.survey and unplayed:
-            f = unplayed[:5]
-            unplayed = unplayed[5:]
-            # pad with high-sigma if pool runs dry
-            while len(f) < 5:
-                extra = [c for c in cands if c not in f]
-                f.append(rng.choice(extra))
-        else:
-            f = propose(m, cands, elo, rng)
-        # every other field spotlights HEAD (keeps current bots measured)
-        if i % 2 == 1 and _headbots:
-            pick = rng.choice(_headbots)
-            if pick not in f:
-                # swap out the lowest-sigma member (keep the seed)
-                tail = sorted(f[1:], key=lambda k: elo.get(k, {'sigma': m.sigma})['sigma'])
-                f[f.index(tail[0])] = pick
+    for i in range(0 if args.play else args.n):
+        f = propose(m, cands, elo, rng)
         fields.append(f)
         slots = " ".join(f"F{j}={b}" for j, b in enumerate(f))
         print(f"field {i + 1}: {slots}  info={info_score(m, f, elo):.2f}", flush=True)
@@ -148,7 +142,13 @@ def main(argv=None) -> int:
         import time
         sys.path.insert(0, str(ROOT / "src"))
         _played = []
-        for i, f in enumerate(fields[:args.play]):
+        fields = []
+        for i in range(args.play):
+            # Sequential: propose 1 on fresh ratings, play 1, update.
+            f = propose(m, cands, elo, rng)
+            fields.append(f)
+            slots = " ".join(f"F{j}={b}" for j, b in enumerate(f))
+            print(f"field {i + 1}: {slots}  info={info_score(m, f, elo):.2f}", flush=True)
             cmds = {}
             for slot, spec in enumerate(f):
                 name, commit = spec.rsplit("-", 1)
