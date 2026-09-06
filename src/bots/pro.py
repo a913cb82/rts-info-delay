@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust, victory_lap, dead_foes
+from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust, victory_lap, dead_foes, reprint_ok
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -351,7 +351,10 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
                 if dest is not None:
                     out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
                 continue
-            out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
+            if not own_home and not reprint_ok(state, config):
+                state._army_targets.pop(p.id, None)
+            else:
+                out.append(out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"))
     return out
 
 

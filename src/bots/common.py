@@ -2953,6 +2953,16 @@ def expansion_demand(state: "BotState", config,
     return 1.2 > home_rate
 
 
+def reprint_ok(state: "BotState", config) -> bool:
+    """Reprint funds (arrival-gate loop): richest own town holds floor
+    + cost + threshold after the expansion spend (tracer-evidenced:
+    scout-tip auto-founds at rich ~510 split into two starving towns)."""
+    rich = max((t.population for t in state.own_towns()), default=0)
+    cost = getattr(config, "army_cost", 500) or 500
+    thresh = getattr(config, "death_threshold", 500) or 500
+    return rich >= cost + thresh + cost + thresh
+
+
 def train_floor(state: "BotState", config) -> float:
     """Cost-aware train floor: cost + death-threshold + half-cost growth
     buffer (a train must leave the town alive AND viable: greedy t1701,
