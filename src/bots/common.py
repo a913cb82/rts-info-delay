@@ -1471,7 +1471,18 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     return out
 
 
+def prune_dead_scouts(state):
+    for mid in list(state.__dict__.get("_mapper", {})):
+        if state.world.get_army(mid) is None:
+            state.__dict__["_mapper"].pop(mid, None)
+    for slot, sid in ((1, state._scout_id),
+                      (2, getattr(state, "_scout_id2", None))):
+        if sid is not None and state.world.get_army(sid) is None:
+            _scout_unmark(state, slot)
+
+
 def maybe_schedule_scout(state: "BotState", config):
+    prune_dead_scouts(state)
     """Cartographic schedule (r35 lesson): neighbors-fresh != covered —
     fronts go blind and 94k rocks sit unpunished. Dark peace scouts
     every 500t (r58 lesson: 1500t cadence leaves empires blind all
@@ -1539,6 +1550,12 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
         return False
     # (No S0-guard here: scouts are often sole + foes-known; blocking
     # them blinds. The coverage S0-guard holds unscouted lone armies.)
+    # Dead mapper prunes too (phantom-mapper lesson: a mapper death
+    # leaves _mapper non-empty forever, blocking scout-print + release
+    # — one death ends scouting forever, same as slots).
+    for mid in list(state.__dict__.get("_mapper", {})):
+        if state.world.get_army(mid) is None:
+            state.__dict__["_mapper"].pop(mid, None)
     for slot, sid in ((1, state._scout_id), (2, getattr(state, "_scout_id2", None))):
         if sid is not None:
             # Dead scout frees the slot (else one death ends scouting forever).
@@ -3049,6 +3066,7 @@ def _capital_timely(state: "BotState", config, t, eta_n, cost: float) -> bool:
 
 def demand_trains(state: "BotState", config, can_train,
                   params: "DemandParams | None" = None) -> list[str]:
+    prune_dead_scouts(state)
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
     rule, raid pipeline (pack deficit for the priced target), expansion
     pipeline (void merit / contested rates+payback), plus the prober
