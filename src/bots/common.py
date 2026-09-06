@@ -591,6 +591,7 @@ class BotState:
                         # Lost a town (seen mine, now foe): ex-own assaults
                         # need fresh intel (r91 fratricide).
                         self.__dict__.setdefault("_lost_towns", set()).add(eid)
+                        self.__dict__.setdefault("_lost_turn", {})[eid] = self.turn
                     t.faction = int(ev.get("faction", t.faction))
                     t.x = float(ev.get("x", t.x))
                     t.y = float(ev.get("y", t.y))
@@ -3065,10 +3066,18 @@ def demand_trains(state: "BotState", config, can_train,
     # Threat-first (r76: early bloodbath — offense starves defense under
     # the 1/town train cap; packs print while capitals fall. Threatened
     # towns muster before anyone else spends).
+    # Shrink-watch (duel lesson): lost a town recently + still losing =
+    # gradual bleed evac never catches. Concentrate: unthreatened towns
+    # print richest-first (rich gets guards, weak is accepted lost —
+    # thin-spread poorest-first donates to raiders). Threatened first
+    # always; peace keeps poorest-first (growth needs it).
+    _lt = state.__dict__.get("_lost_turn", {})
+    _shrinking = any(state.turn - _t <= 1500 for _t in _lt.values())
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if force.get(t.id) is not None else 1,
                                   0 if state.should_train_for_overcrowding(t) else 1,
-                                  state.get_growth(t.id), t.population))
+                                  state.get_growth(t.id),
+                                  -t.population if _shrinking else t.population))
     # No in-loop yield: the trains stage is atomic (anytime prefix
     # property) — trains are cheap, and a partial muster is worse than
     # a late one.
