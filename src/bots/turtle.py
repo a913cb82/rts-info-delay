@@ -172,7 +172,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _rich_single = (len(own_t) <= 1 and own_t and own_t[0].population >= 2500)
     picket_out = any_threat or (len(own_t) <= 1 and len(state.own_armies()) == 0) \
         or (_rich_single and len(state.own_armies()) == 1)
-    if relaxed_ids and picket_out:
+    _force_picket2 = (_rich_single and len(state.own_armies()) == 1
+                      and all(t.id not in state._pending_trains for t in own_t))
+    if _force_picket2:
+        cands = sorted((t for t in own_t
+                        if t.population - config.army_cost >= config.death_threshold - 1e-9),
+                       key=lambda t: -t.population)[:1]
+    elif relaxed_ids and picket_out:
         cands = sorted((t for t in own_t
                         if t.id in relaxed_ids
                         and (last_stand(t)
