@@ -3386,6 +3386,12 @@ def assault_verified(state: "BotState", target) -> bool:
         return True
     if target.id in state.__dict__.get("_lost_towns", set()):
         return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 150
+    # Opener (r125: champ compounds peacefully to an unbeatable 1.6x
+    # by t3000; HEAD waits for blood that never comes. One unverified
+    # need-sized strike per game before t2500 seeds first blood.
+    # Never overrides ex-own (fratricide guard stands).)
+    if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults"):
+        return True
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
 
 

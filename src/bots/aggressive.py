@@ -142,17 +142,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         # Strike (windows close!): clear-field blitz/buzzer mass march —
         # unless one is already en route (per-target singularity).
-        # Overkill cap (user: don't go overboard — strike mass marches
-        # EVERYONE at one town). Cap marchers at need+2 (extras hold for
-        # packs/patrols).
+        # Predator overwhelm (range doctrine: aggressive never caps strikes —
+        # bounces waste whole packs, overkill wastes +2. Extras hold only
+        # for packs/patrols via singularity).
         if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
             _skm = sum(1 for a in state.own_armies()
                        if state.army_has_target(a.id) and state.army_target(a.id) is not None
                        and abs(state.army_target(a.id)[0] - sk_march[0].x) < 15
                        and abs(state.army_target(a.id)[1] - sk_march[0].y) < 15)
-            if bloodlust(state, config) or _skm < sk_march[1] + 2:
-                out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
-                continue
+            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+            continue
         # Pack gate subsumes A2 departure-sync (need covers defendedness;
         # the old retrench-march trickled). Undersized packs hold, except
         # one nearby probe vs visibly-empty (bounded recon by fire).

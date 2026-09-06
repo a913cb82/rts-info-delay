@@ -2729,6 +2729,8 @@ class TestAssaultVerify:
                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 1000  # foe-belief 999t stale
+        # opener spent (prior assault recorded) so stale-hold applies
+        b.__dict__.setdefault('_assaults', {}).setdefault(2, []).append(500)
         assert assault_verified(b, b.world.get_town(2)) is False
         assert jit_ready(b, CFG, b.world.get_town(2), 1, [7], 1) is False
         b.update(500, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
