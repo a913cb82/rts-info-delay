@@ -1471,13 +1471,13 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     return out
 
 
-def maybe_schedule_scout(state: "BotState", config):
+def maybe_schedule_scout(state: "BotState", config, lone_ok: bool = False):
     """Cartographic schedule (r35 lesson): neighbors-fresh != covered —
     fronts go blind and 94k rocks sit unpunished. Dark peace scouts
     every 500t (r58 lesson: 1500t cadence leaves empires blind all
     game); contact keeps 1500t. One surplus idle army per slot (fresh
     gen ray, existing fan machinery). Skips when a pack needs everyone."""
-    if len(state.own_towns()) < 2 and not state._foe_first_seen:
+    if not lone_ok and len(state.own_towns()) < 2 and not state._foe_first_seen:
         return None
     period = 500 if _dark(state) else 1500
     if state.turn % period != (state.faction * 300) % period:

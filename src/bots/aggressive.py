@@ -19,7 +19,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
-    _sched = maybe_schedule_scout(state, config)
+    _sched = maybe_schedule_scout(state, config, lone_ok=True)  # predators need eyes
     sc_out = list(_sched) if _sched else []
     out.extend(sc_out)
     # Evac (shared drain-and-flee; predators flee doom too).
