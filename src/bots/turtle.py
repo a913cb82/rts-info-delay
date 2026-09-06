@@ -113,6 +113,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # profitable towns take 1 walker; fortress doctrine otherwise holds).
     _free = [a for a in state.own_armies()
              if not state.army_has_target(a.id) and not a.is_viceroy]
+    # Last-guard stays (tk5 lesson: mutual leaves 1, it walks for food,
+    # capital falls naked. Walkers need company or an empty home.)
+    if len(_free) == 1 and any(math.hypot(_free[0].x - t.x, _free[0].y - t.y) <= 20
+                               for t in own_t):
+        _free = []
     if _free:
         _best = None
         for u in state.world.towns:
