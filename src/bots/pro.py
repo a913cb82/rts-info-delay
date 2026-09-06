@@ -24,8 +24,12 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
             a.faction != state.faction for a in state.world.armies):
         if not state.own_armies():
             for t in state.own_towns():
+                # Thin iff never-seen (true void regrow); post-contact
+                # voids need full floor (thin openers die on contact).
+                _open_floor = config.death_threshold if not state._foe_first_seen \
+                    else train_floor(state, config)
                 if can_train_standard(state, t) \
-                        and t.population - config.army_cost >= config.death_threshold - 1e-9:
+                        and t.population - config.army_cost >= _open_floor - 1e-9:
                     return [f"TRAIN {t.id}"]
         # (fall through: demand's void branch settles dark fields)
     out = demand_trains(state, config, can_train_standard)
@@ -38,7 +42,7 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
             and (len(state.own_towns()) >= 2 or state._foe_first_seen):
         cands = sorted((t for t in state.own_towns()
                         if can_train_standard(state, t)
-                        and t.population - config.army_cost >= config.death_threshold - 1e-9),
+                        and t.population - config.army_cost >= train_floor(state, config) - 1e-9),
                        key=lambda t: -t.population)
         if cands:
             out.append(f"TRAIN {cands[0].id}")
