@@ -3128,10 +3128,19 @@ def demand_trains(state: "BotState", config, can_train,
         if eta_n is None and (state.get_growth(t.id) or 0.0) < -1.0:
             continue
         if bare:
-            if t.population >= cost:
-                out.append(f"TRAIN {t.id}")
-                state.note_train(t.id)
-                deficit[0] = max(0, deficit[0] - 1)
+            # Print-safe, except timely field-meets (r123: champ2 autopsy
+            # showed towns printed to pop=0 vs overwhelming force — but
+            # timely-guard demands thin prints that MEET the raider
+            # (eta>=1: army fields in time; the town's loss buys the
+            # capital). Hopeless (eta<1) thin towns convert instead.
+            _eta = eta_n[0] if eta_n is not None else 0.0
+            _n = eta_n[1] if eta_n is not None else 99
+            if t.population - cost >= config.death_threshold \
+                    or (_eta >= 1.0 and _n <= 2):
+                if t.population >= cost:
+                    out.append(f"TRAIN {t.id}")
+                    state.note_train(t.id)
+                    deficit[0] = max(0, deficit[0] - 1)
         elif (can_train(state, t)
                 and t.population - cost >= floor + params.depth_extra - 1e-9):
             out.append(f"TRAIN {t.id}")
