@@ -3497,6 +3497,12 @@ def assault_verified(state: "BotState", target) -> bool:
     # first-seen young (<400t) with no foe army near it is a naked
     # colony — strike without waiting for re-verify. Never overrides
     # ex-own (fratricide guard stands).
+    # Bystander-bust: a foe reduced to (or sitting at) ONE town is
+    # always fair game — weaklings are easy kills, compounders must die
+    # before they outgrow the field. No age limit, no re-verify wait.
+    _foe_towns = sum(1 for _t in state.world.towns if _t.faction == target.faction)
+    if _foe_towns <= 1:
+        return True
     _fs = state._first_seen.get(("town", target.id))
     if _fs is not None and state.turn - _fs <= 400:
         import math as _m
