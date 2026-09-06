@@ -2012,8 +2012,9 @@ def drive_scout(state: "BotState", config, p):
                     foe_known = any(t.faction != state.faction for t in state.world.towns) \
                         or any(a.faction != state.faction for a in state.world.armies)
                     demand_ok = (not state._foe_first_seen) or expansion_demand(state, config)
-                    if (not foe_known or demand_ok) and site_pays(state, config, tgt[0], tgt[1]) \
-                            and tip_safe(state, config, tgt[0], tgt[1]):
+                    if ((not foe_known or demand_ok) and reprint_ok(state, config)
+                            and site_pays(state, config, tgt[0], tgt[1]) \
+                            and tip_safe(state, config, tgt[0], tgt[1])):
                         state.note_build(p.id)
                         return [f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"]
                 rs = respin_tip(state, config, tgt[0], tgt[1])
