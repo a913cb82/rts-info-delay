@@ -3571,7 +3571,12 @@ def hospice(state: "BotState", config) -> list[str]:
     out: list[str] = []
     thresh = getattr(config, "death_threshold", 500) or 500
     cost = getattr(config, "army_cost", 1000) or 1000
+    force = inbound_force(state, config)
     for t in state.own_towns():
+        # Doomed-only (r127: hospice TRAINed 3 healthy towns to death at
+        # once — evacuation trades production for bodies. Only under fire.)
+        if t.id not in force:
+            continue
         if t.is_capital:
             continue
         if t.population >= cost + thresh:

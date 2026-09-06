@@ -3176,7 +3176,9 @@ class TestHospice:
                      {"kind": "town_update", "id": 2, "x": 600, "y": 500,
                       "faction": 0, "population": 1200, "is_capital": False}])
         b.update(100, [{"kind": "town_update", "id": 2, "x": 600, "y": 500,
-                        "faction": 0, "population": 1100, "is_capital": False}])
+                        "faction": 0, "population": 1100, "is_capital": False},
+                     {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
         b.turn = 100
         out = hospice(b, CFG)
         assert any("TRAIN 2" in o for o in out), out
