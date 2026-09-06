@@ -1503,3 +1503,11 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## loop/arrival-gate: sweet-spot lesson (again)
+
+Stack grows, ordinal shrinks: a3d3873-pro 34.2 (arrival-gate only) →
+68ae8a0-pro 13.3 (+stillness, lone-hold, full-floor, opener-split,
+S0-reprint, lone-body). Each constraint buys safety, sells agency;
+aggregate says the trade is bad past the first fix. New rule:
+one fix per branch, measure before stacking. Branching from a3d3873.
