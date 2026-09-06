@@ -1471,7 +1471,18 @@ def coverage_orders(state: "BotState", config) -> list[str]:
     return out
 
 
+def prune_dead_scouts(state):
+    for mid in list(state.__dict__.get("_mapper", {})):
+        if state.world.get_army(mid) is None:
+            state.__dict__["_mapper"].pop(mid, None)
+    for slot, sid in ((1, state._scout_id),
+                      (2, getattr(state, "_scout_id2", None))):
+        if sid is not None and state.world.get_army(sid) is None:
+            _scout_unmark(state, slot)
+
+
 def maybe_schedule_scout(state: "BotState", config):
+    prune_dead_scouts(state)
     """Cartographic schedule (r35 lesson): neighbors-fresh != covered —
     fronts go blind and 94k rocks sit unpunished. Dark peace scouts
     every 500t (r58 lesson: 1500t cadence leaves empires blind all
@@ -1511,8 +1522,11 @@ def maybe_schedule_scout(state: "BotState", config):
         if maybe_assign_scout(state, config, p):
             return drive_scout(state, config, p) or []
         return None
-    if _scout_contact(state, config) and not _dark(state):
+    if _scout_contact(state, config) and not _dark(state) \
+            and len(state.own_armies()) >= 3:
         return None  # real war on: raid/defense owns the field
+    # (weak + contact scouts anyway — contact-paralysis (rich,
+    # blind-ish, 1 army, sits 3000t) is how bystanders die.)
     p = idle[0]
     if maybe_assign_scout(state, config, p):
         return drive_scout(state, config, p) or []
@@ -1539,6 +1553,12 @@ def maybe_assign_scout(state: "BotState", config, p) -> bool:
         return False
     # (No S0-guard here: scouts are often sole + foes-known; blocking
     # them blinds. The coverage S0-guard holds unscouted lone armies.)
+    # Dead mapper prunes too (phantom-mapper lesson: a mapper death
+    # leaves _mapper non-empty forever, blocking scout-print + release
+    # — one death ends scouting forever, same as slots).
+    for mid in list(state.__dict__.get("_mapper", {})):
+        if state.world.get_army(mid) is None:
+            state.__dict__["_mapper"].pop(mid, None)
     for slot, sid in ((1, state._scout_id), (2, getattr(state, "_scout_id2", None))):
         if sid is not None:
             # Dead scout frees the slot (else one death ends scouting forever).
@@ -1995,8 +2015,9 @@ def drive_scout(state: "BotState", config, p):
                     foe_known = any(t.faction != state.faction for t in state.world.towns) \
                         or any(a.faction != state.faction for a in state.world.armies)
                     demand_ok = (not state._foe_first_seen) or expansion_demand(state, config)
-                    if (not foe_known or demand_ok) and site_pays(state, config, tgt[0], tgt[1]) \
-                            and tip_safe(state, config, tgt[0], tgt[1]):
+                    if ((not foe_known or demand_ok) and reprint_ok(state, config)
+                            and site_pays(state, config, tgt[0], tgt[1]) \
+                            and tip_safe(state, config, tgt[0], tgt[1])):
                         state.note_build(p.id)
                         return [f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"]
                 rs = respin_tip(state, config, tgt[0], tgt[1])
@@ -2953,6 +2974,16 @@ def expansion_demand(state: "BotState", config,
     return 1.2 > home_rate
 
 
+def reprint_ok(state: "BotState", config) -> bool:
+    """Reprint funds (arrival-gate loop): richest own town holds floor
+    + cost + threshold after the expansion spend (tracer-evidenced:
+    scout-tip auto-founds at rich ~510 split into two starving towns)."""
+    rich = max((t.population for t in state.own_towns()), default=0)
+    cost = getattr(config, "army_cost", 500) or 500
+    thresh = getattr(config, "death_threshold", 500) or 500
+    return rich >= cost + thresh + cost + thresh
+
+
 def train_floor(state: "BotState", config) -> float:
     """Cost-aware train floor: cost + death-threshold + half-cost growth
     buffer (a train must leave the town alive AND viable: greedy t1701,
@@ -3039,6 +3070,7 @@ def _capital_timely(state: "BotState", config, t, eta_n, cost: float) -> bool:
 
 def demand_trains(state: "BotState", config, can_train,
                   params: "DemandParams | None" = None) -> list[str]:
+    prune_dead_scouts(state)
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
     rule, raid pipeline (pack deficit for the priced target), expansion
     pipeline (void merit / contested rates+payback), plus the prober
@@ -3124,6 +3156,11 @@ def demand_trains(state: "BotState", config, can_train,
         # guards — deterrence vs nobody is pure waste; compound instead).
         _armed_field = any(a.faction != state.faction for a in state.world.armies)
         if eta_n is None and home.get(t.id, 0) == 0 and _armed_field:
+            want = True
+        # Guard depth (s0t lesson: lone guard mutuals, capital falls
+        # naked next turn. Rich towns hold 2 (mutual leaves one).)
+        if eta_n is None and home.get(t.id, 0) == 1 and _armed_field \
+                and t.population >= 2 * (cost + floor) + cost:
             want = True
         if eta_n is None:
             _g = guard_force.get(t.id)
@@ -3487,6 +3524,17 @@ def assault_verified(state: "BotState", target) -> bool:
     # first-seen young (<400t) with no foe army near it is a naked
     # colony — strike without waiting for re-verify. Never overrides
     # ex-own (fratricide guard stands).
+    # Bystander-bust: a foe reduced to (or sitting at) ONE town is
+    # always fair game — weaklings are easy kills, compounders must die
+    # before they outgrow the field. No age limit, no re-verify wait.
+    _foe_towns = sum(1 for _t in state.world.towns if _t.faction == target.faction)
+    if _foe_towns <= 2:
+        return True
+    # Bully rule (sprawl lesson: 31-town compounders outgrow the
+    # field while busts wait for <=2. Smaller factions are always
+    # fair game — pick on smaller, avoid bigger.)
+    if _foe_towns < len(state.own_towns()):
+        return True
     _fs = state._first_seen.get(("town", target.id))
     if _fs is not None and state.turn - _fs <= 400:
         import math as _m
