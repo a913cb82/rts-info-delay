@@ -3164,14 +3164,17 @@ def demand_trains(state: "BotState", config, can_train,
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
         elif (eta_n is not None and t.population >= cost
-                and _capital_timely(state, config, t, eta_n, cost)):
+                and _capital_timely(state, config, t, eta_n, cost)
+                and state.__dict__.get('_timely_turn') != state.turn):
             # Capital-defense exception (user: a <1500 town prints when
             # it's the only timely guard for the capital. Floors protect
             # growth; the capital's survival outranks them. Marches via
             # reinforce_orders (Meeting); town may drop below threshold
-            # (accepted trade: town for capital).
+            # (accepted trade: town for capital). ONE per decide (r128:
+            # three 'only' guards all suicided vs one probe).
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
+            state.__dict__['_timely_turn'] = state.turn
         elif (expand and deficit[0] <= 0
                 and t.population - cost >= config.death_threshold - 1e-9
                 and t.id not in state._pending_trains
