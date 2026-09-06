@@ -2029,9 +2029,8 @@ def drive_scout(state: "BotState", config, p):
                     foe_known = any(t.faction != state.faction for t in state.world.towns) \
                         or any(a.faction != state.faction for a in state.world.armies)
                     demand_ok = (not state._foe_first_seen) or expansion_demand(state, config)
-                    if ((not foe_known or demand_ok) and reprint_ok(state, config)
-                            and site_pays(state, config, tgt[0], tgt[1]) \
-                            and tip_safe(state, config, tgt[0], tgt[1])):
+                    if (not foe_known or demand_ok) and site_pays(state, config, tgt[0], tgt[1]) \
+                            and tip_safe(state, config, tgt[0], tgt[1]):
                         state.note_build(p.id)
                         return [f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"]
                 rs = respin_tip(state, config, tgt[0], tgt[1])
@@ -2931,14 +2930,7 @@ def expansion_demand(state: "BotState", config,
             # 1200 pop vs 1250 floor, never recovers). Expand in true
             # void only from strength (richest town holds floor + cost
             # + threshold after the spend).
-            if config.max_turns - state.turn < vhor:
-                return False
-            if not params.serial:
-                return True  # sprawl expands thin by design
-            rich = max((t.population for t in state.own_towns()), default=0)
-            cost = getattr(config, "army_cost", 500) or 500
-            thresh = getattr(config, "death_threshold", 500) or 500
-            return rich >= cost + thresh + cost + thresh
+            return config.max_turns - state.turn >= vhor
     # War-print (fortress-phase): threatened with horizon prints towns
     # for capacity (military, bypasses veto downstream).
     if war_print_need(state, config):
@@ -2989,22 +2981,9 @@ def expansion_demand(state: "BotState", config,
 
 
 def reprint_ok(state: "BotState", config) -> bool:
-    """Reprint funds (arrival-gate loop): richest own town holds floor
-    + cost + threshold after the expansion spend (tracer-evidenced:
-    scout-tip auto-founds at rich ~510 split into two starving towns)."""
-    rich = max((t.population for t in state.own_towns()), default=0)
-    cost = getattr(config, "army_cost", 500) or 500
-    thresh = getattr(config, "death_threshold", 500) or 500
-    # Race-vs-safe (sprawl lesson: static 2000 loses the opener race
-    # to sprawlers, wins safety vs raiders. Known foe towns discount:
-    # crowded fields race, quiet fields husband.)
-    # First-only (race lesson: 2+ town sprawlers absorb founding costs;
-    # only the 1->2 jump strands. Gate singletons, free empires.)
-    if len(state.own_towns()) >= 2:
-        return True
-    _foes = sum(1 for t in state.world.towns if t.faction != state.faction)
-    _bar = cost + thresh + cost + thresh - 250 * min(_foes, 4)
-    return rich >= max(cost + thresh, _bar)
+    """Retired (d36813f lesson: reprint-gating cost ~20 ordinal points;
+    the starve bugs it guarded were fixed independently). Always true."""
+    return True
 
 
 def train_floor(state: "BotState", config) -> float:
