@@ -1477,6 +1477,8 @@ def maybe_schedule_scout(state: "BotState", config):
     every 500t (r58 lesson: 1500t cadence leaves empires blind all
     game); contact keeps 1500t. One surplus idle army per slot (fresh
     gen ray, existing fan machinery). Skips when a pack needs everyone."""
+    if len(state.own_towns()) < 2 and not state._foe_first_seen:
+        return None
     period = 500 if _dark(state) else 1500
     if state.turn % period != (state.faction * 300) % period:
         return None
