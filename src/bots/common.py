@@ -909,7 +909,10 @@ class BotState:
             delay = max(1, math.ceil(dist / (self.config.info_speed if self.config else 150)))
         else:
             delay = 1
-        self._pending_trains[town_id] = self.turn + delay + 1
+        # Cover the execution queue too (r134: pending expired while a
+        # queued TRAIN awaited its 1/town slot -> duplicate re-issue ->
+        # multi-execute suicide. +30 covers queue depth).
+        self._pending_trains[town_id] = self.turn + delay + 30
 
     # Ideas 4+5: quiet-turn skip and plan queue.
     def is_quiet(self, events) -> bool:
