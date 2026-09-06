@@ -3542,6 +3542,17 @@ def assault_verified(state: "BotState", target) -> bool:
                    and _m.hypot(a.x - target.x, a.y - target.y) <= 150.0
                    for a in state.world.armies):
             return True
+    # Leader-verify (sprawl lesson: 31-town leaders compound behind
+    # stale intel — 800t shields them. Vs 1.5x+ pop leaders the pack
+    # marches on 2000t intel (approach re-scouts en route).)
+    try:
+        _tp = town_pops(state)
+        _mine = _tp.get(state.faction, 0.0)
+        _foe = _tp.get(target.faction, 0.0)
+        if _foe >= 1.5 * max(1.0, _mine):
+            return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 2000
+    except Exception:
+        pass
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
 
 
