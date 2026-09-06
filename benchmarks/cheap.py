@@ -22,21 +22,26 @@ from ffa_bench import resolve
 BASE = {"ffa/feast": (7483.0, 3824.0), "strategic/snowball": (0.0, 1.0)}
 
 
-def run_feast(bot):
+def run_feast(bot, dirty=False):
     d = json.loads((ROOT / "maps" / "ffa" / "feast.json").read_text())
     cfg = GameConfig.from_dict({k: v for k, v in d.items()
                                 if k not in ("teams", "focal", "note")})
-    cmds = {int(f): resolve(s, bot) for f, s in d["teams"].items()}
+    cmds = {int(f): resolve(s, bot, dirty) for f, s in d["teams"].items()}
     t0 = time.perf_counter()
     scores = run_game(cfg, cmds, None)
     return scores.get(0, 0), (time.perf_counter() - t0) * 1000
 
 
-def run_snowball(bot):
+def run_snowball(bot, dirty=False):
     d = json.loads((ROOT / "maps" / "strategic" / "snowball.json").read_text())
     cfg = GameConfig.from_dict({k: v for k, v in d.items()
                                 if k not in ("teams", "focal", "note")})
-    cmds = {0: f"{sys.executable} -m bots.{bot}"}
+    from elo_field import ensure_worktree, sha_of
+    if dirty:
+        cmds = {0: f"{sys.executable} -m bots.{bot}"}
+    else:
+        _dd = ensure_worktree(sha_of("HEAD"))
+        cmds = {0: f"cd {_dd} && PYTHONPATH={_dd}/src {sys.executable} -m bots.{bot}"}
     t0 = time.perf_counter()
     scores = run_game(cfg, cmds, None)
     return scores.get(0, 0), (time.perf_counter() - t0) * 1000
@@ -45,6 +50,7 @@ def run_snowball(bot):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--bot", default="pro")
+    ap.add_argument("--dirty", action="store_true", help="run workspace tree (default: clean HEAD)")
     args = ap.parse_args(argv)
     t0 = time.perf_counter()
     try:
@@ -56,8 +62,8 @@ def main(argv=None):
         BASE["strategic/snowball"] = (statistics.mean(m2), statistics.stdev(m2) or 1)
     except Exception:
         pass
-    f, fms = run_feast(args.bot)
-    s, sms = run_snowball(args.bot)
+    f, fms = run_feast(args.bot, args.dirty)
+    s, sms = run_snowball(args.bot, args.dirty)
     comp = (f - BASE["ffa/feast"][0]) / BASE["ffa/feast"][1] + \
            (s - BASE["strategic/snowball"][0]) / BASE["strategic/snowball"][1]
     wall = time.perf_counter() - t0

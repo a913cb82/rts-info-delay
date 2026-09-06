@@ -49,8 +49,8 @@ def ensure_worktree(sha: str) -> Path:
 
 
 def bot_cmd(name: str, sha: str) -> str:
-    if sha == sha_of("HEAD") and name in ("pro", "aggressive", "expander", "turtle"):
-        pass  # still use a worktree for uniformity? No — HEAD runs in-tree.
+    # ALWAYS a clean worktree (dirty workspace never plays logged games —
+    # the name-sha ID guarantees the exact code).
     if name == "HEAD":
         raise ValueError("bad spec (need name-commit)")
     d = ensure_worktree(sha)

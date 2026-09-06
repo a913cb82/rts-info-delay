@@ -21,9 +21,13 @@ from elo_field import ensure_worktree, sha_of
 FFA_DIR = ROOT / "maps" / "ffa"
 
 
-def resolve(spec, cand_bot):
+def resolve(spec, cand_bot, dirty=False):
     if spec == "?":
-        return f"{sys.executable} -m bots.{cand_bot}"
+        if dirty:
+            return f"{sys.executable} -m bots.{cand_bot}"
+        sha = sha_of("HEAD")
+        d = ensure_worktree(sha)
+        return f"cd {d} && PYTHONPATH={d}/src {sys.executable} -m bots.{cand_bot}"
     name, commit = spec.rsplit("-", 1)
     sha = sha_of(commit)
     d = ensure_worktree(sha)
@@ -35,13 +39,18 @@ def cand_cmd(args):
         sha = sha_of(args.commit)
         dd = ensure_worktree(sha)
         return f"cd {dd} && PYTHONPATH={dd}/src {sys.executable} -m bots.{args.bot}"
-    return f"{sys.executable} -m bots.{args.bot}"
+    if getattr(args, "dirty", False):
+        return f"{sys.executable} -m bots.{args.bot}"
+    sha = sha_of("HEAD")
+    dd = ensure_worktree(sha)
+    return f"cd {dd} && PYTHONPATH={dd}/src {sys.executable} -m bots.{args.bot}"
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--bot", default="pro")
     ap.add_argument("--commit", default=None, help="bot-commit for candidate (default: workspace)")
+    ap.add_argument("--dirty", action="store_true", help="run workspace tree (default: clean HEAD worktree)")
     args = ap.parse_args(argv)
     t0 = time.perf_counter()
     for path in sorted(FFA_DIR.glob("*.json")):
@@ -58,7 +67,7 @@ def main(argv=None):
             for f in range(5):
                 if f == slot:
                     continue
-                cmds[f] = resolve(refs[ri][1], args.bot)
+                cmds[f] = resolve(refs[ri][1], args.bot, getattr(args, "dirty", False))
                 ri += 1
             t1 = time.perf_counter()
             scores = run_game(cfg, cmds, None)

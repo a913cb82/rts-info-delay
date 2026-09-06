@@ -353,3 +353,12 @@ belief + tau drift for evolving bots; defaults mu=25 sigma=25/3).
 `elos.json` holds {mu, sigma, games}; display = ordinal (mu-3σ).
 Recomputed from all 50 logged games (`/tmp/elos_elo_backup.json` keeps
 the Elo era). `elo_field.py --field ...` unchanged (append-only log).
+
+## Clean-tree rule (bot IDs must be honest)
+
+Logged games (elo_field/matchmake) ALWAYS run clean worktrees —
+name-sha IDs the exact code. `cheap.py`/`ffa_bench.py` default to
+clean HEAD too; pass `--dirty` to iterate on the workspace (fast,
+unlogged, ID means nothing). Duels/analysis: copy the pattern
+(worktree cmds via elo_field helpers), never bare workspace python
+when the conclusion will be attributed to a commit.
