@@ -3107,7 +3107,9 @@ class TestVictoryLap:
 
     def test_lap_settles(self) -> None:
         from bots.common import BotState, victory_lap
-        from tests.bots.test_turtle_floor import CFG
+        from engine.config import GameConfig
+        CFG = GameConfig()
+        CFG.max_turns = 10000
         b = BotState()
         b.init(CFG, 0)
         evs = [{"kind": "town_update", "id": i, "x": 300 + i * 50, "y": 500,
@@ -3117,7 +3119,8 @@ class TestVictoryLap:
         # contact: a foe army seen (then gone) + a dead foe town sighting
         b.update(101, [{"kind": "army_update", "id": 9, "x": 900, "y": 900,
                         "faction": 1, "alive": True, "is_viceroy": False}])
-        b.update(102, evs)
+        b.update(3000, evs)
+        b.turn = 3000
         out = victory_lap(b, CFG)
         assert sum(1 for o in out if o.startswith("TRAIN")) == 3
 

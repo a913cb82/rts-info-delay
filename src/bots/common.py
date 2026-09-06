@@ -3567,10 +3567,15 @@ def dead_foes(state: "BotState", config=None) -> set:
     if state.turn < 2000:
         return set()
     def _compute():
-        live_army_factions = {a.faction for a in state.world.armies}
+        # Mirror-blindness inverse (r137: stale mirror armies kept ghosts
+        # 'live' forever. Live = seen in the last 500t.)
+        live_army_factions = {a.faction for a in state.world.armies
+                              if state.turn - state._last_seen.get(("army", a.id), -10**9) <= 500}
         out = set()
         foe_factions = ({t.faction for t in state.world.towns} |
-                        {a.faction for a in state.world.armies}) - {state.faction}
+                        {a.faction for a in state.world.armies} |
+                        set(state.__dict__.get("_foe_army_seen", {})) |
+                        set(state.__dict__.get("_foe_first_seen", {}))) - {state.faction}
         seen = state.__dict__.get("_foe_army_seen", {})
         last_print = state.__dict__.get("_foe_last_print", {})
         for f in foe_factions:
@@ -3632,9 +3637,13 @@ def victory_lap(state: "BotState", config) -> list[str]:
     if any(t.faction != state.faction for t in state.world.towns):
         return out
     # Fog, not victory (r115: mirror is visibility-limited — unseen foes
-    # are not dead foes. Require CONTACT: a foe town known now or a foe
-    # army ever seen).
-    if not state.__dict__.get("_foe_army_seen"):
+    # are not dead foes. r136: victory TRAINs at pop>=cost with no floors
+    # killed 3 towns (mail executes into graves). Require ALL known foe
+    # factions dead, not just contact.
+    _known_foes = ({t.faction for t in state.world.towns} | set(state.__dict__.get("_foe_army_seen", {})) | set(state.__dict__.get("_foe_first_seen", {}))) - {state.faction}
+    if not _known_foes:
+        return out
+    if not _known_foes <= dead_foes(state):
         return out
     # Established winners only (single-town mirrors/openings are not
     # victories — need an empire or a late clock).
