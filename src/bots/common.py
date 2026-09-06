@@ -2934,6 +2934,15 @@ def expansion_demand(state: "BotState", config,
     # home grows ~1-2/turn vs a colony's 0.75). Below 20k, expansion is
     # throughput (parallel compounding), not arbitrage: afford +
     # horizon suffices (serial + site_pays still filter downstream).
+    # Reprint rule, contested (zero lesson: contact-game founding
+    # strands the same way — 2 poor towns, 0 armies, capital starves.
+    # Serial personalities expand only from strength everywhere.)
+    if params.serial:
+        _rich = max((t.population for t in state.own_towns()), default=0)
+        _cost = getattr(config, "army_cost", 500) or 500
+        _thresh = getattr(config, "death_threshold", 500) or 500
+        if _rich < _cost + _thresh + _cost + _thresh:
+            return False
     total_pop = sum(t.population for t in state.own_towns())
     if total_pop < 20000:
         return True
