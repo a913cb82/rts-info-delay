@@ -818,20 +818,6 @@ class BotState:
         for aid in list(self._pending_builds.keys()):
             if self.world.get_army(aid) is None or self.turn > self._pending_builds[aid]:
                 self._pending_builds.pop(aid, None)
-        # Home-blood (tk7 lesson: guard mutuals, last guard's stale march
-        # executes into the grave. Vanished-near-home armies mark mourning.)
-        _prev_pos = self.__dict__.get("_last_army_pos", {})
-        _now = {}
-        for a in self.world.armies:
-            if a.faction == self.faction:
-                _now[a.id] = (a.x, a.y)
-        for _aid, (_px, _py) in _prev_pos.items():
-            if _aid not in _now and any(
-                    _px is not None and t.faction == self.faction
-                    and math.hypot(_px - t.x, _py - t.y) <= 30.0
-                    for t in self.world.towns):
-                self.__dict__["_home_blood"] = self.turn
-        self.__dict__["_last_army_pos"] = _now
         # No engine intent mirror (D1: destinations never go over the wire).
         # Own intent lives in _army_targets via note_move; foe intent is
         # inferred from position trails by BotForecast.
@@ -2931,7 +2917,14 @@ def expansion_demand(state: "BotState", config,
             # 1200 pop vs 1250 floor, never recovers). Expand in true
             # void only from strength (richest town holds floor + cost
             # + threshold after the spend).
-            return reprint_ok(state, config)
+            if config.max_turns - state.turn < vhor:
+                return False
+            if not params.serial:
+                return True  # sprawl expands thin by design
+            rich = max((t.population for t in state.own_towns()), default=0)
+            cost = getattr(config, "army_cost", 500) or 500
+            thresh = getattr(config, "death_threshold", 500) or 500
+            return rich >= cost + thresh + cost + thresh
     # War-print (fortress-phase): threatened with horizon prints towns
     # for capacity (military, bypasses veto downstream).
     if war_print_need(state, config):
@@ -3530,13 +3523,7 @@ def assault_verified(state: "BotState", target) -> bool:
     # Never overrides ex-own (fratricide guard stands).)
     if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults"):
         return True
-    # Bypass guard (tk6 lesson: every verify-bypass marched the last
-    # home guard out to die — busts/bullies need 2+ bodies so one stays).
-    _can_spare = len(state.own_armies()) >= 2
-    # Mourning-hold (tk7 lesson: post-mutual stale marches suicide.
-    # Home blood <400t holds all packs — guard, don't avenge.)
-    if state.turn - state.__dict__.get("_home_blood", -10 ** 9) <= 400:
-        return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 150    # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
+    # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
     # champs expand 4t/0a and get away with it vs patient bots). A town
     # first-seen young (<400t) with no foe army near it is a naked
     # colony — strike without waiting for re-verify. Never overrides
@@ -3545,15 +3532,15 @@ def assault_verified(state: "BotState", target) -> bool:
     # always fair game — weaklings are easy kills, compounders must die
     # before they outgrow the field. No age limit, no re-verify wait.
     _foe_towns = sum(1 for _t in state.world.towns if _t.faction == target.faction)
-    if _foe_towns <= 2 and _can_spare:
+    if _foe_towns <= 2:
         return True
     # Bully rule (sprawl lesson: 31-town compounders outgrow the
     # field while busts wait for <=2. Smaller factions are always
     # fair game — pick on smaller, avoid bigger.)
-    if _foe_towns < len(state.own_towns()) and _can_spare:
+    if _foe_towns < len(state.own_towns()):
         return True
     _fs = state._first_seen.get(("town", target.id))
-    if _can_spare and _fs is not None and state.turn - _fs <= 400:
+    if _fs is not None and state.turn - _fs <= 400:
         import math as _m
         if not any(a.faction != state.faction
                    and _m.hypot(a.x - target.x, a.y - target.y) <= 150.0
@@ -3566,7 +3553,7 @@ def assault_verified(state: "BotState", target) -> bool:
         _tp = town_pops(state)
         _mine = _tp.get(state.faction, 0.0)
         _foe = _tp.get(target.faction, 0.0)
-        if _can_spare and _foe >= 1.5 * max(1.0, _mine):
+        if _foe >= 1.5 * max(1.0, _mine):
             return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 2000
     except Exception:
         pass
