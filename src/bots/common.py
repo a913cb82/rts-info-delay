@@ -3155,7 +3155,10 @@ def demand_trains(state: "BotState", config, can_train,
         # Armed fields only (r129: champ fields 1 army vs HEAD's 60 idle
         # guards — deterrence vs nobody is pure waste; compound instead).
         _armed_field = any(a.faction != state.faction for a in state.world.armies)
-        if eta_n is None and home.get(t.id, 0) == 0 and _armed_field:
+        # Imperial garrison (sprawl lesson: big blind empires die naked.
+        # Rich fields guard every town, seen foes or not.)
+        _rich_field = sum(t.population for t in state.own_towns()) >= 20000
+        if eta_n is None and home.get(t.id, 0) == 0 and (_armed_field or _rich_field):
             want = True
         # Guard depth (s0t lesson: lone guard mutuals, capital falls
         # naked next turn. Rich towns hold 2 (mutual leaves one).)
