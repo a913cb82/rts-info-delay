@@ -3523,6 +3523,9 @@ def assault_verified(state: "BotState", target) -> bool:
     # Never overrides ex-own (fratricide guard stands).)
     if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults"):
         return True
+    # Bypass guard (tk6 lesson: every verify-bypass marched the last
+    # home guard out to die — busts/bullies need 2+ bodies so one stays).
+    _can_spare = len(state.own_armies()) >= 2
     # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
     # champs expand 4t/0a and get away with it vs patient bots). A town
     # first-seen young (<400t) with no foe army near it is a naked
@@ -3532,15 +3535,15 @@ def assault_verified(state: "BotState", target) -> bool:
     # always fair game — weaklings are easy kills, compounders must die
     # before they outgrow the field. No age limit, no re-verify wait.
     _foe_towns = sum(1 for _t in state.world.towns if _t.faction == target.faction)
-    if _foe_towns <= 2:
+    if _foe_towns <= 2 and _can_spare:
         return True
     # Bully rule (sprawl lesson: 31-town compounders outgrow the
     # field while busts wait for <=2. Smaller factions are always
     # fair game — pick on smaller, avoid bigger.)
-    if _foe_towns < len(state.own_towns()):
+    if _foe_towns < len(state.own_towns()) and _can_spare:
         return True
     _fs = state._first_seen.get(("town", target.id))
-    if _fs is not None and state.turn - _fs <= 400:
+    if _can_spare and _fs is not None and state.turn - _fs <= 400:
         import math as _m
         if not any(a.faction != state.faction
                    and _m.hypot(a.x - target.x, a.y - target.y) <= 150.0
@@ -3553,7 +3556,7 @@ def assault_verified(state: "BotState", target) -> bool:
         _tp = town_pops(state)
         _mine = _tp.get(state.faction, 0.0)
         _foe = _tp.get(target.faction, 0.0)
-        if _foe >= 1.5 * max(1.0, _mine):
+        if _can_spare and _foe >= 1.5 * max(1.0, _mine):
             return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 2000
     except Exception:
         pass
