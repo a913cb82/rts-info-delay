@@ -3167,7 +3167,11 @@ def demand_trains(state: "BotState", config, can_train,
                     deficit[0] = max(0, deficit[0] - 1)
         elif (can_train(state, t)
                 and t.population - cost >= floor + params.depth_extra - 1e-9):
+            # Noted (r135: main emission never noted -> re-issued every
+            # turn -> queued multi-execute suicides).
             out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
+            deficit[0] = max(0, deficit[0] - 1)
         elif (not params.serial and can_train(state, t)
                 and t.population - cost >= config.death_threshold):
             # Sprawl prints cheap (r126: floor creep 1500->2000 costs 500t
