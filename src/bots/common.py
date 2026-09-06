@@ -3159,7 +3159,8 @@ def demand_trains(state: "BotState", config, can_train,
             want = True
         # Guard depth (s0t lesson: lone guard mutuals, capital falls
         # naked next turn. Rich towns hold 2 (mutual leaves one).)
-        if eta_n is None and home.get(t.id, 0) == 1 and _armed_field \
+        if eta_n is None and home.get(t.id, 0) == 1 \
+                and (_armed_field or t.population >= 5000) \
                 and t.population >= 2 * (cost + floor) + cost:
             want = True
         if eta_n is None:
