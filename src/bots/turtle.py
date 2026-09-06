@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap
+from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap, hospice
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -108,6 +108,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _vl = victory_lap(state, config)
     if _vl:
         return _vl
+    out.extend(hospice(state, config))
     # Free-food walk-ins (cheap-suite: turtle scored 3453 vs stub's 5484 —
     # never attacks, not even undefended food. Fresh-empty, close,
     # profitable towns take 1 walker; fortress doctrine otherwise holds).

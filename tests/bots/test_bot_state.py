@@ -3159,3 +3159,22 @@ class TestDeadFoes:
                          "faction": 1, "alive": True, "is_viceroy": False}])
         b.turn = 5000
         assert dead_foes(b) == set()
+
+
+class TestHospice:
+    """Dying young colonies evacuate."""
+
+    def test_cratering_colony_trains(self) -> None:
+        from bots.common import BotState, hospice
+        from tests.bots.test_turtle_floor import CFG
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 0, "population": 1200, "is_capital": False}])
+        b.update(100, [{"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                        "faction": 0, "population": 1100, "is_capital": False}])
+        b.turn = 100
+        out = hospice(b, CFG)
+        assert any("TRAIN 2" in o for o in out), out

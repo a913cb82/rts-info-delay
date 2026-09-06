@@ -3549,6 +3549,30 @@ def dead_foes(state: "BotState", config=None) -> set:
     return _memoized(state, "dead_foes", _compute)
 
 
+def hospice(state: "BotState", config) -> list[str]:
+    """Colony hospice (r124: mirror autopsy — 2 towns cratered to pop=0
+    ~300t after founding (crowding shadows?). A young (<500t known)
+    town below cost+thresh with negative growth is evacuated
+    (TRAIN: pop escapes as an army) instead of ridden to zero."""
+    out: list[str] = []
+    thresh = getattr(config, "death_threshold", 500) or 500
+    cost = getattr(config, "army_cost", 1000) or 1000
+    for t in state.own_towns():
+        if t.is_capital:
+            continue
+        if t.population >= cost + thresh:
+            continue
+        if (state.get_growth(t.id) or 0.0) >= 0:
+            continue
+        age = state.turn - state._first_seen.get(("town", t.id), state.turn)
+        if age > 500:
+            continue
+        if t.population >= cost and not state.has_pending_build(t.id):
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
+    return out
+
+
 def victory_lap(state: "BotState", config) -> list[str]:
     """Victory-lap (r112: winner parks 61 idle armies + churn 176 while
     empty land sits unclaimed. No believed foe towns left: every
