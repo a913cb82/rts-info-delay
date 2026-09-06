@@ -243,7 +243,9 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         # across turns — stale danger remembered where scouts died).
         # Quantized (site-stability: headings hold unless memory shifts
         # a lot — 0.25 steps don't flip rankings on noise).
-        field = -round(state._field_at(x, y) * 4.0) / 4.0 * 0.3
+        # Field-memory off for sprawl test (r138: stale shadows may herd
+        # colonies marginal; champ's dumb scoring picks rich).
+        field = 0.0 if far_ok else -round(state._field_at(x, y) * 4.0) / 4.0 * 0.3
         cands.append((x, y, min_dist, crowding + guns + room + far + field, d_own))
         # No early break: the first spins are not the best (room-passing
         # spins hide late in the sequence — collect all 16, sort picks).
