@@ -144,7 +144,7 @@ def _batch_ids(events) -> tuple[set, set]:
 
 _build_site_cache: dict[tuple, tuple[float, float] | None] = {}
 
-def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin: float = 80, rmax: float = 300, salt: int = 0, who: int = 0) -> tuple[float, float] | None:
+def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin: float = 80, rmax: float = 300, salt: int = 0, who: int = 0, far_ok: bool = False) -> tuple[float, float] | None:
     """Deterministic site spin, stable per army: `who` (army/town id) —
     never the turn — seeds the hash, so re-queries across turns return
     the same site and headings hold through note-drops and waits.
@@ -232,7 +232,13 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         # beyond 150km pays a STEEP support penalty (far colonies die
         # unsupported). More smaller towns compound faster, but each pays
         # full sunk (army_cost) and needs its own 65km+ of land.
-        far = max(0.0, (d_own - 150.0) / 75.0) if own else 0.0
+        # Sprawl siting (r131: champ settles far-rich 600km; HEAD's steep
+        # 150km penalty herds colonies into near-marginal crowding. far_ok
+        # (expander) softens to r63: gentle preference, no wall.
+        if far_ok:
+            far = max(0.0, (d_own - 400.0) / 200.0) if own else 0.0
+        else:
+            far = max(0.0, (d_own - 150.0) / 75.0) if own else 0.0
         # Diffusion memory (user: support glows, danger shadows persist
         # across turns — stale danger remembered where scouts died).
         # Quantized (site-stability: headings hold unless memory shifts
