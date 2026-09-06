@@ -3527,6 +3527,11 @@ def assault_verified(state: "BotState", target) -> bool:
     _foe_towns = sum(1 for _t in state.world.towns if _t.faction == target.faction)
     if _foe_towns <= 2:
         return True
+    # Bully rule (sprawl lesson: 31-town compounders outgrow the
+    # field while busts wait for <=2. Smaller factions are always
+    # fair game — pick on smaller, avoid bigger.)
+    if _foe_towns < len(state.own_towns()):
+        return True
     _fs = state._first_seen.get(("town", target.id))
     if _fs is not None and state.turn - _fs <= 400:
         import math as _m
