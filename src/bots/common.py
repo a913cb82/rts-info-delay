@@ -3144,8 +3144,13 @@ def demand_trains(state: "BotState", config, can_train,
             # capital). Hopeless (eta<1) thin towns convert instead.
             _eta = eta_n[0] if eta_n is not None else 0.0
             _n = eta_n[1] if eta_n is not None else 99
+            # Theater parity (r132: champ splits 1-2 per town — each town
+            # sees n<=2 and all print thin and die. Thin prints need
+            # global parity (own armies >= foe armies in mirror - 1).
+            _foe_n = sum(1 for a in state.world.armies if a.faction != state.faction)
+            _own_n = len(state.own_armies())
             if t.population - cost >= config.death_threshold \
-                    or (_eta >= 1.0 and _n <= 2):
+                    or (_eta >= 1.0 and _n <= 2 and _own_n + 1 >= _foe_n):
                 if t.population >= cost:
                     out.append(f"TRAIN {t.id}")
                     state.note_train(t.id)
