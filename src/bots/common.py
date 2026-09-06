@@ -2931,17 +2931,11 @@ def expansion_demand(state: "BotState", config,
             # 1200 pop vs 1250 floor, never recovers). Expand in true
             # void only from strength (richest town holds floor + cost
             # + threshold after the spend).
-            if config.max_turns - state.turn < vhor:
-                return False
-            if not params.serial:
-                return True  # sprawl expands thin by design
             return reprint_ok(state, config)
     # War-print (fortress-phase): threatened with horizon prints towns
     # for capacity (military, bypasses veto downstream).
     if war_print_need(state, config):
         return True
-    if params.serial and not reprint_ok(state, config):
-        return False
     if params.serial and void_note_busy(state):
         return False
     # Support ratio (r74 lead-change: F2 led 28k with 5 towns + 1 army,
@@ -2988,19 +2982,13 @@ def expansion_demand(state: "BotState", config,
 
 
 def reprint_ok(state: "BotState", config) -> bool:
-    """Reprint funds: richest own town holds floor + cost + threshold
-    after the expansion spend. Dynamic bar: crowded fields race (cheap
-    first town), quiet fields husband (safe second)."""
+    """Reprint funds (arrival-gate loop): richest own town holds floor
+    + cost + threshold after the expansion spend (tracer-evidenced:
+    scout-tip auto-founds at rich ~510 split into two starving towns)."""
     rich = max((t.population for t in state.own_towns()), default=0)
     cost = getattr(config, "army_cost", 500) or 500
     thresh = getattr(config, "death_threshold", 500) or 500
-    # First-only: 2+ town sprawlers absorb founding costs;
-    # only the 1->2 jump strands.
-    if len(state.own_towns()) >= 2:
-        return True
-    _foes = sum(1 for t in state.world.towns if t.faction != state.faction)
-    _bar = cost + thresh + cost + thresh - 250 * min(_foes, 4)
-    return rich >= max(cost + thresh, _bar)
+    return rich >= cost + thresh + cost + thresh
 
 
 def train_floor(state: "BotState", config) -> float:
