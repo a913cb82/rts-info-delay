@@ -2002,9 +2002,10 @@ def drive_scout(state: "BotState", config, p):
                         return [f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"]
                 rs = respin_tip(state, config, tgt[0], tgt[1])
                 if rs is not None:
-                    # Full chain: march + scheduled BUILD (fires on arrival
-                    # even if notes die; arrival detection is backup).
-                    return dispatch_settler(state, config, p, rs[0], rs[1])
+                    # March only (respin leak: the chained BUILD founded
+                    # unvetted colonies past all demand gates — founding
+                    # decides at arrival with full gates, never here).
+                    return order_march_exact(state, config, p, rs[0], rs[1])
         return []
     return _dispatch_leg(state, config, p, *scout_hop_target(state, config, p, leg, gen))
 
