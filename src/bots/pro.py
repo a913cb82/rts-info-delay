@@ -355,7 +355,7 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
             if not reprint_ok(state, config):
                 state._army_targets.pop(p.id, None)
             else:
-                out.append(out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"))
+                out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
     return out
 
 
