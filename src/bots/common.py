@@ -3045,6 +3045,25 @@ def _capital_timely(state: "BotState", config, t, eta_n, cost: float) -> bool:
     return True
 
 
+def _rebuild_ok(state: "BotState", config, cost, t) -> bool:
+    """Armless-rebuild gate (starve-loop lesson): full-floor remainder
+    always; else ONE thin gamble per town ever (print-die-print donates),
+    only growing + behind."""
+    if t.population - cost >= train_floor(state, config) - 1e-9:
+        return True
+    if (state.get_growth(t.id) or 0.0) < 0.0:
+        return False
+    if t.id in state.__dict__.get("_gambled", set()):
+        return False
+    foes = {__t.faction for __t in state.world.towns}
+    biggest = max([sum(1 for _t in state.world.towns if _t.faction == f)
+                   for f in foes] or [99])
+    if len(state.own_towns()) >= biggest:
+        return False
+    state.__dict__.setdefault("_gambled", set()).add(t.id)
+    return True
+
+
 def demand_trains(state: "BotState", config, can_train,
                   params: "DemandParams | None" = None) -> list[str]:
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
@@ -3250,10 +3269,8 @@ def demand_trains(state: "BotState", config, can_train,
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
         elif (params.serial and not state.own_armies() and can_train(state, t)
-                and (t.population - cost >= train_floor(state, config) - 1e-9
-                     or ((state.get_growth(t.id) or 0.0) >= 0.0 and len(state.own_towns()) < max(
-                         [sum(1 for _t in state.world.towns if _t.faction == f)
-                          for f in {__t.faction for __t in state.world.towns}] or [99])))):
+                and _rebuild_ok(state, config, cost, t)):
+
             # First-print urgency at emission too (r122: gate said 1500
             # but emission demanded leaving 1500 = real floor 2500).
             # Serial only (r123: sprawlers compound — early prints spend
