@@ -818,6 +818,20 @@ class BotState:
         for aid in list(self._pending_builds.keys()):
             if self.world.get_army(aid) is None or self.turn > self._pending_builds[aid]:
                 self._pending_builds.pop(aid, None)
+        # Home-blood (tk7 lesson: guard mutuals, last guard's stale march
+        # executes into the grave. Vanished-near-home armies mark mourning.)
+        _prev_pos = self.__dict__.get("_last_army_pos", {})
+        _now = {}
+        for a in self.world.armies:
+            if a.faction == self.faction:
+                _now[a.id] = (a.x, a.y)
+        for _aid, (_px, _py) in _prev_pos.items():
+            if _aid not in _now and any(
+                    _px is not None and t.faction == self.faction
+                    and math.hypot(_px - t.x, _py - t.y) <= 30.0
+                    for t in self.world.towns):
+                self.__dict__["_home_blood"] = self.turn
+        self.__dict__["_last_army_pos"] = _now
         # No engine intent mirror (D1: destinations never go over the wire).
         # Own intent lives in _army_targets via note_move; foe intent is
         # inferred from position trails by BotForecast.
@@ -3526,7 +3540,10 @@ def assault_verified(state: "BotState", target) -> bool:
     # Bypass guard (tk6 lesson: every verify-bypass marched the last
     # home guard out to die — busts/bullies need 2+ bodies so one stays).
     _can_spare = len(state.own_armies()) >= 2
-    # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
+    # Mourning-hold (tk7 lesson: post-mutual stale marches suicide.
+    # Home blood <400t holds all packs — guard, don't avenge.)
+    if state.turn - state.__dict__.get("_home_blood", -10 ** 9) <= 400:
+        return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 150    # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
     # champs expand 4t/0a and get away with it vs patient bots). A town
     # first-seen young (<400t) with no foe army near it is a naked
     # colony — strike without waiting for re-verify. Never overrides
