@@ -2729,6 +2729,9 @@ class TestAssaultVerify:
                      {"kind": "town_update", "id": 3, "x": 800, "y": 500,
                       "faction": 1, "population": 60000, "alive": True,
                       "is_capital": False},
+                     {"kind": "town_update", "id": 4, "x": 200, "y": 800,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 1000  # foe-belief 999t stale

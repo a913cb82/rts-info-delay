@@ -3501,7 +3501,7 @@ def assault_verified(state: "BotState", target) -> bool:
     # always fair game — weaklings are easy kills, compounders must die
     # before they outgrow the field. No age limit, no re-verify wait.
     _foe_towns = sum(1 for _t in state.world.towns if _t.faction == target.faction)
-    if _foe_towns <= 1:
+    if _foe_towns <= 2:
         return True
     _fs = state._first_seen.get(("town", target.id))
     if _fs is not None and state.turn - _fs <= 400:
