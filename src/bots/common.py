@@ -1491,6 +1491,20 @@ def maybe_schedule_scout(state: "BotState", config):
     if sel is not None and sel[1] >= len(idle):
         return None  # pack needs everyone
     if not idle:
+        # Dark-release (showcase lesson): a lone guard is never idle,
+        # so single-army bots map nothing and die blind. In the dark,
+        # release the youngest guard as scout — eyes beat a second
+        # spear when no contact exists in 300t.
+        if not _dark(state):
+            return None
+        guards = [a for a in state.own_armies()
+                  if not a.is_viceroy and a.id != state._scout_id
+                  and a.id != getattr(state, "_scout_id2", None)]
+        if not guards:
+            return None
+        p = max(guards, key=lambda a: a.id)
+        if maybe_assign_scout(state, config, p):
+            return drive_scout(state, config, p) or []
         return None
     if _scout_contact(state, config) and not _dark(state):
         return None  # real war on: raid/defense owns the field
