@@ -100,6 +100,7 @@ def main(argv=None) -> int:
     ap.add_argument("--field", required=True, help="F0=bot-commit,... (5 slots)")
     ap.add_argument("--games", type=int, default=6)
     ap.add_argument("--elo", default=str(ELO_PATH))
+    ap.add_argument("--record", default=None, help="record last game to JSONL")
     args = ap.parse_args(argv)
     field: dict[int, str] = {}
     cmds: dict[int, str] = {}
@@ -119,7 +120,8 @@ def main(argv=None) -> int:
     t0 = time.perf_counter()
     games_log = ROOT / "benchmarks" / "elo_games.jsonl"
     for i in range(args.games):
-        scores = run_game(cfg, cmds, None)
+        rec = Path(args.record) if args.record and i == args.games - 1 else None
+        scores = run_game(cfg, cmds, rec)
         scores = {f: float(scores.get(f, 0)) for f in field}
         update(elo, field, scores)
         # Append-only game record (elo never resets; history recomputable).
