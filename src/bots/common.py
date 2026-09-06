@@ -3144,6 +3144,14 @@ def demand_trains(state: "BotState", config, can_train,
         elif (can_train(state, t)
                 and t.population - cost >= floor + params.depth_extra - 1e-9):
             out.append(f"TRAIN {t.id}")
+        elif (not params.serial and can_train(state, t)
+                and t.population - cost >= config.death_threshold):
+            # Sprawl prints cheap (r126: floor creep 1500->2000 costs 500t
+            # of compounding; champ out-grows HEAD by t2000. Tripwires
+            # leave thresh, not full floor.)
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
+            deficit[0] = max(0, deficit[0] - 1)
         elif (params.serial and not state.own_armies() and can_train(state, t)
                 and t.population - cost >= config.death_threshold):
             # First-print urgency at emission too (r122: gate said 1500
