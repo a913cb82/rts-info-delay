@@ -3147,7 +3147,14 @@ def demand_trains(state: "BotState", config, can_train,
             # Theater parity (r132: champ splits 1-2 per town — each town
             # sees n<=2 and all print thin and die. Thin prints need
             # global parity (own armies >= foe armies in mirror - 1).
+            # Mirror-blindness (r133: parity counted mirror-visible armies;
+            # champ's force was unseen at order time -> parity passed -> mail
+            # arrived 100t later into a grave. Count recently-seen too.
+            _own_ids = {a.id for a in state.own_armies()}
+            _seen_ids = {eid for (kind, eid), _t in state._last_seen.items()
+                         if kind == 'army' and state.turn - _t <= 300} - _own_ids
             _foe_n = sum(1 for a in state.world.armies if a.faction != state.faction)
+            _foe_n = max(_foe_n, len(_seen_ids))
             _own_n = len(state.own_armies())
             if t.population - cost >= config.death_threshold \
                     or (_eta >= 1.0 and _n <= 2 and _own_n + 1 >= _foe_n):
