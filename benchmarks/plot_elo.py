@@ -2,7 +2,7 @@
 
 Usage: PYTHONPATH=src .venv/bin/python benchmarks/plot_elo.py [--out docs/bot/elo.png]
 X = commits in chronological order (only commits present in elos.json);
-Y = Elo; one line per bot name (+ games-played annotations).
+Y = ordinal (mu-3sigma); one line per bot name (+ games-played annotations).
 """
 import argparse
 import json
@@ -34,7 +34,7 @@ def main(argv=None) -> int:
     by_bot: dict[str, list] = {}
     for key, v in elo.items():
         name, sha = key.rsplit("-", 1)
-        by_bot.setdefault(name, []).append((commit_time(sha), sha, v["elo"], v["games"]))
+        by_bot.setdefault(name, []).append((commit_time(sha), sha, v["mu"] - 3 * v["sigma"], v["games"]))
     # commit order across all entries
     commits = sorted({sha for pts in by_bot.values() for _, sha, _, _ in pts},
                      key=commit_time)
@@ -52,7 +52,7 @@ def main(argv=None) -> int:
     plt.xticks(range(len(commits)), short, rotation=45, ha="right")
     plt.xlabel("commit (chronological)")
     plt.ylabel("Elo")
-    plt.title("Bot Elo over commits (FFA pairwise)")
+    plt.title("Bot skill over commits (OpenSkill ordinal)")
     plt.legend(fontsize=8)
     plt.grid(alpha=0.3)
     plt.tight_layout()

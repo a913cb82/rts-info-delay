@@ -152,7 +152,8 @@ def main(argv=None):
     t0 = time.perf_counter()
     for name, commit in cands:
         cmd, key = bot_cmd(name, commit)
-        elo = elos.get(key, {}).get("elo")
+        _e = elos.get(key, {})
+        elo = _e.get("mu", 25.0) - 3 * _e.get("sigma", 25.0 / 3) if _e else None
         if elo is None:
             print(f"skip {key} (no elo)")
             continue

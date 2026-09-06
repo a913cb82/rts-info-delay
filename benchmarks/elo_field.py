@@ -64,23 +64,35 @@ def load_elo(path: Path) -> dict:
     return {}
 
 
+def _model():
+    from openskill.models import BradleyTerryFull
+    return BradleyTerryFull()
+
+
 def update(elo: dict, field: dict[int, str], scores: dict[int, float]) -> None:
+    """OpenSkill Bradley-Terry-Full update (native FFA: whole placement
+    vector updates at once, no pairwise decomposition)."""
+    m = _model()
     order = sorted(scores, key=lambda f: -scores[f])
-    pops = [scores[f] for f in order]
-    spread = max(pops) - min(pops)
-    for i, a in enumerate(order):
-        for j, b in enumerate(order):
-            if i >= j:
-                continue
-            na, nb = field[a], field[b]
-            for n in (na, nb):
-                elo.setdefault(n, {"elo": 1500.0, "games": 0})
-            w = 1.0 + (0.5 * (scores[a] - scores[b]) / spread if spread > 0 else 0.0)
-            ea = 1 / (1 + 10 ** ((elo[nb]["elo"] - elo[na]["elo"]) / 400))
-            elo[na]["elo"] += K * w * (1.0 - ea)
-            elo[nb]["elo"] += K * w * (0.0 - (1 - ea))
+    # ranks with ties (equal pops share)
+    ranks, prev, r = [], None, 0
+    for i, f in enumerate(order):
+        if scores[f] != prev:
+            r = i + 1
+            prev = scores[f]
+        ranks.append(r)
+    teams = []
+    names = []
     for f in order:
-        elo[field[f]]["games"] += 1
+        n = field[f]
+        names.append(n)
+        e = elo.setdefault(n, {"mu": m.mu, "sigma": m.sigma, "games": 0})
+        teams.append([m.rating(mu=e["mu"], sigma=e["sigma"])])
+    new = m.rate(teams, ranks=ranks)
+    for n, t in zip(names, new):
+        elo[n]["mu"] = t[0].mu
+        elo[n]["sigma"] = t[0].sigma
+        elo[n]["games"] += 1
 
 
 def main(argv=None) -> int:
@@ -117,8 +129,8 @@ def main(argv=None) -> int:
         ranked = sorted(scores, key=lambda f: -scores[f])
         print(f"game {i + 1}: " + " ".join(f"{field[f]}:{round(scores[f])}" for f in ranked), flush=True)
     Path(args.elo).write_text(json.dumps(elo, indent=1))
-    for n, r in sorted(elo.items(), key=lambda kv: -kv[1]["elo"]):
-        print(f"  {n:24} {r['elo']:.0f} ({r['games']}g)")
+    for n, r in sorted(elo.items(), key=lambda kv: -(kv[1]['mu'] - 3 * kv[1]['sigma'])):
+        print(f"  {n:24} {r['mu'] - 3 * r['sigma']:.1f} (mu {r['mu']:.1f} sig {r['sigma']:.2f}, {r['games']}g)")
     print(f"-- field {args.games} games {(time.perf_counter() - t0):.0f}s -> {args.elo} --")
     return 0
 

@@ -344,3 +344,12 @@ Bare `run_game` is for tests/smoke only. Canonical regens: field the
 canonical lineup with record to /tmp, then `cp` to both viewer
 locations. Duels/analysis games: same (record to /tmp). 50 logged +
 ~40 pre-log unrecoverable (ratings include them, details gone).
+
+## OpenSkill (Bradley-Terry-Full) ratings
+
+Elo replaced by OpenSkill `BradleyTerryFull` (native FFA: whole
+placement vector updates at once, no pairwise decomposition; mu/sigma
+belief + tau drift for evolving bots; defaults mu=25 sigma=25/3).
+`elos.json` holds {mu, sigma, games}; display = ordinal (mu-3σ).
+Recomputed from all 50 logged games (`/tmp/elos_elo_backup.json` keeps
+the Elo era). `elo_field.py --field ...` unchanged (append-only log).
