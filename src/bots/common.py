@@ -2761,7 +2761,7 @@ def _raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         _foe_pops = {k: v for k, v in _pops.items() if k != faction}
         if _foe_pops and u.faction == max(_foe_pops, key=_foe_pops.get):
             _mine = _pops.get(faction, 0.0)
-            if _foe_pops[u.faction] >= 2.0 * _mine:
+            if _foe_pops[u.faction] >= 1.5 * _mine:
                 need = max(1, need - 1)
         if not priced:
             # Denial needs survivors too (r95: F0's 6 thin takes all died
