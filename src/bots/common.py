@@ -3238,9 +3238,12 @@ def demand_trains(state: "BotState", config, can_train,
                     state.note_train(t.id)
                     deficit[0] = max(0, deficit[0] - 1)
         elif (can_train(state, t)
-                and t.population - cost >= floor + params.depth_extra - 1e-9):
+                and t.population - cost >=
+                (train_floor(state, config) if params.serial
+                 else floor + params.depth_extra) - 1e-9):
             # Noted (r135: main emission never noted -> re-issued every
-            # turn -> queued multi-execute suicides).
+            # turn -> queued multi-execute suicides). Serial leaves full
+            # floor (thin prints starve: 1347-500=847 dies).
             out.append(f"TRAIN {t.id}")
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
@@ -3253,7 +3256,7 @@ def demand_trains(state: "BotState", config, can_train,
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
         elif (params.serial and not state.own_armies() and can_train(state, t)
-                and t.population - cost >= config.death_threshold):
+                and t.population - cost >= train_floor(state, config) - 1e-9):
             # First-print urgency at emission too (r122: gate said 1500
             # but emission demanded leaving 1500 = real floor 2500).
             # Serial only (r123: sprawlers compound — early prints spend
