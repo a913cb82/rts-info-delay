@@ -2135,6 +2135,7 @@ class TestBlindEyes:
         assert any(o.startswith("TRAIN 1") for o in out), out
         b.__dict__["_last_scout_print"] = 1500
         b._pending_trains.clear()
+        b.turn = 2001  # next turn (serial throttle is per-turn; one call/turn live)
         out = demand_trains(b, cfg, lambda s, t: True)
         assert any(o.startswith("TRAIN 1") for o in out), out
 

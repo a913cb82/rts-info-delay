@@ -3184,6 +3184,16 @@ def demand_trains(state: "BotState", config, can_train,
             state.__dict__["_last_scout_print"] = state.turn
         if not want:
             continue
+        # Serial throttle (mass-starve lesson: 4 towns printed same
+        # turn into simultaneous town_death — non-threat trains are
+        # one per turn for serial personalities (threat musters exempt:
+        # N-for-N survival outranks throttle).
+        if params.serial and eta_n is None:
+            _nt = state.__dict__.get("_nonthreat_trains", (-1, 0))
+            if _nt[0] == state.turn and _nt[1] >= 1:
+                continue
+            state.__dict__["_nonthreat_trains"] = (
+                state.turn, (_nt[1] if _nt[0] == state.turn else 0) + 1)
         # Crowding-collapse watch (r95 F0 town4 via BRAINSTORM #2:
         # declining towns must not print (except bare converts + capital
         # defense, handled above) — feeding a collapse donates. Threat
