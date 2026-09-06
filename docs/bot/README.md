@@ -28,6 +28,10 @@ Repeat forever:
 7. **Elo** a couple of rounds: new bots vs historical bots
    (`elo_field.py --field ...`, 1 game each — deterministic except
    timing; cross-commit + era fields). Commit elos.json with the loop.
+   EVERY game goes through elo_field (it appends to elo_games.jsonl) —
+   no bare run_game for real games: rematches, duels, regens, canonicals
+   all field through elo_field (record to /tmp, then promote). Unlogged
+   games are lost data (pre-log ~40 games baked into ratings, unrecoverable).
 8. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
    and write it to BOTH viewer locations (`recordings/empty_10000.jsonl`
    for ascii_view + `viewer/public/empty_10000.jsonl` for the web UI —

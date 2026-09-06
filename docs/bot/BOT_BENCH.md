@@ -335,3 +335,12 @@ drill), composite = z-sum with frozen corr baselines. *+0.59 measured
 at feast-3000t; 2000t separation confirmed on 4 diverse bots
 (champ leads) — full re-validation deferred (compute costs!).
 2000t favors turtles slightly (attackers en route) — known bias.
+
+## Log-everything rule
+
+Every real game runs through `elo_field.py --field ...` (it appends
+field+scores+timestamp to `elo_games.jsonl`, updates `elos.json`).
+Bare `run_game` is for tests/smoke only. Canonical regens: field the
+canonical lineup with record to /tmp, then `cp` to both viewer
+locations. Duels/analysis games: same (record to /tmp). 50 logged +
+~40 pre-log unrecoverable (ratings include them, details gone).
