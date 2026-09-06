@@ -1503,3 +1503,12 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## loop/floor-raise ABANDONED (regression decision)
+
+Stack (throttle + reprint-2500 + full-floor + arrival-gate) cured
+mass-starve but froze agency: branch-kin games score ~2k (passive
+extinctions) vs 100k+ healthy games. Best branch-kin (d5540e8 36.5)
+predates the stack. Choosing MAIN per the regression rule. Next loop
+takes ONE proven fix (arrival-BUILD reprint gate, tracer-evidenced)
+and measures before adding more.
