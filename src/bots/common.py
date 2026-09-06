@@ -2890,7 +2890,20 @@ def expansion_demand(state: "BotState", config,
         if state._foe_first_seen:
             pass  # fall through to contested caution below
         else:
-            return config.max_turns - state.turn >= vhor
+            # Reprint rule (duel lesson): settling spends the army
+            # account — founding below reprint funds strands the empire
+            # naked under the train floor (pro t2000: 2 towns 0 armies,
+            # 1200 pop vs 1250 floor, never recovers). Expand in true
+            # void only from strength (richest town holds floor + cost
+            # + threshold after the spend).
+            if config.max_turns - state.turn < vhor:
+                return False
+            if not params.serial:
+                return True  # sprawl expands thin by design
+            rich = max((t.population for t in state.own_towns()), default=0)
+            cost = getattr(config, "army_cost", 500) or 500
+            thresh = getattr(config, "death_threshold", 500) or 500
+            return rich >= cost + thresh + cost + thresh
     # War-print (fortress-phase): threatened with horizon prints towns
     # for capacity (military, bypasses veto downstream).
     if war_print_need(state, config):
