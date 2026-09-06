@@ -3482,6 +3482,9 @@ def assault_verified(state: "BotState", target) -> bool:
     peace; fratricide needs ancient ghosts, not fresh-ish intel).
     Ex-own towns (r91: 8-fratricide vs a town that flipped back unseen
     — I should KNOW my own): assault needs fresh (<150t) belief."""
+    # Lone-army hold: 1 army raids for crumbs while home falls.
+    if len(state.own_armies()) < 2 and len(state.own_towns()) >= 1:
+        return False
     if ("town", target.id) not in state._last_seen:
         return True
     if target.id in state.__dict__.get("_lost_towns", set()):

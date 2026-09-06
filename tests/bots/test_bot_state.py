@@ -2727,6 +2727,8 @@ class TestAssaultVerify:
                       "faction": 1, "population": 60000, "alive": True,
                       "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 310, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 1000  # foe-belief 999t stale
         # opener spent (prior assault recorded) so stale-hold applies
@@ -2816,7 +2818,11 @@ class TestLostTowns:
                       "is_capital": True},
                      {"kind": "town_update", "id": 2, "x": 500, "y": 500,
                       "faction": 0, "population": 8000, "alive": True,
-                      "is_capital": False}])
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 310, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
         b.update(2, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
                       "faction": 1, "population": 8000, "alive": True,
                       "is_capital": False}])
