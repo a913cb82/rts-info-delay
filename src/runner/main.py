@@ -238,10 +238,7 @@ class BotProcess:
         be indistinguishable from being outplayed in post-game analysis.
         """
         if timed_out:
-            print(f"TIMEOUT F{self.faction} turn={turn} elapsed={elapsed_ms:.1f} "
-                  f"budget={budget_ms:.1f} main={self.main_ms:.1f} "
-                  f"clock={self.clock_ms:.1f} byo={self.in_byoyomi}",
-                  file=sys.stderr)
+
             if use_clock:
                 self.main_ms = 0.0
                 self.clock_ms = 0.0
