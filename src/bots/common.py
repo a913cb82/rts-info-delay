@@ -2995,7 +2995,12 @@ def reprint_ok(state: "BotState", config) -> bool:
     rich = max((t.population for t in state.own_towns()), default=0)
     cost = getattr(config, "army_cost", 500) or 500
     thresh = getattr(config, "death_threshold", 500) or 500
-    return rich >= cost + thresh + cost + thresh
+    # Race-vs-safe (sprawl lesson: static 2000 loses the opener race
+    # to sprawlers, wins safety vs raiders. Known foe towns discount:
+    # crowded fields race, quiet fields husband.)
+    _foes = sum(1 for t in state.world.towns if t.faction != state.faction)
+    _bar = cost + thresh + cost + thresh - 250 * min(_foes, 4)
+    return rich >= max(cost + thresh, _bar)
 
 
 def train_floor(state: "BotState", config) -> float:
