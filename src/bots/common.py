@@ -2651,7 +2651,7 @@ def pack_print(state: "BotState", config, sel, free_n, can_train) -> list[str]:
         return []
     cands = sorted((t for t in state.own_towns()
                     if can_train(state, t)
-                    and t.population - config.army_cost >= config.death_threshold - 1e-9),
+                    and t.population - config.army_cost >= train_floor(state, config) - 1e-9),
                    key=lambda t: -t.population)
     if not cands:
         return []

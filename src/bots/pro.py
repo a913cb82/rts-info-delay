@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust, victory_lap, dead_foes, reprint_ok
+from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust, victory_lap, dead_foes, train_floor, reprint_ok
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -37,7 +37,7 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
             and not state.__dict__.get("_mapper") and not state._pending_trains:
         cands = sorted((t for t in state.own_towns()
                         if can_train_standard(state, t)
-                        and t.population - config.army_cost >= config.death_threshold - 1e-9),
+                        and t.population - config.army_cost >= train_floor(state, config) - 1e-9),
                        key=lambda t: -t.population)
         if cands:
             out.append(f"TRAIN {cands[0].id}")
