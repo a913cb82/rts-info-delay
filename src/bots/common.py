@@ -1522,8 +1522,11 @@ def maybe_schedule_scout(state: "BotState", config):
         if maybe_assign_scout(state, config, p):
             return drive_scout(state, config, p) or []
         return None
-    if _scout_contact(state, config) and not _dark(state):
+    if _scout_contact(state, config) and not _dark(state) \
+            and len(state.own_armies()) >= 3:
         return None  # real war on: raid/defense owns the field
+    # (weak + contact scouts anyway — contact-paralysis (rich,
+    # blind-ish, 1 army, sits 3000t) is how bystanders die.)
     p = idle[0]
     if maybe_assign_scout(state, config, p):
         return drive_scout(state, config, p) or []
