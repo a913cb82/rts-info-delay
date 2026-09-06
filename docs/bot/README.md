@@ -32,10 +32,12 @@ Repeat forever:
    included). EVERY game goes through matchmake/elo_field (appends to
    elo_games.jsonl) — no bare run_game for real games. Target: pool
    all at 3+ games; the champ bar is expander-84b32be ordinal (~44).
-8. **Commit rule**: every commit must leave ALL pool players at 3+
-   games (a commit adds 4+ new brains — grind them first, then commit
-   code+ratings+replot together). Commit when max-HEAD-ordinal beats
-   the previous commit's max.
+8. **Branch-first**: improvement loops run on a branch, committed
+   BEFORE any games (bots need IDs to play). Merge gate: max-branch-
+   ordinal beats master. On regression the next loop chooses: rebase
+   the idea onto master, or fork the branch further — a real decision,
+   recorded in BOT_WORKLOG.md. Every merge leaves the pool at 3+ games
+   (new brains ground first) with ratings+replot committed.
 9. **Analyze** HEAD bots vs the table (where do they lose? which
    matchups? duels vs the champ with recordings + autopsy).
 10. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
