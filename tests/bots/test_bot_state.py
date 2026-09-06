@@ -2721,7 +2721,7 @@ class TestAssaultVerify:
         b = BotState()
         b.init(CFG, 0)
         b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
-                      "faction": 0, "population": 20000, "alive": True,
+                      "faction": 0, "population": 400000, "alive": True,
                       "is_capital": True},
                      {"kind": "town_update", "id": 2, "x": 500, "y": 500,
                       "faction": 1, "population": 60000, "alive": True,
