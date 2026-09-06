@@ -34,7 +34,8 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     # prober only covers true void, not post-contact blindness).
     if not out and _dark(state) and state._scout_id is None \
             and getattr(state, "_scout_id2", None) is None \
-            and not state.__dict__.get("_mapper") and not state._pending_trains:
+            and not state.__dict__.get("_mapper") and not state._pending_trains \
+            and (len(state.own_towns()) >= 2 or state._foe_first_seen):
         cands = sorted((t for t in state.own_towns()
                         if can_train_standard(state, t)
                         and t.population - config.army_cost >= config.death_threshold - 1e-9),

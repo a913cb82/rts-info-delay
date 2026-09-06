@@ -1477,6 +1477,10 @@ def maybe_schedule_scout(state: "BotState", config):
     every 500t (r58 lesson: 1500t cadence leaves empires blind all
     game); contact keeps 1500t. One surplus idle army per slot (fresh
     gen ray, existing fan machinery). Skips when a pack needs everyone."""
+    # Stillness: true-void singletons don't scout (marching reveals;
+    # settlers expand, scouts just point at home).
+    if len(state.own_towns()) < 2 and not state._foe_first_seen:
+        return None
     period = 500 if _dark(state) else 1500
     if state.turn % period != (state.faction * 300) % period:
         return None
@@ -1501,6 +1505,11 @@ def maybe_schedule_scout(state: "BotState", config):
         if not _dark(state):
             return None
         if len(state.own_armies()) < 2 and not state._pending_trains:
+            return None
+        # Stillness (showcase lesson: 7e981de 46.1 stands still 101km
+        # all game and wins — marching guards get seen and followed
+        # home. Singleton empires hold dark; scouting spends 2+ towns).
+        if len(state.own_towns()) < 2:
             return None
         guards = [a for a in state.own_armies()
                   if not a.is_viceroy and a.id != state._scout_id
@@ -3187,6 +3196,7 @@ def demand_trains(state: "BotState", config, can_train,
         if _dark(state) and state._scout_id is None \
                 and getattr(state, "_scout_id2", None) is None \
                 and not state.__dict__.get("_mapper") \
+                and (len(state.own_towns()) >= 2 or state._foe_first_seen) \
                 and state.turn - state.__dict__.get("_last_scout_print", -10 ** 9) >= 300 \
                 and can_train(state, t) \
                 and t.population - cost >= floor + params.depth_extra - 1e-9:

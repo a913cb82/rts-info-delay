@@ -1891,6 +1891,9 @@ class TestScheduleScout:
         b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 320, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
         b.turn = 1500  # faction 0 phase: 1500 % 1500 == 0
@@ -2108,6 +2111,9 @@ class TestBlindEyes:
         b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False},
                      {"kind": "army_update", "id": 8, "x": 300, "y": 500,
