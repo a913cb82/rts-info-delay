@@ -191,10 +191,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for t in cands:
         if state.should_yield():
             break
-        if t.id not in relaxed_ids and not all_calm and not state.should_train_for_overcrowding(t):
-            continue
-        if t.id not in relaxed_ids and t.population < town_bar(t):
-            continue
+        if not _force_picket2:
+            if t.id not in relaxed_ids and not all_calm and not state.should_train_for_overcrowding(t):
+                continue
+            if t.id not in relaxed_ids and t.population < town_bar(t):
+                continue
         out.append(f"TRAIN {t.id}")
         state.note_train(t.id)
         break  # one train per turn as per turtle doctrine
