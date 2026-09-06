@@ -1495,8 +1495,12 @@ def maybe_schedule_scout(state: "BotState", config):
         # Dark-release (showcase lesson): a lone guard is never idle,
         # so single-army bots map nothing and die blind. In the dark,
         # release the youngest guard as scout — eyes beat a second
-        # spear when no contact exists in 300t.
+        # spear when no contact exists in 300t. Never strip naked
+        # (r-loop: pro released its only guard and got captured):
+        # need 2+ armies or a replacement already printing.
         if not _dark(state):
+            return None
+        if len(state.own_armies()) < 2 and not state._pending_trains:
             return None
         guards = [a for a in state.own_armies()
                   if not a.is_viceroy and a.id != state._scout_id
