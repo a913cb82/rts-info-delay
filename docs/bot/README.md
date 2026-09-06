@@ -25,14 +25,20 @@ Repeat forever:
    edit fast/slow suites if an idea needs new coverage).
 6. **Iterate** one idea per bot (measure vs table + rematch; suites
    twice, quiet box — JIT first-runs lie).
-7. **Elo** a couple of rounds: new bots vs historical bots
-   (`elo_field.py --field ...`, 1 game each — deterministic except
-   timing; cross-commit + era fields). Commit elos.json with the loop.
-   EVERY game goes through elo_field (it appends to elo_games.jsonl) —
-   no bare run_game for real games: rematches, duels, regens, canonicals
-   all field through elo_field (record to /tmp, then promote). Unlogged
-   games are lost data (pre-log ~40 games baked into ratings, unrecoverable).
-8. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
+7. **Rate** with the purist matchmaker (`matchmake.py --play N`:
+   propose-1/play-1/update-1 sequentially; info-optimal fields from
+   predict_draw + sigma — no count hacks, uncertainty drives). Pool =
+   every unique brain ever (dedup by bots/ content hash, random
+   included). EVERY game goes through matchmake/elo_field (appends to
+   elo_games.jsonl) — no bare run_game for real games. Target: pool
+   all at 3+ games; the champ bar is expander-84b32be ordinal (~44).
+8. **Commit rule**: every commit must leave ALL pool players at 3+
+   games (a commit adds 4+ new brains — grind them first, then commit
+   code+ratings+replot together). Commit when max-HEAD-ordinal beats
+   the previous commit's max.
+9. **Analyze** HEAD bots vs the table (where do they lose? which
+   matchups? duels vs the champ with recordings + autopsy).
+10. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
    and write it to BOTH viewer locations (`recordings/empty_10000.jsonl`
    for ascii_view + `viewer/public/empty_10000.jsonl` for the web UI —
    the UI serves its own bundled copy, stale copies lie!). Verify:
