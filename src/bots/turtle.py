@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap
+from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap, reprint_ok
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -277,7 +277,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                     if dest is not None:
                         out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
                     continue
-                out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
+                if not own_home and not reprint_ok(state, config):
+                    state._army_targets.pop(p.id, None)
+                else:
+                    out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
                 built = True
             continue
         if need_garrison and cap is not None:
