@@ -2955,10 +2955,10 @@ def reprint_ok(state: "BotState", config) -> bool:
     rich = max((t.population for t in state.own_towns()), default=0)
     cost = getattr(config, "army_cost", 500) or 500
     thresh = getattr(config, "death_threshold", 500) or 500
-    # Two-viable-towns (H2H lesson: founding at exactly 2000 splits
-    # into two poor towns that both starve — the spend (settler +
-    # founding cut) needs home AND colony viable after).
-    return rich >= cost + thresh + cost + thresh + cost
+    # Arrival-gated (the real leak was scout-tip auto-founds, now
+    # gated at arrival — demand bar returns to 2000; over-strict 2500
+    # froze all expansion into passivity losses).
+    return rich >= cost + thresh + cost + thresh
 
 
 def train_floor(state: "BotState", config) -> float:
@@ -3215,7 +3215,7 @@ def demand_trains(state: "BotState", config, can_train,
         # turn into simultaneous town_death — non-threat trains are
         # one per turn for serial personalities (threat musters exempt:
         # N-for-N survival outranks throttle).
-        if params.serial and eta_n is None:
+        if params.serial and eta_n is None and len(state.own_towns()) > 2:
             _nt = state.__dict__.get("_nonthreat_trains", (-1, 0))
             if _nt[0] == state.turn and _nt[1] >= 1:
                 continue
