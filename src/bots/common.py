@@ -3404,7 +3404,7 @@ def assault_verified(state: "BotState", target) -> bool:
     # by t3000; HEAD waits for blood that never comes. One unverified
     # need-sized strike per game before t2500 seeds first blood.
     # Never overrides ex-own (fratricide guard stands).)
-    if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults")             and foe_garrison(state, target) == 0:
+    if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults"):
         return True
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
 
