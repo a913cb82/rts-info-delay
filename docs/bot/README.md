@@ -5,47 +5,27 @@ playing a fully deterministic strategy game under fog of war. This folder
 is organized around one thing: **the improvement loop**. Everything else
 is one iteration of it, plus logs.
 
-## The loop (the main event)
+## The loop
 
-Repeat forever:
-1. **Watch** the current canonical game (`recordings/empty_10000.jsonl`
-   — the viewer location; `benchmarks/ascii_view.py`, how: `VIEWER.md`):
-   `report` (activity/stagnation), `lead` (timeline + flips), `health`
-   (indicators — see INDICATORS.md).
-2. **Story** per bot: what did each do, turn by turn? (`flip --faction
-   F` for collapses/rises, `fog` for what it saw, `autopsy` for deaths.)
-   Write the report card.
-3. **Right/wrong**: for each bot, what worked (improve the correct
-   decisions!) and what failed (lead flips get full audits: what did
-   the loser do wrong / winner do right?).
-4. **Brainstorm** ideas per bot from the mistakes + improvements
-   (doctrine first, code second; GTO.md §9 personalities stay skewed,
-   pro stays reference). Log sparks in BRAINSTORM.md.
-5. **Bench** (cut_scenario N turns before an issue for targeted repro;
-   edit fast/slow suites if an idea needs new coverage).
-6. **Iterate** one idea per bot (measure vs table + rematch; suites
-   twice, quiet box — JIT first-runs lie).
-7. **Rate** with the purist matchmaker (`matchmake.py --play N`:
-   propose-1/play-1/update-1 sequentially; info-optimal fields from
-   predict_draw + sigma — no count hacks, uncertainty drives). Pool =
-   every unique brain ever (dedup by bots/ content hash, random
-   included). EVERY game goes through matchmake/elo_field (appends to
-   elo_games.jsonl) — no bare run_game for real games. Target: pool
-   all at 3+ games; the champ bar is expander-84b32be ordinal (~44).
-8. **Branch-first**: improvement loops run on a branch, committed
-   BEFORE any games (bots need IDs to play). Merge gate: max-branch-
-   ordinal beats master. On regression the next loop chooses: rebase
-   the idea onto master, or fork the branch further — a real decision,
-   recorded in BOT_WORKLOG.md. Every merge leaves the pool at 3+ games
-   (new brains ground first) with ratings+replot committed.
-9. **Analyze** HEAD bots vs the table (where do they lose? which
-   matchups? duels vs the champ with recordings + autopsy).
-10. **Generate** the new canonical game (`empty_10000` ~30s, quiet box)
-   and write it to BOTH viewer locations (`recordings/empty_10000.jsonl`
-   for ascii_view + `viewer/public/empty_10000.jsonl` for the web UI —
-   the UI serves its own bundled copy, stale copies lie!). Verify:
-   `md5sum` both match. The UI cache-busts fetches, but hard-refresh
-   once if in doubt. (`empty_3000` retired.)
+Repeat forever, on a branch (`loop/<idea>`):
+1. **Watch** the canonical game (`VIEWER.md`; `ascii_view.py report` /
+   `lead` / `health`): activity, flips, indicators (`INDICATORS.md`).
+2. **Story**: per bot, turn by turn (`flip -F` / `fog` / `autopsy`).
+   Right/wrong per bot; audits for lead flips. Report cards in
+   `EMPTY_10000.md`.
+3. **Ideas** from the mistakes (doctrine first, code second; `GTO.md`
+   §9 keeps personalities skewed). Sparks → `BRAINSTORM.md`.
+4. **Code** one idea per bot on the branch; **commit first** (bots
+   need IDs to play). Fast suite per change; `pytest` green.
+5. **Rate** with the purist matchmaker (`matchmake.py --play N` —
+   propose/play/update one at a time, uncertainty drives). Every game
+   logged; clean trees only (`--dirty` = unlogged iteration).
+   Bar: expander-84b32be ordinal ~44.
+6. **Merge** iff max-branch-ordinal beats master AND pool all at 3+
+   games (grind new brains first; ratings+replot in the merge).
+   On regression: next loop picks master or branch (`BOT_WORKLOG.md`).
+7. **Generate** the canonical game to BOTH viewer spots (`recordings/`
+   + `viewer/public/`, `md5sum` match).
 
 Per-iteration gates (every loop through step 4): fast suite per change (~1.5s); strategic at milestones
 (~10s); `pytest` green; judge vs fog-era table with margin; worklog entry

@@ -1492,3 +1492,14 @@ bypass — verify/blood deadlock broke ghost-game peace).
 r118 canonical (watch). Tooling lesson: one write per file mutation
 (stale-`s` double-writes clobber — bit twice: grave writer, army-seen
 hook; audit with grep after every multi-edit).
+
+## loop/champ-wall: punish + concentration (branch max 29.1, bar 43.2)
+
+- Dark-release (lone guard scouts when blind) → stripped naked → gated
+  on replacement printing.
+- Shrink-watch (rich-first trains after losses) + reprint rule
+  (serial expand only from strength, void AND contested).
+- Naked-settler punish (young towns bypass re-verify): pro blanked
+  champ+predator 147k; branch-expander blanked champ 126k.
+- Predators rule the table (b398901 43.2); branch-aggressive climbs
+  26→28→29. Consistency (zeros) is the gap, not peak.

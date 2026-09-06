@@ -591,6 +591,7 @@ class BotState:
                         # Lost a town (seen mine, now foe): ex-own assaults
                         # need fresh intel (r91 fratricide).
                         self.__dict__.setdefault("_lost_towns", set()).add(eid)
+                        self.__dict__.setdefault("_lost_turn", {})[eid] = self.turn
                     t.faction = int(ev.get("faction", t.faction))
                     t.x = float(ev.get("x", t.x))
                     t.y = float(ev.get("y", t.y))
@@ -1491,6 +1492,24 @@ def maybe_schedule_scout(state: "BotState", config):
     if sel is not None and sel[1] >= len(idle):
         return None  # pack needs everyone
     if not idle:
+        # Dark-release (showcase lesson): a lone guard is never idle,
+        # so single-army bots map nothing and die blind. In the dark,
+        # release the youngest guard as scout — eyes beat a second
+        # spear when no contact exists in 300t. Never strip naked
+        # (r-loop: pro released its only guard and got captured):
+        # need 2+ armies or a replacement already printing.
+        if not _dark(state):
+            return None
+        if len(state.own_armies()) < 2 and not state._pending_trains:
+            return None
+        guards = [a for a in state.own_armies()
+                  if not a.is_viceroy and a.id != state._scout_id
+                  and a.id != getattr(state, "_scout_id2", None)]
+        if not guards:
+            return None
+        p = max(guards, key=lambda a: a.id)
+        if maybe_assign_scout(state, config, p):
+            return drive_scout(state, config, p) or []
         return None
     if _scout_contact(state, config) and not _dark(state):
         return None  # real war on: raid/defense owns the field
@@ -2871,7 +2890,20 @@ def expansion_demand(state: "BotState", config,
         if state._foe_first_seen:
             pass  # fall through to contested caution below
         else:
-            return config.max_turns - state.turn >= vhor
+            # Reprint rule (duel lesson): settling spends the army
+            # account — founding below reprint funds strands the empire
+            # naked under the train floor (pro t2000: 2 towns 0 armies,
+            # 1200 pop vs 1250 floor, never recovers). Expand in true
+            # void only from strength (richest town holds floor + cost
+            # + threshold after the spend).
+            if config.max_turns - state.turn < vhor:
+                return False
+            if not params.serial:
+                return True  # sprawl expands thin by design
+            rich = max((t.population for t in state.own_towns()), default=0)
+            cost = getattr(config, "army_cost", 500) or 500
+            thresh = getattr(config, "death_threshold", 500) or 500
+            return rich >= cost + thresh + cost + thresh
     # War-print (fortress-phase): threatened with horizon prints towns
     # for capacity (military, bypasses veto downstream).
     if war_print_need(state, config):
@@ -2902,6 +2934,15 @@ def expansion_demand(state: "BotState", config,
     # home grows ~1-2/turn vs a colony's 0.75). Below 20k, expansion is
     # throughput (parallel compounding), not arbitrage: afford +
     # horizon suffices (serial + site_pays still filter downstream).
+    # Reprint rule, contested (zero lesson: contact-game founding
+    # strands the same way — 2 poor towns, 0 armies, capital starves.
+    # Serial personalities expand only from strength everywhere.)
+    if params.serial:
+        _rich = max((t.population for t in state.own_towns()), default=0)
+        _cost = getattr(config, "army_cost", 500) or 500
+        _thresh = getattr(config, "death_threshold", 500) or 500
+        if _rich < _cost + _thresh + _cost + _thresh:
+            return False
     total_pop = sum(t.population for t in state.own_towns())
     if total_pop < 20000:
         return True
@@ -3051,10 +3092,18 @@ def demand_trains(state: "BotState", config, can_train,
     # Threat-first (r76: early bloodbath — offense starves defense under
     # the 1/town train cap; packs print while capitals fall. Threatened
     # towns muster before anyone else spends).
+    # Shrink-watch (duel lesson): lost a town recently + still losing =
+    # gradual bleed evac never catches. Concentrate: unthreatened towns
+    # print richest-first (rich gets guards, weak is accepted lost —
+    # thin-spread poorest-first donates to raiders). Threatened first
+    # always; peace keeps poorest-first (growth needs it).
+    _lt = state.__dict__.get("_lost_turn", {})
+    _shrinking = any(state.turn - _t <= 1500 for _t in _lt.values())
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if force.get(t.id) is not None else 1,
                                   0 if state.should_train_for_overcrowding(t) else 1,
-                                  state.get_growth(t.id), t.population))
+                                  state.get_growth(t.id),
+                                  -t.population if _shrinking else t.population))
     # No in-loop yield: the trains stage is atomic (anytime prefix
     # property) — trains are cheap, and a partial muster is worse than
     # a late one.
@@ -3433,6 +3482,18 @@ def assault_verified(state: "BotState", target) -> bool:
     # Never overrides ex-own (fratricide guard stands).)
     if state.turn < 2500 and not state.__dict__.get("_bloodied") and not state.__dict__.get("_assaults"):
         return True
+    # Naked-settler punish (predator lesson: f5d81dd 40.0 raids cheap;
+    # champs expand 4t/0a and get away with it vs patient bots). A town
+    # first-seen young (<400t) with no foe army near it is a naked
+    # colony — strike without waiting for re-verify. Never overrides
+    # ex-own (fratricide guard stands).
+    _fs = state._first_seen.get(("town", target.id))
+    if _fs is not None and state.turn - _fs <= 400:
+        import math as _m
+        if not any(a.faction != state.faction
+                   and _m.hypot(a.x - target.x, a.y - target.y) <= 150.0
+                   for a in state.world.armies):
+            return True
     return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
 
 

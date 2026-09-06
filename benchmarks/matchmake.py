@@ -73,11 +73,15 @@ def pool() -> list[str]:
             if key not in seen:
                 seen[key] = f"{b}-{sha}"
     picks.update(seen.values())
-    # HEAD short sha
+    # HEAD short sha — through the same dedup (a docs/ratings commit
+    # adds no brains; its IDs would grind zero-games forever).
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                           capture_output=True, text=True).stdout.strip()
     for b in bots_at("HEAD"):
-        picks.add(f"{b}-{head}")
+        key = f"{b}@{brain_hash('HEAD', b)}"
+        if key not in seen:
+            seen[key] = f"{b}-{head}"
+    picks.update(seen.values())
     return sorted(picks)
 
 
