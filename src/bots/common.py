@@ -2954,7 +2954,10 @@ def reprint_ok(state: "BotState", config) -> bool:
     rich = max((t.population for t in state.own_towns()), default=0)
     cost = getattr(config, "army_cost", 500) or 500
     thresh = getattr(config, "death_threshold", 500) or 500
-    return rich >= cost + thresh + cost + thresh
+    # Two-viable-towns (H2H lesson: founding at exactly 2000 splits
+    # into two poor towns that both starve — the spend (settler +
+    # founding cut) needs home AND colony viable after).
+    return rich >= cost + thresh + cost + thresh + cost
 
 
 def train_floor(state: "BotState", config) -> float:
