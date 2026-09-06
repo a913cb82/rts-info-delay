@@ -3060,7 +3060,10 @@ def demand_trains(state: "BotState", config, can_train,
         # peace demand never musters guards (no threat seen). A town with
         # zero home armies prints one guard when affordable (deterrence;
         # onesies bounce off guards, walk into empties). Full floors.
-        if eta_n is None and home.get(t.id, 0) == 0:
+        # Armed fields only (r129: champ fields 1 army vs HEAD's 60 idle
+        # guards — deterrence vs nobody is pure waste; compound instead).
+        _armed_field = any(a.faction != state.faction for a in state.world.armies)
+        if eta_n is None and home.get(t.id, 0) == 0 and _armed_field:
             want = True
         if eta_n is None:
             _g = guard_force.get(t.id)
