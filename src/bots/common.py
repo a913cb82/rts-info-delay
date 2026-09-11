@@ -3557,7 +3557,10 @@ def assault_verified(state: "BotState", target) -> bool:
             return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 2000
     except Exception:
         pass
-    return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 800
+    # Window 800->2000 (review RC2: the pack flush waits on this gate and
+    # only 2 scouts exist — intel NEVER refreshes, so full packs idle
+    # forever. Aligned with the leader path; approach re-scouts en route.)
+    return state.turn - state._last_seen.get(("town", target.id), -10 ** 9) <= 2000
 
 
 def fire_followups(state: "BotState", config) -> list[str]:
