@@ -320,6 +320,29 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
     # Idle patrols last (doctrine: leftovers sweep stalest sectors).
     out.extend(coverage_orders(state, config))
+    # Surplus walk-in (autopsy: 50-idle stack, 0 captures all game while
+    # an empty foe town sat punishable 6000t). Idle armies beyond
+    # need+2 at the capital walk to the nearest fresh-empty profitable
+    # foe town <=400km — converts hoard into conquests.
+    _cap = state.world.faction_capital(faction)
+    if _cap is not None:
+        _surplus = [a for a in state.own_armies()
+                    if not state.army_has_target(a.id)
+                    and not a.is_viceroy
+                    and math.hypot(a.x - _cap.x, a.y - _cap.y) <= 20.0]
+        _need = 2 + sum(1 for t in state.own_towns()
+                        if math.hypot(t.x - _cap.x, t.y - _cap.y) <= 20.0)
+        if len(_surplus) > _need:
+            _targets = [t for t in state.world.towns
+                        if t.faction != faction
+                        and foe_garrison(state, t) == 0
+                        and state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= 150
+                        and math.hypot(t.x - _cap.x, t.y - _cap.y) <= 400
+                        and t.population * (1.0 - config.build_efficiency) >= config.army_cost + 200]
+            if _targets:
+                _t = min(_targets, key=lambda t: math.hypot(t.x - _cap.x, t.y - _cap.y))
+                _w = _surplus[0]
+                out.extend(order_move(state, config, _w, _t.x, _t.y))
     return out
 
 
