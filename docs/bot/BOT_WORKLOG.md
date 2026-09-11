@@ -1603,3 +1603,17 @@ field/seat-noisy; modern fragility consistent with RC1.
   death (~6s). Buggy 7465955: 3 DEAD (t1128/1145/1776); fixed: clean.
 - TODO list in BOT_BENCH.md (stale-intel pack, self-TRAIN survival,
   expansion gates, 10k exile stall, corr re-validation).
+
+## Trace deep-dive (train-floor branch): the fragility economics
+- F0 pro-f12b829: TRAIN 0 at t1110 (believed pop exactly 1500, the
+  r122 thin floor) -> town 500. Army marches off t1500. Raider comes;
+  t1807 defense_train_ok last-stand convert (pop 1000 >= cost) ->
+  TRAIN -> town dies (by design: "the town falls anyway").
+- CONTRAST with era-peak games (C-behav): era pro sat 1t/0a for 3000t
+  and ended pop 97086 -> 104085 score, winning. Score = pop + 1000 x
+  army: COMPOUNDING beat military spending. Modern bots spend pop on
+  armies/guards/packs and stay poor; era passivity was the winning
+  strategy on these maps.
+- Implication: un-gating army production (pending-train early clear,
+  floors) increases SPENDING; whether it wins is an empirical question
+  -> measure, don't assume.
