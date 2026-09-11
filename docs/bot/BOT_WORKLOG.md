@@ -1603,3 +1603,25 @@ field/seat-noisy; modern fragility consistent with RC1.
   death (~6s). Buggy 7465955: 3 DEAD (t1128/1145/1776); fixed: clean.
 - TODO list in BOT_BENCH.md (stale-intel pack, self-TRAIN survival,
   expansion gates, 10k exile stall, corr re-validation).
+
+## *** GATE PASSED: loop/one-colony -> main (dad7180) ***
+- pro-12b6801: ord **51.2** (mu 59.2, sig 2.65, 17g) > historic pro max
+  (50.4 @pro-42aba25 17g; era pro live 48.5 @25g). First gate pass.
+- Confirmation: merged main pro scored 126588 vs era pro 101989 in the
+  same field; brain-hash identical (d028a4fe) -> pool carries the rating.
+- POLICY (one-colony compounder): era-pro tree (42aba25) + print ONE
+  settler when 1 town / pop>=2500 / >=4000t left, march it to a site
+  >=160km out (find_build_site rmin=160), found once. Logistic math:
+  a second town >150km away (no crowding) reaches ~90k by t10000 for
+  ~1k of lost capital compounding (+90k net). Fires in void too (the
+  compounder plays without contact; the never-train-in-void rule was
+  the blocker on the first attempt).
+- MERGE SHAPE: src/bots = era tree (the rated winners) + policy;
+  src/engine|runner = modern (send-all referee; byte-identical
+  config/world -> bot behavior unchanged). tests: era bots + modern
+  engine/runner, 149 green. liveness clean 3.9s.
+- Gate history this session: crash-bug found+fixed (root cause of the
+  modern slump), suite liveness tooling, gate-adjacent experiments
+  (pack-timeout, walk-in, stay-behind, halving-floor, verify-window,
+  train-floor, compound) all sub-bar; the winner was strategic, not
+  behavioral: COMPOUND + exactly one far colony.
