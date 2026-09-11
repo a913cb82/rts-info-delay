@@ -21,8 +21,10 @@ Repeat forever, on a branch (`loop/<idea>`):
    propose/play/update one at a time, uncertainty drives). Every game
    logged; clean trees only (`--dirty` = unlogged iteration).
    Bar: expander-84b32be ordinal ~44.
-6. **Merge** iff max-branch-ordinal beats master AND pool all at 3+
-   games (grind new brains first; ratings+replot in the merge).
+6. **Merge** iff any branch-tip personality beats its HISTORIC MAX
+   (per-personality frontier over the whole pool, ≥3 games) AND pool
+   all at 3+ games (grind new brains first; ratings+replot in the
+   merge). Bars: pro 42.2, expander 43.6, aggressive 39.7, turtle 35.8.
    On regression: next loop picks master or branch (`BOT_WORKLOG.md`).
 7. **Generate** the canonical game to BOTH viewer spots (`recordings/`
    + `viewer/public/`, `md5sum` match).
