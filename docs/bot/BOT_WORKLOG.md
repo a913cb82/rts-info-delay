@@ -1540,3 +1540,53 @@ hook; audit with grep after every multi-edit).
   era-forward pure win (prune_dead_scouts-shaped, not behavioral);
   or (b) re-examine whether the gate bar should be frozen at peak-time
   ordinals rather than drifting (a ratings-hygiene decision).
+
+## THOROUGH REVIEW: why modern bots underperform the peaks (4-track wave)
+
+### ROOT CAUSE #1 (fatal, now fixed on loop/none-crash @262b0f5)
+`out.append(out.append(f"BUILD ..."))` at pro.py:357, aggressive.py:136,
+turtle.py:283 (introduced a3d3873) appends a literal `None` to the order
+list; common.py:2599 does `sys.stdout.write(o + "\n")` -> TypeError ->
+process dies. Crash turn = first arrival-BUILD (t1130-1776).
+Consequences: pro/aggressive/turtle are ABSENT from most post-a3d3873
+games (dead faction; their compounding capital becomes a piñata).
+Every pool commit since a3d3873 carries it. Verified: unfixed main-pro
+died t1145 crash/eof in a field where the 3 fixed bots survived and
+fixed pro won 12000-0. ALL this session's fix measurements were
+contaminated by these crash deaths (noise floor).
+Fix: one line x3 (loop/none-crash). Tests green.
+
+### ROOT CAUSE #2 (shared common.py gate stack; from the diff review)
+Ranked by offense-suppression: (1) assault_verified gating jit_ready +
+packet flush (pack waits for <800t intel; only 2 scouts, never
+refreshes -> packs idle forever); (2) _pending_trains delay+30 (army
+growth ~towns/30t); (3) raid survivor gates (sub-1000-pop towns
+untargetable -> sel None); (4) reprint_ok (serial settle only when
+richest >=3000); (5) expansion support-ratio veto (one armed foe
+disables sprawl); (6) coverage home firewall + pack-muster stand-down
+(armies within 20km of home never patrol); (7) probe_ok <100t intel +
+1/1000t cap (probing effectively off); (8) sync_hold + overkill caps;
+(9) peace-time garrison printing diverting the 1-train slot; (10)
+early returns (second_wind/victory_lap/evac).
+
+### ROOT CAUSE #3 (behavioral)
+- pro/aggressive/turtle: crash death (RC1).
+- expander (no crash): demand API TRAINs at believed-pop near the
+  0.5k floor; town pays 1000 -> dies (t2182/2183: both towns died to
+  own TRAINs); then 1t/0a exile stall.
+- pro also observed self-TRAIN death (t2915 at pop~1000).
+- Era bots win by outliving paralysis, not superior play (C-behav).
+
+### CONTROLLED PANEL (era vs modern, fixed fillers, 6 games)
+era 4-2 H2H; paired totals era 285k vs modern 202k; medians 9.6k vs
+2.4k; modern zero-rate 4/7 vs era 4/12 -> era edge real but
+field/seat-noisy; modern fragility consistent with RC1.
+
+### ACTION
+- loop/none-crash @262b0f5: the 3-line fix, tests green, empirically
+  verified. Ratings grind started (pro-262b0f5 6.5/5g, incl. a 153504
+  win). GATE: not yet beaten (6.5 < 48.6 tip max) — recommend a
+  bug-fix merge regardless (it unblocks every future measurement).
+- NEXT: with crashes gone, re-measure the big gates ONE at a time
+  (assault_verified relax, pending_trains delay+1, survivor gate) —
+  previous measurements of these were swamped by crash noise.
