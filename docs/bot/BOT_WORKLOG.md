@@ -1625,3 +1625,26 @@ field/seat-noisy; modern fragility consistent with RC1.
   (pack-timeout, walk-in, stay-behind, halving-floor, verify-window,
   train-floor, compound) all sub-bar; the winner was strategic, not
   behavioral: COMPOUND + exactly one far colony.
+
+## Post-merge state + next loops (roster upgrade)
+Merged main roster (era 42aba25 tree + pro policy) vs pool tops:
+  pro       51.2 (main)   vs best pro  51.2  -> AT TOP (gate passed)
+  aggressive 28.1         vs best      39.4  (f5d81dd era)
+  expander    6.8         vs best      45.5  (84b32be, 63g)
+  turtle     29.7         vs best      40.3  (850b426)
+Every personality-pair peak lives in a DIFFERENT era commit; the best
+combined tree would need porting because the peak personalities depend
+on their era's common.py (84b32be expander imports 16 symbols missing
+from 42aba25 common: DemandParams, coverage_orders, recall_deficit,
+en_route, jit_ready, probe_ok, order_march_exact, dispatch_settler,
+reinforce_orders, site_pays, strike_target, stay_behind_hold, tip_safe,
+respin_tip, maybe_schedule_scout, pack_print).
+NEXT LOOPS (one per branch):
+ 1. loop/colony-expander: apply the one-colony policy (or its sprawl
+    analog) on the 84b32be tree -> expander >=45.5 + pro colony.
+ 2. loop/colony-turtle: same on the 850b426 tree (turtle 40.3 base).
+ 3. loop/pro-colony2: allow a SECOND colony (t~4000) on main's pro,
+    or guard the colony; measure vs 51.2.
+Each: git checkout -b from the era commit, port the tiny policy,
+rate with elo_field fields (fast convergence: 15-20 games), merge iff
+branch max > that personality's live max.
