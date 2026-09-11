@@ -1503,3 +1503,10 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## loop/walk-in (de57025, on stay-behind base): verdict pending
+- Surplus idle armies (capital_count > need+2) walk to nearest
+  fresh-empty profitable foe town <=400km (50-hoard/0-capture lesson).
+- Grind seed 206-208: turtle-de57025 7.5/4g — BELOW its stay-behind
+  base (20.8). The walk may be feeding solo armies into guards, or
+  drawing the garrison out. Trace before more grind.
