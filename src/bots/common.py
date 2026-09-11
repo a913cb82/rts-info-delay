@@ -2687,10 +2687,12 @@ def pack_print(state: "BotState", config, sel, free_n, can_train) -> list[str]:
             since[_sig] = state.turn
         if state.turn - since[_sig] > 300:
             since.clear()
+            # Freeze-scenario intel IS old (the pack held for centuries).
+            # Cap at 3000t: older than that is a ghost town, not a target.
             _stale = sorted(
                 (t for t in state.world.towns
                  if t.faction != state.faction
-                 and state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= 800),
+                 and state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= 3000),
                 key=lambda t: math.hypot(t.x - state.world.faction_capital(state.faction).x,
                                          t.y - state.world.faction_capital(state.faction).y))
             _free = [a for a in state.own_armies()
