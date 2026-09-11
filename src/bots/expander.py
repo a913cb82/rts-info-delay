@@ -155,8 +155,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if len(members) >= tneed or jit_ready(state, config, tgt, tneed, members, tgt.faction):
             for aid in members:
                 a = by_id.get(aid)
-                if a is not None:
-                    out.extend(order_move(state, config, a, tgt.x, tgt.y))
+                if a is None:
+                    continue
+                # Naked-core guard (autopsy: t3413 mutual left core bare ->
+                # double-loss in 9t; the flush bypassed the per-army
+                # stay-behind check). The last home guard never marches.
+                if stay_behind_hold(state, config, a, force):
+                    continue
+                out.extend(order_move(state, config, a, tgt.x, tgt.y))
     # Idle patrols last (doctrine: leftovers sweep stalest sectors).
     out.extend(coverage_orders(state, config))
     return out
