@@ -1,22 +1,30 @@
-"""Plot bot Elo over commits (one series per bot name).
+"""Plot the bot skill frontier (one running-max line per personality).
 
 Usage: PYTHONPATH=src .venv/bin/python benchmarks/plot_elo.py [--out docs/bot/elo.png]
-X = commit datetime (actual commit timestamp, not commit index).
-Y = ordinal (mu-3sigma); games-played annotations per point.
-Commits on master's lineage are solid; off-master (loop branches) are
-faded — branch experiments read as faint suggestions, master as the record.
+X = commit datetime. Y = OpenSkill ordinal (mu-3sig).
+Shows ONLY improvements: the running max over master-lineage commits per
+personality (a flatline = regression or stall, honestly shown). Current
+branch-tip bots plot as faded x markers — above the frontier = merge.
+Target ordinal 50 dashed for reference.
 """
 import argparse
 import json
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "benchmarks"))
+from matchmake import brain_hash  # noqa: E402
+
+PERSONALITIES = ["pro", "aggressive", "expander", "turtle"]
+TARGET = 50.0
 
 
 def commit_time(sha: str) -> int:
-    out = subprocess.run(["git", "-C", str(ROOT), "show", "-s", "--format=%ct", sha],
+    out = subprocess.run(["git", "-C", str(ROOT), "show", "-s",
+                          "--format=%ct", sha],
                          capture_output=True, text=True)
     try:
         return int(out.stdout.strip())
@@ -36,6 +44,19 @@ def on_master(sha: str) -> bool:
     return _ancestor_cache[sha]
 
 
+_hash_cache: dict[tuple[str, str], str] = {}
+
+
+def bhash(ref: str, bot: str) -> str:
+    key = (ref, bot)
+    if key not in _hash_cache:
+        try:
+            _hash_cache[key] = brain_hash(ref, bot)
+        except Exception:
+            _hash_cache[key] = ""
+    return _hash_cache[key]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="docs/bot/elo.png")
@@ -47,49 +68,65 @@ def main(argv=None) -> int:
     import matplotlib.dates as mdates
 
     elo = json.loads(Path(args.elo).read_text())
-    by_bot: dict[str, list] = {}
+    pts: dict[str, list] = {b: [] for b in PERSONALITIES}
     for key, v in elo.items():
         name, sha = key.rsplit("-", 1)
-        if v.get("games", 0) < 1:
+        if name not in pts or v.get("games", 0) < 1 or not on_master(sha):
             continue
-        dt = datetime.fromtimestamp(commit_time(sha))
-        by_bot.setdefault(name, []).append(
-            (dt, sha, v["mu"] - 3 * v["sigma"], v["games"]))
+        pts[name].append((datetime.fromtimestamp(commit_time(sha)), sha,
+                          v["mu"] - 3 * v["sigma"], v["games"]))
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    for name, pts in sorted(by_bot.items()):
-        master = sorted(p for p in pts if on_master(p[1]))
-        branch = sorted(p for p in pts if not on_master(p[1]))
-        color = None
-        total_g = sum(g for _, _, _, g in pts)
-        if master:
-            xs = [p[0] for p in master]
-            ys = [p[2] for p in master]
-            (ln,) = ax.plot(xs, ys, marker="o", linewidth=2,
-                            label=f"{name} ({total_g}g)")
-            color = ln.get_color()
-            for x, y, g in zip(xs, ys, [p[3] for p in master]):
-                ax.annotate(str(g), (x, y), fontsize=7, alpha=0.7,
-                            color=color)
-        if branch:
-            xs = [p[0] for p in branch]
-            ys = [p[2] for p in branch]
-            ax.scatter(xs, ys, marker="x", s=36, alpha=0.25,
-                       color=color, label=(None if master else f"{name} ({total_g}g)"))
-            if not master:
-                color = "gray"
-            for x, y, g, sha in [(p[0], p[2], p[3], p[1]) for p in branch]:
-                ax.annotate(f"{sha[:7]}:{g}", (x, y), fontsize=6,
-                            alpha=0.35, color=color)
-        if not master and branch:
-            # label branch-only series once
-            pass
+    frontiers: dict[str, float] = {}
+    for name in PERSONALITIES:
+        series = sorted(pts[name])
+        if not series:
+            continue
+        # running max (frontier): only improvements are drawn
+        fx, fy, fl = [], [], []
+        best = float("-inf")
+        for dt, sha, o, g in series:
+            if o > best:
+                best = o
+                fx.append(dt)
+                fy.append(o)
+                fl.append(f"{sha[:7]}({g}g)")
+        (ln,) = ax.plot(fx, fy, drawstyle="steps-post", marker="o",
+                        linewidth=2, label=f"{name} (best {best:.1f})")
+        frontiers[name] = best
+
+    # branch-tip bots: drawn ONLY if they beat the frontier (an actual
+    # improvement). Below-bar candidates are not shown.
+    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse",
+                           "--short", "HEAD"],
+                          capture_output=True, text=True).stdout.strip()
+    if not on_master(head):
+        for name in PERSONALITIES:
+            hb = bhash("HEAD", name)
+            if not hb:
+                continue
+            for key, v in elo.items():
+                n, sha = key.rsplit("-", 1)
+                if n != name or v.get("games", 0) < 1:
+                    continue
+                if bhash(sha, name) == hb:
+                    o = v["mu"] - 3 * v["sigma"]
+                    if o > frontiers.get(name, float("-inf")):
+                        x = datetime.fromtimestamp(commit_time(head))
+                        ax.scatter([x], [o], marker="*", s=120,
+                                   alpha=0.8, color="black", zorder=5)
+                    break
+
+    ax.axhline(TARGET, color="gray", linestyle="--", linewidth=1,
+               alpha=0.6)
+    ax.annotate("target 50", (ax.get_xlim()[0], TARGET), fontsize=8,
+                color="gray", va="bottom")
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
     fig.autofmt_xdate()
     ax.set_xlabel("commit datetime")
-    ax.set_ylabel("ordinal (mu-3sig)")
-    ax.set_title("Bot skill over time (OpenSkill ordinal; solid=master, faded=branch)")
-    ax.legend(fontsize=8, ncol=2)
+    ax.set_ylabel("frontier ordinal (running max, mu-3sig)")
+    ax.set_title("Bot skill frontier — improvements only (star = branch beats bar)")
+    ax.legend(fontsize=9)
     ax.grid(alpha=0.3)
     fig.tight_layout()
     out = ROOT / args.out
