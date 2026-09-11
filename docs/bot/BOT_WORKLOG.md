@@ -1510,3 +1510,22 @@ hook; audit with grep after every multi-edit).
 - Grind seed 206-208: turtle-de57025 7.5/4g — BELOW its stay-behind
   base (20.8). The walk may be feeding solo armies into guards, or
   drawing the garrison out. Trace before more grind.
+
+## loop/walk-in v2 (031c9d2): NO MERGE
+- v2 sends garrison+1 group (stale cap 3) at nearest known foe town;
+  unit-verified firing (3 MOVE_TOs). Grind: 9.1/4g vs 20.8 stay-behind
+  base = REGRESSION. Turtle can't support raids (no pack follow-up,
+  no reinforce): the walkers feed and the home thins. Same lesson as
+  pack-timeout: releasing bodies without a war plan is a net loss.
+- PATTERN across this wave: single behavioral patches don't move
+  ordinals because the ERA is the problem (below).
+
+## THE ERA FINDING (drives next wave)
+Historic peaks all cluster in the r29-r100 era (Sep 5):
+  pro 42.2 @42aba25, expander 43.6 @84b32be, aggressive 39.7 @f38f2d4,
+  turtle 35.8 @4908a5c — while ALL modern (r120+) tips peak ~20-31.
+Modern code has REGRESSED ~15-20 ordinal points across every
+personality. Any patch on modern bodies is polishing a worse machine.
+Next wave: loop/era-brains = revert src/bots/ to the champion era on
+modern engine/runner, verify, then modernize ONE pure-win fix at a
+time and measure each against the bars (42.2/39.7/43.6/35.8).
