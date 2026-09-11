@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import train_floor, BotState, DemandParams, bot_main, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -30,6 +30,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out.extend(demand_trains(state, config, _can_train_expander, DemandParams(
         depth_extra=1000.0, raid_margin=300.0, payback_mult=0.3,
         probe_armies=1, void_horizon=100, rates=False, serial=False)))
+    # Exile emergency print (autopsy: after the t3413 double-loss the
+    # survivor sat 3000t 1t/0a and died undefended — demand gates starve
+    # the last town). One town + no field armies + affordable pop prints
+    # a guard outright.
+    if len(own_t) == 1 and not state.own_armies() \
+            and own_t[0].population >= train_floor(state, config) \
+            and own_t[0].id not in state._pending_trains:
+        out.append(f"TRAIN {own_t[0].id}")
+        state.note_train(own_t[0].id)
 
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
