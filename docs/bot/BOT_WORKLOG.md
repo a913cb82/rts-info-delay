@@ -1503,3 +1503,15 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## Wave verdicts (gate: master-tip aggressive-737798c 25.7)
+- loop/stay-behind (8324fb1): best turtle-8324fb1 21.7/5g; pro -1.3,
+  aggressive 7.4, expander 1.6. Closest to bar, still short. NO MERGE.
+  (Pre-existing crash/eof at t1128/1195/1776 confirmed on all-main
+  fields too — not caused by the change.)
+- loop/halving-floor (95014cf): best turtle 10.9/4g, pro 10.4/5g.
+  One-line floor too weak to move Elo (t2293 autopsy: target was
+  believed-big, owner spent it mid-march — floor can't see future).
+  NO MERGE.
+- Queued next: pack-hold timeout, exile emergency print, idle-cap
+  walk-in, passive-opener floor. Or grind loop/pro-restore to 6+g.
