@@ -1614,3 +1614,14 @@ field/seat-noisy; modern fragility consistent with RC1.
   this session after hours of continuous games — box load, not code
   (earlier runs 2.6-3.3s; composite identical -0.63). Re-measure wall
   on a quiet box before treating a FAIL as real.
+
+## Fresh panel: era peaks vs CRASH-FIXED modern (main tip 2e7092c)
+- L1: era-pro 67509 > fixed-pro 1000 (era turtle won 194k overall).
+- L2: era-pro 99104 > fixed-expander 79599 (fixed expander 2nd!).
+- L3: era-pro 105986 > era-expander 26207 > fixed-aggressive 0.
+- ERA WINS 3/3 even with crashes gone -> the gap is skill/strategy,
+  not only the crash bug. (Fixed expander showed it can place 2nd.)
+- NEXT BRANCH (loop/era-forward): take the era champion tree
+  (42aba25/84b32be-era) as the base and forward-port ONLY modern
+  pure-wins (clock/byo-yomi fix, prune_dead_scouts, liveness tooling,
+  fast-suite tooling) — no behavioral gates. Measure against the bars.
