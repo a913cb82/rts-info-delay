@@ -1617,3 +1617,17 @@ field/seat-noisy; modern fragility consistent with RC1.
 - Implication: un-gating army production (pending-train early clear,
   floors) increases SPENDING; whether it wins is an empirical question
   -> measure, don't assume.
+
+## loop/train-floor (f12b829): verdict + strategic pivot
+- Fix: pending-train pending clears when the spend is OBSERVED (pop
+  drop >= cost/2) instead of waiting delay+30 (~33t). Rich towns were
+  throttled to ~1 army/33t; era was delay+1. Suites green.
+- Ratings (5-7g): aggressive 23.5 (best modern branch yet), pro 13.2,
+  turtle 2.2, expander -4.8. Bars are 42.1/48.6/38.9/42.3 -> NO MERGE.
+- STRATEGIC FINDING (see trace deep-dive): score = pop + 1000*army.
+  Era-peak games were won by COMPOUNDING (era pro sat 1t/0a 3000t ->
+  97k capital). Modern architecture (musters, guards, packs, probes)
+  spends pop that compounds. pro-7e981de (36.9-37.3 in the pool) is
+  exactly a quiet compounder: never scouts, never settles, wins by
+  survival. NEXT BRANCH: loop/compound — bias a personality to spend
+  only under real threat; let pop compound; measure vs the bars.
