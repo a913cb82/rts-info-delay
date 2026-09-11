@@ -1515,3 +1515,14 @@ hook; audit with grep after every multi-edit).
   shortfall-with-no-capacity is itself rare; most freezes are
   shortfall-WITH-capacity-but-throttled. Next probe: trace a game to
   count releases before more grind.
+
+## loop/pack-timeout v2 (5a0cdfd): harasser window 800->3000t
+- v1 (3fb774e) bug: freeze scenario means intel is old BY DEFINITION —
+  the 800t window made the release unfireable in exactly its target
+  games. Unit-verified the release now fires (MOVE_TO on stale target).
+- Grind: expander 19.4/5g (up from 10.2), turtle 12.9/6g, pro -1.3,
+  aggressive -2.2. No bar threatened. The release also seems to feed
+  onesies in some fields (aggressive dropped). Verdict: timeout
+  releases are not the lever; the freeze's real cost may be that
+  pack_print holds ALL free armies — one released walker still leaves
+  the rest parked. NO MERGE unless late grind surprises.
