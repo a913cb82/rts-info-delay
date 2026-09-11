@@ -1590,3 +1590,9 @@ field/seat-noisy; modern fragility consistent with RC1.
 - NEXT: with crashes gone, re-measure the big gates ONE at a time
   (assault_verified relax, pending_trains delay+1, survivor gate) —
   previous measurements of these were swamped by crash noise.
+
+## MERGE: loop/none-crash -> main (bug-fix merge, gate exception)
+- Rationale: gates guard skill experiments; this removes a fatal crash
+  (None order) that silenced 3 of 4 personalities at their first settle
+  attempt since a3d3873. Merged by exception; documented here.
+- Post-merge: all pool commits from now on are crash-free.
