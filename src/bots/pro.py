@@ -54,21 +54,22 @@ def _one_colony(state: BotState, config: GameConfig) -> bool:
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
-    # P3b: empty-field economy — no foes means nothing to fight or settle
-    # against; holding compounds (policy optimum 5254: never train).
-    # Pro-only (void settlers need trains in the other bots).
-    if not any(t.faction != state.faction for t in state.world.towns) and not any(
-            a.faction != state.faction for a in state.world.armies):
-        return []
     out: list[str] = []
-    # One-colony settler: the compounder prints exactly one army to found
-    # its second town (see _one_colony).
+    # One-colony settler FIRST (must fire in void too — the whole
+    # compounder game is played without contact; the logistic math does
+    # not care, and the old never-train-in-void rule gated it off).
     if _one_colony(state, config):
         cap = state.world.faction_capital(state.faction)
         if cap is not None and cap.id not in state._pending_trains:
             out.append(f"TRAIN {cap.id}")
             state.note_train(cap.id)
             return out
+    # P3b: empty-field economy — no foes means nothing to fight or settle
+    # against; holding compounds (policy optimum 5254: never train).
+    # Pro-only (void settlers need trains in the other bots).
+    if not any(t.faction != state.faction for t in state.world.towns) and not any(
+            a.faction != state.faction for a in state.world.armies):
+        return []
     out.extend(demand_trains(state, config, can_train_standard))
     return out
 
