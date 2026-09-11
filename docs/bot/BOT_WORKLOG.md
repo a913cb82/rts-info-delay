@@ -1503,3 +1503,15 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## loop/pack-timeout (3fb774e): verdict pending
+- pack_print: no-capacity shortfall 300t+ releases one harasser at the
+  nearest stale foe town (freeze lesson: 1t/2a t3000-10000 in the WIN
+  game). Cheap suite PASS all 4 bots (aggressive composite -1.22 vs
+  main -1.33 — slight gain).
+- Grind seed 200-202: pro 14.8, turtle 18.0, expander 10.2,
+  aggressive 7.4 (5g each). No bar threatened yet (pro 42.2, agg 39.7,
+  exp 43.6, tur 35.8). Harasser release may be too rare to matter —
+  shortfall-with-no-capacity is itself rare; most freezes are
+  shortfall-WITH-capacity-but-throttled. Next probe: trace a game to
+  count releases before more grind.
