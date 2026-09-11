@@ -2744,9 +2744,11 @@ def _raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
     # Survivor gate (r79: thin-town ping-pong — 600-pop takes halve to
     # 300 and die same turn. Priced raids skip towns whose prize can't
     # survive capture (pop < 2x death threshold); denial/unpriced keeps
-    # them (spite has its own math).)
+    # them (spite has its own math). Margin folds in: owners spend towns
+    # down mid-march (t2293: believed-big capital printed to 269, take
+    # halved dead on arrival) — the buffer prices in-flight spend-down.)
     if priced:
-        _survive = 2 * config.death_threshold
+        _survive = 2 * (config.death_threshold + margin)
         cands = [t for t in cands if t.population >= _survive]
     if not cands:
         return None
