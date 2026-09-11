@@ -1631,3 +1631,15 @@ field/seat-noisy; modern fragility consistent with RC1.
   exactly a quiet compounder: never scouts, never settles, wins by
   survival. NEXT BRANCH: loop/compound — bias a personality to spend
   only under real threat; let pop compound; measure vs the bars.
+
+## loop/compound spec (next session, written for handoff)
+- pro-7e981de (the pool's quiet compounder) changed only common.py —
+  the archetype is "era code minus spending mandates", not a feature.
+- Experiment plan (one removal per commit, measure each against bars):
+  1. naked-garrison print OFF (eta_n None + home==0 + armed/rich)
+  2. guard-depth print OFF (home==1 + rich -> 2nd guard)
+  3. pack_print throttle (train only when a pack is actually complete)
+  4. thin floors -> always cost+thresh+cost/2
+- Watch: undefended towns get captured (the tradeoff IS the test).
+- Reference: pro-7e981de current ordinal (see elos.json), plus era
+  baselines. Gate: any personality > bars (42.1/48.6/38.9/42.3).
