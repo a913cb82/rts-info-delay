@@ -1596,3 +1596,10 @@ field/seat-noisy; modern fragility consistent with RC1.
   (None order) that silenced 3 of 4 personalities at their first settle
   attempt since a3d3873. Merged by exception; documented here.
 - Post-merge: all pool commits from now on are crash-free.
+
+## Suite hardening landed on main (from the modern-vs-era review)
+- cheap.py: stderr liveness check (crash/eof + timeout -> exit 1).
+- benchmarks/liveness.py: 4000t x 5-bot empty game, exit 1 on any
+  death (~6s). Buggy 7465955: 3 DEAD (t1128/1145/1776); fixed: clean.
+- TODO list in BOT_BENCH.md (stale-intel pack, self-TRAIN survival,
+  expansion gates, 10k exile stall, corr re-validation).
