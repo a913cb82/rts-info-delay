@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap, reprint_ok
+from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, foe_garrison, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, stay_behind_hold, inbound_force, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout, second_wind, victory_lap, reprint_ok
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -132,7 +132,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 _best = (_prize, u)
         if _best is not None:
             _walker = min(_free, key=lambda a: math.hypot(a.x - _best[1].x, a.y - _best[1].y))
-            out.extend(order_move(state, config, _walker, _best[1].x, _best[1].y))
+            # Stay-behind: the last home guard doesn't walk for food
+            # under inbound threat (t2575 beheading).
+            if stay_behind_hold(state, config, _walker, inbound_force(state, config)):
+                pass
+            else:
+                out.extend(order_move(state, config, _walker, _best[1].x, _best[1].y))
     _evac = evac_plan(state, config, hopeless, established_stays=True)
     if any(o.startswith("MOVE_CAPITAL") for o in _evac):
         out.extend(_evac)

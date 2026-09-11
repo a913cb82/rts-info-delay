@@ -245,6 +245,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     break
                 a = by_id.get(aid)
                 if a is not None:
+                    # Stay-behind: never strip the last home army under
+                    # inbound threat (naked-home deaths).
+                    if stay_behind_hold(state, config, a, force):
+                        continue
                     out.extend(order_move(state, config, a, tgt.x, tgt.y))
                     sent += 1
                     if foes:

@@ -168,15 +168,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # Stale-belief targets hold for re-verify (fratricide).
             nearest, _, _ = sel
             if assault_verified(state, nearest):
-                # Last-guard hold (predator bleeds home chasing kills):
-                # the only army home stays home; extras raid.
-                _home = [t for t in own_t
-                         if math.hypot(p.x - t.x, p.y - t.y) <= 20.0]
-                _other_home = any(a.id != p.id and any(
-                    math.hypot(a.x - t.x, t.y - t.y) <= 20.0 for t in own_t)
-                    for a in state.own_armies())
-                if _home and not _other_home:
-                    continue
+                # No blanket hold: stay_behind_hold above already keeps
+                # threatened last-guards; unthreatened guards raid.
                 out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
