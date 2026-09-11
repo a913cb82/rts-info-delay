@@ -1526,3 +1526,29 @@ hook; audit with grep after every multi-edit).
   lesson is generational, not per-branch.
 - Branch status: NOT merged (branch max ~28.5 pro-1547311 ≈ bar 27.6,
   current HEAD bots too volatile: 53118 win or 1000 die).
+
+## Next wave: champion-autopsy plan (4 parallel tracks, all done)
+
+Champions: pro-d36813f 42.9 (30g), expander-84b32be 40.9 (31g),
+aggressive-f5d81dd 37.9 (9g), turtle-db8fb19 34.8 (7g).
+
+Convergent findings:
+- Post-r70 attack gating broke commitment BOTH ways: pro packs too
+  timid (verify/overkill caps), aggressive freezes 7000t (pack-gate)
+  or all-ins naked (need+2 cap removed). Expander: JIT-gate overhead
+  vs instant parallel sprawl.
+- Naked-home deaths everywhere: expander t3413 mutual->double-loss,
+  turtle t2575 beheaded settler, pro t5040 chain. 3/4 tracks propose
+  stay-behind guard independently.
+- Micro-capture trap (aggressive t2293): take halves below 500 ->
+  instant town_death. Wasted pack.
+- Passivity floors: pro town2 t1150, expander 3000t 1t/0a exile,
+  turtle 50-idle 0-capture hoard.
+
+Wave picks (one fix per branch):
+1. loop/stay-behind: packs/raids/settlers never strip the last home
+   army under threat (inbound or home-blood <400t). Gate: branch max
+   > master-tip max (aggressive-737798c 25.7).
+2. loop/halving-floor: raid_target skips towns with pop*0.5 < 500+margin.
+   Gate: same bar, aggressive-2ef3763 must clear 25.7.
+Also: grind loop/pro-restore (r70 pro body) to 6+ games before judging.
