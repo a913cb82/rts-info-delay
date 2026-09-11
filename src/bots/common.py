@@ -2663,7 +2663,11 @@ def foe_garrison(state: "BotState", u) -> int:
 def pack_print(state: "BotState", config, sel, free_n, can_train) -> list[str]:
     """Pack-driven print (shared r40 lesson): shortfall with nothing
     printing toward it orders the missing member (packs otherwise hold
-    forever while towns compound for the foe). Respects floors."""
+    forever while towns compound for the foe). Respects floors.
+    Timeout (autopsy wave: aggressive froze 1t/2a t3000-10000 in its WIN
+    game, built 0 armies for 1000+ turns in its loss): a shortfall with
+    no print capacity releases one harasser after 300t instead of
+    holding forever — packs either grow or stop feeding the freeze."""
     if sel is None:
         return []
     if sel[1] - free_n <= 0 or state._pending_trains:
@@ -2673,7 +2677,31 @@ def pack_print(state: "BotState", config, sel, free_n, can_train) -> list[str]:
                     and t.population - config.army_cost >= config.death_threshold - 1e-9),
                    key=lambda t: -t.population)
     if not cands:
+        # Pack-timeout (freeze lesson): no print capacity -> after 300t
+        # of shortfall, release one idle army to harass the nearest
+        # stale foe town (spite pressure; also frees idle churn).
+        _key = "_pack_shortfall_since"
+        since = state.__dict__.setdefault(_key, {})
+        _sig = sel[0].id
+        if since.get(_sig) is None:
+            since[_sig] = state.turn
+        if state.turn - since[_sig] > 300:
+            since.clear()
+            _stale = sorted(
+                (t for t in state.world.towns
+                 if t.faction != state.faction
+                 and state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= 800),
+                key=lambda t: math.hypot(t.x - state.world.faction_capital(state.faction).x,
+                                         t.y - state.world.faction_capital(state.faction).y))
+            _free = [a for a in state.own_armies()
+                     if not state.army_has_target(a.id)
+                     and not getattr(a, "is_viceroy", False)]
+            if _stale and _free:
+                _a = _free[0]
+                state.note_move(_a.id, _stale[0].x, _stale[0].y)
+                return [f"MOVE_TO {_a.id} {_a.x:.1f} {_a.y:.1f} {_stale[0].x:.1f} {_stale[0].y:.1f}"]
         return []
+    state.__dict__.setdefault("_pack_shortfall_since", {}).clear()
     state.note_train(cands[0].id)
     return [f"TRAIN {cands[0].id}"]
 
