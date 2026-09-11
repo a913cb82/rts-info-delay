@@ -1503,3 +1503,26 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## loop/turtle-kill: turtle passivity hunt (bar: main HEAD turtle-737798c 27.6)
+
+- tk1-tk8 autopsy: turtle stuck 1t/2a until t6757, dies to a 84-army
+  pro raid. Chain: victory_lap/second_wind early-return skip training;
+  lone guard walks for food → mutual → naked capital; stale march
+  executes into the grave after the mutual.
+- Fixes committed: picket-2 bar 1500 (cd13666), last-guard never walks
+  (b684160), verify-bypasses need 2+ bodies (37c9408), home-blood
+  mourning hold 400t (2db11ea).
+- REGRESSION HUNT: branch pro fell 28→13. Isolation: NOT reprint_ok
+  (retire/restore/adaptive all ~13-23). Culprits were the SHARED fixes
+  — mourning-hold blocks all attacks 400t post-death, _can_spare gates
+  solo-raider aggression. Reverted common.py to main (1d9c8ae).
+- Double-append discovery: main's arrival BUILD is
+  `out.append(out.append(...))` — emits BUILD + a None line. Branch
+  "fixed" it; the fix is cosmetic (both emit BUILD).
+- BIG PICTURE: pro-d36813f (r70-era ancestor) is the pool's best pro
+  (45.3 ord, 29g) and beats every modern pro in direct play. 100+
+  post-r70 commits of constraint-stacking degraded pro. The sweet-spot
+  lesson is generational, not per-branch.
+- Branch status: NOT merged (branch max ~28.5 pro-1547311 ≈ bar 27.6,
+  current HEAD bots too volatile: 53118 win or 1000 die).
