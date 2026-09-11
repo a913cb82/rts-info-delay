@@ -280,7 +280,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 if not own_home and not reprint_ok(state, config):
                     state._army_targets.pop(p.id, None)
                 else:
-                    out.append(out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}"))
+                    out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
                 built = True
             continue
         if need_garrison and cap is not None:
