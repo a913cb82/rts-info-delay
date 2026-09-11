@@ -1596,3 +1596,15 @@ field/seat-noisy; modern fragility consistent with RC1.
   (None order) that silenced 3 of 4 personalities at their first settle
   attempt since a3d3873. Merged by exception; documented here.
 - Post-merge: all pool commits from now on are crash-free.
+
+## loop/verify-window (68e5e48): assault_verified 800->2000
+- RC2's #1 gate relaxed (pack flush waited on unrefreshable intel).
+  Test updated (stale window 2000). Cheap suite: identical scores (no
+  stale-pack scenario — see BOT_BENCH suite TODO).
+- Interim (6g each): pro 9.9, turtle 13.6, expander 9.0, aggressive
+  -21.2. Aggressive negative — stale-target marches feed. Not merged;
+  needs more games, possibly a cheaper variant (window 1200?) or the
+  pending_trains un-throttle instead.
+- SUITE IMPROVEMENTS LANDED (from this review): cheap.py liveness
+  (stderr crash/timeout -> exit 1); benchmarks/liveness.py 4000t x 5
+  bots, 6s, catches the None-crash class (buggy: 3 DEAD exit 1).

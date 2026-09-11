@@ -362,3 +362,33 @@ clean HEAD too; pass `--dirty` to iterate on the workspace (fast,
 unlogged, ID means nothing). Duels/analysis: copy the pattern
 (worktree cmds via elo_field helpers), never bare workspace python
 when the conclusion will be attributed to a commit.
+
+## Suite TODO (from the modern-vs-era review, 2026-09)
+
+Evidence: a fatal crash (None order, fixed 262b0f5) killed 3/4
+personalities at their first settle (t1130-1776) for dozens of commits.
+No suite noticed: cheap.py read only scores and never stderr; feast
+(2000t) and snowball (500t) stop before / never reach the lethal path;
+the pytest suite unit-tests decisions, never full-game liveness.
+Also: the verify-window change (assault_verified 800->2000) produced
+BYTE-IDENTICAL cheap-suite scores (2210/1800/1559/2743) — the suite has
+no scenario exercising stale-intel packs, so it cannot see that class.
+
+DONE: cheap.py now checks runner stderr for crash/eof + timeout and
+fails loud; benchmarks/liveness.py runs a 4000t x 5-bot empty game and
+exits 1 on any death (~6s, slow-suite tier). Buggy code: 3 DEAD exit 1;
+fixed: clean exit 0.
+
+TODO (ranked):
+1. Scenario: stale-intel pack. Contact -> 1000t darkness -> assert the
+   assembled pack marches (verifies assault_verified window + scout
+   refresh). Currently zero coverage.
+2. Scenario: self-TRAIN survival. Lone town near the floor with delayed
+   pop beliefs; assert no town dies from its own TRAIN (observed
+   expander t2182/2183, pro t2915).
+3. Scenario: expansion gates. Crowded map + one armed foe scout; assert
+   serial bots still settle (reprint_ok / support-ratio blind spots).
+4. Long-horizon (10k) micro-scenario in the SLOW tier for exile
+   stalls/freezes (turtle 1t/0a 3000t+).
+5. Re-validate any addition against corr.py (rho >= current 0.59).
+Anti-goal: scenarios must stay deterministic and quiet-box safe.
