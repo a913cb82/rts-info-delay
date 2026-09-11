@@ -1503,3 +1503,26 @@ hook; audit with grep after every multi-edit).
   champ+predator 147k; branch-expander blanked champ 126k.
 - Predators rule the table (b398901 43.2); branch-aggressive climbs
   26→28→29. Consistency (zeros) is the gap, not peak.
+
+## loop/era-expander (29d660a): naked-core guard on ERA expander
+- Pristine era base 84b32be (expander 46.1 peak) + stay_behind_hold at
+  the packet flush (era flush bypassed the per-army check).
+- 3 explicit elo_field games: 13k/40k/0 vs baseline 0/0/141k — wash.
+  Ordinal 29.3/4g vs era baseline 42.5/45g. The guard trades attacks
+  for safety; expander loses the trade (same as stay-behind/walk-in on
+  modern bodies).
+- PROCESS lesson: branch grinds need matchmake FROM the branch (pool =
+  git log HEAD); era branches diverge from the modern pool entirely,
+  so explicit elo_field shas from main are the only fair probe. The
+  merge-main-into-era trick pollutes bot files (hunk-level auto-merge
+  mixed modern content in) — reset, don't merge, for era experiments.
+
+## Round summary (this wave)
+- Tried: pack-timeout (x2), walk-in (x2), stay-behind-at-flush on era
+  expander. All ~wash-negative. Bars unchanged: pro 42.7, agg 41.3,
+  exp 46.1 (84b32be/41g), tur 35.3 (4908a5c/59g).
+- Consistent lesson: single behavioral guards on ANY era body trade
+  offense for safety and net ~0. The peaks are ERA artifacts: each
+  peak's commit changed ONE bot file in an era whose common.py was
+  leaner. Beating a peak likely needs porting the era's bot body
+  forward WITH its era common.py semantics (not modern common).
