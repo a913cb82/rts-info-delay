@@ -322,8 +322,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out.extend(coverage_orders(state, config))
     # Surplus walk-in (autopsy: 50-idle stack, 0 captures all game while
     # an empty foe town sat punishable 6000t). Idle armies beyond
-    # need+2 at the capital walk to the nearest fresh-empty profitable
-    # foe town <=400km — converts hoard into conquests.
+    # need+2 at the capital march to the nearest known foe town <=400km
+    # as a need-sized group (garrison+1, stale-intel cap 3) — converts
+    # hoard into conquests. (v1 required garrison==0: the stale-intel
+    # floor makes that unfireable for a passive turtle — same class of
+    # bug as the pack-timeout window.)
     _cap = state.world.faction_capital(faction)
     if _cap is not None:
         _surplus = [a for a in state.own_armies()
@@ -333,16 +336,25 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         _need = 2 + sum(1 for t in state.own_towns()
                         if math.hypot(t.x - _cap.x, t.y - _cap.y) <= 20.0)
         if len(_surplus) > _need:
-            _targets = [t for t in state.world.towns
-                        if t.faction != faction
-                        and foe_garrison(state, t) == 0
-                        and state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= 150
-                        and math.hypot(t.x - _cap.x, t.y - _cap.y) <= 400
-                        and t.population * (1.0 - config.build_efficiency) >= config.army_cost + 200]
-            if _targets:
-                _t = min(_targets, key=lambda t: math.hypot(t.x - _cap.x, t.y - _cap.y))
-                _w = _surplus[0]
-                out.extend(order_move(state, config, _w, _t.x, _t.y))
+            _cand = None
+            for t in state.world.towns:
+                if t.faction == faction:
+                    continue
+                if state.turn - state._last_seen.get(("town", t.id), -10 ** 9) > 3000:
+                    continue
+                d = math.hypot(t.x - _cap.x, t.y - _cap.y)
+                if d > 400:
+                    continue
+                if t.population * (1.0 - config.build_efficiency) < config.army_cost + 200:
+                    continue
+                _g = max(1, min(3, foe_garrison(state, t)))
+                if len(_surplus) - _g >= _need:
+                    if _cand is None or d < _cand[0]:
+                        _cand = (d, t, _g)
+            if _cand is not None:
+                _, _t, _g = _cand
+                for _w in _surplus[:_g + 1]:
+                    out.extend(order_move(state, config, _w, _t.x, _t.y))
     return out
 
 
