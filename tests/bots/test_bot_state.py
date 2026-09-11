@@ -2714,7 +2714,8 @@ class TestSupportRatio:
 
 class TestAssaultVerify:
     """r84: fratricide onesies vs stale-mirror towns that flipped back.
-    Foe-belief older than 300t holds the pack."""
+    Foe-belief older than 2000t holds the pack (window raised from 800
+    so full packs stop idling on unrefreshable intel)."""
 
     def test_stale_sel_holds(self) -> None:
         from bots.common import jit_ready, assault_verified
@@ -2734,7 +2735,7 @@ class TestAssaultVerify:
                       "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 300, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])
-        b.turn = 1000  # foe-belief 999t stale
+        b.turn = 2500  # foe-belief 2499t stale (window 2000)
         # opener spent (prior assault recorded) so stale-hold applies
         b.__dict__.setdefault('_assaults', {}).setdefault(2, []).append(500)
         assert assault_verified(b, b.world.get_town(2)) is False
