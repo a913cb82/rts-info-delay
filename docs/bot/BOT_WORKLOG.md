@@ -1526,3 +1526,17 @@ hook; audit with grep after every multi-edit).
   peak's commit changed ONE bot file in an era whose common.py was
   leaner. Beating a peak likely needs porting the era's bot body
   forward WITH its era common.py semantics (not modern common).
+
+## loop/era-expander (94098d1): exile print — NO
+- 1t/0a + affordable -> force TRAIN. 3 games: 0/1000/0. Ordinal 7.7/3g.
+- Both era-expander patches wash-negative. Era 84b32be stays peak
+  (42.3/48g, drifting from 46.1 as pool strengthens).
+
+## Where the wave landed
+- 3 hypotheses falsified: pack-timeout, walk-in, era-body guards.
+- Peaks are era artifacts + the pool drifts them down over time; new
+  bots must clear a MOVING bar. Nothing this wave came within 10 pts.
+- Recommended next: (a) accept era bodies as the base and port ONE
+  era-forward pure win (prune_dead_scouts-shaped, not behavioral);
+  or (b) re-examine whether the gate bar should be frozen at peak-time
+  ordinals rather than drifting (a ratings-hygiene decision).
