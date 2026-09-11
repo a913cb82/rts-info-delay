@@ -810,7 +810,14 @@ class BotState:
         # expire pending trains whose pop drop has arrived or timed out
         for tid in list(self._pending_trains.keys()):
             t = self.world.get_town(tid)
+            _p0 = prev.get(tid)
             if t is None or self.turn > self._pending_trains[tid]:
+                del self._pending_trains[tid]
+            elif _p0 is not None and _p0 - t.population >= cost * 0.5:
+                # Observed spend = train landed. The old <1200 heuristic
+                # only cleared near-floor towns, so RICH towns stayed
+                # throttled delay+30 (~33t) — army growth caps at
+                # ~1/town/33t vs era's delay+1. Clear on the drop.
                 del self._pending_trains[tid]
             elif t.population < 1200:
                 # pop dropped, train confirmed
