@@ -3155,14 +3155,19 @@ def demand_trains(state: "BotState", config, can_train,
         # Armed fields only (r129: champ fields 1 army vs HEAD's 60 idle
         # guards — deterrence vs nobody is pure waste; compound instead).
         _armed_field = any(a.faction != state.faction for a in state.world.armies)
-        # Imperial garrison (sprawl lesson: big blind empires die naked.
+        # IMPERIAL garrison (sprawl lesson: big blind empires die naked.
         # Rich fields guard every town, seen foes or not.)
         _rich_field = sum(t.population for t in state.own_towns()) >= 20000
-        if eta_n is None and home.get(t.id, 0) == 0 and (_armed_field or _rich_field):
+        # COMPOUND EXPERIMENT (step 1): peace-time guard prints OFF.
+        # Score = pop + 1000*army; every unthreatened guard converts
+        # compounding pop into a body that sits (r129 already noted
+        # "deterrence vs nobody is pure waste"). Threat prints (eta_n
+        # path below) and pack_print still fire.
+        if False and eta_n is None and home.get(t.id, 0) == 0 and (_armed_field or _rich_field):
             want = True
         # Guard depth (s0t lesson: lone guard mutuals, capital falls
         # naked next turn. Rich towns hold 2 (mutual leaves one).)
-        if eta_n is None and home.get(t.id, 0) == 1 \
+        if False and eta_n is None and home.get(t.id, 0) == 1 \
                 and (_armed_field or t.population >= 5000) \
                 and t.population >= 2 * (cost + floor) + cost:
             want = True
