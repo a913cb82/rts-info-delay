@@ -1603,3 +1603,14 @@ field/seat-noisy; modern fragility consistent with RC1.
   death (~6s). Buggy 7465955: 3 DEAD (t1128/1145/1776); fixed: clean.
 - TODO list in BOT_BENCH.md (stale-intel pack, self-TRAIN survival,
   expansion gates, 10k exile stall, corr re-validation).
+
+## loop/compound step 1 (74228bc): peace-time guard prints off
+- Disabled naked-garrison print (armed/rich field, home==0) and guard
+  depth (home==1 rich -> 2nd). Threat prints + pack_print remain.
+- Ratings (4-5g): pro 8.3, aggressive 9.2, turtle 20.3, expander 8.9.
+  No bar threatened (42.1/48.6/38.9/42.3) -> NO MERGE. Compounding
+  alone does not beat the era peaks either; era peaks still hold.
+- ENV NOTE: cheap suite wall inflated to 5.4-6.1s (budget 5s) late in
+  this session after hours of continuous games — box load, not code
+  (earlier runs 2.6-3.3s; composite identical -0.63). Re-measure wall
+  on a quiet box before treating a FAIL as real.
