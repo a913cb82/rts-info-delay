@@ -3,11 +3,30 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, bot_main, coverage_orders, hopeless_capital, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, assault_verified, fire_followups, sync_hold, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print, second_wind, bloodlust, victory_lap, dead_foes, reprint_ok
+from .common import BotForecast, BotState, bot_main, coverage_orders, can_train_standard, defense_train_ok, demand_trains, drive_scout, drop_dead_notes, en_route, evac_plan, expansion_demand, hold_defenders, war_print_need, inbound_force, jit_ready, maybe_assign_scout, order_move, order_march_exact, dispatch_settler, find_build_site, inbound_eta, note_wave_watch, drive_mapper, mapper_hop_target, MAPPER_MAX, _dark, probe_ok, raid_target, raid_targets, recall_deficit, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
-    return hopeless_capital(state, config, bar)
+    """D<N hopelessness (Step 5): the worst inbound threat cannot be met
+    even printing everything printable-in-time (1/town/turn TRAIN cap) —
+    pop affordability is necessary but not sufficient (a reinforcement
+    that still loses is a donation). Established empires almost never
+    qualify (deep print); young ones do."""
+    faction = state.faction
+    own_t = state.own_towns()
+    if not own_t:
+        return False
+    force = inbound_force(state, config, max_eta=8.0)
+    if not force:
+        return False
+    tid, (eta, n) = min(force.items(), key=lambda kv: kv[1][0])
+    town = next(t for t in own_t if t.id == tid)
+    home = sum(1 for a in state.own_armies()
+               if math.hypot(a.x - town.x, a.y - town.y) <= 20.0)
+    eta_turns = max(0, int(math.ceil(eta)))
+    printable = sum(eta_turns for t in own_t
+                    if t.population >= config.army_cost)
+    return home + printable < n
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
@@ -64,7 +83,6 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     duel_ctx = len(war_foes) <= 1
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
-    out.extend(fire_followups(state, config))  # queued second waves fire first
     sel = raid_target(state, config, priced=duel_ctx)
     sels = raid_targets(state, config, 3, priced=duel_ctx) if sel is not None else []
     marched: dict[int, int] = {}  # target town id -> packet size sent
@@ -123,17 +141,9 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # immediately (mass) — unless one is already en route (per-target
         # singularity: notes are live, no flags). Fielded foes route to
         # rope/sel below.
-        # Overkill cap (user: don't go overboard — strike mass marches
-        # EVERYONE at one town). Cap marchers at need+2 (extras hold for
-        # packs/patrols).
         if sk_march is not None and not en_route(state, sk_march[0].x, sk_march[0].y):
-            _skm = sum(1 for a in state.own_armies()
-                       if state.army_has_target(a.id) and state.army_target(a.id) is not None
-                       and abs(state.army_target(a.id)[0] - sk_march[0].x) < 15
-                       and abs(state.army_target(a.id)[1] - sk_march[0].y) < 15)
-            if bloodlust(state, config) or _skm < sk_march[1] + 2:
-                out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
-                continue
+            out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
+            continue
         if pack_building:
             if not probe_armed or probe_tgt is None \
                     or en_route(state, probe_tgt.x, probe_tgt.y) \
@@ -202,14 +212,12 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             if maybe_assign_scout(state, config, p):
                 out.extend(drive_scout(state, config, p) or [])
                 continue
-            # Spacing (r80: pro1 self-crowded (colonies <150km crush
-            # growth -> poverty -> death). rmin 120 clears the crowding
-            # range; near-support still pulls inside rmax).
+            # G2: settle on demand only (same gate as trains: void merit
             # or contested payback) — else recycle home for +500 pop-add,
             # but ONLY in true peace: marching home under known threat
             # just delivers defenders to the builds-merge (guard_duty t31).
             # In war-footing the army holds position (staying is the order).
-            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=300, salt=11, who=p.id) \
+            site = find_build_site(state, config, p.x, p.y, rmin=80, rmax=300, salt=11, who=p.id) \
                 if expansion_demand(state, config) else None
             # Site veto (fratricide): even a demanded colony must clear
             # growth>margin at its site (shared empty_3000 lesson).
@@ -228,32 +236,11 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # turn's recompute — trickling dies in detail).
     by_id = {a.id: a for a in state.own_armies()}
     for tgt_id, (tgt, tneed, members) in packets.items():
-        if (len(members) >= tneed and (bloodlust(state, config) or tgt.faction in dead_foes(state) or assault_verified(state, tgt))) or jit_ready(state, config, tgt, tneed, members, tgt.faction):
-            held = sync_hold(state, config, tgt.x, tgt.y, members)
-            # Follow-on queue (user: take then fan out — pre-plan the
-            # second wave: 2 nearest other foe towns. Fired on arrival
-            # (grave/ours note) with zero idle turns between waves).
-            foes = sorted((u for u in state.world.towns
-                           if u.faction != state.faction and u.id != tgt.id),
-                          key=lambda u: (u.x - tgt.x) ** 2 + (u.y - tgt.y) ** 2)[:2]
-            # Overkill cap: march need (+1 spare), rest hold.
-            sent = 0
+        if len(members) >= tneed or jit_ready(state, config, tgt, tneed, members, tgt.faction):
             for aid in members:
-                if aid in held:
-                    continue  # near armies wait: land together
-                if not bloodlust(state, config) and sent >= tneed + 1:
-                    break
                 a = by_id.get(aid)
                 if a is not None:
                     out.extend(order_move(state, config, a, tgt.x, tgt.y))
-                    sent += 1
-                    if foes:
-                        state.__dict__.setdefault("_followup", {})[aid] = [
-                            (u.x, u.y) for u in foes]
-            if sent > 0:
-                # Attempt ledger, once per flush (shared with probe_ok +
-                # recon caps — unseen deaths never blood).
-                state.__dict__.setdefault("_assaults", {}).setdefault(tgt.id, []).append(state.turn)
     # Idle patrols last (doctrine: leftovers sweep stalest sectors).
     out.extend(coverage_orders(state, config))
     return out
@@ -351,10 +338,7 @@ def _stage_builds(state: BotState, config: GameConfig) -> list[str]:
                 if dest is not None:
                     out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
                 continue
-            if not own_home and not reprint_ok(state, config):
-                state._army_targets.pop(p.id, None)
-            else:
-                out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
+            out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
     return out
 
 
@@ -376,12 +360,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out.extend(sc_out)
     # P4: evac (shared drain-and-flee, computed: endure established).
     # Covers naked-home 3-pack marches.
-    _sw = second_wind(state, config)
-    if _sw:
-        return _sw
-    _vl = victory_lap(state, config)
-    if _vl:
-        return _vl
     _evac = evac_plan(state, config, _pro_hopeless(state, config, 1700),
                       established_stays=True)
     if any(o.startswith("MOVE_CAPITAL") for o in _evac):
