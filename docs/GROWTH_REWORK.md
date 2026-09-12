@@ -325,29 +325,30 @@ Score of the growth-optimal 100k layout against the 1600s anchors
 5-10k, region 2.5-4k km², zipf 5-50), over the hierarchy search
 (`benchmarks/sanity_agrarian_realism.py`):
 
+Matched shapes, windowed rates (villages s_v=4/Pv=300; towns s32/T2400;
+rmax=50; gaps = hierarchy − flat):
+
 | gamma | premium 0.25 | premium 0.50 |
 |---|---|---|
-| 1.00 | flat wins, realism 0.48 | flat wins, realism 0.48 |
-| 1.10 | flat wins (L4 competitive, 0.92) | L4 competitive, 0.92 |
-| **1.15** | **L4 wins, realism 0.92** | **L4 wins, realism 0.92** |
-| 1.2-3.0 | L4 wins, realism 0.92 | L4 wins, realism 0.92 |
+| 1.00 | +0.018 | +0.034 |
+| 1.10 | +0.020 | +0.037 |
+| 1.15 | +0.021 | +0.039 |
+| 1.30 | +0.026 | +0.047 |
+| 1.50 | +0.033 | +0.059 |
 
-The emergent hierarchy is the same for every gamma >= 1.15: **280
+Correction: gamma is NOT a threshold — the hierarchy wins at gamma=1.0
+too, once shapes are matched and rates are settled. What gamma sets is
+the *margin*: higher gamma shifts services from villages to towns
+(village contributions shrink as serv^gamma for serv << P_market), so
+flat falls while the hierarchy holds, and the gap widens. The static
+realism scorecard still describes the winning hierarchy shape (280
 villages of 296 at 4 km, 20 market towns of 592 at 16 km, one
-chef-lieu of 5,325** (~3,900 km², top/median ~18, ~17% non-farm).
-It matches every anchor except "urban 8-12%", which counts only towns
->2,000 (the model then has ~5-7% in the chef-lieu; its 592-bourgs are
-non-farm but not "urban" in that metric).
+chef-lieu of 5,325 — 0.92 against the anchors).
 
-So: `market_scaling = 1.15` (the Bettencourt urban-scaling exponent) is
-the natural value - the minimum at which the growth-optimal layout
-becomes the central-place hierarchy - with `market_premium = 0.5` (top
-of the market-access anchor) to make the hierarchy win robustly.
-Higher gamma (1.5-2) keeps the same shape but strengthens the
-hierarchy's advantage. The cost is growth: enabling gamma > 1 removes
-village-to-village services, so the best achievable rate falls from
-+0.1242 (flat, gamma 1, premium 0.25) / +0.1629 (flat, premium 0.5) to
-+0.1193 / +0.1568.
+Recommendation unchanged (`market_scaling = 1.15` anchor +
+`market_premium = 0.5` for a robust margin), justification updated: the
+anchor value sets a strong hierarchy advantage, not the existence of
+one.
 
 
 ### Scale: 1 million people with gamma=1.15, premium=0.5
@@ -361,22 +362,57 @@ tier sizes roughly constant (`benchmarks/sanity_agrarian_1m.py`):
 | q=(5,5,5) m=(2,2,5) @ 3.5 km | 2,882 x 318 @ 3.5 km | 114 x 636 @ 18 km | 4 x 1,271 @ 88 km | 1 x 6,357 | 8.4% | +0.1576 |
 | q=(4,4,4) m=(2,3,3) @ 3.5 km | 2,818 x 309 @ 3.5 km | 172 x 617 @ 14 km | 10 x 1,852 @ 56 km | 1 x 5,556 | 13.0% | +0.1552 |
 
-Two things change with scale:
+Those 1M numbers turned out to be wrong (see the retraction below).
+With matched shapes and settled rates, the hierarchy wins decisively
+at both scales:
 
-- **The hierarchy stops winning.** At 100k the gamma=1.15 hierarchy
-  edged the flat mesh (+0.1568 vs +0.1535); at 1M the flat mesh wins
-  (+0.1631 vs +0.1576), because more villages make the mesh's mutual
-  services more valuable while town services saturate. If a 1M world
-  needs the hierarchy, gamma (or `market_premium`) has to be higher.
+| shape (matched) | ~110k region | ~1.05M region |
+|---|---|---|
+| flat villages | +0.1106 | +0.1144 |
+| towns 2.4k / 32 km (~12% urban) | **+0.1444** | **+0.1489** |
+| towns 9.6k / 64 km (~8-12% urban) | **+0.1447** | **+0.1498** |
+
+Rankings are identical across scales: towns of a few thousand
+covering the countryside every ~30-60 km beat flat by ~30% relative,
+with ~8-13% urban. There is no scale flip.
 - **The top of the system stays small.** The capital lands at
   2,500-7,400 - the service premium saturates at market-town scale.
   A 1600s province of 1M had chef-lieux of 10-30k; the model needs
   denser hinterlands, more agglomeration, or non-food urban functions
   to get there.
 
-The flat mesh remains the growth optimum; the realistic-looking 1M
-hierarchy is `q=(5,5,5), m=(2,2,5)` at 3.5 km spacing (8.4% urban,
-~31,000 km2).
+### Retraction: why the flip was an artifact (compound, both halves)
+
+1. **The 2-turn protocol measured flat meshes at an oscillation peak.**
+   Market services run on a one-turn lag (`serv` from last turn's
+   production), and villages balanced near `prod/sf ~= P` flip their
+   `max(0, ...)` service term on and off each turn. Flat meshes ring
+   at +-40% forever (t2 +0.15 vs settled mean +0.11); hierarchies
+   converge by t3-4 because the big town's services dominate. Every
+   table measured with 2-turn snapshots overstates flat by ~30-40%.
+   The fix is windowed means (warm 4 + span 6 == warm 10 + span 20);
+   the oscillation itself is benign for populations (per-turn changes
+   are tiny) but shows up as 2-cycle jitter in measured growth.
+2. **The (q,m) grids compared different shapes.** Tying towns to the
+   village lattice forced different urban fractions, sizes and town
+   densities at the two scales (17% urban with a 5.3k top at 100k vs
+   8.4% with a 6.4k top at 1M). The independent-lattice test above
+   holds spacing, size and urban fraction fixed and the flip vanishes.
+   (Replication of identical sheds is bit-exact across scales, as the
+   mechanics demand — there are no global couplings.)
+
+Cheap replacement: `benchmarks/hierarchy_opt.py` builds matched
+shapes on a moderate region (N ~= 570, ~1 s/config, ~3 MB matrices)
+and measures windowed rates. Validated: its ranking matches the 1M
+region (N ~= 3150, ~30 s/config) shape-for-shape, and warm 4 + span 6
+matches warm 10 + span 20 to 4 decimals.
+
+Note on older tables: every growth table predating this section used
+2-turn snapshots, which overstate flat meshes by ~30-40% (oscillation
+peak) while hierarchy numbers are near-settled. Rankings where the
+hierarchy won stand and are stronger than reported; close calls and
+the exact optima (town/village sizes) should be re-run with
+`hierarchy_opt.py` before being trusted.
 
 ## Status / open items
 
