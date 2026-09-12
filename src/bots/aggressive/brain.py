@@ -135,7 +135,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if sel is not None:
             # A3: leader-targeting survives inside raid_target's pressure
             # branch (big wars); duels march the priced take at +1.
+            # Two-phase (compound-then-raid): thin packs donate (proven 0s);
+            # raid only with surplus force (8+: covered 5-pack + home).
+            # Poor phases compound tall instead (settlers/guards, no raids).
             nearest, _, _ = sel
+            if len(state.own_armies()) < 8:
+                continue  # compound phase: hold (build force, don't donate)
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
