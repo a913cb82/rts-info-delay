@@ -37,11 +37,12 @@ let lastDrawTs = 0;
    is global. Weights: capture/battle 3, founding/town-death 2, train/
    army-death 1. Lookahead slows BEFORE the burst; a trailing window keeps
    the slowdown lingering after it. */
-const AUTO_LOOKAHEAD = 5;
-const AUTO_LINGER = 8;
+const AUTO_LOOKAHEAD = 20;    // raised-cosine ramp length before action
+const AUTO_LINGER = 20;       // after (context turns either side)
 const AUTO_FULL = 3;          // action units for full attention (one battle)
-const AUTO_SLOW = 2;          // effective x while action
-const AUTO_STEP_CAP = 12;     // max turns/frame under auto (so bursts are seen)
+const AUTO_SLOW = 2;          // preferred action speed (escalates if infeasible)
+const AUTO_STEP_CAP = 12;     // max turns/frame under auto (reactive mode)
+const AUTO_CONE = 1.20;       // max per-turn speed change (log-cone smoothing)
 let autoSpeed = false;
 let effSpeed = 1;
 /* Target-duration mode: fit the WHOLE replay into N seconds. Builds a
@@ -166,6 +167,8 @@ function buildActionCache(): void {
       const ev = e as unknown as Record<string, unknown>;
       let w = 0;
       const facs: number[] = [];
+      // Action = fighting + territorial change ONLY (training is not
+      // action): battle 3, capture 3, town build 2, town destroy 2.
       switch (e.kind) {
         case "town_capture":
           w = 3;
@@ -182,16 +185,6 @@ function buildActionCache(): void {
           w = 2;
           facs.push(ev.faction as number);
           break;
-        case "army_spawn":
-          w = 1;
-          facs.push(ev.faction as number);
-          break;
-        case "army_death": {
-          w = 1;
-          const f = lastFaction.get(ev.id as number);
-          if (f !== undefined) facs.push(f);
-          break;
-        }
         default:
           break;
       }
@@ -211,19 +204,8 @@ function buildActionCache(): void {
 /* Action intensity around turn i for the active signal (selected faction
    or global): max over lookahead + linger windows. */
 function actionAt(i: number): number {
-  const T = turns.length;
-  if (T === 0) return 0;
-  const F = Math.max(1, factionCount);
-  const lo = Math.max(0, i - AUTO_LINGER);
-  const hi = Math.min(T - 1, i + AUTO_LOOKAHEAD);
-  let a = 0;
-  for (let k = lo; k <= hi; k++) {
-    const v = selectedFaction === null
-      ? actionGlobal[k]!
-      : actionFaction[k * F + selectedFaction]!;
-    if (v > a) a = v;
-  }
-  return a;
+  if (i < 0 || i >= actionIntensityArr.length) return 0;
+  return actionIntensityArr[i]!;
 }
 
 function updateAutoSpeed(): void {
@@ -231,7 +213,7 @@ function updateAutoSpeed(): void {
     effSpeed = speed;
     return;
   }
-  const intensity = Math.min(1, actionAt(turn) / AUTO_FULL);
+  const intensity = Math.min(1, actionAt(turn));
   const fast = Math.max(4, speed);
   const slow = Math.min(AUTO_SLOW, fast);
   const target = slow + (fast - slow) * (1 - intensity);
@@ -249,9 +231,12 @@ function updateSpeedLabel(): void {
   if (speedLiveEl.textContent !== shown) speedLiveEl.textContent = shown;
 }
 
-/* Smoothed action intensity for the active signal: sum triangular
-   kernels (lookahead left, linger right) of each action turn. */
-function actionIntensity(): Float32Array {
+/* Smoothed action intensity for the active signal: raised-cosine (Hann)
+   kernel around every action turn (context either side, zero slope at the
+   edges -> no kinks), normalized so the game's loudest bursts reach 1. */
+let actionIntensityArr: Float32Array = new Float32Array(0);
+
+function buildIntensity(): void {
   const T = turns.length;
   const F = Math.max(1, factionCount);
   const I = new Float32Array(T);
@@ -260,33 +245,55 @@ function actionIntensity(): Float32Array {
       ? actionGlobal[k]!
       : actionFaction[k * F + selectedFaction]!;
     if (a === 0) continue;
-    const w = a / AUTO_FULL;
+    const w = Math.min(1, a / AUTO_FULL);
     const lo = Math.max(0, k - AUTO_LINGER);
     const hi = Math.min(T - 1, k + AUTO_LOOKAHEAD);
     for (let i = lo; i <= hi; i++) {
       const d = i < k ? (k - i) / AUTO_LINGER : (i - k) / AUTO_LOOKAHEAD;
-      const v = w * Math.max(0, 1 - d);
-      if (v > I[i]!) I[i] = Math.min(1, v);
+      const v = w * 0.5 * (1 + Math.cos(Math.PI * Math.min(1, d)));
+      if (v > I[i]!) I[i] = v;
     }
   }
-  return I;
+  // Normalize to the 98th percentile of active turns so the loudest
+  // action reliably reaches the slow floor (raw weights rarely hit 1).
+  const nz = Array.from(I).filter((x) => x > 0.02).sort((x, y) => x - y);
+  const peak = nz.length ? nz[Math.min(nz.length - 1, Math.floor(nz.length * 0.98))]! : 1;
+  for (let i = 0; i < T; i++) I[i] = Math.min(1, I[i]! / Math.max(1e-6, peak));
+  actionIntensityArr = I;
 }
 
-/* Per-turn seconds for a given quiet speed + slow floor; total = Σ dt. */
-function profileTotal(I: Float32Array, fast: number, slow: number): number {
-  let total = 0;
-  for (let i = 0; i < I.length; i++) {
-    const sp = slow + (fast - slow) * (1 - I[i]!);
-    total += 1 / Math.max(0.5, sp);
+/* Raw per-turn speed from intensity, then a log-space cone filter
+   (two-pass min over |Δln speed| <= ln AUTO_CONE) IS the smoothing: the
+   slow action valley is preserved and the ramp around it becomes a
+   geometric, perceptually even accelerate/decelerate. */
+function profileSpeeds(I: Float32Array, fast: number, slow: number): Float64Array {
+  const T = I.length;
+  const L = new Float64Array(T);
+  for (let i = 0; i < T; i++) {
+    L[i] = Math.log(Math.max(0.5, slow + (fast - slow) * (1 - I[i]!)));
   }
+  const lr = Math.log(AUTO_CONE);
+  for (let i = 1; i < T; i++) if (L[i]! > L[i - 1]! + lr) L[i] = L[i - 1]! + lr;
+  for (let i = T - 2; i >= 0; i--) if (L[i]! > L[i + 1]! + lr) L[i] = L[i + 1]! + lr;
+  const s = new Float64Array(T);
+  for (let i = 0; i < T; i++) s[i] = Math.exp(L[i]!);
+  return s;
+}
+
+function profileTotal(I: Float32Array, fast: number, slow: number): number {
+  const s = profileSpeeds(I, fast, slow);
+  let total = 0;
+  for (let i = 0; i < s.length; i++) total += 1 / s[i]!;
   return total;
 }
 
 function computeSchedule(): void {
   const T = turns.length;
   schedule = null;
-  if (T === 0 || autoTargetSec <= 0) return;
-  const I = actionIntensity();
+  if (T === 0) return;
+  if (autoTargetSec <= 0) { buildIntensity(); return; }
+  buildIntensity();
+  const I = actionIntensityArr;
   // Find the slowest action speed (most visible) that still fits.
   let fast = AUTO_FAST_MAX;
   let slow = AUTO_SLOW_CANDIDATES[AUTO_SLOW_CANDIDATES.length - 1]!;
@@ -311,12 +318,12 @@ function computeSchedule(): void {
   }
   fast = hi;
   scheduleFast = fast;
+  const sp = profileSpeeds(I, fast, slow);
   const sch = new Float64Array(T);
   let t = 0;
   for (let i = 0; i < T; i++) {
     sch[i] = t;
-    const sp = Math.max(0.5, slow + (fast - slow) * (1 - I[i]!));
-    t += 1 / sp;
+    t += 1 / sp[i]!;
   }
   schedule = sch;
   if (speedLiveEl) speedLiveEl.title = `target ${autoTargetSec}s, action ${slow}x, quiet ${fast.toFixed(0)}x`;

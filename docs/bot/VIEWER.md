@@ -95,16 +95,29 @@ per-turn speed profile — triangular kernel around every action burst
 (lookahead 5, linger 8) — and solves for the quiet speed so the summed
 per-turn times hit the target exactly (binary search, 80 iterations).
 
-Action segments have a visibility floor of **2x preferred**, escalating
-(3x, 4x, 6x ...) only when the target cannot otherwise be met; quiet
-stretches have NO floor and can run to **65536x** (turns advance from a
-cumulative wall-clock schedule, so the total is guaranteed). Observed on
-quad_10000 (270 action turns):
+Action = **fighting and territorial change only** (training is not
+action): battle 3, town capture 3, town build 2, town destroy 2. Each
+event raises a raised-cosine (Hann) kernel over +/-20 turns (context
+either side, no kinks); the intensity is normalized to the game's 98th
+percentile so the loudest bursts reach the floor.
 
-    45s -> action 2x  quiet 491x    20s -> action 3x  quiet 2578x
-    30s -> action 2x  quiet 1718x   10s -> action 6x  quiet 5155x
-    60s -> action 2x  quiet 286x     5s -> action 12x quiet 10311x
+Smoothing: the raw speed profile is passed through a **log-space cone
+filter** (|delta ln speed| <= ln 1.20 per turn). That filter IS the
+transition: it preserves the slow action valley and makes the ramp a
+geometric, perceptually even accelerate/decelerate, so the effective
+multiplier never jumps. Action keeps a floor of **2x preferred**
+(escalating 3x/4x/6x ... only when the target cannot otherwise be met);
+quiet stretches have NO floor and can run to **65536x**. Turns advance
+from a cumulative wall-clock schedule (the total is exact). Observed on
+quad_10000 with the current definition:
+
+    target  action  quiet    ramp time (to half-quiet)
+     15s     6x     4179x    1.0s
+     30s     3x     2090x    2.0s
+     60s     2x      452x    3.0s
+    120s     2x      122x    2.9s
+    300s     2x       39x    2.8s
 
 Faction-aware: select a faction (fog selector) and the profile is built
-from THAT faction's action only; the profile recomputes on selection or
-target change. Manual seeks re-anchor the schedule clock.
+from THAT faction's action only; recomputed on selection/target change.
+Manual seeks re-anchor the schedule clock.
