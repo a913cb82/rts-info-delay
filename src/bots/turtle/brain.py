@@ -169,6 +169,18 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         state.note_train(t.id)
         break  # one train per turn as per turtle doctrine
 
+    # Muster-takes (hybrid late offense): towns >=25k muster toward force 10
+    # (surplus only: guards/settlers first via bars above; muster turns come
+    # after). Force 10 takes viable towns (snowball engines); fortress holds
+    # meanwhile (threatened towns keep guards via bars). Opportunistic takes
+    # (1-2 when profitable), not sustained raiding (fortress style intact).
+    if sum(1 for a in state.own_armies()) < 10:
+        for t in sorted(own_t, key=lambda x: -x.population):
+            if t.population >= 25000 and t.id not in state._pending_trains:
+                out.append(f"TRAIN {t.id}")
+                state.note_train(t.id)
+                break
+
     # cap-concentration: outlying towns are delay, not fortresses. Split
     # garrisons measured 1635 vs 2180 concentrated (2v1 wins, 1v1s trade).
     home = [a for a in state.own_armies()
@@ -205,8 +217,24 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             need_garrison = False
             built = True
             continue
+        if not built and own_t and not threatened and sum(1 for a in state.own_armies()) >= 10:
+            free = [a for a in state.own_armies() if not state.army_has_target(a.id)]
+            cand = None
+            for u in state.world.towns:
+                if u.faction != faction and u.faction is not None and u.population >= 4000:
+                    if min((math.hypot(u.x - t.x, u.y - t.y) for t in own_t), default=float("inf")) >= 150.0:
+                        if not any(math.hypot(a.x - u.x, a.y - u.y) <= 10.0 for a in state.world.armies if a.faction == u.faction):
+                            w = max(0.0, (u.population - config.army_cost - config.death_threshold) / config.army_cost)
+                            if int(w + 1) <= len(free) and (cand is None or u.population > cand.population):
+                                cand = u
+            if cand is not None:
+                for a in free:
+                    out.extend(order_move(state, config, a, cand.x, cand.y))
+                built = True
         if not built and own_t:
-            # threatened home armies hold position — never dispatch them out
+            # Take-window (hybrid offense before founding): force>=10 calm
+            # packs march fresh-empty viable spaced towns FIRST (snowball
+            # engines beat future colonies); settlers resume after (cycle).
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
                 continue
             biggest = max(own_t, key=lambda t: t.population)
