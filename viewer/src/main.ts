@@ -31,6 +31,22 @@ let speed = 1;
 const TURBO_SPEED = 16;
 const TURBO_MS = 50;
 let lastDrawTs = 0;
+/* Adaptive ("auto") playback: action bursts (captures, battles, foundings,
+   training, deaths) slow playback down; quiet stretches speed up. The
+   signal follows the SELECTED faction (fog selector); with no selection it
+   is global. Weights: capture/battle 3, founding/town-death 2, train/
+   army-death 1. Lookahead slows BEFORE the burst; a trailing window keeps
+   the slowdown lingering after it. */
+const AUTO_LOOKAHEAD = 5;
+const AUTO_LINGER = 8;
+const AUTO_FULL = 3;          // action units for full attention (one battle)
+const AUTO_SLOW = 2;          // effective x while action
+const AUTO_STEP_CAP = 12;     // max turns/frame under auto (so bursts are seen)
+let autoSpeed = false;
+let effSpeed = 1;
+let actionGlobal: Float32Array = new Float32Array(0);
+let actionFaction: Float32Array = new Float32Array(0);
+let speedLiveEl: HTMLSpanElement | null = null;
 let panZoom: PanZoom = { scale: 1, tx: 0, ty: 0 };
 let fitScale = 1;
 
@@ -120,6 +136,102 @@ function buildScoreCache(): void {
   armyCache = { perFaction: armyPerFaction, maxArmies };
 }
 
+/* Action cache: per-turn per-faction weighted action (see AUTO_* above). */
+function buildActionCache(): void {
+  const T = turns.length;
+  const F = Math.max(1, factionCount);
+  actionGlobal = new Float32Array(T);
+  actionFaction = new Float32Array(T * F);
+  const lastFaction = new Map<number, number>();
+  for (let i = 0; i < T; i++) {
+    const tr = turns[i]!;
+    for (const t of tr.world.towns) lastFaction.set(1000000 + t.id, t.faction);
+    for (const a of tr.world.armies) lastFaction.set(a.id, a.faction);
+    let g = 0;
+    for (const e of tr.events) {
+      const ev = e as unknown as Record<string, unknown>;
+      let w = 0;
+      const facs: number[] = [];
+      switch (e.kind) {
+        case "town_capture":
+          w = 3;
+          facs.push(ev.old_faction as number, ev.new_faction as number);
+          break;
+        case "battle":
+          w = 3;
+          for (const c of (ev.combatants as { faction: number }[] | undefined) ?? []) {
+            facs.push(c.faction);
+          }
+          break;
+        case "town_spawn":
+        case "town_death":
+          w = 2;
+          facs.push(ev.faction as number);
+          break;
+        case "army_spawn":
+          w = 1;
+          facs.push(ev.faction as number);
+          break;
+        case "army_death": {
+          w = 1;
+          const f = lastFaction.get(ev.id as number);
+          if (f !== undefined) facs.push(f);
+          break;
+        }
+        default:
+          break;
+      }
+      if (w === 0) continue;
+      g += w;
+      for (const f of facs) {
+        if (f >= 0 && f < F) {
+          const idx = i * F + f;
+          actionFaction[idx] = (actionFaction[idx] ?? 0) + w;
+        }
+      }
+    }
+    actionGlobal[i] = g;
+  }
+}
+
+/* Action intensity around turn i for the active signal (selected faction
+   or global): max over lookahead + linger windows. */
+function actionAt(i: number): number {
+  const T = turns.length;
+  if (T === 0) return 0;
+  const F = Math.max(1, factionCount);
+  const lo = Math.max(0, i - AUTO_LINGER);
+  const hi = Math.min(T - 1, i + AUTO_LOOKAHEAD);
+  let a = 0;
+  for (let k = lo; k <= hi; k++) {
+    const v = selectedFaction === null
+      ? actionGlobal[k]!
+      : actionFaction[k * F + selectedFaction]!;
+    if (v > a) a = v;
+  }
+  return a;
+}
+
+function updateAutoSpeed(): void {
+  if (!autoSpeed) {
+    effSpeed = speed;
+    return;
+  }
+  const intensity = Math.min(1, actionAt(turn) / AUTO_FULL);
+  const fast = Math.max(4, speed);
+  const slow = Math.min(AUTO_SLOW, fast);
+  const target = slow + (fast - slow) * (1 - intensity);
+  // Asymmetric response: brake hard (a burst must not be skipped at
+  // turbo), release gently (linger after the action ends).
+  const rate = target < effSpeed ? 0.5 : 0.08;
+  effSpeed += (target - effSpeed) * rate;
+  if (Math.abs(effSpeed - target) < 0.05) effSpeed = target;
+  if (speedLiveEl) {
+    const shown = effSpeed >= 100 ? String(Math.round(effSpeed)) : effSpeed.toFixed(1);
+    if (speedLiveEl.textContent !== shown) speedLiveEl.textContent = shown;
+  }
+}
+
 /* ── Load ── */
 
 /* Custom faction names via ?names=pro,greedy,... (defaults to "Faction N").
@@ -171,6 +283,7 @@ function loadRecord(records: GameRecord[]): void {
   animProgress = 1;
   scoreCache = null;
   buildScoreCache();
+  buildActionCache();
   fitView();
   draw();
 }
@@ -691,14 +804,14 @@ function goToTurn(target: number, animate = true, doDraw = true): void {
   if (target === turn && animProgress >= 1) return;
   const delta = Math.abs(target - turn);
   // Above 4x the per-turn tween costs more than it shows: jump.
-  if (!animate || delta > 1 || speed > 4) {
+  if (!animate || delta > 1 || (autoSpeed ? effSpeed : speed) > 4) {
     turn = target; animFromTurn = target; animToTurn = target; animProgress = 1;
     cancelAnimationFrame(animRaf);
     if (doDraw) draw();
     return;
   }
   animFromTurn = turn; animToTurn = target; animProgress = 0; animStart = performance.now();
-  animDuration = Math.max(80, 350 / Math.max(0.5, speed));
+  animDuration = Math.max(80, 350 / Math.max(0.5, autoSpeed ? effSpeed : speed));
   turn = target;
   if (animRaf) cancelAnimationFrame(animRaf);
   animRaf = requestAnimationFrame(animateLoop);
@@ -722,10 +835,13 @@ function togglePlay(): void {
 function playLoop(ts: number): void {
   if (!playing || turns.length === 0) return;
   if (!lastPlay) lastPlay = ts;
+  updateAutoSpeed();
   const elapsed = ts - lastPlay;
-  const turnsToAdvance = (elapsed / 350) * speed;
+  const turnsToAdvance = (elapsed / 350) * effSpeed;
   if (turnsToAdvance >= 1) {
-    const next = Math.min(turns.length - 1, turn + Math.floor(turnsToAdvance));
+    const step = autoSpeed ? Math.min(Math.floor(turnsToAdvance), AUTO_STEP_CAP)
+                           : Math.floor(turnsToAdvance);
+    const next = Math.min(turns.length - 1, turn + Math.max(1, step));
     if (next !== turn) {
       const atEnd = next >= turns.length - 1;
       // Turbo: advance every frame, redraw at most every TURBO_MS.
@@ -875,6 +991,9 @@ function boot(): void {
         <option value="1024">1024×</option>
         <option value="4096">4096×</option>
       </select>
+      <label class="auto-speed" title="Adaptive speed: slow for action (selected faction, else any), fast when quiet">
+        <input type="checkbox" id="auto-speed"> auto <span id="speed-live">1.0</span>×
+      </label>
     </div>
   `;
 
@@ -901,6 +1020,16 @@ function boot(): void {
   document.getElementById("btn-next")!.addEventListener("click", () => goToTurn(Math.min(turns.length - 1, turn + 1)));
   document.getElementById("btn-end")!.addEventListener("click", () => goToTurn(turns.length - 1));
   speedSel.addEventListener("change", () => { speed = parseFloat(speedSel.value); lastDrawTs = 0; draw(); });
+  const autoCb = document.getElementById("auto-speed") as HTMLInputElement;
+  speedLiveEl = document.getElementById("speed-live") as HTMLSpanElement;
+  autoCb.checked = new URLSearchParams(location.search).get("auto") === "1";
+  autoSpeed = autoCb.checked;
+  autoCb.addEventListener("change", () => {
+    autoSpeed = autoCb.checked;
+    effSpeed = speed;
+    lastDrawTs = 0;
+    draw();
+  });
 
 
 

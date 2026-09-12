@@ -252,3 +252,22 @@ header {
   color: #555;
   pointer-events: none;
 }
+
+/* Adaptive playback: auto-speed toggle + live effective multiplier */
+.auto-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  opacity: 0.85;
+  user-select: none;
+  cursor: pointer;
+}
+.auto-speed input { cursor: pointer; }
+#speed-live {
+  min-width: 34px;
+  display: inline-block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #2e7d32;
+}
