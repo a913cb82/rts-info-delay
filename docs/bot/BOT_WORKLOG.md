@@ -1865,3 +1865,23 @@ duplicate (pro-d658df5) grinds zero-games. Renamed pro-6f463c9 ->
 pro-d658df5 (byte-identical pro/ content fcc4427f42; 16 records + rating
 moved, verified in pool with 57.2/16g). Grind scripts must resolve MINE
 via code-commit from now on.
+
+### GOAL-80, worst (aggressive) consolidated: 3 fails -> WAR-CHEST (2026-09-12)
+TARGET aggressive (worst, 42.2); gate >46.7 + conqueror invariants.
+(1) Naked-town founding veto: 15g -> 6.7 FAIL. Cut sprawl, left home naked.
+(2) Secure-capital (garrison-2 + capital veto): 15g -> 11.2 FAIL. Better
+(67%->53% deaths) but far from gate.
+(3) Combo + early evac (wired evac_plan, first for aggressive): 15g ->
+22.1 FAIL. Autopsy (loss: 3 spawns/10k turns, 0 takes, died passive):
+stack made it CATATONIC (pins + blocks + thin = sits and dies). Worse
+than reckless baseline. LESSON: stacking constraints kills agency.
+ROOT: POVERTY. Thin cushion spends to ~500 -> can't afford force (3-20
+armies/game) -> can't raid AND can't defend -> death spiral. 1-player
+optimal founds at >=15k (affordability); aggressive lives at ~1k.
+IDEA (1, clean, stack reverted to baseline): WAR-CHEST — never spend any
+town below ~3.5k (ratchet thick; raid/found/stage with surplus only).
+Thick => printable (muster works when raided) + steady force (10-20
+armies for packs AND home). Still raids march-active with surplus (style
+kept); never suicide-spends to 500. Predicts: force up, deaths down
+(printable+muster), takes up (packs affordable), no catatonia (no pins/
+blocks — only a spend floor).

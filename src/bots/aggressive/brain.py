@@ -7,10 +7,15 @@ from .core import BotForecast, BotState, DemandParams, bot_main, demand_trains, 
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
-    """Thin cushion (fights): floor only + pending guard. Forward towns
-    must print (raid logistics) — no distance rule, no peak cap."""
-    from .core import train_floor
-    return town.population >= train_floor(state, state.config)
+    """War-chest (anti-poverty): never spend below 2500 (train leaves
+    >=2500: still printable once more AND evac-affordable). Thin-cushion
+    spending to ~500 left it unable to afford force (3 armies/game) ->
+    can't raid AND can't defend -> death spiral. Ratchet thick (compound
+    to 2.5k+, spend surplus only); last-stand bare-convert still bypasses
+    thin via demand_trains (doomed towns convert, not gated here).
+    Forward towns print under the same chest (thin forward printing just
+    thins them to death; the thick capital feeds the raid)."""
+    return town.population >= 2500.0
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
