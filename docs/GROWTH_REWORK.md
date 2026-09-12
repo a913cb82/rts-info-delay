@@ -283,6 +283,40 @@ subdividing until services fade (~150 people); and `rho0` rises to
 `rural_density/(1-2c/(p+2))` (54.5/km² at c=0.9), so realized landscape
 densities can exceed the 20–40/km² anchor unless c is tuned.
 
+
+### How many hierarchy levels? (decay model)
+
+Best configuration per hierarchy depth, 100k people, hex overlays of
+coarser lattices (spacing x q, count / q²), tier sizes consecutive
+multipliers of the village (`benchmarks/sanity_agrarian_levels.py`):
+
+| levels | best %/yr | urban | P_village | shape of the best |
+|---|---|---|---|---|
+| 1 (flat) | **+0.1242** | 0% | 332 | 301 villages, 3 km spacing |
+| 2 | +0.1215 | 7.1% | 321 | 290 villages + 11 towns (q=5, size 2x) |
+| 3 | +0.1212 | 7.6% | 318 | + 1 regional (counts 290/10/1) |
+| 4 | +0.1212 | 8.8% | 314 | + 1 capital (counts 290/10/0/1) |
+
+Deeper hierarchies do not beat the flat mesh; they converge toward it.
+The best ones are almost flat: towns only 2x the village, one per
+~20 km, and the middle levels are empty (counts [290, 10, 0, 1]).
+Rich central-place hierarchies (many towns, big regionals) lose much
+more (at 20-40% urban, +0.10 down to +0.035%/yr).
+
+Why: growth is rural, villages above ~300 already have small non-farm
+sectors and serve each other at close spacing, and every person moved
+into a town leaves near-field farming and does not reproduce (fed towns
+have zero natural growth). Deeper tiers add no new service because the
+premium saturates.
+
+Deep hierarchies would need mechanisms the model lacks: agglomeration
+economies (service output per non-farm person rising with town size),
+institutional fixed costs (markets, courts, garrisons, cathedrals),
+market-function gating (only towns provide services), inter-regional
+trade in manufactures, or defence/administration. Historically,
+central-place hierarchies existed for those reasons, not because they
+maximised local demographic growth.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
