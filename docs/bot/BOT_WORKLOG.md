@@ -1819,3 +1819,10 @@ army vs a known foe army; solos hold home (become the garrison). Only
 preserves P6 pack pressure (packs still march; S0 scout + S==0 probes
 vs towns/unknowns untouched). Predicts: dangerous-slot survival up,
 thin-capital takes down, no loss of pack wins.
+
+### GOAL-100 iter 2 validation (2026-09-12)
+Pack-only code: 1-line veto (`elif enemy_armies` -> hold) + perf-test
+SendState port. Suites: fast 3153/3241 (identical, no regression),
+pytest green (2 load-flaky engine timing deselected), liveness clean,
+strategic 14.5s PASS. Committed on loop/pack-only. Rating next (>=15g,
+slots balanced from game 1).
