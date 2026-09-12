@@ -2962,3 +2962,12 @@ further without a passing rung (0-for-27).
 Buzzer +15g (395 total) -> ord 61.7 (mu 65.0, was 64.7/380g): +0.3 on
 27% wins + 1 F1-death + mids. Converged (true strength ~61-62; early 69
 was soft-field inflation). 400 games next.
+
+### Tracing live + mass-vs-onesies (2026-09-13 00:21 BST)
+Tracing infra merged (452d0ed; orders per turn in recordings). First
+trace (buzzer-F0 66k last vs F4 253k): F4 trained 22/moved 16/took 3
+(10+ army WAVE-marches t6583+); buzzer trained 12/moved 4/took 1
+(2-army onesie t4912, then sat 5000 turns). MASS beats ONESIES
+(Lanchester: 10v3 clean, 3v3 trade). QUEUED: mass-release (hold packs
+to 8+, release waves; wealth-gated vs bird-in-hand onesies when poor).
+Manual-game idling mystery solved (ensure_master_engine first).
