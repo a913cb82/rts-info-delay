@@ -105,10 +105,10 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                  if t.population * (1.0 - eff) > cost * eff + 200]
     else:
         cands = list(enemy_towns)
-    # Survivor gate (viable takes only): captures halve pop — below 4x the
-    # death floor the prize is a hostage (stuck, garrison-drain, often gifts
-    # back). Vulture-compatible: weakened must also clear viability (2000).
-    cands = [t for t in cands if t.population >= 4 * config.death_threshold]
+    # Survivor note (ranking, never gate: gating thin starves the raider
+    # (proven 11.1: no takes -> no snowball -> death). Hostages demoted to
+    # fallback (take if nothing better: something beats starving).
+    cands = [t for t in cands if t.population >= 2 * config.death_threshold]
     if not cands:
         return None
     fieldable = [a for a in state.own_armies()
@@ -164,6 +164,8 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                 / (1.0 + max(0, need - len(fieldable)))
             if u.is_capital:
                 score *= 1.5
+            if u.population < 4 * config.death_threshold:
+                score *= 0.3  # hostage fallback (take if nothing better)
             # Vulture (timing): weakened-viable jumps queue (windows close
             # as victims regrow). Weakened = pop-drop >=1000 (a train+ lost
             # to battle/take, NOT prints) AND foe field flat/down (prints

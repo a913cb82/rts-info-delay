@@ -67,4 +67,4 @@ def test_hostage_drop_ignored():
           armies=[(10, 500, 500, 0)])
     r = raid_targets(b, CFG, 2)
     assert r is not None
-    assert [x[0].id for x in r] == [2]
+    assert [x[0].id for x in r] == [2, 3]
