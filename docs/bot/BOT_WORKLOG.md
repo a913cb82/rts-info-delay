@@ -2279,3 +2279,16 @@ no regression). Merged to main (package-scoped scout.py + loop amendment;
 style untouched — plumbing, not doctrine). New max-ish (57.3) but NOT 80;
 ladder continues (next: raid-initiative gap? F1-mirror doctrine? M3?).
 NOTE (convention): all future worklog entries carry full datetime.
+
+### Rung-2c: fog-ward capital guard (2026-09-12 15:41 BST)
+KILL CHAIN (true brains): t2302 colony stolen; guards home t3250; t3350-75
+all 3 DISPATCH (unfreeze) blind; t3376 single F1 raider walks into naked
+1958 capital (beheaded, eliminated; orphans frozen t3500+). Unfreeze removed
+accidental robustness (frozen guards = defense-in-depth); intel-counted
+holds can't cover UNSEEN threats (fog!). FIX (pro/economy.py hold_defenders,
+package-scoped): capital ALWAYS keeps >=1 home (1v1 mutual saves vs singles;
+counted threats keep N+1 above; colonies unchanged). Premium (1 locked guard
+~2-4k/game, usually wasted) vs beheading-death (proven t3376). Applies ONLY
+when otherwise-zero (quiet games pay premium; threatened keep N+1 anyway).
+Predicts: fewer 0s (death-rate 7%->~3%), scores ~held. Bar 57.3+ (beat best);
+tie-zone 55-58 -> h2h vs 272977c before verdict (pre-registered).

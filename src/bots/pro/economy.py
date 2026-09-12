@@ -134,5 +134,18 @@ def hold_defenders(state: "BotState", config, force: dict) -> set:
                         and math.hypot(a.x - t.x, a.y - t.y) <= 20.0]
                 if here:
                     held.add(min(here, key=lambda a: math.hypot(a.x - t.x, a.y - t.y)).id)
+    # Fog-ward (rung-2c): the capital ALWAYS keeps >=1 home (unseen single
+    # raiders take naked capitals = beheading = game over; proven t3376
+    # (unfreeze dispatched all 3 home guards blind; one F1 raider walked
+    # into a 1958 capital). 1v1 mutual saves vs singles; counted threats
+    # already keep N+1 above. Premium (correct insurance), not a leak fix.
+    cap = state.world.faction_capital(state.faction)
+    if cap is not None and not any(
+            a.id in held for a in state.own_armies()
+            if math.hypot(a.x - cap.x, a.y - cap.y) <= 20.0):
+        here = [a for a in state.own_armies()
+                if math.hypot(a.x - cap.x, a.y - cap.y) <= 20.0]
+        if here:
+            held.add(min(here, key=lambda a: math.hypot(a.x - cap.x, a.y - cap.y)).id)
     return held
 
