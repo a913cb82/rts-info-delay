@@ -2279,3 +2279,29 @@ no regression). Merged to main (package-scoped scout.py + loop amendment;
 style untouched — plumbing, not doctrine). New max-ish (57.3) but NOT 80;
 ladder continues (next: raid-initiative gap? F1-mirror doctrine? M3?).
 NOTE (convention): all future worklog entries carry full datetime.
+
+### Rung-2c: fog-ward capital guard (2026-09-12 15:41 BST)
+KILL CHAIN (true brains): t2302 colony stolen; guards home t3250; t3350-75
+all 3 DISPATCH (unfreeze) blind; t3376 single F1 raider walks into naked
+1958 capital (beheaded, eliminated; orphans frozen t3500+). Unfreeze removed
+accidental robustness (frozen guards = defense-in-depth); intel-counted
+holds can't cover UNSEEN threats (fog!). FIX (pro/economy.py hold_defenders,
+package-scoped): capital ALWAYS keeps >=1 home (1v1 mutual saves vs singles;
+counted threats keep N+1 above; colonies unchanged). Premium (1 locked guard
+~2-4k/game, usually wasted) vs beheading-death (proven t3376). Applies ONLY
+when otherwise-zero (quiet games pay premium; threatened keep N+1 anyway).
+Predicts: fewer 0s (death-rate 7%->~3%), scores ~held. Bar 57.3+ (beat best);
+tie-zone 55-58 -> h2h vs 272977c before verdict (pre-registered).
+
+### Rung-2c verdict: FAIL, reverted (2026-09-12 15:58 BST)
+Fog-ward rated clean 15g -> ord 39.5 (mu 47.5): FAIL (bar 57.3). Zero
+visible deaths (insurance worked) but wins only vs weak (low gain) +
+narrow 2nds vs decent (187-195k vs 194-203k pros — costly). Two candidate
+mechanisms (unresolved): (a) premium-drag (1 locked guard ~3k flips wins
+to 2nds more often than it converts deaths); (b) pack-paralysis (pinned
+closest-home army stalls pack departures -> fewer takes -> no quality
+wins). Either way net-negative. LESSON (premium-vs-leak corollary):
+insurance can be -EV when its premium exceeds expected saves — price
+premiums from rates (death-rate x save-value vs premium x games), not
+from single specimens (t3376 was lottery-representative). Reverted (main
+keeps unfreeze-alone 57.3). Code parked on loop/pro-fogward.
