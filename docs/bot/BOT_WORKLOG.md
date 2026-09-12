@@ -1981,3 +1981,21 @@ staging). Takes must LAND (not just march) for style AND wins. IDEA (1,
 one number): keeper overwhelm +1 -> +2 (absorb 2-3 foe prints during
 march; fewer attempts (need 6-7 free) but landing). Predicts: takes land
 (1-3/game, style takes ✓ + wins ✓), donations stop, ordinal holds 47+.
+
+### GOAL-80, worst (aggressive) 10: deterrence-3 (2026-09-12)
+OVERWHELM+2 rated 15g -> 38.7 (mu 46.7). FAIL (worse than style 50.0;
++2 too strict -> passive, fewer takes). REVERTED to keeper+1 (style
+base 50.0). 9 fails total; mechanisms tried: sprawl-veto, home-garrison,
+flee-evac, poverty-floor, land-blitz, stick-package, home-mass, style
+(takes+staging), overwhelm. REMAINING fresh lever: DETERRENCE (deflect
+raids, don't just fight them). Foe raid math prefers weak (low S/W =
+high score), so visibly strong capital (3 home + thick) gets SKIPPED for
+softer neighbors — survival without fighting. IDEA (1, on style base):
+STANDING-3 — while live foe armies exist (even in peace, no inbound),
+pin capital home to 3 (hold present + recall free to reach 3; mass-recall
+tops to N+1 when threatened). Peace-time strength PREVENTS wars (naked-
+in-peace invites targeting). Stronghold-conqueror (hard head + active
+keeper-packs/takes/staging), not fortress (bases naked, pack raids).
+Takes prove conqueror. Unit-verified (2 peace recalls, guard holds).
+Predicts: raids deflected (fewer inbound -> fewer deaths), packs raid
+(takes up, wins up), ordinal crosses 46.7 (mu 52+ + sigma shrink).

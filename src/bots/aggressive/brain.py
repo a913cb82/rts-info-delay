@@ -24,6 +24,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
+    state._deter_need = 0
+    state._deter_xy = None
 
     # Step 2, aggressive params (predator): thin cushion (depth 0),
     # marginal+initiative raids (margin 100), economic expansion rare
@@ -38,6 +40,28 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
+    # Deterrence-3 (deflect raids, don't just fight them): foe raid math
+    # prefers weak (low S/W = high score), so a visibly strong capital
+    # (3 home + thick) gets SKIPPED for softer neighbors — survival
+    # without fighting (deflection, not defense). Standing (not inbound-
+    # gated): peace-time strength PREVENTS wars (naked-in-peace invites
+    # targeting). While live foe armies exist, pin capital home to 3
+    # (mass-recall tops up to N+1 when threatened; this floors at 3).
+    # Stronghold-conqueror (hard head + active pack), not fortress (bases
+    # naked, pack raids, takes land). Takes prove conqueror, not guards.
+    if enemy_armies:
+        capd = state.world.faction_capital(faction)
+        if capd is not None:
+            homed = [a for a in state.own_armies()
+                     if a.id not in held
+                     and math.hypot(a.x - capd.x, a.y - capd.y) <= 20.0]
+            # Hold present to 3 (don't march the deterrent out).
+            for a in sorted(homed, key=lambda a: math.hypot(a.x - capd.x, a.y - capd.y))[:3]:
+                held.add(a.id)
+            # Recall free fielders to reach 3 (pre-emptive mass in peace;
+            # mass-recall tops to N+1 when threatened; this floors at 3).
+            state._deter_need = max(0, 3 - len(homed))
+            state._deter_xy = (capd.x, capd.y)
     # Mass-to-N+1 recall (anti-abandon): hold_defenders RETREATS hopeless
     # towns (home<=N-2 holds none -> take -> death), but recalling free
     # surplus to N+1 turns the abandon into a clean-kill save (pack walks
@@ -155,6 +179,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 out.extend(order_move(state, config, p, mass_tgt.x, mass_tgt.y))
                 mass_need -= 1
                 continue
+        # Deterrence recall (peace-time mass to 3): free surplus to capital
+        # when short (mass covers threatened; this covers peace). Else falls
+        # through to normal (packs/scouts/settle) — rest still acts.
+        _dn = getattr(state, "_deter_need", 0)
+        _dxy = getattr(state, "_deter_xy", None)
+        if _dn > 0 and _dxy is not None and not state.army_has_target(p.id):
+            if math.hypot(p.x - _dxy[0], p.y - _dxy[1]) > 20.0:
+                out.extend(order_move(state, config, p, _dxy[0], _dxy[1]))
+                state._deter_need = _dn - 1
+                continue
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
         # Stay-behind vs live threat (shared): last home guard holds.
@@ -178,14 +212,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # branch (big wars); duels march the priced take at +1.
             nearest, _need, _ = sel
             _cap = state.world.faction_capital(faction)
-            # Overwhelm +2 (not +1): foe prints 2-3 during our march;
-            # +1 arrives to find need grown past it and donates (0 takes in
-            # canonical vs mustering expander). +2 absorbs the prints so
-            # takes LAND (style needs landed takes, not marched donations).
-            # Fewer attempts (need 6-7 free, rarer) but landing (wins).
             _blitz = (_cap is not None
                       and math.hypot(_cap.x - nearest.x, _cap.y - nearest.y) <= 250.0
-                      and free_n >= _need + 2
+                      and free_n >= _need + 1
                       and nearest.population >= 2000)
             if not _blitz:
                 continue  # not a keeper (far/thin/unguarded-take = gift) — hold
