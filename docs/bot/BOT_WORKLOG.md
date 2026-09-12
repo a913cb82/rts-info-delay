@@ -2564,3 +2564,13 @@ outranks capitals on timing). 3 vulture tests. Predicts: takes are viable
 (compoundable, snowball) not hostages (stuck); weakened windows caught
 before regrow. Bar: aggressive gate (ord>=47.2 (exceed expander) AND takes
 occur (conqueror style)).
+
+### Vulture revision verdict: FAIL (recovery partial) (2026-09-12 21:59 BST)
+Floor->demote restored takes (no starvation): 34.6/15g (mu 42.1) vs floor
+11.1 (recovered 75% to baseline 42.2) with 4 wins (incl 199k dominant) and
+confirmed takes (conqueror style holds). BUT deaths persist (3+ zeros):
+packs march without overmatch (donate vs guards) and die raiding. Vulture
+selects targets; nothing gates MARCHES on confirmed overmatch (fresh intel
+2v1+). NEXT (march discipline, queued): march iff overmatch-confirmed,
+else hold/build (don't donate). Falsifiable: death-rate halves, wins hold.
+Parked (main keeps 42.2).
