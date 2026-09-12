@@ -2499,3 +2499,12 @@ to grown foes, not growing ones). NEXT (v4?): foe GROWTH-RATE (not level)
 gates thickness (printing fast = future-rich = blanket early); or anticip-
 atory (staging+closing like pro siege work). Code parked on loop/turtle-
 thick2.
+
+### Turtle v4: factory anticipation (2026-09-12 20:41 BST)
+V3 rich-blanket HURT (27.2 vs 39.3: mistimed thickness, spends late vs
+overrun-in-motion). Dropped rich; v4 = v2-precision + factory-rate: blanket
+when any known foe town printed (>=900 single-update drop = a train;
+growth offsets tens). Anticipates (packs form at 5-15k, blanket before
+25k+). Zero new state (uses _prev_pop; only fresh-visible prints show;
+blind printers = fog tax). 7 unit tests. Predicts: weak-wins persist +
+strong placements recover (early blanket holds via mutuals). Bar 50+.

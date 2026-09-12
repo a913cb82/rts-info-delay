@@ -11,6 +11,43 @@ from .settle import *
 from .economy import *
 
 
+def _live_threat(state: BotState, aid: int, x: float, y: float, foe: int,
+                fresh: int = 20) -> bool:
+    """Threat counts iff live AND (moving/unknown OR mustering OR factory).
+    SKIP stale ghosts and SOLO parked loiterers. COUNT movers,
+    first-sightings, parked-with-mates (staging), and factory towns
+    (printing now => pack factory soon: blanket BEFORE it grows rich;
+    rich-level lags since packs form at 5-15k while towns reach 25k).
+    Rich-level bypass REMOVED (v3 failed 27.2: mistimed thickness spends
+    late vs overrun-in-motion (waste+die)). Factory = >=900 single-update
+    drop (a train; growth offsets tens). Only fresh-visible prints show."""
+    prev = state._prev_pop if hasattr(state, "_prev_pop") else {}
+    for t in state.world.towns:
+        if t.faction == state.faction:
+            continue
+        if prev.get(t.id, t.population) - t.population >= 900.0:
+            return True
+    if state.turn - state._last_seen.get(("army", aid), state.turn) > fresh:
+        return False
+    trail = (state._trails.get(aid) if hasattr(state, "_trails") else None) or ()
+    if len(trail) >= 2:
+        pts = [(p[1], p[2]) for p in trail]
+        still = True
+        for i in range(len(pts)):
+            for j in range(i + 1, len(pts)):
+                if math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) > 5.0:
+                    still = False
+                    break
+            if not still:
+                break
+        if still:
+            for b in state.world.armies:
+                if b.faction == foe and b.id != aid and math.hypot(b.x - x, b.y - y) <= 100.0:
+                    return True  # parked with mates: staging pack
+            return False
+    return True
+
+
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
@@ -26,6 +63,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for a in state.world.armies:
         if a.faction == faction:
             continue
+        if not _live_threat(state, a.id, a.x, a.y, a.faction):
+            continue  # stale ghosts + solo loiterers don't open the chest
         for t in own_t:
             d = math.hypot(a.x - t.x, a.y - t.y)
             eta = d / max(1.0, config.army_speed)
@@ -47,6 +86,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         n = 0
         for a in state.world.armies:
             if a.faction == faction:
+                continue
+            if not _live_threat(state, a.id, a.x, a.y, a.faction):
                 continue
             nearest = min(own_t, key=lambda u: math.hypot(a.x - u.x, a.y - u.y))
             if nearest.id != t.id:
