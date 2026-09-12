@@ -2868,3 +2868,9 @@ spike-batch (240k+ everywhere; F1-death THREE times; 55% wins). F1 keeps
 killing (unseen packs behead naked capitals). NEXT RUNG (queued, fresh):
 blanket 1-home picket (never leave, not threat-gated, not recall) —
 1 idle army premium vs F1-beheading; priced +1 net (save half the 7%).
+
+### Picket rung built (2026-09-12 23:18 BST)
+Beheading-insurance build: capital-nearest idle stations ALWAYS (marches
+home if away, sits if home; excluded from packs). 1-army premium vs
+F1-unseen beheading (station, not recall — no bleed). Bar (ladder):
+exceed 65.4 + F1-deaths drop.

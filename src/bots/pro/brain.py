@@ -98,6 +98,17 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     duel_ctx = len(war_foes) <= 1
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
+    # Picket (beheading insurance): capital-nearest idle stations ALWAYS
+    # (not threat-gated, not recall). 1-army premium vs F1-unseen beheading
+    # (naked capital dies); variance cut (fewer zeros) beats endurance cost.
+    _cap = state.world.faction_capital(state.faction)
+    _picket = None
+    if _cap is not None:
+        _idle = [a for a in state.own_armies()
+                 if not state.army_has_target(a.id) and a.id not in held]
+        if _idle:
+            _picket = min(_idle, key=lambda a: math.hypot(a.x - _cap.x, a.y - _cap.y)).id
+            held.add(_picket)
     sel = raid_target(state, config, priced=duel_ctx)
     # Pack gate: an unaffordable-but-valuable target builds (trains fire),
     # it doesn't march — undersized packs donate. Idle armies hold as the
@@ -119,6 +130,9 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         if state.army_has_target(p.id):
             continue  # handled by the builds stage
         if p.id in held:
+            # Picket stations AT the capital (marches home if away, else sits).
+            if _cap is not None and p.id == _picket and math.hypot(p.x - _cap.x, p.y - _cap.y) > 20.0:
+                out.extend(order_move(state, config, p, _cap.x, _cap.y))
             continue
         # One-colony march: the printed settler founds the second town
         # >=160km out before any raid/pack logic can poach it.
