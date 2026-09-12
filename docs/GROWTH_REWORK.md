@@ -412,10 +412,17 @@ mean). Validated: its ranking matches the 1M region (N ~= 3150)
 shape-for-shape.
 
 Profiled costs per `_step_core` turn (shared 3.8 GB box, numba on):
-N=570: everything ~= 0.06 s. N=3150: land 2.3 s once per new town
-set (cached after), dist matrix 0.6 s once (76 MB, cached), market
-boost 0.6 s/turn (N x N matmul), migration 1-4 s/turn (four N x N
+N=570: everything ~= 0.06 s. N=3150: land ~0.5 s once per new town
+set (cached after; was 2.3 s), dist matrix 0.6 s once (76 MB, cached),
+market boost 0.6 s/turn (N x N matmul), migration 1-4 s/turn (four N x N
 float64 temporaries, ~300 MB — the memory hog), trade negligible.
+The land kernel is no longer O(n^2): per-town neighbor lists (towns
+within 2R, from the cached distance matrix) prune the inner loop from
+N to ~20 candidates. Exact — bit-identical on twin towns at exactly
+2R, exact stacks, ties, negative coords, and all benchmark shapes
+(tripwire unchanged). Same idea as combat/movement's SpatialHash grids,
+but reusing the already-cached D matrix instead of a dict (numba
+can't do dict cells, and D is needed downstream anyway).
 Guidance: screen at N ~= 500-600; keep 1M validations rare, one at a
 time, with caches cleared between geometries (`eco._dist_cache`,
 `eco._land_cache`). The engine itself needs no changes for this —

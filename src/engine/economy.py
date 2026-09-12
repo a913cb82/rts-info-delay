@@ -183,11 +183,15 @@ try:
     import numba
 
     @numba.njit(cache=True)
-    def _land_kernel(xs, ys, sx, sy, radius, map_w, map_h, out):
+    def _land_kernel(xs, ys, sx, sy, radius, nbrs, degs, out):
         """Voronoi area within R per town, by equal-area sampling.
 
         A sample in town i's ring counts for i iff i is the nearest
-        settlement to it (the map is a window; countryside continues)."""
+        settlement to it (the map is a window; countryside continues).
+        `nbrs[i]` lists candidate towns within 2R of i in ascending
+        index order: by the triangle inequality the true nearest to any
+        of i's samples is always among them, and strict-less-than over an
+        ascending list reproduces brute-force tie-breaking exactly."""
         n = xs.shape[0]
         k = sx.shape[0]
         wt = math.pi * radius * radius / k
@@ -198,7 +202,8 @@ try:
                 py = ys[i] + sy[q] * radius
                 bd = 1e18
                 bj = -1
-                for j in range(n):
+                for m in range(degs[i]):
+                    j = nbrs[i, m]
                     dx = xs[j] - px
                     dy = ys[j] - py
                     d2 = dx * dx + dy * dy
@@ -227,17 +232,30 @@ def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
         xs = np.array([t.x for t in towns], dtype=np.float64)
         ys = np.array([t.y for t in towns], dtype=np.float64)
         sx, sy = _sample_offsets()
+        # Candidate towns within 2R of each town (ascending index).
+        # Triangle inequality: the nearest town to any sample in i's
+        # ring is at most 2R from i, so restricting to candidates is
+        # exact; the 1e-9 slack dwarfs float noise at the boundary.
+        D = _get_dist_matrix(towns)
+        reach = 2.0 * config.farm_radius_km * (1.0 + 1e-9)
+        degs = np.zeros(n, dtype=np.int64)
+        for i in range(n):
+            degs[i] = int(np.count_nonzero(D[i] <= reach))
+        nbrs = np.zeros((n, int(degs.max())), dtype=np.int64)
+        for i in range(n):
+            nbrs[i, :degs[i]] = np.flatnonzero(D[i] <= reach)
         if _has_numba:
-            _land_kernel(xs, ys, sx, sy, config.farm_radius_km, map_w, map_h, areas)
+            _land_kernel(xs, ys, sx, sy, config.farm_radius_km, nbrs, degs, areas)
         else:
             wt = math.pi * config.farm_radius_km ** 2 / len(sx)
             for i in range(n):
-                for q in range(len(sx)):
-                    px = xs[i] + sx[q] * config.farm_radius_km
-                    py = ys[i] + sy[q] * config.farm_radius_km
-                    d2 = (xs - px) ** 2 + (ys - py) ** 2
-                    if int(np.argmin(d2)) == i:
-                        areas[i] += wt
+                nb = nbrs[i, :degs[i]]
+                px = xs[i] + sx * config.farm_radius_km
+                py = ys[i] + sy * config.farm_radius_km
+                d2 = (xs[nb][None, :] - px[:, None]) ** 2 + \
+                    (ys[nb][None, :] - py[:, None]) ** 2
+                win = np.argmin(d2, axis=1)
+                areas[i] = np.count_nonzero(nb[win] == i) * wt
     _land_cache["key"] = key
     _land_cache["areas"] = areas
     return areas
