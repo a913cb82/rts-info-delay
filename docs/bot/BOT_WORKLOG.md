@@ -2945,3 +2945,8 @@ H2H from DB (n>=8): dd9782a places above buzzer 62% (24/39); all others
 (takes fail into 2-home; buzzer wastes packs; dd9782a outlasts) but
 bleeds vs diverse (nothing to defend; 47.0). QUEUED: counter-recall
 (fresh-takes race before recall arms, or overmatch 5+ vs 2-home).
+
+### Buzzer 365g + nemesis-kill validated (2026-09-12 23:59 BST)
+Buzzer +15g (365 total) -> ord 62.8 (mu 66.2, was 65.2/350g): +1.0 on
+27% wins + quality mids (2nds vs 240k+) + 1 F1-death. dd9782a above
+buzzer 40% this batch (62% regressing to luck; kill validated).
