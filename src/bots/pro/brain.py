@@ -105,11 +105,17 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     free_n = sum(1 for a in state.own_armies()
                  if not state.army_has_target(a.id) and a.id not in held)
     pack_building = sel is not None and sel[1] > free_n
+    # Mass-release (Lanchester waves): rich (force>=10) holds small packs to
+    # 8+ (10v3 clean; onesies trade). Poor takes now (bird-in-hand; massing
+    # starves). Pure hold while massing (probes would trigger early march).
+    mass_hold = sel is not None and len(state.own_armies()) >= 10 and free_n < 8
+    if mass_hold:
+        pack_building = True
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # the first NEARBY free army (recon by fire — bounded risk, gains
     # intel + takes vs passive; prints observed calibrate the follow-on).
     # Far unknowns hold for the pack (no 600km donations into printers).
-    probe_armed = pack_building and sel[2] == 0
+    probe_armed = pack_building and sel[2] == 0 and not mass_hold
     probe_sent = False
     probe_reach = 6.0 * max(1.0, config.army_speed)
     probe_tgt = sel[0] if probe_armed else None

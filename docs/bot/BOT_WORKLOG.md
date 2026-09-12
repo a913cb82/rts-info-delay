@@ -2971,3 +2971,8 @@ trace (buzzer-F0 66k last vs F4 253k): F4 trained 22/moved 16/took 3
 (Lanchester: 10v3 clean, 3v3 trade). QUEUED: mass-release (hold packs
 to 8+, release waves; wealth-gated vs bird-in-hand onesies when poor).
 Manual-game idling mystery solved (ensure_master_engine first).
+
+### Mass-release rung built (2026-09-13 00:31 BST)
+Trace-driven build: rich (force>=10) holds small packs to 8+ (pure hold,
+probes suppressed; Lanchester waves); poor takes now (bird-in-hand).
+Bar (ladder): exceed 61.7 + pack sizes 8+ verified via order-tracing.
