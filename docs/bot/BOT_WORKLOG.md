@@ -2817,3 +2817,11 @@ mid-game muster tax; compound runs undisturbed. Raising 60k->80k would
 only cut endgame take-force (neutral-to-worse). Spike-batches = better-
 compound foes + F1-lottery (both structural). Oscillation accepted
 (66-67 asymptote); volume continues for dominance data (EV ~0 near-term).
+
+### Take-volume killed pre-build (opportunity-bound) (2026-09-12 23:08 BST)
+Mirror self-play trace (5x buzzer, 10k turns): 5 colonies + 3 takes TOTAL
+(0-1/brain; 1 hostage-ish, 2 viable 33k). Take-volume is OPPORTUNITY-
+bound (mirrors guard everything; no empty viable towns exist), NOT gate-
+bound — loosening gates fires at nothing. Takes happen naturally in
+diverse fields (mistake-prone foes leave targets; dedup descends there).
+No code change. Branch deleted.
