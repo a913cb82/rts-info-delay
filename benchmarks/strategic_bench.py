@@ -192,6 +192,9 @@ def section_ffa():
     total = 0.0
     for path in sorted((ROOT / "maps" / "ffa").glob("*.json")):
         d = json.loads(path.read_text())
+        if "teams" not in d:
+            print(f"  skip {path.name} (no teams spec)")
+            continue
         cfg = GameConfig.from_dict({k: v for k, v in d.items()
                                     if k not in ("teams", "focal", "note")})
         cmds = {int(f): resolve(spec, "pro") for f, spec in d["teams"].items()}
