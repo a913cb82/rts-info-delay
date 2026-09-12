@@ -169,6 +169,49 @@ Rules that fall out:
   population. A bigger single town only pays if the countryside is
   correspondingly bigger and mature (see the packing section above).
 
+
+### Central France c.1600 vs the model (100,000 people)
+
+Historical picture (Berry/Bourbonnais/Nivernais-Auvergne margins,
+sources: Dupâquier, *Histoire de la population française*; de Vries,
+*European Urbanization*; Goubert's Beauvaisis; Christaller's marketing
+ranges; the anchors in `benchmarks/realism_ref.json`):
+
+| tier | size | spacing | count for 100k |
+|---|---|---|---|
+| chef-lieu (petite ville) | 5,000–10,000 | — | 1 |
+| bourgs / market towns | 300–1,500 | 10–20 km | 10–20 |
+| villages / parishes | 150–400 | 2–5 km | 250–400 |
+| hamlets, farms | <100 | — | remainder |
+
+Region ~2,500–4,000 km² (25–40 people/km²); towns >2,000 hold ~8–12%
+of the population; net growth ~0–0.2%/yr (the 17th-century plateau,
+punctuated by subsistence crises).
+
+Model optimum for 100k: 1 town 9,600 + 100 villages of 900, 10 km
+spacing, ~8,800 km², ~10% urban. The urban fraction and the single
+chef-lieu agree; the rural lattice does not — the model's villages are
+3–6× too large and 2–5× too far apart, and it has no bourg tier.
+
+Why, in model terms:
+
+- **Reach.** The model's trade/service reach is `3·L_cart` = 60 km.
+  History's is a day's return, 10–20 km. Rerun at one carting doubling
+  (`benchmarks/sanity_agrarian_reach.py`): the town advantage collapses
+  (+0.087 vs +0.084%/yr villages-only), because a 20 km shed cannot pay
+  for a town.
+- **Every settlement owns a full 5 km ring.** A model town needs
+  `P > Y_ring/sf ≈ 1,812` before it has any non-farm people and can
+  serve anyone. Historical bourgs of 500–1,500 had small territories and
+  lived off surrounding villages — they were service centres with large
+  non-farm shares. The model cannot represent that tier.
+
+To reproduce the 1600s pattern: shorten the economic reach to ~20 km
+and add a bourg mechanic (settlements whose farmland is smaller than a
+full ring, so a small market town can still have net importers and
+service capacity).
+
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode

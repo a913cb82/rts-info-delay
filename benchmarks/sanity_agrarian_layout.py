@@ -46,11 +46,25 @@ def sites(rmax):
     return uniq
 
 
+def spread(sl, n):
+    chosen = [sl[0]]
+    while len(chosen) < n:
+        best, bd = None, -1.0
+        for p in sl:
+            if p in chosen:
+                continue
+            d = min(math.hypot(p[0] - q[0], p[1] - q[1]) for q in chosen)
+            if d > bd:
+                bd, best = d, p
+        chosen.append(best)
+    return chosen
+
+
 def layout(n_t, T, n_v):
     P = (TOTAL - n_t * T) / n_v
     rmax = math.sqrt((n_v + n_t) * 90 / math.pi) + 12
     sl = sites(rmax)
-    towns = sl[:n_t] if n_t else []
+    towns = spread(sl, n_t) if n_t else []
 
     def dmin(p):
         return min((math.hypot(p[0] - q[0], p[1] - q[1]) for q in towns), default=1e9)
