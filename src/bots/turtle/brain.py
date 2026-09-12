@@ -210,7 +210,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # BOTH towns' growth — and growth IS the tall score).
             # Still tall, still calm-only: just far enough to compound
             # independently.
-            site = find_build_site(state, config, biggest.x, biggest.y, rmin=180, rmax=320, salt=13, who=p.id)
+            # Count-cap-3-maintain (anti-sprawl-stunt): stop founding at 3
+            # towns (maintain 3, refill losses below it). Beyond 3 spreads thin
+            # (more mouths, same pop -> stunt at 10k, outscored 3rd-4th). At 3,
+            # freed pop compounds EXISTING to 60k+ (180k total beats 150k pro;
+            # narrow quality wins -> mu 60+). Still fortress (few spaced guarded).
+            site = None
+            if len(own_t) < 3:
+                site = find_build_site(state, config, biggest.x, biggest.y, rmin=180, rmax=320, salt=13, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
                 built = True
