@@ -2425,3 +2425,14 @@ Poverty-trap analysis (final): thin-sandwich death is overdetermined
 can't fix poverty. Remaining lever: evac-bar (flee thin-sandwiches BEFORE
 beheading; P4 exists, bar untuned; doom-forecast accuracy is the risk).
 No rating (gate failed, saves 25min). Code parked on loop/pro-closing.
+
+### Evac-gate KILLED pre-rating (unreachable double-bind) (2026-09-12 20:04 BST)
+P4 dead-code proven (contradiction: cap>=2000 AND all-towns-<1200; capital
+vetoes own rescue). Futility-gate built (1500 bar (flight costs exactly
+1000) + margin +1 (asymmetry favors hair-trigger)) + 6 unit tests pass.
+Live trace: NEVER fires (F1 dead again, all False). Double-bind: thin-
+when-seen (bleed drops capital below affordability before raiders visible)
++ blind-when-fundable (wave-1 unseen until ETA<2 = too-late branch).
+Unreachable in practice. Deeper: doom-certainty needs unseen-wave-2 counts
+(impossible in fog); hair-trigger on wave-1 gifts capitals intact (worse).
+No rating (inert twin of parent). Code parked on loop/pro-evac.
