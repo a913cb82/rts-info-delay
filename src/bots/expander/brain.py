@@ -40,7 +40,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # leaves >=1500, survivable vs one raider — the 200 variant
         # created a vulnerable 700-window and died 4/6 games).
         depth_extra=1000.0, raid_margin=300.0, payback_mult=0.3,
-        probe_armies=1, void_horizon=100, rates=False, serial=False)))
+        probe_armies=1, void_horizon=100, rates=False, serial=True)))
     # Standing guard (era-expander weakness, autopsy-verified: a single
     # raider beheads a naked capital while armies settle — pro's army 2
     # turns out, capital 0 defenders, dead t2733). One guard per rich
@@ -120,7 +120,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                     continue
                 if not own_home and state._foe_first_seen and not expansion_demand(
                         state, config, DemandParams(payback_mult=0.3, void_horizon=100,
-                                                  rates=False, serial=False)):
+                                                  rates=False, serial=True)):
                     state._army_targets.pop(p.id, None)
                     continue
                 if not own_home and not tip_safe(state, config, tx, ty):
@@ -167,8 +167,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # races override via filed race-sites (no racing rival exists).
         site = None
         if expansion_demand(state, config, DemandParams(
-                payback_mult=0.3, void_horizon=100, rates=False, serial=False)):
-            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
+                payback_mult=0.3, void_horizon=100, rates=False, serial=True)):
+            site = find_build_site(state, config, p.x, p.y, rmin=160, rmax=350, salt=11, who=p.id)
         if site is not None and not site_pays(state, config, site[0], site[1]):
             site = None
         if site:

@@ -1898,3 +1898,37 @@ TAKES (skip train/travel/500-start) skewed by fight+garrison+see costs
 over-guard (survives, too small to win). Each personality's growth
 direction is toward base disciplined by its constraint. (Notes preserved
 from 2026-09-12 exercise; harness committed.)
+
+### Process: park stuck-aggressive, fix active-worst expander (2026-09-12)
+AGGRESSIVE PARKED (not abandoned): 11 ideas fail joint gate; best ordinal
+51.8/style-fail vs 42.2/style-true; structural (takes-vs-mustering + style-
+drift); branches preserved (loop/aggr-chest full trail), main stays
+baseline 42.2. Revisit on take-engine breakthrough (instant recall-reserve
+packs? siege? intel-precision?) or gate rethink. ACTIVE worst = expander
+(47.2/128g) vs turtle (47.3/98g). Gate (active): exceed turtle 47.3; bar
+48.0 (noise-margin; expander sigma 1.3 stable, need clear cross, not +0.2).
+Expander story (pre-watched): alive 81% but WEAK (4th most common 41/138;
+thin sprawl outscored; pro beats it 61%). FIX: THICK SPRAWL (many big
+towns, not many tiny) — raise founding thresh + spacing so colonies found
+as growth engines (8k+) spaced for compounding (150km), keep MOST
+foundings (8-12, still colonist) + abandon-if-costly (never turtle).
+Predicts: outgrow tall via parallel engines (12x7/turn > 2x25/turn),
+scores up (100k+), guards kick in (thicker=>guarded=>survival up).
+
+### GOAL-80, active-worst (expander) 1: thick sprawl (2026-09-12)
+(Aggressive parked-stuck (11 fails, structural); active worst expander
+47.2/128g vs turtle 47.3/98g. Gate: exceed turtle 47.3; bar 48.0 margin.)
+DATA: alive 81% but WEAK (4th most common 41/138; thin 1-3k sprawl
+outscored; pro beats it 61% by outcompounding). ROOT: overexpansion
+(thin/tight/parallel: founds at ~1.5k (stuck), 120km (crowded), parallel
+(all thin at once) -> 12 thin mouths (1-3k, 1-3/turn each = 12-36/turn
+total) vs pro 2x25/turn=50 (outgrown). 1-player optimal: 15k thresh +
+150km (thick+spaced wins). IDEA (1 package, colonist-congruent): THICK
+SPRAWL — expansion trains only from >=8000 (stay >=7000, 7+/turn engines;
+not thin stuck) + rmin 120->160 (room to compound, low crowding) + serial
+(one-in-flight, pace (don't thin via parallel spend); still 8-12 total,
+most foundings). Keep eagerness (payback 0.3/horizon 100 intact: still
+founds readily, just big/spaced/paced) + abandon-if-costly (never turtle;
+holds elsewhere). Predicts: 8-12 thick colonies (8k+ -> 30k-60k each,
+spaced) outgrow tall via parallel (12x7 > 2x25) to 300k+ (wins); thicker
+=>guarded (survival up too). Suites: guard 2680->3163 (+18%, holds better).
