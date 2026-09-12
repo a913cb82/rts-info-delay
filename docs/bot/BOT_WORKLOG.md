@@ -2089,3 +2089,17 @@ overgrowth) — the live "expander beats pro" specimen (34/67 stat); fork it.
 Also: solitaire-attractor 194042 (uncontested pro-family converges EXACT —
 par score; games decided by interaction deltas); F0/F1 slot mirror (same
 numbers swapped with slots).
+
+### Rung 2: refound-dispatch (lost-colony deadlock breaker) (2026-09-12)
+SPECIMEN: sprawl-repro (best-pro F0 DIES 0; expander-1040c1b sprawls 1->24
+towns, wins 76k bloodbath; parent 6k, aggressive 0). Autopsy: t2302 PARENT
+steals F0's fresh colony (464); F0 sits 1-town 7000 turns (pop flat ~2000:
+6 guard prints eat all growth; 6-7 idle heirlooms); t6000-6500 bloodbath
+(F2/F4 die, F0 capital 2003->661 holds); t9328 F1 snowball (22 towns)
+cracks 6 guards + 5044 capital. ROOT: deadlock (threat->guards->pop<2500
+->_one_colony never re-fires->1-town->death). FIX (_one_colony_refound,
+march-gate only): 1 town + turn>=2500 + capital>=2000 + >=2 armies (one
+stays) + >=4000t left + slot free -> reassign IDLE guard as settler (no
+print, no thinning; print gate keeps 2500). Predicts (rematch): F0 refounds
+~t3000, 2-town compound, survives bloodbath, contends (flips 0 to 100k+).
+Style: compounder (rebuilds the single colony, still <=1 well-spaced).

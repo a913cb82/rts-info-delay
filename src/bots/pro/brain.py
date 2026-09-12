@@ -58,6 +58,37 @@ def _one_colony(state: BotState, config: GameConfig) -> bool:
     return True
 
 
+def _one_colony_refound(state: BotState, config: GameConfig) -> bool:
+    """Refound mode (lost-colony deadlock breaker, ladder rung 2).
+
+    A stolen/starved colony leaves 1 town + idle guards; threat->prints
+    keeps pop <2500 forever so _one_colony never re-fires (1-town guard-
+    hoard -> certain slow death, proven t9328). Refound reassigns an IDLE
+    guard as settler (no print, no thinning — the print gate keeps 2500).
+    Needs: 1 town, late (>=2500t: early thin foundings stay D2-banned),
+    capital >=2000 (safe: untouched by the dispatch), >=2 own armies
+    (one stays home), >=4000t left, settler slot free. March gate only."""
+    own_t = state.own_towns()
+    if len(own_t) != 1:
+        return False
+    if state.turn < 2500:
+        return False
+    turns_left = (getattr(config, "max_turns", 10000) or 10000) - state.turn
+    if turns_left < 4000:
+        return False
+    cap = state.world.faction_capital(state.faction)
+    if cap is None or cap.population < 2000:
+        return False
+    if len(state.own_armies()) < 2:
+        return False
+    for a in state.own_armies():
+        tgt = state.army_target(a.id)
+        if tgt is not None and all(
+                math.hypot(tgt[0] - t.x, tgt[1] - t.y) > 20 for t in own_t):
+            return False  # settler already marching
+    return True
+
+
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     # One-colony settler FIRST (must fire in void too — the whole
@@ -121,8 +152,9 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         if p.id in held:
             continue
         # One-colony march: the printed settler founds the second town
-        # >=160km out before any raid/pack logic can poach it.
-        if _one_colony(state, config):
+        # >=160km out before any raid/pack logic can poach it. Refound
+        # mode reassigns an idle guard (no print, no thinning).
+        if _one_colony(state, config) or _one_colony_refound(state, config):
             site = find_build_site(state, config, p.x, p.y,
                                    rmin=160, rmax=300, salt=11, who=p.id)
             if site is not None:
