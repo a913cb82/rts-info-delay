@@ -2894,3 +2894,7 @@ is a variance amplifier (packs wait -> miss windows -> starve-die 3x;
 clean takes win huge 544k/363k when they land). Deaths punish more than
 huge wins reward (ordinal). Bird-in-hand validated (take now thin beats
 take later clean). Reverted (main keeps buzzer 65.4). Parked.
+
+### Buzzer 260g (spike-batch down) (2026-09-12 23:32 BST)
+Buzzer +15g (260 total) -> ord 64.1 (mu 67.6, was 69.0/245g): -1.3 on a
+spike-batch (240k+ everywhere; F1-zero twice; 53% wins). Oscillation.
