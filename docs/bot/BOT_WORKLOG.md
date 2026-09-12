@@ -2479,3 +2479,23 @@ vs STRONG, thickness survives (mutuals hold, places 2nd-4th). V3 QUEUED
 field 3+ packs), precision vs weak (save for sprawl). Combines v2 weak-wins
 + baseline strong-survivals -> mu 55+ predicted. Falsifiable: 4th/death-rate
 vs strong drops, weak-wins persist. Code parked on loop/turtle-thick2.
+
+### Turtle v3: strength-gated thickness (2026-09-12 20:21 BST)
+V2 thins the wall (precision) -> big packs crack it (4ths/deaths vs 250k+).
+FIX: rich foe (>=25k single known town: prints 20+, sustains 3+ packs)
+-> blanket-count (thick wall, old behavior); weak foes -> precision (save
+for sprawl). 7 unit tests (incl rich-blanket + thin-precision). Predicts:
+weak-wins persist (47%) + strong placements recover (2nd-4th via mutuals).
+Bar 50+.
+
+### Turtle v3 verdict: FAIL (2026-09-12 20:41 BST)
+Rated clean 15g -> ord 27.2 (mu 35.4): FAIL (bar 50+). Wins persist (4,
+202-255k) but deaths/4ths vs strong AND a crash (g7 turn 1364). Crash
+diagnosed ENVIRONMENTAL (clean 10k-turn repro, no traceback; load-OOM era
+artifact like prior timeout verdicts — no code bug). Substantive: v3 still
+loses strong (thickness mistimed? rich-gate late (towns must REACH 25k
+before blanket (by then overrun in motion!)). Rich-gate is LAGGING (reacts
+to grown foes, not growing ones). NEXT (v4?): foe GROWTH-RATE (not level)
+gates thickness (printing fast = future-rich = blanket early); or anticip-
+atory (staging+closing like pro siege work). Code parked on loop/turtle-
+thick2.
