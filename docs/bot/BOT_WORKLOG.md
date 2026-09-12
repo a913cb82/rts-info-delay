@@ -1865,3 +1865,36 @@ duplicate (pro-d658df5) grinds zero-games. Renamed pro-6f463c9 ->
 pro-d658df5 (byte-identical pro/ content fcc4427f42; 16 records + rating
 moved, verified in pool with 57.2/16g). Grind scripts must resolve MINE
 via code-commit from now on.
+
+### 1-player optimal ceiling exercise (2026-09-12)
+Q: 1 faction, 10k turns, 500-pop center start — max score + strategy?
+A: **1.71M, 41 towns** (top 81k, avg 42k). Sweeps (engine-direct founder
+`benchmarks/solo_opt.py`, legal TRAIN/BUILD/MOVE_TO only, 1-town center
+map `maps/solo.json`): THRESH 15k x SPACING 150km x biggest-source x
+uniform x no-boost x fill-then-compound. Schedule: compound to 15k
+(~t3000), found to max-min 150km sites until map full (~41 by t7500),
+pure compound after (no sites; none capped so no boost).
+REJECTED (measured): denser 100km (50+ towns, crowded to 300k-1M);
+sparser 160km (25 towns, 1.4M); thinner THRESH 2.5k (730k); thicker 22k
+(1.6M, too slow to fill); satellites (150->90 late gap-fill: 53 towns
+but 1.27M — each satellite's crowding tax on its big neighbor ~4k lost
+growth exceeds its own +2.7k pop: NET NEGATIVE); nearest-to-site sourcing
+(527k — march saves ~5 pop vs thinning a growing town ~1000s; logistics
+irrelevant, affordability rules); boosting (never: -500 net unless
+capped->growing, never occurs); founding past ~t8500 (payback-negative:
+500-start needs ~1200-1500 turns left to repay the 1000 train).
+Finer site grid packs more (40km grid: 25 towns 1.43M; 20km: 38 towns
+1.68M; 10km: 41 towns 1.71M) — diminishing, packing quality matters.
+ANALYTICAL RULES: found iff turns_left>=~1300 + site>=150km from all +
+parent>=15k (stays>=14k); source=biggest (lowest % thinning); uniform
+sizes (no kept-small satellites); spacing=150km (per-neighbor crowding
+~0.2 at 150km for 40k towns; denser stagnates, sparser wastes slots).
+BASE vs FFA (personality skews — optimal strategy varies by constraint):
+pro = base minus defense tax (1 colony not 41, guards/muster reserved,
+fogged sites) -> 190k; expander = base expansion impulse skewed
+cheap/thin/unguarded (over-founds, feeds); aggressive = base growth via
+TAKES (skip train/travel/500-start) skewed by fight+garrison+see costs
+(fails on thin/retaken/no-evac); turtle = base minus expansion plus
+over-guard (survives, too small to win). Each personality's growth
+direction is toward base disciplined by its constraint. (Notes preserved
+from 2026-09-12 exercise; harness committed.)
