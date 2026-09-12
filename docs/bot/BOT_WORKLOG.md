@@ -1960,3 +1960,23 @@ IDEA (2 numbers on cap base): cap 12->15 + spacing 120->160. Predicts:
 15 spaced (survive raids (redundant) + hold territory) compound to 30k+
 (uncrowded, fed) to 300k+ (wins); guards hold thick (survival up); ordinal
 49+ (scores up (3rd not 4th) + wins up).
+
+### GOAL-80 structural analysis: only pro can reach it; need authorization (2026-09-12)
+MU CAPS (measured equilibria vs pool): pro 65.6 (wins 44%, beats mid 70%+,
+splits mirrors) | turtle/expander 51 (beat weak 60%+, lose to strong 60%+,
+mu capped (can't beat 55+ pros: force/pop insufficient)) | aggressive 47
+(takes weak, dies to strong; capped). ORDINAL = mu-3sigma (certainty helps
++1-3 via games, not skill). TO REACH 80 (mu 80+, 95% wins vs 65 pool):
+pro needs +15 mu (70% wins, +25% — 5 ideas at +5 proven twice (one-colony,
+pack-only)) | others need +29-33 (10+ ideas, caps ~55-65 (can't beat
+strong pros)). ONLY PRO VIABLE for 80 (5 ideas, concrete +5/idea trend).
+CONFLICT: worst-first FORBIDS pro (best, never targeted), but only pro
+reaches 80 (+23 vs +33 others). Worst-first asymptotes field to ~60-65
+(lift mid, pro rises via quality wins to ~65-70?) but never 80 (needs pro
++15 direct). BLOCKED on process authorization (user owns loop; forbade
+pro-work twice): (A) authorize pro-ceiling iterations to 80 (5 ideas,
+reaches goal, breaks worst-first) | (B) insist worst-first (lift mid to
+60-65 asymptote, goal 80 unreachable — lower/accept?) | (C) change method
+(RL/self-play/new mechanics for breakthroughs?) | (D) persist stuck
+personalities (0-for-14 combined fails (11 aggr + 3 exp), futile). PAUSED
+awaiting direction (no unilateral process override after corrections).
