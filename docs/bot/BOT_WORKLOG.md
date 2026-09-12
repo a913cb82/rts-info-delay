@@ -3023,3 +3023,10 @@ Buzzer +20g (500 total) -> ord 62.2 (mu 65.5, was 66.0/480g): -0.4 on
 25% wins + 3 F1-deaths. 500 games banked (most-measured by far).
 Converged true ~61-64. 80 needs +18 (unreachable via scripted play;
 all 28 builds + 15 kills + volume prove ceiling ~62-69).
+
+### Artifacts refresh + formal stuck (2026-09-13 00:52 BST)
+Plot regened (elo.png); canonical in sync; status: pro 62.2/500g,
+aggressive 42.2 WORST (parked, baseline-optimal), expander 47.2
+(parked), turtle 47.3 (parked). Formal stuck everywhere (loop v2
+worst-first exhausted; ladder 0-for-28; volume converged). 80 needs
+compute (RL/search) unavailable here.
