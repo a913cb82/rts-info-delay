@@ -81,22 +81,28 @@ grain-carting cost distance. Each entry: value + range + source.
 Bench asserts against ranges, never point values. Keep it <50 lines;
 this file is the only "history" the bench may cite.
 
-## 5. Proposed harness
+## 5. Harness (suite v3: scenarios + closeness, no verdicts)
 
-New file `benchmarks/growth_realism.py` (engine-direct, no bots) +
+`benchmarks/growth_realism.py` (engine-direct, no bots) +
 `benchmarks/growth_systems.py` (generic interface):
 
 ```
-python benchmarks/growth_realism.py                 # all checks, ~2s
-python benchmarks/growth_realism.py hierarchy       # subgroup
+python benchmarks/growth_realism.py                 # all, ~6s wall
+python benchmarks/growth_realism.py macro           # subset
 python benchmarks/growth_realism.py --system NAME   # score SYSTEMS[NAME]
 ```
 
-Each check: build town list in-memory → call ONLY
-`G.isolated` / `G.nets` / `G.step` (the `GrowthSystem` interface) →
-return metric + target range + pass/fail. New mechanics register a
-system in `growth_systems.py`; the suite file is never edited to
-pass it. Composite = report table, not a
+Each item is a scenario (setup → run → observe) returning a closeness
+score 0..1 against the ref band (log/linear falloff outside, one-sided
+defeats scaled to the stakes); composite = mean. No binary verdicts:
+the number is the verdict. Scenarios assert behavior, never mechanism;
+isolated towns appear only at self-feeding sizes (<= ~1k) — anything
+bigger runs with its hinterland in the World. Checks call ONLY
+`G.isolated` / `G.nets` / `G.step`. New mechanics register a system in
+`growth_systems.py`; this file changes only to ADD scenarios, never to
+pass one. Current roster (15): village_rate, recovery, viability,
+infill, hierarchy, market_penalty, sustain, urban, gapfill, sinkflow,
+access, returns, macro, hinterland, perf. Composite = report table, not a
 single number (avoid Goodharting one scalar). Perf guardrail runs
 alongside and fails loud on regression.
 

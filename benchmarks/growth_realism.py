@@ -1,20 +1,23 @@
-"""Growth-realism benchmark — engine-direct, no bots, deterministic.
+"""Growth-realism suite — pure integration tests, no unit probes.
 
-Scores the *growth model* (src/engine/economy.py) against 1600s
-anchors in benchmarks/realism_ref.json. Synthetic layouts bypass
-BUILD so the growth formula is tested separately from the build rule.
-
-Calendar: 1 turn = 1 week (TURNS_PER_YEAR = 52). Distances: game km.
+Each item is a SCENARIO: set up towns, run them forward through a
+GrowthSystem (benchmarks/growth_systems.py), observe the behavior,
+score CLOSENESS to the historical expectation (0..1, 1 = inside the
+reference range). Composite = mean score. No binary verdicts: the
+number is the verdict.
 
 Usage:
-    python benchmarks/growth_realism.py            # all checks
-    python benchmarks/growth_realism.py infill     # one check
-    python benchmarks/growth_realism.py --json     # + machine record
-    python benchmarks/growth_realism.py --system candidate  # score a
-      GrowthSystem from benchmarks/growth_systems.py (default: engine)
+    python benchmarks/growth_realism.py                 # all, ~2s
+    python benchmarks/growth_realism.py macro           # subset
+    python benchmarks/growth_realism.py --system NAME   # SYSTEMS[NAME]
+    python benchmarks/growth_realism.py --json          # + machine record
 
-Exit 0 always (this is a ruler, not a gate);_verdicts are in the table.
-Current engine is the expected-red baseline: most checks FAIL.
+Rules for suite edits (frozen with the ref ranges): scenarios assert
+BEHAVIOR (trajectories, outcomes), never mechanism; isolated towns are
+used only at self-feeding sizes (<= ~1k) — anything bigger must have
+its hinterland in the scenario. New mechanics register a system in
+growth_systems.py; this file changes only to add scenarios, never to
+pass one.
 """
 
 import json
@@ -33,7 +36,7 @@ from growth_systems import SYSTEMS  # noqa: E402
 TURNS_PER_YEAR = 52
 REF = json.loads((ROOT / "benchmarks" / "realism_ref.json").read_text())
 
-G = None  # active GrowthSystem (benchmarks/growth_systems.py), set in main
+G = None  # active GrowthSystem, set in main
 _next_id = [1]
 
 
@@ -43,114 +46,151 @@ def T(x, y, pop, faction=0):  # noqa: N802 - tiny town factory
                 population=float(pop))
 
 
-def annual_pct(net, pop):
-    return net / pop * TURNS_PER_YEAR * 100.0
+# --- scoring primitives ------------------------------------------------
+
+def band(v, lo, hi, log=False):
+    """1.0 inside [lo,hi]; linear (or log-distance) falloff to 0 outside."""
+    if lo <= v <= hi:
+        return 1.0
+    if log:
+        if v <= 0 or lo <= 0:
+            return 0.0
+        lv, llo, lhi = math.log(v), math.log(lo), math.log(hi)
+        d = llo - lv if v < lo else lv - lhi
+        return max(0.0, 1.0 - d / ((lhi - llo) or 1.0))
+    d = lo - v if v < lo else v - hi
+    return max(0.0, 1.0 - d / ((hi - lo) or 1.0))
 
 
-def r1_growth_rate():
-    """Isolated-town annual growth vs historical 0.1-0.5%/yr."""
-    lo, hi = REF["longrun_growth_pct_per_yr"]["lo"], REF["longrun_growth_pct_per_yr"]["hi"]
-    rows = []
-    for p in (500, 2000, 10000, 40000, 80000):
-        rows.append((p, annual_pct(G.isolated(float(p)), float(p))))
-    probe = [v for p, v in rows if p in (2000, 10000)]
-    ok = all(lo <= v <= hi for v in probe)
-    det = ", ".join(f"{p}:{v:.2f}%/yr" for p, v in rows)
-    return ("growth_rate", "annual % @2k,10k", f"{probe[0]:.2f},{probe[1]:.2f}",
-            f"[{lo},{hi}]", ok, det)
+def onesided(v, scale):
+    """1.0 if v >= 0, linear falloff to 0 at v = -scale."""
+    if v >= 0:
+        return 1.0
+    return max(0.0, 1.0 + v / scale)
 
 
-def r2_recovery():
-    """Halve a 10k town; recovery time vs post-plague 40-150y."""
-    lo, hi = REF["plague_halving_recovery_yr"]["lo"], REF["plague_halving_recovery_yr"]["hi"]
+def clamp01(v):
+    return max(0.0, min(1.0, v))
+
+
+def realized_annual(town, turns):
+    """Run one town forward, return realized annual %.
+
+    Single-town only (all trajectory scenarios isolate the subject;
+    company, if any, is built into the World's other towns and read via
+    nets(), never by index). Death reports -100%."""
     w = World()
-    w.towns.append(T(500, 500, 5000))
-    target = 10000.0
+    w.towns.append(T(town.x, town.y, town.population, town.faction))
+    p0 = town.population
+    G.step(w, turns)
+    if not w.towns or w.towns[0].population <= 0:
+        return -100.0
+    return ((w.towns[0].population / p0) ** (TURNS_PER_YEAR / turns) - 1.0) * 100.0
+
+
+# --- scenarios ----------------------------------------------------------
+
+def s1_village_rate():
+    """Lone villages (300, 1000 — self-feeding sizes) over 10 years:
+    natural increase must look agrarian, 0.1-0.5%/yr."""
+    lo, hi = REF["longrun_growth_pct_per_yr"]["lo"], REF["longrun_growth_pct_per_yr"]["hi"]
+    rates = [realized_annual(T(500, 500, p), 520) for p in (300, 1000)]
+    s = sum(band(r, lo, hi, log=True) for r in rates) / 2
+    return ("village_rate", "10y annual % @300,@1000",
+            f"{rates[0]:.2f},{rates[1]:.2f}", f"[{lo},{hi}]", s,
+            "isolated calibration lives ONLY at self-feeding sizes")
+
+
+def s2_recovery():
+    """Halved 5k town with intact hinterland (6x500 @30km) regrows to
+    10k on a post-plague timescale, 40-150y. Ring at 500 (not 300:
+    trajectory company below the death floor dies on turn 1 and the
+    scenario silently degrades to lone recovery — 500 is the largest
+    honest village until viability extends downward)."""
+    lo, hi = REF["plague_halving_recovery_yr"]["lo"], REF["plague_halving_recovery_yr"]["hi"]
+    ring = [(500 + 30 * math.cos(i * math.pi / 3), 500 + 30 * math.sin(i * math.pi / 3))
+            for i in range(6)]
+    towns = [T(500, 500, 5000)] + [T(x, y, 500) for x, y in ring]
+    w = World()
+    for t in towns:
+        w.towns.append(T(t.x, t.y, t.population))
     turns = None
-    for i in range(1, 20001):
-        G.step(w)
-        if w.towns and w.towns[0].population >= target:
+    for i in range(1, 15001):
+        G.step(w, 1)
+        if w.towns and w.towns[0].population >= 10000.0:
             turns = i
             break
     yrs = turns / TURNS_PER_YEAR if turns else float("inf")
-    return ("recovery", "5k->10k yr", f"{yrs:.1f}" if turns else ">384",
-            f"[{lo},{hi}]", turns is not None and lo <= yrs <= hi,
-            f"{turns} turns" if turns else "never (cap 20k turns)")
+    s = band(yrs, lo, hi) if turns else 0.0
+    return ("recovery", "5k->10k yr (ringed)", f"{yrs:.1f}" if turns else ">288",
+            f"[{lo},{hi}]", s, f"{turns} turns" if turns else "never")
 
 
-def r3_viability():
-    """Villages at 200/400/500 must persist a full year."""
-    alive = {}
+def s3_viability():
+    """Hamlets at 200/400/500 left alone a year: fraction that persist."""
+    alive = 0
+    pops = {}
     for p0 in (200, 400, 500):
         w = World()
         w.towns.append(T(500, 500, p0))
-        for _ in range(TURNS_PER_YEAR):
-            G.step(w)
-            if not w.towns:
-                break
-        alive[p0] = round(w.towns[0].population, 1) if w.towns else None
-    ok = all(v is not None for v in alive.values())
-    return ("viability", "pop after 52t", str(alive), "all alive", ok,
-            f"death_threshold={G.death_threshold}")
+        G.step(w, TURNS_PER_YEAR)
+        if w.towns:
+            alive += 1
+            pops[p0] = round(w.towns[0].population, 1)
+        else:
+            pops[p0] = None
+    return ("viability", "alive after 52t", str(alive) + "/3", "3/3",
+            alive / 3, f"{pops} (death {G.death_threshold})")
 
 
-def r4_infill():
-    """A 500-pop village midway between two 40k towns 150km apart
-    must raise total net growth (new farmland worked)."""
+def s4_infill():
+    """One 500 village midway between two 40k towns @150km: system total
+    must rise by up to its free growth (full marks = zero crowding tax)."""
     base = [T(0, 0, 40000), T(150, 0, 40000)]
     with_v = [T(0, 0, 40000), T(150, 0, 40000), T(75, 0, 500)]
-    tot0 = sum(G.nets(base))
-    tot1 = sum(G.nets(with_v))
-    d = tot1 - tot0
-    return ("infill", "delta total net/turn", f"{d:+.2f}", "> 0", d > 0,
-            f"base={tot0:.2f} with-village={tot1:.2f} (village own ~+0.5)")
+    d = sum(G.nets(with_v)) - sum(G.nets(base))
+    free = G.isolated(500)
+    s = clamp01(d / free) if free > 0 else 0.0
+    return ("infill", "delta vs free gain", f"{d:+.2f}/{free:.2f}", "> 0", s,
+            "farmed gaps must pay")
 
 
-def r5_hierarchy():
-    """Same people, same 4 sites (150km square): 4x10k vs 34k+3x2k.
-    Realistic agglomeration should keep the hierarchical roof
-    competitive; pure concavity crushes it."""
+def s5_hierarchy():
+    """Same people, same 4 sites (150km square): 34k+3x2k roof vs 4x10k
+    uniform. Score = ratio to parity (hierarchical competitive = 1)."""
     pos = [(0, 0), (150, 0), (0, 150), (150, 150)]
-    uni = [T(x, y, 10000) for x, y in pos]
-    hier = [T(x, y, p) for (x, y), p in zip(pos, (34000, 2000, 2000, 2000))]
-    tu = sum(G.nets(uni))
-    th = sum(G.nets(hier))
-    r = th / tu if tu else 0
-    return ("hierarchy", "hier/uniform total", f"{r:.3f}", ">= 0.900", r >= 0.9,
+    tu = sum(G.nets([T(x, y, 10000) for x, y in pos]))
+    th = sum(G.nets([T(x, y, p) for (x, y), p in zip(pos, (34000, 2000, 2000, 2000))]))
+    r = th / tu if tu > 0 else 0.0
+    return ("hierarchy", "hier/uniform total", f"{r:.3f}", "1.0", clamp01(r),
             f"uniform={tu:.2f} hier={th:.2f}")
 
 
-def r6_market_penalty():
-    """A 10k neighbour at historical market spacing (15km) must not
-    gut a 10k town's growth."""
+def s6_market_penalty():
+    """Two 10k towns 15km apart: coexistence penalty over one neighbor."""
+    towns = [T(0, 0, 10000), T(15, 0, 10000)]
+    p = 1.0 - G.nets(towns)[0] / G.isolated(10000.0)
     cap = REF["market_penalty_at_spacing_max_frac"]
-    out = []
-    for d in (15, 50):
-        towns = [T(0, 0, 10000), T(d, 0, 10000)]
-        iso = G.isolated(10000.0)
-        net = G.nets(towns)[0]
-        out.append((d, 1.0 - net / iso))
-    ok = out[0][1] <= cap
-    return ("market_penalty", "penalty @15km,@50km",
-            f"{out[0][1]:.2f},{out[1][1]:.2f}", f"@15 <= {cap}", ok,
-            "fraction of isolated growth destroyed by one neighbour")
+    s = 1.0 if p <= cap else max(0.0, 1.0 - (p - cap) / 0.5)
+    p50 = 1.0 - G.nets([T(0, 0, 10000), T(50, 0, 10000)])[0] / G.isolated(10000.0)
+    return ("market_penalty", "penalty @15km (@50km)", f"{p:.2f} ({p50:.2f})",
+            f"<= {cap}", s, "market lattice must coexist")
 
 
 def _macro_layouts():
-    """Archetype layouts on a 100x100km tile, each 300k pop (30/km2,
-    mid historical range). H: hierarchical (784x250 vill @3.6km +
-    36x2000 mkt @16.7km + 4x8000 reg @50km). U-big/U-mid/V: uniform
-    at 30k/2.5k/250. Deterministic grids; shared by r7 (tier
-    sustainability) and r13 (structure ranking)."""
-    VS = 3.57  # village cell; markets/regionals sit at cell CENTERS so
-    # every tier stands >= 2.5km (half cell diagonal) from every village:
-    # markets on a 5-cell period (17.85km), regionals off-period (~50km).
-    vill = [(1.8 + VS * i, 1.8 + VS * j, 250)
-            for i in range(28) for j in range(28)]
+    """Archetypes on a 100x100km tile, each 300k (30/km2). H: 784x250
+    vill @3.6km + 25x2800 mkt @17.9km (cell centers) + 4x8500 reg @50km.
+    U-big/U-mid/V uniform at 30k/2.5k/250. Deterministic."""
+    VS = 3.57
+    vill = [(1.8 + VS * i, 1.8 + VS * j, 250) for i in range(28) for j in range(28)]
     mkt = [(1.8 + VS * (2.5 + 5 * k), 1.8 + VS * (2.5 + 5 * m), 2800)
            for k in range(5) for m in range(5)]
     rc = [1.8 + VS * 4.5, 1.8 + VS * 18.5]
     reg = [(x, y, 8500) for x in rc for y in rc]
+    pts = [(x, y) for x, y, _ in vill + mkt + reg]
+    md = min(math.hypot(ax - bx, ay - by)
+             for i, (ax, ay) in enumerate(pts) for bx, by in pts[i + 1:])
+    assert md > 2.0, f"H-tile fixture collision: min pairwise {md:.4f}km"
     specs = {"H": vill + mkt + reg,
              "U-big": [(12.5 + 25 * i, 16.7 + 25 * j, 30000)
                        for i in range(4) for j in range(3)][:10],
@@ -158,110 +198,62 @@ def _macro_layouts():
                        for i in range(11) for j in range(11)][:120],
              "V": [(1.25 + 2.5 * i, 1.67 + 3.33 * j, 250)
                    for i in range(40) for j in range(30)]}
-    pts = [(x, y) for x, y, _ in vill + mkt + reg]
-    md = min(math.hypot(ax - bx, ay - by)
-             for i, (ax, ay) in enumerate(pts) for bx, by in pts[i + 1:])
-    assert md > 2.0, f"H-tile fixture collision: min pairwise {md:.4f}km"
-    assert sum(p for _, _, p in specs["H"]) == 300000
-    assert sum(p for _, _, p in specs["U-big"]) == 300000
-    assert sum(p for _, _, p in specs["U-mid"]) == 300000
-    assert sum(p for _, _, p in specs["V"]) == 300000
+    for spec in specs.values():
+        assert sum(p for _, _, p in spec) == 300000
     return {k: [T(x, y, p) for x, y, p in spec] for k, spec in specs.items()}
 
 
-def r7_sustain():
-    """Every tier of the reference tile must sustain itself: mean net
-    >= 0 for villages AND markets AND regionals at historical density
-    (30/km2). Replaces the old static 41x42k constant, which scored the
-    previous system instead of the candidate one."""
+def s7_sustain():
+    """Reference tile: each tier's mean net >= 0 (villages AND markets
+    AND regionals viable at 30/km2). Score = mean of tier sub-scores."""
     towns = _macro_layouts()["H"]
     nets = G.nets(towns)
-    tiers = {"vill": sum(nets[:784]) / 784, "mkt": sum(nets[784:809]) / 25,
-             "reg": sum(nets[809:]) / 4}
-    worst = min(tiers, key=tiers.get)
-    ok = all(v >= 0 for v in tiers.values())
-    return ("sustain", "min tier mean net/turn",
-            f"{worst} {tiers[worst]:+.2f}", ">= 0 each", ok,
-            " + ".join(f"{k} {v:+.1f}" for k, v in tiers.items()))
+    tiers = {"vill": (nets[:784], 784 * G.isolated(250)),
+             "mkt": (nets[784:809], 25 * G.isolated(2800)),
+             "reg": (nets[809:], 4 * G.isolated(8500))}
+    ss = {}
+    for k, (ns, free) in tiers.items():
+        tot = sum(ns)
+        ss[k] = onesided(tot, abs(free)) if free > 0 else (1.0 if tot >= 0 else 0.0)
+    s = sum(ss.values()) / 3
+    det = " + ".join(f"{k} {sum(nets if False else v[0]):+.0f}" for k, v in tiers.items())
+    return ("sustain", "tier viability (vill/mkt/reg)", "/".join(f"{v:.0f}" for v in ss.values()),
+            "1/1/1", s, det)
 
 
-def r8_urban():
-    """Isolated 80k town must grow *slower per capita* than the system's
-    own rural trend predicts (urban graveyard 10-30%). The trend is fit
-    at small sizes (1k, 4k: per-capita assumed linear in pop) and
-    extrapolated — generic over any smooth base curve, so this tests the
-    specifically-urban penalty, not saturation."""
-    need = REF["urban_natural_decrease_pct"]["lo"] / 100.0
-    y1, y2 = G.isolated(1000.0) / 1000.0, G.isolated(4000.0) / 4000.0
-    b = (y1 - y2) / 3000.0
-    if b > 0:
-        pred = 80000.0 * (y1 + b * 1000.0 - b * 80000.0)
-        how = "rural-trend extrapolation"
-    else:  # per-capita still rising at 4k: fall back to the 4k rate itself
-        pred = 80000.0 * y2
-        how = "fallback vs 4k rate (rising per-capita at small sizes)"
-    extra = 1.0 - G.isolated(80000.0) / pred if pred > 0 else 0.0
-    return ("urban", "extra big-city penalty", f"{extra:.3f}", f">= {need:.2f}",
-            extra >= need, how)
+def s8_urban():
+    """Lone 80k city over 10y: natural change must be <= 0 (graveyard),
+    full marks at -1%/yr or worse."""
+    r = realized_annual(T(500, 500, 80000), 520)
+    s = onesided(-r, 1.0)
+    return ("urban", "10y natural % @80k", f"{r:+.2f}", "<= 0", s,
+            "cities above the sink threshold must not grow on their own")
 
 
-def _grid41():
+def s9_gapfill():
+    """41-town uniform optimum + 40 infill villages: system total must
+    rise by up to the villages' free growth."""
     pts = []
     for i in range(6):
         for j in range(6):
             pts.append((50 + 150 * i, 50 + 150 * j))
-    for j in range(5):  # 41 total, min pairwise 150km
+    for j in range(5):
         pts.append((950, 50 + 150 * j))
-    return pts
-
-
-def r9_gapfill():
-    """41-town uniform optimum + 40 infill villages: total must rise."""
-    pts = _grid41()
     base = [T(x, y, 42000) for x, y in pts]
     full = list(base) + [T(x + 75, y, 500) for x, y in pts[:40]]
-    tot0 = sum(G.nets(base))
-    tot1 = sum(G.nets(full))
-    d = tot1 - tot0
-    ok = d > 0
-    return ("gapfill", "infill delta/turn", f"{d:+.1f}", "> 0", ok,
-            f"base={tot0:.0f} filled={tot1:.0f}; econ-direct (bypasses BUILD 10km rule). "
-            "Inequality half retired to r13_macro (old 81k/42k constants removed).")
+    d = sum(G.nets(full)) - sum(G.nets(base))
+    free = 40 * G.isolated(500)
+    s = clamp01(d / free) if free > 0 else 0.0
+    return ("gapfill", "delta vs free gain", f"{d:+.0f}/{free:.0f}", "> 0", s,
+            "econ-direct (bypasses BUILD 10km rule)")
 
 
-def p1_perf():
-    """500-town batch growth ms + econ surface size."""
-    rng = __import__("random").Random(7)
-    towns = [T(rng.uniform(0, 1000), rng.uniform(0, 1000),
-               rng.choice([500, 2000, 10000, 40000])) for _ in range(500)]
-    ts = []
-    for _ in range(3):
-        t0 = time.perf_counter()
-        G.nets(towns)
-        ts.append((time.perf_counter() - t0) * 1000)
-    ms = min(ts)
-    ok = ms < 10.0 and G.nparams <= 5
-    return ("perf", "500-town batch min-ms; params", f"{ms:.2f}; {G.nparams}",
-            "< 10.0; <= 5", ok,
-            f"{G.describe()} hot path; hard fail if a system leaves the batch shape")
-
-
-def r10_sinkflow():
-    """Great towns are sinks fuelled by migration (urban graveyard +
-    rural-surplus circuit). Four sub-asserts, all must hold:
-    SINK: isolated 80k annual natural growth <= 0 (above the ref sink
-      threshold a town must not grow on its own);
-    FUEL: a 60k city ringed by 6x300 villages (30km) nets ABOVE its
-      isolated rate (fed by inflow);
-    SHARE: ring villages net BELOW their isolated rate (they export);
-    BOOKS: system total within 25% of the isolated sum (migration
-      redistributes; only the urban penalty destroys).
-    Deliberately API-agnostic: whatever mechanics land (flows in the
-    economy phase or elsewhere), trajectories through apply_growth /
-    crowding_nets_batch must show this. Current engine has no flows —
-    crowding only destroys — so it fails."""
-    sink_ann = annual_pct(G.isolated(80000.0), 80000.0)
-    sink_ok = sink_ann <= 0.0
+def s10_sinkflow():
+    """60k city ringed by 6x300 @30km: SINK (city's lone rate <= 0),
+    FUEL (ringed city beats its lone rate), SHARE (villages pay),
+    BOOKS (system within 25% of isolated sum). Mean of four."""
+    rc = realized_annual(T(500, 500, 60000), 520)
+    sink = onesided(-rc, 1.0)
     city, vill = 60000.0, 300.0
     ring = [T(500 + 30 * math.cos(i * math.pi / 3),
               500 + 30 * math.sin(i * math.pi / 3), vill) for i in range(6)]
@@ -269,24 +261,20 @@ def r10_sinkflow():
     coupled = G.nets([town_c] + ring)
     c_iso, v_iso = G.isolated(city), G.isolated(vill)
     c_cpl, v_cpl = coupled[0], sum(coupled[1:]) / 6
-    fuel_ok = c_cpl > c_iso
-    share_ok = v_cpl < v_iso
+    fuel = clamp01(c_cpl / c_iso) if c_iso > 0 else (1.0 if c_cpl > 0 else 0.0)
+    share = clamp01((v_iso - v_cpl) / v_iso) if v_iso > 0 else 0.0
     tot_iso, tot_cpl = c_iso + 6 * v_iso, sum(coupled)
-    books_ok = abs(tot_cpl - tot_iso) / abs(tot_iso) <= 0.25 if tot_iso else False
-    ok = sink_ok and fuel_ok and share_ok and books_ok
-    val = (f"sink {sink_ann:+.2f}%; city {c_cpl:.1f}/{c_iso:.1f}; "
-           f"vill {v_cpl:.2f}/{v_iso:.2f}; tot {tot_cpl:.1f}/{tot_iso:.1f}")
-    return ("sinkflow", "sink%; city; vill; tot", val,
-            "<=0; cpl>iso; cpl<iso; +-25%", ok,
-            f"SINK {'ok' if sink_ok else 'FAIL'} FUEL {'ok' if fuel_ok else 'FAIL'} "
-            f"SHARE {'ok' if share_ok else 'FAIL'} BOOKS {'ok' if books_ok else 'FAIL'}")
+    dev = abs(tot_cpl - tot_iso) / abs(tot_iso) if tot_iso else 1.0
+    books = 1.0 if dev <= 0.25 else max(0.0, 1.0 - (dev - 0.25) / 0.5)
+    s = (sink + fuel + share + books) / 4
+    return ("sinkflow", "sink/fuel/share/books",
+            "/".join(f"{v:.2f}" for v in (sink, fuel, share, books)),
+            "1/1/1/1", s, f"city lone {rc:+.2f}%/yr; ringed {c_cpl:.1f}/{c_iso:.1f}")
 
 
-def r11_market_access():
-    """Villages ringed (10km) around a 2500 market town must outgrow the
-    identical ring with no market (day-return-trip access bonus).
-    Ring-vs-ring controls for village-village crowding, isolating the
-    market effect."""
+def s11_access():
+    """6x300 ring @10km with vs without a central 2500 market: ring must
+    grow >= 1.05x better with the market (access bonus)."""
     need = REF["market_access_ratio"]["lo"]
     ring = [(10 * math.cos(i * math.pi / 3), 10 * math.sin(i * math.pi / 3))
             for i in range(6)]
@@ -294,47 +282,74 @@ def r11_market_access():
     withm = [T(x, y, 300) for x, y in ring] + [T(0, 0, 2500)]
     m0 = sum(G.nets(base)) / 6
     m1 = sum(G.nets(withm)[:6]) / 6
-    r = m1 / m0 if m0 > 0 else float("-inf")
-    return ("access", "ring vill w/ vs w/o market", f"{r:.3f}",
-            f">= {need}", r >= need,
-            f"with {m1:.3f}/turn vs without {m0:.3f}/turn (iso 0.30)")
+    r = m1 / m0 if m0 > 0 else 0.0
+    s = clamp01((r - 1) / (need - 1)) if need > 1 else (1.0 if r >= 1 else 0.0)
+    return ("access", "ring w/ vs w/o market", f"{r:.3f}", f">= {need}", s,
+            f"with {m1:.3f}/turn vs without {m0:.3f}/turn")
 
 
-def r12_returns():
-    """Increasing returns somewhere: some town must more than double its
-    isolated net when its pop doubles (threshold goods need scale).
-    Pure concavity (current logistic) fails every pair. Tests the base
-    curve only; placed threshold effects belong to r11/r13."""
-    best, det = 0.0, []
-    for p in (1000, 1500, 2000, 2500, 5000):
-        r = G.isolated(2 * p) / (2 * G.isolated(p))
-        best = max(best, r)
-        det.append(f"{p}:{r:.3f}")
-    return ("returns", "max net(2P)/2net(P)", f"{best:.3f}", ">= 1.000",
-            best >= 1.0, ", ".join(det))
+def s12_returns():
+    """Center 1500 + 4x300 hinterland vs same sites doubled (3000 +
+    4x600): doubled system must more than double total (threshold scale)."""
+    A = [T(0, 0, 1500), T(15, 0, 300), T(-15, 0, 300), T(0, 15, 300), T(0, -15, 300)]
+    B = [T(0, 0, 3000), T(15, 0, 600), T(-15, 0, 600), T(0, 15, 600), T(0, -15, 600)]
+    ta, tb = sum(G.nets(A)), sum(G.nets(B))
+    r = (tb / ta) / 2 if ta > 0 else 0.0
+    return ("returns", "doubled-system ratio/2", f"{r:.3f}", ">= 1", clamp01(r),
+            f"A={ta:.2f} B={tb:.2f} (coupled: town+hinterland scaled together)")
 
 
-def r13_macro():
-    """Structure ranking: the hierarchical tile must outgrow uniform-big,
-    uniform-mid and all-village archetypes at equal pop (300k) on equal
-    area (100x100km) — AND sustain itself (total >= 0). Joint test that
-    hierarchy is optimal, not merely allowed. Discriminates real fixes
-    from cap-raising: a bare K lift sustains but still ranks uniform first."""
+def s13_macro():
+    """Four archetypes, equal pop + area: hierarchical tile must rank
+    first AND sustain itself. Rank = archetypes beaten/3."""
     L = _macro_layouts()
     tots = {k: sum(G.nets(v)) for k, v in L.items()}
-    rank_ok = tots["H"] > max(tots["U-big"], tots["U-mid"], tots["V"])
-    sust_ok = tots["H"] >= 0
-    ok = rank_ok and sust_ok
+    beaten = sum(1 for k in ("U-big", "U-mid", "V") if tots["H"] > tots[k])
+    rank = beaten / 3
+    sust = onesided(tots["H"], 300.0)  # scale ~0.1%/turn of 300k
+    s = (rank + sust) / 2
     val = ",".join(f"{k} {tots[k] / 1000:+.0f}k" for k in ("H", "U-big", "U-mid", "V"))
-    return ("macro", "H,U-big,U-mid,V totals", val, "H first, H>=0", ok,
-            f"RANK {'ok' if rank_ok else 'FAIL'} SUST {'ok' if sust_ok else 'FAIL'}; "
-            f"H top/avg {8500 / (300000 / 813):.0f}x (Zipf-built, construction check)")
+    return ("macro", "H,U-big,U-mid,V totals", val, "H first, H>=0", s,
+            f"RANK {beaten}/3 SUST {sust:.2f}; H top/avg 23x (construction)")
 
 
-CHECKS = [r1_growth_rate, r2_recovery, r3_viability, r4_infill,
-          r5_hierarchy, r6_market_penalty, r7_sustain, r8_urban,
-          r9_gapfill, r10_sinkflow, r11_market_access, r12_returns,
-          r13_macro, p1_perf]
+def s14_hinterland():
+    """Lone 10k town over 10y must shrink (no farmland, no town);
+    the same town ringed by 8x300 @25km must grow. Mean of both."""
+    lone = realized_annual(T(500, 500, 10000), 520)
+    starve = onesided(-lone, 1.0)
+    ring = [T(500 + 25 * math.cos(i * math.pi / 4),
+              500 + 25 * math.sin(i * math.pi / 4), 300) for i in range(8)]
+    towns = [T(500, 500, 10000)] + ring
+    c_cpl = G.nets(towns)[0]
+    c_iso = G.isolated(10000.0)
+    fed = clamp01(c_cpl / c_iso) if c_iso > 0 else (1.0 if c_cpl > 0 else 0.0)
+    return ("hinterland", "lone % / ringed frac", f"{lone:+.2f}%/{fed:.2f}",
+            "<=0 / 1", (starve + fed) / 2,
+            "towns above self-feeding size eat; villages feed")
+
+
+def p1_perf():
+    """500-town batch ms + counted params: the speed/simplicity ceiling."""
+    rng = __import__("random").Random(7)
+    towns = [T(rng.uniform(0, 1000), rng.uniform(0, 1000),
+               rng.choice([500, 2000, 10000, 4000 * 10])) for _ in range(500)]
+    ts = []
+    for _ in range(3):
+        t0 = time.perf_counter()
+        G.nets(towns)
+        ts.append((time.perf_counter() - t0) * 1000)
+    ms = min(ts)
+    sms = 1.0 if ms < 10.0 else max(0.0, 1.0 - (ms - 10.0) / 20.0)
+    sps = 1.0 if G.nparams <= 5 else max(0.0, 1.0 - (G.nparams - 5) / 5.0)
+    return ("perf", "batch ms; params", f"{min(ts):.2f}; {G.nparams}",
+            "< 10; <= 5", min(sms, sps), f"{G.describe()} hot path")
+
+
+SCENARIOS = [s1_village_rate, s2_recovery, s3_viability, s4_infill,
+             s5_hierarchy, s6_market_penalty, s7_sustain, s8_urban,
+             s9_gapfill, s10_sinkflow, s11_access, s12_returns,
+             s13_macro, s14_hinterland, p1_perf]
 
 
 def main(argv):
@@ -361,24 +376,25 @@ def main(argv):
     G = SYSTEMS[sysname]
     print(f"system: {G.describe()}")
     rows = []
-    for fn in CHECKS:
+    for fn in SCENARIOS:
         name = fn.__name__.split("_", 1)[1]
         if want and name not in want and fn.__name__ not in want:
             continue
-        rows.append((fn.__name__,) + fn())
-    fails = sum(1 for r in rows if not r[5])
-    w = 16
-    print(f"{'CHECK':<{w}} {'METRIC':<26} {'VALUE':<22} {'TARGET':<14} VERDICT")
-    for _, name, metric, val, tgt, ok, _ in rows:
-        print(f"{name:<{w}} {metric:<26} {val:<22} {tgt:<14} {'PASS' if ok else 'FAIL'}")
+        rows.append((name,) + fn()[1:])
+    w = 15
+    print(f"{'SCENARIO':<{w}} {'METRIC':<26} {'VALUE':<22} {'TARGET':<14} SCORE")
+    for name, metric, val, tgt, s, _ in rows:
+        print(f"{name:<{w}} {metric:<26} {val:<22} {tgt:<14} {s * 100:5.1f}")
     print("--- detail ---")
-    for _, name, _, _, _, _, det in rows:
+    for name, _, _, _, _, det in rows:
         print(f"{name}: {det}")
-    print(f"== {len(rows) - fails}/{len(rows)} PASS ({fails} FAIL) ==")
+    comp = sum(r[4] for r in rows) / len(rows) if rows else 0.0
+    print(f"== composite {comp * 100:.1f}/100 over {len(rows)} scenarios ==")
     if as_json:
-        print(json.dumps([{"check": n, "metric": m, "value": v,
-                           "target": t, "pass": o, "detail": d}
-                          for _, n, m, v, t, o, d in rows]))
+        print(json.dumps({"system": G.describe(), "composite": comp,
+                          "scenarios": [{"scenario": n, "metric": m, "value": v,
+                                         "target": t, "score": o, "detail": d}
+                                        for n, m, v, t, o, d in rows]}))
     return 0
 
 
