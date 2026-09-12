@@ -2667,3 +2667,11 @@ holds 1-2 thin, raided). Loose sprawl survives crowded (many thin towns,
 some live via mutuals, place mid) but stunts open. NET loose > strict
 (crowded fields common). Quantity-survives beats quality-wins here.
 Reverted (main keeps 47.2). Expander 4 fails, parked firmer.
+
+### Buzzer strip-mine (2026-09-12 19:13 BST)
+Endgame blind spot: no mass mustering (demand-gated only); final scores set
+late. Towns >=60k have ~zero/negative marginal growth (logistic peak) —
+mustering to 60k is FREE (score-neutral now + force for take-snowball over
+900+ turns). Growers (<60k) keep compounding. FIX (economy strip branch +
+3 tests): buzzer + pop>=60k -> want (print). Predicts: free late force
+(10-30 armies) takes snowball (close wins flip). Bar 56.7+.
