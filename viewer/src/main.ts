@@ -25,6 +25,12 @@ let playing = false;
 let selectedFaction: number | null = null;
 let fogCanvas: HTMLCanvasElement | null = null;
 let speed = 1;
+/* Turbo: above this speed the scene redraws at most every TURBO_MS, while
+   turns advance every animation frame (draw() is dominated by SVG/DOM
+   churn; playback speed must not be). */
+const TURBO_SPEED = 16;
+const TURBO_MS = 50;
+let lastDrawTs = 0;
 let panZoom: PanZoom = { scale: 1, tx: 0, ty: 0 };
 let fitScale = 1;
 
@@ -679,14 +685,17 @@ function updateChrome(): void {
 
 /* ── Animation ── */
 
-function goToTurn(target: number, animate = true): void {
+function goToTurn(target: number, animate = true, doDraw = true): void {
   if (turns.length === 0) return;
   target = Math.max(0, Math.min(target, turns.length - 1));
   if (target === turn && animProgress >= 1) return;
   const delta = Math.abs(target - turn);
-  if (!animate || delta > 1) {
+  // Above 4x the per-turn tween costs more than it shows: jump.
+  if (!animate || delta > 1 || speed > 4) {
     turn = target; animFromTurn = target; animToTurn = target; animProgress = 1;
-    cancelAnimationFrame(animRaf); draw(); return;
+    cancelAnimationFrame(animRaf);
+    if (doDraw) draw();
+    return;
   }
   animFromTurn = turn; animToTurn = target; animProgress = 0; animStart = performance.now();
   animDuration = Math.max(80, 350 / Math.max(0.5, speed));
@@ -717,7 +726,14 @@ function playLoop(ts: number): void {
   const turnsToAdvance = (elapsed / 350) * speed;
   if (turnsToAdvance >= 1) {
     const next = Math.min(turns.length - 1, turn + Math.floor(turnsToAdvance));
-    if (next !== turn) goToTurn(next, true);
+    if (next !== turn) {
+      const atEnd = next >= turns.length - 1;
+      // Turbo: advance every frame, redraw at most every TURBO_MS.
+      const doDraw = speed < TURBO_SPEED || atEnd ||
+        ts - lastDrawTs >= TURBO_MS;
+      if (doDraw) lastDrawTs = ts;
+      goToTurn(next, false, doDraw);
+    }
     lastPlay = ts;
     if (turn >= turns.length - 1) { playing = false; lastPlay = 0; draw(); return; }
   }
@@ -853,6 +869,11 @@ function boot(): void {
         <option value="2">2×</option>
         <option value="4">4×</option>
         <option value="8">8×</option>
+        <option value="16">16×</option>
+        <option value="64">64×</option>
+        <option value="256">256×</option>
+        <option value="1024">1024×</option>
+        <option value="4096">4096×</option>
       </select>
     </div>
   `;
@@ -879,7 +900,7 @@ function boot(): void {
   playBtn.addEventListener("click", () => togglePlay());
   document.getElementById("btn-next")!.addEventListener("click", () => goToTurn(Math.min(turns.length - 1, turn + 1)));
   document.getElementById("btn-end")!.addEventListener("click", () => goToTurn(turns.length - 1));
-  speedSel.addEventListener("change", () => { speed = parseFloat(speedSel.value); });
+  speedSel.addEventListener("change", () => { speed = parseFloat(speedSel.value); lastDrawTs = 0; draw(); });
 
 
 

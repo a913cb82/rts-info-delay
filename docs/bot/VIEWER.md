@@ -55,3 +55,13 @@ kind/faction/pop/ids) plus precomputed geometry (no LLM math):
   towns, takes, battles with counts/coords, plus F's town/army arc
   (did it react?). Pair with `fog --faction F --turns T` (what did it
   see?) for full Hunter's-loop diagnosis.
+
+## Playback speeds (viewer)
+
+Controls: 0.5× … 8× (tweened), then turbo tiers 16× / 64× / 256× / 1024×
+/ 4096×. Above 4× the per-turn tween is skipped (a jump shows the same
+thing for less work) and the scene redraws at most every 50 ms while
+turns keep advancing every animation frame — playback rate is decoupled
+from render cost (draw() is dominated by SVG/DOM churn and the 10k-point
+score graph, none of which need 60 Hz). Pausing/stepping always draws.
+4096× clears a 10k-turn game in ~1s on this box.
