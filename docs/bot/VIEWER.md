@@ -65,3 +65,24 @@ turns keep advancing every animation frame — playback rate is decoupled
 from render cost (draw() is dominated by SVG/DOM churn and the 10k-point
 score graph, none of which need 60 Hz). Pausing/stepping always draws.
 4096× clears a 10k-turn game in ~1s on this box.
+
+## Adaptive playback ("auto" speed)
+
+This game is bursty: in the quad recording 59% of all action falls in 10%
+of the turns (t3000-4000). The viewer can steer playback speed by action:
+
+- Enable with the **auto** checkbox (or `&auto=1` in the URL). The speed
+  select then means the QUIET/max speed; while action is near, playback
+  drops to ~2x and ramps back up after.
+- Action signal = weighted events per turn: capture 3, battle 3,
+  founding 2, town death 2, army train 1, army death 1. Weights are
+  module constants (`AUTO_FULL`, `AUTO_SLOW`, `AUTO_LOOKAHEAD`,
+  `AUTO_LINGER`, `AUTO_STEP_CAP` in `viewer/src/main.ts`).
+- Faction-aware: with a faction selected via the fog selector the signal
+  is THAT faction's action (watch one bot's war); with none selected it
+  is global (any action slows playback).
+- Lookahead 5 turns (brake BEFORE the burst) + linger 8 (stay slowed
+  through the aftermath); braking is fast (0.5/frame), release slow
+  (0.08/frame). Under auto, turns advance at most 12/frame so a burst
+  can never be skipped between frames.
+- The live effective multiplier is shown next to the checkbox.
