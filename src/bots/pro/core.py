@@ -1050,6 +1050,11 @@ def note_home_blood(state: "BotState") -> dict:
     signal. Call once per decide; returns {town_id: turn} of fresh blood.
     Mobilization (brain) masses on this, instead of trickle-feeding."""
     import math as _math
+    # Lazy init: robustness tests feed foreign/mock states without __init__.
+    if not hasattr(state, "_home_map"):
+        state._home_map = {}
+    if not hasattr(state, "_home_blood"):
+        state._home_blood = {}
     cur_map: dict = {}
     for a in state.own_armies():
         for t in state.own_towns():
@@ -1071,8 +1076,8 @@ def note_home_blood(state: "BotState") -> dict:
 def mobilized(state: "BotState", town, window: float = 50.0) -> bool:
     """Grinder mobilization: home blood at this town within `window`
     turns. While mobilized the brain masses (print+recall+hold) instead
-    of trickling single defenders into sustained waves."""
-    return state.turn - state._home_blood.get(town.id, -10 ** 9) < window
+    # of trickling single defenders into sustained waves."""
+    return state.turn - getattr(state, "_home_blood", {}).get(town.id, -10 ** 9) < window
 
 
 def note_wave_watch(state: "BotState") -> bool:
