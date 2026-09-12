@@ -1840,3 +1840,28 @@ F0 wins 122k as compounder; F1 positional death (main F1 dies identically);
 F0 3 towns = main F0 3 towns (colony+take, not sprawl). Invariants hold
 as well as incumbent (the style reference). No crashes/timeouts in 16g.
 Suites green, liveness clean. MERGED to main.
+
+### Loop resumes worst-first (2026-09-12)
+DIRECTION CORRECTION: the loop improves the WORST personality each
+iteration (README), not the ceiling. Parking loop/mobilize (pro
+grinder-mobilization, unrated, green-parked) for later. STATUS: pro 57.2
+| aggressive 42.2 WORST (47g) | expander 46.7 | turtle 47.4.
+ITER 3 TARGET: aggressive (conqueror). Gate: ord (>=15g) > 46.7
+(expander, next-lowest) + conqueror invariants (initiates captures/raids,
+forward staging, most march-active early). NOTE: aggressive resisted 6
+prior compound-core attempts (cushion, forward-base, capital-compound,
+margin-300, payback-1.0, survivor-own-tree all failed); raids ARE its
+economy — ideas must be predator-congruent, not compounder ports.
+
+### Matchmaking: full-population pool + rated-name rule (2026-09-12)
+POOL now pulls the FULL population: `all_commits()` walks `git log --all`
+(not HEAD), so loop/era branch-tip brains are suitable candidates
+(598 -> 774 bots); per-hash the RATED name wins (most games) so ratings
+carry instead of minting fresh duplicates. NAMING RULE (learned): rate a
+brain under its BOT-CODE commit sha (newest commit touching src/bots/<p>/),
+never under a worklog/docs HEAD — else the rated name (e.g. pro-6f463c9,
+16g) is invisible to the pool (which keys by code commits) and a fresh
+duplicate (pro-d658df5) grinds zero-games. Renamed pro-6f463c9 ->
+pro-d658df5 (byte-identical pro/ content fcc4427f42; 16 records + rating
+moved, verified in pool with 57.2/16g). Grind scripts must resolve MINE
+via code-commit from now on.

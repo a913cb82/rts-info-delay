@@ -23,10 +23,19 @@ from openskill.models import BradleyTerryFull
 
 
 def all_commits() -> list[str]:
-    out = subprocess.run(["git", "-C", str(ROOT), "log", "--format=%h",
-                          "--reverse", "--", "src/bots/"],
+    # FULL population: every ref (main + loop/era branches), not just HEAD
+    # history — branch-tip brains are suitable bots too. Dedup by sha;
+    # pool() further dedups by brain content (identical code = one entry).
+    out = subprocess.run(["git", "-C", str(ROOT), "log", "--all",
+                          "--format=%h", "--reverse", "--", "src/bots/"],
                          capture_output=True, text=True, check=True)
-    return out.stdout.split()
+    seen: set[str] = set()
+    commits = []
+    for sha in out.stdout.split():
+        if sha not in seen:
+            seen.add(sha)
+            commits.append(sha)
+    return commits
 
 
 def bots_at(commit: str) -> list[str]:
@@ -78,30 +87,44 @@ def brain_hash(commit: str, bot: str) -> str:
 
 
 def pool() -> list[str]:
-    """Valid name-sha across evenly-spaced history + HEAD."""
+    """Full population: every ref (main + loop/era branches), deduped by
+    brain content (identical code = one candidate). For each content hash
+    the RATED name wins (most games — a worklog-only commit must not mint
+    a fresh duplicate of a rated brain); ties/unrated -> newest commit."""
     commits = all_commits()
-    picks = set()
-    # EVERY commit with bots (full population, random included),
-    # deduplicated by brain content (identical code = one candidate).
-    seen: dict[str, str] = {}
+    # all (bot, sha) pairs (no first-wins dedup yet)
+    pairs: list[tuple[str, str]] = []
     for c in commits:
-        sha = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", c],
+        out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", c],
                              capture_output=True, text=True).stdout.strip()
         for b in bots_at(c):
-            h = brain_hash(c, b)
-            key = f"{b}@{h}"
-            if key not in seen:
-                seen[key] = f"{b}-{sha}"
-    picks.update(seen.values())
-    # HEAD short sha — through the same dedup (a docs/ratings commit
-    # adds no brains; its IDs would grind zero-games forever).
+            pairs.append((b, out))
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                           capture_output=True, text=True).stdout.strip()
     for b in bots_at("HEAD"):
-        key = f"{b}@{brain_hash('HEAD', b)}"
-        if key not in seen:
-            seen[key] = f"{b}-{head}"
-    picks.update(seen.values())
+        pairs.append((b, head))
+    # commit order index (newest last) for tie-breaks
+    order = {sha: i for i, sha in enumerate(
+        [subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", c],
+                        capture_output=True, text=True).stdout.strip()
+         for c in commits] + [head])}
+    try:
+        elo = ratings()
+    except Exception:
+        elo = {}
+    by_hash: dict[str, list[tuple[str, str]]] = {}
+    for b, sha in pairs:
+        try:
+            h = brain_hash(sha, b)
+        except Exception:
+            continue
+        by_hash.setdefault(f"{b}@{h}", []).append((b, sha))
+    picks = set()
+    for key, specs in by_hash.items():
+        specs.sort(key=lambda bs: (-elo.get(f"{bs[0]}-{bs[1]}", {}).get("games", 0),
+                                   -order.get(bs[1], -1)))
+        b, sha = specs[0]
+        picks.add(f"{b}-{sha}")
     return sorted(picks)
 
 
