@@ -2173,3 +2173,19 @@ below needed defense). Predicts: forward clean kills stunt sprawl pipelines
 CAUTION (relearned hard): single scratch games are CHAOS lotteries (same
 code reran 0/58k-flip AND byte-identical — micro-timing cascades; only
 ratings+units+inspection are instruments, never single-game stories).
+
+### Rung 3 verdict: FAIL, reverted (2026-09-12)
+Pair-up sorties rated clean 15g -> ord 36.3 (mu 44.6; ~45% wins vs weak-mid,
+competitive losses vs strong (178-190k vs 187-219k), deaths vs 218k-pro).
+FAIL (bar 58). Likely HARMFUL, not neutral: pairs arrive staggered (mutual
+trades, not clean kills) + 2nd-wave takes while pairs away + forward
+heirlooms (no recall) — sitting-home outscores sortying on average.
+LADDER EXHAUSTION (assessment): pro tweaks 0-for-3 this arc (42/43/36, all
+< 57.2); all personalities 0-for-19 vs baselines (excl. two ancient +5s).
+Single-lottery specimens don't generalize (guard-tax neutral, refound/
+unfreeze/sorties backfire). The +5 era is over: remaining gaps are
+systematic (raid initiative, forward staging, colony-race wins) needing
+either coordinated multi-turn machinery (staging+recall+escort package —
+one more9061 coherent rung?) or the search track (never attempted; the
+actual 80-path per scale math). история: tweak ceiling holds (~57 pro).
+Code parked on loop/pro-rung3 (main src/ untouched).
