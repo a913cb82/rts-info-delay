@@ -16,5 +16,6 @@
   "urban_natural_decrease_pct": {"lo": 10, "hi": 30, "src": "London/Paris burials exceed baptisms pre-1800 (urban graveyard)"},
   "zipf_top_to_median_ratio": {"lo": 5, "hi": 50, "src": "rank-size q~1: capital 50-100x median town; bar set low at 5x"},
   "sink_threshold_pop": {"lo": 30000, "hi": 80000, "src": "de Vries: cities above ~40-50k in natural decrease; Wrigley London/Paris burials exceed baptisms"},
+  "market_access_ratio": {"lo": 1.05, "hi": 1.5, "src": "PROVISIONAL floor: market-access yield premia 10-40% in modern ag (Donaldson railroads +16%); 1600s unmeasured — bar at 5%"},
   "market_penalty_at_spacing_max_frac": 0.25
 }

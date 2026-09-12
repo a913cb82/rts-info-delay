@@ -83,16 +83,20 @@ this file is the only "history" the bench may cite.
 
 ## 5. Proposed harness
 
-New file `benchmarks/growth_realism.py` (engine-direct, no bots):
+New file `benchmarks/growth_realism.py` (engine-direct, no bots) +
+`benchmarks/growth_systems.py` (generic interface):
 
 ```
-python benchmarks/growth_realism.py            # all checks, <5s
-python benchmarks/growth_realism.py hierarchy  # subgroup
+python benchmarks/growth_realism.py                 # all checks, ~2s
+python benchmarks/growth_realism.py hierarchy       # subgroup
+python benchmarks/growth_realism.py --system NAME   # score SYSTEMS[NAME]
 ```
 
-Each check: build town list in-memory → call `logistic` /
-`crowding_net` / `crowding_nets_batch` / `apply_growth` → return
-metric + target range + pass/fail. Composite = report table, not a
+Each check: build town list in-memory → call ONLY
+`G.isolated` / `G.nets` / `G.step` (the `GrowthSystem` interface) →
+return metric + target range + pass/fail. New mechanics register a
+system in `growth_systems.py`; the suite file is never edited to
+pass it. Composite = report table, not a
 single number (avoid Goodharting one scalar). Perf guardrail runs
 alongside and fails loud on regression.
 
@@ -115,9 +119,11 @@ Suggested groups (names only — thresholds set after red-baseline run):
    shape only (penalty falls with distance, rises with neighbour size,
    asymmetric big-on-small vs small-on-big) and reports the effective
    radius in game units for the scale note in §3.
-4. **Density plausibility.** Max sustained pop/km2 on a filled optimum
-   vs reference range. Expected-red now (game gives ~1.7/km2 vs
-   historical tens/km2) — mostly documents the scale gap.
+4. **Tile sustainability** (`sustain`). Every tier of the reference
+   tile (784x250 vill @3.6km + 25x2800 mkt @17.9km + 4x8500 reg @50km,
+   300k on 100x100km = 30/km2) must mean-net >= 0. Retired the v1
+   static 41x42k constant, which scored the old optimum, not the
+   candidate system.
 5. **Dynamics sanity.** Halve a mature town (plague/sack fixture),
    measure recovery time in turns → convert via §3 turn↔year mapping
    → compare to historical post-plague recovery (decades). Checks the
@@ -126,10 +132,29 @@ Suggested groups (names only — thresholds set after red-baseline run):
    shrink; FUEL ringed 60k city must net above its isolated rate;
    SHARE ring villages below theirs; BOOKS system total within 25% of
    the isolated sum). API-agnostic: asserts trajectories, not plumbing.
-7. **Perf + simplicity guardrail.** 500-town batch-growth ms,
+8. **Market access** (`access`, force 2 benefit): ring villages with a
+   market net >= 1.05x the identical ring without (ref floor, provisional).
+9. **Increasing returns** (`returns`, force 3 proxy): some doubling must
+   more than double isolated net (threshold goods need scale). Placed
+   threshold/co-location effects deferred (need a goods ontology).
+10. **Macro ranking** (`macro`): hierarchical tile outgrows uniform-big,
+    uniform-mid and all-village at equal pop on equal area, AND sustains
+    itself. Discriminates real fixes from cap-raising.
+11. **Perf + simplicity guardrail.** 500-town batch-growth ms,
    heavy-step ms, econ param count, new per-town state fields. Same
    box, paired, min-of-3 like `optimization_log.md`. Fails on >~2×
    slowdown or new O(N²) beyond the existing dist matrix.
+
+## Deferred (need ontologies that do not exist yet — not forgotten)
+
+- Shock insurance / redistribution (force 2): bad-year fixture needs
+  shock semantics in the engine (variance, not just means).
+- Catchment areas (force 1 mechanism): exclusive-land logic needs a
+  land/area representation; signs are covered by infill/gapfill/macro.
+- Service co-location / tier ratios (force 3 structure): needs goods
+  with thresholds/ranges; lumpiness proxied by `returns` meanwhile.
+- Water trade (force 2 exception): no terrain/water in the engine;
+  correctly out of scope until maps have rivers.
 
 ## 6. Workflow
 
