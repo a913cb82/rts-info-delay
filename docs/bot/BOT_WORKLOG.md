@@ -2753,3 +2753,10 @@ project 100g mu~70/sigma1.2 ord~66; 200g mu~73/sigma0.9 ord~70. ASYMPTOTE
 ~70 (mu caps ~73-75: win ~65% mirrors+sectors lottery; NOT 80 (needs mu 85).
 Grinding banks certain +1/turn + fresh data; rungs lottery 0-for-20.
 Continue grinding (optimal EV) while watching for rung openings in data.
+
+### Buzzer 100g + volume-stall analysis (2026-09-12 20:31 BST)
+Buzzer +20g (100 total) -> ord 63.2 (mu 67.1, was 66.6/80g): FLAT (mu +0.5,
+sigma shrink offset). Wins 35% (down from 40%+), deaths 20% (F1 twice).
+Fields all-pro mirrors (slot lotteries) + 240k+ spikes. VOLUME STALLS
+without mu gains (sigma shrink insufficient when mu flat). Capability wall
+stands (all directions mapped). Banked honest (100g, sigma ~1.3).
