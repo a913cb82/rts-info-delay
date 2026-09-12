@@ -3046,3 +3046,7 @@ Buzzer +10g (530 total) -> ord 62.4 (mu 65.7, was 67.0/520g): -1.2 on
 ### Buzzer 540g (2026-09-13 01:15 BST)
 Buzzer +10g (540 total) -> ord 63.4 (mu 66.7, was 65.7/530g): +1.0 on
 50% wins (incl 358k/258k/251k/245k) + 1 F1-death. Recovery batch. 540g.
+
+### Buzzer 550g (2026-09-13 01:20 BST)
+Buzzer +10g (550 total) -> ord 61.9 (mu 65.2, was 66.7/540g): -1.5 on
+2W + F1-death + fifths. Spike-batch. 550 games banked.
