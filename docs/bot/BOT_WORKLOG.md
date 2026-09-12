@@ -2189,3 +2189,14 @@ either coordinated multi-turn machinery (staging+recall+escort package —
 one more9061 coherent rung?) or the search track (never attempted; the
 actual 80-path per scale math). история: tweak ceiling holds (~57 pro).
 Code parked on loop/pro-rung3 (main src/ untouched).
+
+### Rung 3 obituary: fatal early sortie (2026-09-12)
+Scratch probe (workspace rung-3 vs baselines): F0 DIES t3800, emits 0
+orders on 99.8% of turns (6 singles total). Read: normal quiet start,
+then the first pair sorties, donates (2v1 gamble lost vs 185k-expander),
+capital naked -> raided -> poor (<1500 train floor) -> death spiral. The
+"surplus-only" reasoning fails at 2-armies-total (the pair IS the defense;
+holds keep N+1 only vs COUNTED threat, not vs the unknown). Sorties don't
+just underperform — they can suicide the early game. (Single-lottery
+confirmation of the rated 36.3 FAIL; mechanism consistent.)
+Search-spec measurement deferred (bot died; need a healthy game).
