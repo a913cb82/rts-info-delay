@@ -1826,3 +1826,17 @@ SendState port. Suites: fast 3153/3241 (identical, no regression),
 pytest green (2 load-flaky engine timing deselected), liveness clean,
 strategic 14.5s PASS. Committed on loop/pack-only. Rating next (>=15g,
 slots balanced from game 1).
+
+### GOAL-100 iter 2 verdict: PACK-ONLY WINS, MERGE (2026-09-12)
+RATED 16g (slots balanced from game 1, opponents rotated, no repeats):
+mine wins 12/16 (safe 8/8, dangerous 4/8 + 4 survivals); inc wins 4/16
+(all safe). Dangerous slot: mine SURVIVES 8/8 (2nd-3rd, 56k-189k) vs inc
+dies 4/9. Safe slot: mine 8/8 vs inc 4/8. Ord pro-6f463c9 57.2 (mu 65.6,
+16g) >= 51.8: GATE PASSES. Mechanism: no solo suicide-mutuals (pop kept
++ capital guarded) + efficiency edge in compounding races (batch 2:
+mine 1st 8/8, beats inc head-to-head by 10k-50k).
+STYLE (branch canonical, byte-identical game to main canonical):
+F0 wins 122k as compounder; F1 positional death (main F1 dies identically);
+F0 3 towns = main F0 3 towns (colony+take, not sprawl). Invariants hold
+as well as incumbent (the style reference). No crashes/timeouts in 16g.
+Suites green, liveness clean. MERGED to main.
