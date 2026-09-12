@@ -6,13 +6,36 @@ from engine.config import GameConfig
 from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
+def _one_colony(state: BotState, config: GameConfig) -> bool:
+    """Forward base (conqueror's compound): the conqueror plants ONE
+    well-spaced town (>=150km: no crowding) early, then raids around it.
+    Score math: a second town adds ~90k by t10000 for ~1k of lost
+    compounding — the single biggest win in the pool (pro +9 ordinal)."""
+    own_t = state.own_towns()
+    if len(own_t) != 1:
+        return False
+    turns_left = (getattr(config, "max_turns", 10000) or 10000) - state.turn
+    if turns_left < 4000:
+        return False
+    cap = state.world.faction_capital(state.faction)
+    if cap is None:
+        return False
+    floor = config.army_cost + config.death_threshold
+    if cap.population < floor + config.army_cost:
+        return False
+    for a in state.own_armies():
+        tgt = state.army_target(a.id)
+        if tgt is not None and all(
+                math.hypot(tgt[0] - t.x, tgt[1] - t.y) > 20 for t in own_t):
+            return False
+    return True
+
+
 def _can_train_aggressive(state: BotState, town) -> bool:
-    """Comfort cushion (deep-sleep lesson: the thin floor left towns at
-    ~1000-2000 where every feed costs a tenth of the economy and a single
-    raider converts them to corpses; turtle deep-sleep was +4 ordinal).
-    Raids still print eagerly — just from towns that can afford them."""
+    """Thin cushion (fights): floor only + pending guard. Forward towns
+    must print (raid logistics) — no distance rule, no peak cap."""
     from .common import train_floor
-    return town.population >= train_floor(state, state.config) + 1500.0
+    return town.population >= train_floor(state, state.config)
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -22,6 +45,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
 
+    # Forward base first (see _one_colony): the conqueror prints exactly
+    # one settler for its one colony, then demands trains as usual.
+    if _one_colony(state, config):
+        cap = state.world.faction_capital(state.faction)
+        if cap is not None and cap.id not in state._pending_trains:
+            out.append(f"TRAIN {cap.id}")
+            state.note_train(cap.id)
+            return out
     # Step 2, aggressive params (predator): thin cushion (depth 0),
     # marginal+initiative raids (margin 100), economic expansion rare
     # (payback x3 — foundings are military staging, below), 1 prober.
@@ -65,6 +96,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if sc is not None:
             out.extend(sc)
             continue
+        # Forward base march (see _one_colony): before any raid poaching.
+        if _one_colony(state, config):
+            site = find_build_site(state, config, p.x, p.y,
+                                   rmin=170, rmax=330, salt=11, who=p.id)
+            if site is not None:
+                out.extend(order_move(state, config, p, site[0], site[1]))
+                continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
                 continue
