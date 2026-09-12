@@ -28,7 +28,8 @@ class TestConfig:
         assert cfg.migration_mu == 2.7e-09
         assert cfg.service_gate == 30.0
         assert cfg.town_min_population == 0.0
-        assert cfg.build_efficiency == 0.5
+        assert cfg.build_efficiency == 0.9
+        assert cfg.capture_loss == 0.5
 
     def test_config_overrides(self) -> None:
         """X2: from_dict overrides specified fields, keeps defaults."""
@@ -46,7 +47,8 @@ class TestConfig:
         assert cfg.migration_mu == 2.7e-09
         assert cfg.service_gate == 30.0
         assert cfg.town_min_population == 0.0
-        assert cfg.build_efficiency == 0.5
+        assert cfg.build_efficiency == 0.9
+        assert cfg.capture_loss == 0.5
         assert cfg.map_size == [1000, 1000]
         assert cfg.max_turns == 500
         assert cfg.turn_time_ms == 1000

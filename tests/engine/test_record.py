@@ -203,6 +203,7 @@ class TestRecord:
                 "population_growth", "land_capacity", "urban_sink",
                 "access_alpha", "kernel_scale", "migration_mu",
                 "service_gate", "town_min_population", "build_efficiency",
+                "capture_loss",
             ]
             for key in required_keys:
                 assert key in data, f"Missing config key: {key}"

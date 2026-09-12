@@ -1,7 +1,8 @@
 {
  "army_cost": 1000,
  "army_speed": 50.0,
- "build_efficiency": 0.5,
+ "build_efficiency": 0.9,
+ "capture_loss": 0.5,
  "info_speed": 150.0,
  "interact_radius": 10.0,
  "line_of_sight": 150.0,

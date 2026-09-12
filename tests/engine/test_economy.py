@@ -305,7 +305,7 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
         )
         apply_build(w, CFG)
-        assert t.population == pytest.approx(2000 + 1000 * 0.5)
+        assert t.population == pytest.approx(2000 + 1000 * 0.9)
 
     def test_build_consumes_army(self) -> None:
         w = World()
@@ -516,7 +516,7 @@ class TestBuildBlocked:
         apply_build(w, CFG)
         t.faction = 0  # captured by us
         apply_build(w, CFG)
-        assert t.population == pytest.approx(2500)
+        assert t.population == pytest.approx(2900)
         assert w.get_army(a.id) is None
 
     def test_blocked_build_founds_after_town_gone(self) -> None:

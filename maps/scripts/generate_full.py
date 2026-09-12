@@ -262,7 +262,7 @@ if __name__ == "__main__":
         "map": csv.rstrip("\n"), "map_size": [MAP_SIZE, MAP_SIZE], "max_turns": 500, "turn_time_ms": 100,
         "info_speed": 150.0, "army_speed": 50.0, "army_cost": 1000,
         "interact_radius": 10.0, "land_capacity": 300000.0,
-        "population_growth": 8.2e-05, "build_efficiency": 0.5,
+        "population_growth": 8.2e-05, "build_efficiency": 0.9, "capture_loss": 0.5,
         "access_alpha": 1.8e-05, "kernel_scale": 270.0, "migration_mu": 2.7e-09,
     }
     with open("maps/full.json", "w") as f:

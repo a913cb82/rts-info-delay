@@ -11,7 +11,8 @@
  "army_cost": 1000,
  "interact_radius": 10.0,
  "population_growth": 8.2e-05,
- "build_efficiency": 0.5,
+ "build_efficiency": 0.9,
+ "capture_loss": 0.5,
  "teams": {
   "0": "pro",
   "1": "aggressive"

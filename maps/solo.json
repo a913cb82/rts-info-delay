@@ -1,5 +1,5 @@
 {
- "map": "500.0,500.0,A,500",
+ "map": "500.0,500.0,A,50000",
  "map_size": [
   1000,
   1000
@@ -10,7 +10,8 @@
  "army_cost": 1000,
  "interact_radius": 10.0,
  "population_growth": 8.2e-05,
- "build_efficiency": 0.5,
+ "build_efficiency": 0.9,
+ "capture_loss": 0.5,
  "turn_time_ms": 100,
  "land_capacity": 300000.0,
  "urban_sink": 1e-14,

@@ -38,7 +38,8 @@ class GameConfig:
     migration_mu: float = 2.7e-09        # mu: gravity migration strength
     service_gate: float = 30.0           # sigmoid width of "bigger serves smaller"
     town_min_population: float = 0.0     # death floor (0 = only at pop <= 0)
-    build_efficiency: float = 0.5
+    build_efficiency: float = 0.9        # BUILD/MOVE_CAPITAL yield: army_cost x this = 900 pop
+    capture_loss: float = 0.5            # population fraction lost when a town is captured
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> GameConfig:
@@ -56,7 +57,7 @@ class GameConfig:
 
     @property
     def death_threshold(self) -> float:
-        """Legacy policy floor (army_cost x build_efficiency, 500).
+        """Legacy policy floor (army_cost x build_efficiency, 900).
 
         Kept for the bots' survive-floor heuristics; the ENGINE's death
         rule is `town_min_population` (0 in the fitted model)."""

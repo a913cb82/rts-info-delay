@@ -64,6 +64,15 @@ Reproduce: `python benchmarks/growth_realism.py --system engine`;
 `python benchmarks/growth_realism.py --system fitted`;
 `python benchmarks/realism_plots.py` (regenerates the PNG).
 
+## Companion change: BUILD yield
+
+Same rework, same turn: a trained army (cost 1000 pop) now converts at
+90% instead of 50%. `build_efficiency` 0.5 → 0.9, so BUILD and
+MOVE_CAPITAL found towns at **900** pop and boost an existing town by
+**+900**. Capture is unchanged (still halves): it no longer shares the
+field — it reads the new `capture_loss` 0.5. Bots that priced captures
+via `build_efficiency` need to switch to `capture_loss` (bot agent).
+
 ## Engine notes
 
 - `src/engine/economy.py` holds the model; numba batch/row kernels and

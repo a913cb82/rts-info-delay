@@ -99,10 +99,10 @@ class TestEconomyMedium:
             StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 100])
         )
         apply_build(w, CFG)
-        assert t.population == 1100
+        assert t.population == 1500
         for _ in range(10):
             apply_growth(w, CFG)
-        assert t.population > 1100
+        assert t.population > 1500
 
     def test_E42_close_hamlets_stay_together(self) -> None:
         """E42: three 8-km-apart hamlets coexist and stay similar."""

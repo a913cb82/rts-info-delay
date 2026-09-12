@@ -337,15 +337,15 @@ class TestCommands:
         step(w, CFG, ledger, turn=1, orders={0: ["BUILD 1 50 50"]})
         new_towns = [t for t in w.towns if t.x == 50 and t.y == 50]
         assert len(new_towns) == 1
-        assert new_towns[0].population == 500  # army_cost × build_efficiency
+        assert new_towns[0].population == 900  # army_cost × build_efficiency
 
     def test_build_on_own_town(self) -> None:
-        """O5: BUILD on own town → town pop += 500."""
+        """O5: BUILD on own town → town pop += 900."""
         t = _town(50, 50, 2000, faction=0, tid=1)
         w = _world_with(armies=[_army(50, 50, 0, 2)], towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["BUILD 2 50 50"]})
-        assert t.population == pytest.approx(2500)
+        assert t.population == pytest.approx(2900)
 
     def test_build_on_enemy_town(self) -> None:
         """O5b: BUILD at enemy town position → army captures it first."""

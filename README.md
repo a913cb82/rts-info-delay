@@ -77,7 +77,7 @@ Turn-based. Each turn consists of phases:
 |----------------|--------------------------------------|---------------------------------------------------------|
 | `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army                                |
 | `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                     |
-| `BUILD`        | `BUILD <army> <x> <y>`               | consumes army: found pop-500 town, or +500 pop          |
+| `BUILD`        | `BUILD <army> <x> <y>`               | consumes army: found pop-900 town, or +900 pop          |
 | `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy marches out, founds new capital on arrival      |
 
 ## Bots

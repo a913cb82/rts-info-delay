@@ -157,14 +157,14 @@ class TestEntities:
         assert t.population == 500
         assert t.is_capital is True
 
-    def test_town_death_threshold(self) -> None:
-        """N3: Town dies when pop < 500 (strictly below army_cost × build_efficiency)."""
+    def test_legacy_death_threshold_property(self) -> None:
+        """N3: legacy bot floor tracks army_cost × build_efficiency (900).
+
+        The engine's own death rule is `town_min_population` (0); this
+        property only backs the bots' survive-floor heuristics."""
         cfg = GameConfig()
-        threshold = cfg.army_cost * cfg.build_efficiency  # 1000 * 0.5 = 500
-        t_dead = Town(id=0, faction=0, x=0, y=0, population=499)
-        t_alive = Town(id=1, faction=0, x=0, y=0, population=500)
-        assert t_dead.population < threshold
-        assert t_alive.population >= threshold
+        assert cfg.death_threshold == 900  # 1000 × 0.9
+        assert cfg.town_min_population == 0.0
 
     def test_town_ids_stable(self) -> None:
         """N4: Town that survives keeps the same id."""

@@ -235,7 +235,7 @@ def resolve_captures(world: World, config: GameConfig, weaknesses=None) -> list[
 
     After combat, each town with enemy armies within interact_radius is
     decided once: weakest-in-range enemy faction captures (ownership
-    changes, population reduced by build_efficiency) — unless an allied
+    changes, population reduced by capture_loss) — unless an allied
     army in range matches its weakness (held), or enemies tie for weakest
     across factions (standoff, no capture). Same-faction ties capture.
     A captured capital is demoted; captures never create capitals
@@ -351,7 +351,7 @@ def _apply_capture(world: World, town, new_faction: int, config: GameConfig, boo
         if capitals.get(old_faction) is town:
             del capitals[old_faction]
     town.faction = new_faction
-    town.population *= (1.0 - config.build_efficiency)
+    town.population *= (1.0 - config.capture_loss)
     return {
         "kind": "town_capture",
         "id": town.id,

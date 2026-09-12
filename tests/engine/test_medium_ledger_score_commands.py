@@ -88,7 +88,7 @@ class TestScoreMedium:
         score_before = compute_score(w, faction=0)
         apply_build(w, CFG)
         score_after = compute_score(w, faction=0)
-        # Army (1000) → town (500) = net -500
+        # Army (1000) → town (900) = net -100
         assert score_after < score_before
 
     def test_S6_train_neutral(self) -> None:
