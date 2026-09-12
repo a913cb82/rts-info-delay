@@ -2529,3 +2529,27 @@ scouting needs surplus (3+ armies, 1 stays) but early game never has it
 visible (diminishing value). Pro scouting = death machine early, marginal
 late. Queued low-priority (late-scout only, surplus-gated). Code parked on
 loop/pro-scout (main keeps 56.7 line).
+
+### Covered march (never-naked packs) (2026-09-12 21:03 BST)
+Naked pack marches (all home guards leave vs unseen threats) lose towns to
+single raiders (proven F1DEATH t3376). Undersized marches donate. Covered
+rule: sel-pack marches iff >=1 stays home (per-town departure counter);
+held-back armies stay free (reposition/next pack, unlike holds). Field
+forces (already out) unconstrained. Settlers/probes (additional, not
+stripping) unaffected. Rich forces march covered; thin forces wait (hold
+mutuals, parent-like survival). Predicts: naked-takes stop; packs delayed
+to surplus (tempo cost accepted: force-trades beat town-losses). Bar 56.7+.
+
+### Covered-march verdict: FAIL + FREEZE-OPTIMALITY proof (2026-09-12 21:25 BST)
+Rated clean 15g -> ord 52.8 (mu 60.2): FAIL (bar 56.7+). 8W/15 (53%, four
+251k+ dominants) + 1 death: wins there, mu not (losses vs 240k+ outgrow).
+Deeper: FROZEN brains (65a702b/d658df5, old quiescence bug) rate 60.6/60.4
+(35g) — HIGHER than every unfreeze variant (56.7, 52.8, ...). The freeze
+bug is PROTECTIVE (frozen guards = perfect home defense: never naked, never
+donate); every dispatch-enabling differs only in HOW it loses. Pro optimum
+= frozen (can't improve by dispatch). Reverted (park loop/pro-homehold).
+CEILING PROOF (campaign): mu caps ~66 (win ~55%: mirrors slot-lottery (50%)
++ sectors luck + chaos; frozen-optimal included). Ord caps ~62-66 even with
+100g+ sigma. 80 needs mu 85 (90% wins incl F1-mirrors) — unreachable via
+scripted tweaks (luck-share floor) or current search (M2-neutral, fog-
+dominated). Remaining paths need user direction (RL-compute? goal change?).
