@@ -5,7 +5,6 @@ import math
 from engine.config import GameConfig
 from .intel import *
 from .scout import *
-from .search.candidates import choose_site
 from .threat import *
 from .raid import *
 from .settle import *
@@ -122,11 +121,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         if p.id in held:
             continue
         # One-colony march: the printed settler founds the second town
-        # >=160km out before any raid/pack logic can poach it. Site via
-        # search-ranked choice (M2: rollout value when banked, else the
-        # heuristic best — same pick when clock-low or <2 sites).
+        # >=160km out before any raid/pack logic can poach it.
         if _one_colony(state, config):
-            site = choose_site(state, config, p, rmin=160, rmax=300, salt=11)
+            site = find_build_site(state, config, p.x, p.y,
+                                   rmin=160, rmax=300, salt=11, who=p.id)
             if site is not None:
                 out.extend(order_move(state, config, p, site[0], site[1]))
                 continue
