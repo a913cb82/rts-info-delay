@@ -1892,3 +1892,15 @@ armies exist (pack raids with surplus; bases expendable staging);
 naked bases acceptable, naked capital is death). Predicts: capital takes
 down (deaths cut), packs still take (wins kept/grown), no fortress drift
 (bases ungarrisoned, pack out, march-active).
+
+### GOAL-80, worst-iter (aggressive) 3: early evac (2026-09-12)
+SECURE-CAPITAL ALONE (garrison-2 + capital veto) RATED 15g -> ord 11.2
+(3W/4S/8D, 53% deaths). Better (67%->53% deaths, 7%->20% wins) but nowhere
+near 46.7. Root of remaining deaths: garrison-2 dies to 3+ packs, thin
+capital can't print, and the brain NEVER evacuates (evac_plan exists in
+core, brain never calls it) — every overwhelmed capital feeds and dies.
+IDEA (1, conqueror-congruent): wire early evac — hopeless (capital inbound
+N >= home+printable+2) -> drain-and-flee while affordable (>=2000);
+established winners endure. Conqueror relocates to raid again (mobile,
+not fortress/feed). Hoisted intel (foe/own/force) before trains for the
+priority escape check; early return commits to flight that turn.

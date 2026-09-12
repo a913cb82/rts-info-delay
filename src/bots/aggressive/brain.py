@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .core import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .core import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, evac_plan, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, home_count, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
@@ -20,18 +20,39 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
 
-    # Step 2, aggressive params (predator): thin cushion (depth 0),
-    # marginal+initiative raids (margin 100), economic expansion rare
-    # (payback x3 — foundings are military staging, below), 1 prober.
-    out.extend(demand_trains(state, config, _can_train_aggressive, DemandParams(
-        raid_margin=100.0, payback_mult=3.0, probe_armies=1)))
-
+    # Hoisted intel (evac needs it before trains): foe/own lists + threat.
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
     enemy_armies = [a for a in state.world.armies if a.faction != faction]
     own_t = state.own_towns()
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
+    # Early evac (missing escape hatch — the brain never fled, so every
+    # overwhelmed capital fed the garrison and died). Hopeless = capital
+    # inbound N exceeds home + printable + 2 (can't hold this wave AND
+    # can't win the attrition). Fires while affordable (>=2000) via
+    # evac_plan's gates; established winners endure (established_stays).
+    # Conqueror relocates to raid again; it does not feed or fortress.
+    cap0 = state.world.faction_capital(faction)
+    hopeless = False
+    if cap0 is not None:
+        eta_n = force.get(cap0.id)
+        if eta_n is not None:
+            _, n = eta_n
+            printable = 1 if cap0.population - config.army_cost >= \
+                config.army_cost + config.death_threshold else 0
+            hopeless = n >= home_count(state, cap0) + printable + 2
+    esc = evac_plan(state, config, hopeless, established_stays=True)
+    if esc:
+        return esc
+
+    # Step 2, aggressive params (predator): thin cushion (depth 0),
+    # marginal+initiative raids (margin 100), economic expansion rare
+    # (payback x3 — foundings are military staging, below), 1 prober.
+    out.extend(demand_trains(state, config, _can_train_aggressive, DemandParams(
+        raid_margin=100.0, payback_mult=3.0, probe_armies=1)))
+
+    # (intel hoisted above for early evac; reuse force/inbound/lists.)
     held = hold_defenders(state, config, force)
     # Secure-capital garrison (anti-death): while foe field armies exist,
     # pin up to 2 home armies on the capital (standing, not threat-gated —
