@@ -2292,3 +2292,16 @@ counted threats keep N+1 above; colonies unchanged). Premium (1 locked guard
 when otherwise-zero (quiet games pay premium; threatened keep N+1 anyway).
 Predicts: fewer 0s (death-rate 7%->~3%), scores ~held. Bar 57.3+ (beat best);
 tie-zone 55-58 -> h2h vs 272977c before verdict (pre-registered).
+
+### Rung-2c verdict: FAIL, reverted (2026-09-12 15:58 BST)
+Fog-ward rated clean 15g -> ord 39.5 (mu 47.5): FAIL (bar 57.3). Zero
+visible deaths (insurance worked) but wins only vs weak (low gain) +
+narrow 2nds vs decent (187-195k vs 194-203k pros — costly). Two candidate
+mechanisms (unresolved): (a) premium-drag (1 locked guard ~3k flips wins
+to 2nds more often than it converts deaths); (b) pack-paralysis (pinned
+closest-home army stalls pack departures -> fewer takes -> no quality
+wins). Either way net-negative. LESSON (premium-vs-leak corollary):
+insurance can be -EV when its premium exceeds expected saves — price
+premiums from rates (death-rate x save-value vs premium x games), not
+from single specimens (t3376 was lottery-representative). Reverted (main
+keeps unfreeze-alone 57.3). Code parked on loop/pro-fogward.
