@@ -1,15 +1,15 @@
 # Bot plan — doctrine and open work
 
 What we believe about playing well, and what remains to build, in order.
-State of the bots: `BOTS.md`. Numbers: `BOT_BENCH.md`. History: `BOT_WORKLOG.md`.
-Full strategy reference: `GTO.md` (this plan's doctrine section is the
-compact form; GTO.md is the detailed form).
+State of the bots: `STRATEGY.md`. Numbers: `METHODS.md`. History: `BOT_WORKLOG.md`.
+Full strategy reference: `STRATEGY.md` (this plan's doctrine section is the
+compact form; STRATEGY.md is the detailed form).
 
 ## Goal
 
-Pro converges to true GTO play (`GTO.md`); every other bot converges to
+Pro converges to true GTO play (`STRATEGY.md`); every other bot converges to
 GTO skewed by its personality — same optimal backbone, documented bias
-parameters (`GTO.md` §9): turtle risk-averse (plays tall), expander
+parameters (`STRATEGY.md` §9): turtle risk-averse (plays tall), expander
 slot-hungry (plays wide), aggressive initiative-hungry. The canonical
 lineup runs pro twice (mirror match). Greedy retired (present-bias
 folded into underdog variance). A personality is a parameter shift,
@@ -18,7 +18,7 @@ they differ only in what they systematically over/under-buy. Every step
 below serves that convergence (pro pays full price on time; the others
 deviate on schedule, not by error).
 
-None of this is fixed. GTO.md is mutable and will need updating as game
+None of this is fixed. STRATEGY.md is mutable and will need updating as game
 dynamics reveal more complexity — and so does this plan, and every doc
 around it. When a bench number or game timeline contradicts a doctrine
 point, the doctrine changes (with a worklog entry), not the evidence.
@@ -70,11 +70,11 @@ performer. Pick the lowest-ordinal main-tip package bot (>=10 games),
 improve THAT package until it is no longer the worst, keeping its style
 (see `README.md` style table). Repeat forever, in order:
 1. **Analyse** the current canonical game (`recordings/empty_10000.jsonl`
-   — the viewer location; `benchmarks/ascii_view.py`, how: `VIEWER.md`):
+   — the viewer location; `benchmarks/ascii_view.py`, how: `METHODS.md`):
    per-bot story (what did each do well/badly?), war forensics (who
    attacked what with what, trade math), intel gaps (what did the
    winner never see?). Encode as a worklog entry + report card.
-2. **Brainstorm** ideas per bot (doctrine first, code second; GTO.md
+2. **Brainstorm** ideas per bot (doctrine first, code second; STRATEGY.md
    §9 personalities stay skewed, pro stays reference).
 3. **Bench** (edit fast/slow suites if the idea needs new coverage:
    new scenario or exam drill, fog-era table stays binding).
@@ -87,7 +87,7 @@ improve THAT package until it is no longer the worst, keeping its style
    begins. (`empty_3000` retired.)
 
 **Step 0 — housekeeping.** DONE (fog era): EVENT_REWORK landed, both
-suites re-baselined as the binding table (BOT_BENCH.md fog-era section);
+suites re-baselined as the binding table (METHODS.md fog-era section);
 wake and defense fixed themselves via re-observation under S; endgame
 attribution (beheading vs intel timing) left open — bisect only if it
 matters for a later step.
@@ -312,7 +312,7 @@ empty_10000 (the game): pro 121678 / expander 75768 / greedy 1000 /
 empty_3000 retired (equilibrium-tight, zero battles — too short).
 Next in order: ALL plan Steps substantially DONE (2 all-five, 3 meeting,
 4 compositional, 5 hopeless/evac/snipe/guards, 6 buzzer/strikes; recon +
-pickets shipped). empty_10000 war-verdict (see EMPTY_10000.md): P1 —
+pickets shipped). empty_10000 war-verdict (see archive/EMPTY_10000.md): P1 —
 expander density-cap + suicide-breaker + settler-routing; turtle
 velocity-test + guard-budget + stand-down; pro stay-behind +
 provocation-check + revenge-pricing. P2 — aggressive retaliation-

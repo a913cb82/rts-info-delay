@@ -14,13 +14,13 @@ One iteration = **fix the worst performer**. Repeat forever, on a branch
    ordinal among the four main-tip package bots (`<p>-<HEAD>`, >=10
    games for a stable read; ties -> the larger gap to the next
    personality). State the pick + numbers in the worklog before coding.
-2. **Watch** the canonical game (`VIEWER.md`; `ascii_view.py report` /
-   `lead` / `health`): activity, flips, indicators (`INDICATORS.md`).
+2. **Watch** the canonical game (`METHODS.md`; `ascii_view.py report` /
+   `lead` / `health`): activity, flips, indicators (`METHODS.md`).
 3. **Story**: per bot, turn by turn (`flip -F` / `fog` / `autopsy`).
    Focus on the target personality: where does it concede games?
 4. **Ideas** from the mistakes — **style-gated**: every idea must be
    congruent with the target's style (table below). Doctrine first,
-   code second (`GTO.md`). Sparks -> `BRAINSTORM.md`.
+   code second (`STRATEGY.md`). Sparks -> `STRATEGY.md`.
    If an idea requires changing shared/other-package code, it is a PORT
    (`benchmarks/port.py`, explicit + justified) or it is out of scope.
 5. **Code** one idea, INSIDE the target package
@@ -101,12 +101,12 @@ per change (before → after numbers). Full detail: `BOT_PLAN.md` (The loop).
 | You want to… | Read |
 |---|---|
 | This iteration's backlog | `BOT_PLAN.md` — doctrine + ordered open work |
-| This iteration's numbers | `BOT_BENCH.md` — binding fog-era table, suites, methods |
+| This iteration's numbers | `METHODS.md` — binding fog-era table, suites, methods |
 | Past iterations | `BOT_WORKLOG.md` — append-only log, one entry per change |
-| Past game reports | `EMPTY_10000.md` — war-verdict (superseded by latest report card) |
-| Play well (strategy reference) | `GTO.md` — optimal play, phase playbooks, personality diffs |
-| Change bot code (current behavior) | `BOTS.md` — personalities as coded, shared machinery, intel model |
-| Spend clock budget wisely | `BOT_TIME.md` — Fischer-clock infrastructure (ideas 1–6, landed) |
+| Past game reports | `archive/archive/EMPTY_10000.md` — war-verdict (superseded by latest report card) |
+| Play well (strategy reference) | `STRATEGY.md` — optimal play, phase playbooks, personality diffs |
+| Change bot code (current behavior) | `STRATEGY.md` — personalities as coded, shared machinery, intel model |
+| Spend clock budget wisely | `METHODS.md` — Fischer-clock infrastructure (ideas 1–6, landed) |
 
 ## Last iteration (one page, rots fast — see worklog head)
 
@@ -123,7 +123,7 @@ per change (before → after numbers). Full detail: `BOT_PLAN.md` (The loop).
   buzzer/strikes; recon + pickets shipped). Filed-futures in plan/GTO.
   Details: `BOT_PLAN.md`.
 - **Strategy backbone:** compound → expand on payback math → fortress at
-  saturation → production war → strip-mine flip. Full doctrine: `GTO.md`.
+  saturation → production war → strip-mine flip. Full doctrine: `STRATEGY.md`.
 
 Per-iteration gates (every loop through step 5):
 1. Fast suite (`benchmarks/scenario_bench.py`, ~1.5s) per change.
@@ -136,10 +136,10 @@ Per-iteration gates (every loop through step 5):
 ## File map (iterations + logs)
 
 - `BOT_PLAN.md` — this iteration's backlog (doctrine + open work).
-- `BOT_BENCH.md` — this iteration's numbers (binding table + suites).
+- `METHODS.md` — this iteration's numbers (binding table + suites).
 - `BOT_WORKLOG.md` — iteration log (append-only — do not rewrite old entries).
-- `VIEWER.md` — how we analyze (ascii_view tool: modes, ACJSON, recipes).
-- `EMPTY_10000.md` — old game report (superseded by latest report card).
-- `GTO.md` — strategy reference (doctrine companion, living).
-- `BOTS.md` — implementation guide (code as it is).
-- `BOT_TIME.md` — clock infrastructure.
+- `METHODS.md` — how we analyze (ascii_view tool: modes, ACJSON, recipes).
+- `archive/archive/EMPTY_10000.md` — old game report (superseded by latest report card).
+- `STRATEGY.md` — strategy reference (doctrine companion, living).
+- `STRATEGY.md` — implementation guide (code as it is).
+- `METHODS.md` — clock infrastructure.
