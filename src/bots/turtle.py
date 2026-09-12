@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, bot_main, coverage_orders, buzzer_active, drop_dead_notes, defense_train_ok, evac_plan, order_move, order_march_exact, dispatch_settler, find_build_site, recall_deficit, reinforce_orders, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH, tip_safe, respin_tip, maybe_schedule_scout
+from .common import BotState, bot_main, drop_dead_notes, defense_train_ok, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -12,9 +12,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
-    _sched = maybe_schedule_scout(state, config)
-    sc_out = list(_sched) if _sched else []
-    out.extend(sc_out)
     own_t = state.own_towns()
 
     # T1: threat-responsive threshold. Nearest inbound enemy ETA sets the
@@ -71,9 +68,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             return 1200
         if e <= 10:
             return 1700
+        # Deep sleep (turtle scored 10-20k because peace-time prints at
+        # 2000/2600 kept towns hovering near the bar — pop IS the tall
+        # score). Rich before printing: compounding towns convert raiders
+        # for free (the compounder's survival trick); poor ones die.
         if any_enemy and not any_threat:
-            return 2000
-        return 2600
+            return 5000
+        return 7000
 
     bar = min((town_bar(t) for t in own_t), default=2600)
 
@@ -94,14 +95,25 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 break
     hopeless = threatened and not can_reinforce and own_armed <= seen_enemies
 
-    # EVAC (shared drain-and-flee, turtle flees any doom): hopeless capital
-    # musters everything portable first (drain t, fly t+1), 2x cost floor
-    # kept (suicide-evacs at ~1000 killed the cap for nothing — wake).
-    _evac = evac_plan(state, config, hopeless, established_stays=False)
-    if any(o.startswith("MOVE_CAPITAL") for o in _evac):
-        out.extend(_evac)
-        return out
-    out.extend(_evac)
+    # EVAC: doomed capital + 1000 pop + no viceroy airborne — fly the
+    # commander out to coords AWAY from the threat. The viceroy founds a new
+    # capital on arrival; a faction with a viceroy in flight survives the old
+    # capital's fall. Needs no existing town (founds one).
+    evacuating = any(a.faction == faction and a.is_viceroy for a in state.world.armies)
+    # evac needs 2x cost: the viceroy takes 1000 and the old town must stay
+    # above the death floor (suicide-evacs at ~1000 killed the cap for
+    # nothing — wake lesson vs synced raiders).
+    if cap is not None and not evacuating and hopeless and cap.population >= 2 * config.army_cost:
+        foes = [a for a in state.world.armies if a.faction != faction]
+        if foes:
+            fx = sum(a.x for a in foes) / len(foes)
+            fy = sum(a.y for a in foes) / len(foes)
+            dx, dy = cap.x - fx, cap.y - fy
+            dist = math.hypot(dx, dy) or 1.0
+            ex = min(980.0, max(20.0, cap.x + dx / dist * 250.0))
+            ey = min(980.0, max(20.0, cap.y + dy / dist * 250.0))
+            out.append(f"MOVE_CAPITAL {ex:.1f} {ey:.1f}")
+            return out
 
     # T3: last-stand — a threat imputed to THIS town arriving in <=3 and
     # the town still standing: train whatever is affordable, rules be
@@ -119,13 +131,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                                 config.death_threshold,
                                 town_eta.get(t.id, float("inf")),
                                 _home_count(t), town_inbound.get(t.id, 0),
-                                window=3.0,
-                                turns_left=config.max_turns - state.turn)
+                                window=3.0)
 
     # Sub-2600 bars bypass can_train_here (its 2600 conservative bar would
     # veto the whole point of T1/wake); engine-validity only. Eligibility is
     # per-town: only threatened towns spend below 2600.
-    # No buzzer strip-mine: self-tax without strikes (shared verdict).
+    threatened = threat_eta <= 10
     relaxed_ids = {t.id for t in own_t if town_bar(t) < 2600}
     # peacetime picket: with no threat visible, a single army is enough for
     # an enemy you can't see (stops the t1+t2 double-tap with zero intel).
@@ -159,77 +170,25 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if any(math.hypot(a.x - t.x, a.y - t.y) <= 20 for t in own_t)] if own_t else []
     need_garrison = threatened and not home and cap is not None
 
-    # Forward picket (owed): single-town turtle posts one idle army 100km
-    # out while the universe is dark (zero foe intel — towns AND armies).
-    # The FIRST foe intel (even a town: threat located, tripwire spent)
-    # recalls it (muster/concentration need every body); expiry (100 turns
-    # silent) rotates it home as guard with no blind re-posting. Posted
-    # pickets skip the builds loop below.
-    _PICKET_DIST = 100.0
-    _PICKET_EXPIRY = 100
-    _foe_intel = any(t.faction != faction for t in state.world.towns) \
-        or any(a.faction != faction for a in state.world.armies)
-    if state._picket is not None:
-        _pid, _since = state._picket
-        _pa = state.world.get_army(_pid)
-        if _pa is None or _pa.faction != faction:
-            state._picket = None
-        elif _foe_intel or state.turn - _since > _PICKET_EXPIRY:
-            _home = min(own_t, key=lambda t: math.hypot(_pa.x - t.x, _pa.y - t.y))
-            _orders = order_move(state, config, _pa, _home.x, _home.y)
-            if _orders:
-                out.extend(_orders)
-                state._picket = None
-    if state._picket is None and len(own_t) == 1 and not _foe_intel:
-        _cands = sorted((a for a in state.own_armies()
-                         if not a.is_viceroy and not state.army_has_target(a.id)),
-                        key=lambda a: (min(math.hypot(a.x - t.x, a.y - t.y) for t in own_t), a.id))
-        if _cands:
-            _p = _cands[0]
-            # Dark universe: faction-ray (blind guess, either side can be
-            # wrong — recall-on-intel bounds the cost to a march).
-            _ang = faction * (2 * math.pi / 5)
-            _dx, _dy = math.cos(_ang), math.sin(_ang)
-            _dist = math.hypot(_dx, _dy) or 1.0
-            _wx = min(980.0, max(20.0, own_t[0].x + _dx / _dist * _PICKET_DIST))
-            _wy = min(980.0, max(20.0, own_t[0].y + _dy / _dist * _PICKET_DIST))
-            _orders = order_move(state, config, _p, _wx, _wy)
-            if _orders:
-                out.extend(_orders)
-                state._picket = (_p.id, state.turn)
-
     # one builder at a time
     built = False
-    # Meeting (Step 3, shared): deficit-threats recall settlers (replaces
-    # the old blanket recall — sufficient garrisons let settlers work).
-    out.extend(recall_deficit(state, config))
-    # Meeting (Step 3 v1): surplus reinforces deficits in time.
-    out.extend(reinforce_orders(state, config))
     for p in sorted(state.own_armies(), key=lambda a: min((math.hypot(a.x - t.x, a.y - t.y) for t in own_t), default=0)):
         if p.is_viceroy and state.army_has_target(p.id):
             continue
-        if state._picket is not None and p.id == state._picket[0]:
-            continue  # posted picket: picket block owns it, never settle it
+        # recall first: threatened settlers abort and come home (2v1 beats
+        # waves, 1v1 only trades — every home army counts). Skipped when
+        # hopeless: the settler lineages instead.
+        if threatened and not hopeless and cap is not None and state.army_has_target(p.id) and not state.has_pending_build(p.id):
+            out.extend(order_move(state, config, p, cap.x, cap.y))
+            continue
         if state.army_has_target(p.id):
             if state.has_pending_build(p.id):
                 continue
             tgt = state.army_target(p.id)
-            rx, ry = state.reckoned_pos(config, p.id)
-            if tgt and math.hypot(rx - tgt[0], ry - tgt[1]) < config.interact_radius + 10:
+            if tgt and math.hypot(p.x - tgt[0], p.y - tgt[1]) < config.interact_radius + 10:
                 # threatened: hold as an army (trades the next wave) instead
                 # of disbanding into a town about to be attacked
                 if threatened and any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) <= 20 for t in own_t):
-                    continue
-                own_home = any(math.hypot(tgt[0] - t.x, tgt[1] - t.y) < 20 for t in own_t)
-                if not own_home and not tip_safe(state, config, tgt[0], tgt[1]):
-                    # Persist the re-task as a note FIRST (order_move is
-                    # quiescence-gated and may emit [] — a popped-without-note
-                    # army gets S0-stolen into an infinite probe loop).
-                    rs = respin_tip(state, config, tgt[0], tgt[1])
-                    dest = rs if rs is not None else (
-                        (cap.x, cap.y) if cap is not None else None)
-                    if dest is not None:
-                        out.extend(order_march_exact(state, config, p, dest[0], dest[1]))
                     continue
                 out.append(f"BUILD {p.id} {tgt[0]:.1f} {tgt[1]:.1f}")
                 built = True
@@ -241,22 +200,27 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             need_garrison = False
             built = True
             continue
-        if not built and own_t and not buzzer_active(state, config):
+        if not built and own_t:
             # threatened home armies hold position — never dispatch them out
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
                 continue
             biggest = max(own_t, key=lambda t: t.population)
-            site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13, who=p.id)
+            # Spacing (turtle was its own worst neighbour: satellites
+            # at 40-140km sit inside the 150km crowding radius, taxing
+            # BOTH towns' growth — and growth IS the tall score).
+            # Still tall, still calm-only: just far enough to compound
+            # independently.
+            site = find_build_site(state, config, biggest.x, biggest.y, rmin=180, rmax=320, salt=13, who=p.id)
             if site:
-                out.extend(dispatch_settler(state, config, p, site[0], site[1]))
+                out.extend(order_move(state, config, p, site[0], site[1]))
                 built = True
-        # garrison remainder: idle patrols (doctrine), not home-sit.
-        # (coverage_orders batches leftovers below; threatened home
-        # armies already continued above.)
+        # garrison remainder
         if not built or state.army_has_target(p.id):
             continue
-    # Idle patrols last (doctrine: leftovers sweep stalest sectors).
-    out.extend(coverage_orders(state, config))
+        if own_t:
+            nearest = min(own_t, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
+            if math.hypot(p.x - nearest.x, p.y - nearest.y) > 20:
+                out.extend(order_move(state, config, p, nearest.x, nearest.y))
     return out
 
 
