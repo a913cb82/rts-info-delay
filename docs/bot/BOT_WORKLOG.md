@@ -3009,3 +3009,7 @@ Buzzer +10g (440 total) -> ord 63.8 (mu 67.1, was 66.6/430g): +0.5 on
 ### Buzzer 450g (2026-09-13 00:52 BST)
 Buzzer +10g (450 total) -> ord 64.5 (mu 67.9, was 67.1/440g): +0.7 on
 4W (260k x2/239k/297k) + quality mids + ZERO deaths. 450 games banked.
+
+### Buzzer 460g (spike-batch down) (2026-09-13 00:57 BST)
+Buzzer +10g (460 total) -> ord 62.4 (mu 65.8, was 67.9/450g): -2.1 on
+10% wins (1/10) + 2 F1-deaths + fifths. Spike-batch. Oscillation.
