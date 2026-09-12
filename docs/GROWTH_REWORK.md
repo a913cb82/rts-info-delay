@@ -1,86 +1,113 @@
-# Growth rework (2026-09-12)
+# Growth rework (2026-09-13)
 
-The town growth model was refitted for realism and ported into the
-engine. This is the one doc for that work: what the model is, what it
-does, and how to measure it. Fitting detail/artifacts live in
-`benchmarks/realism_fit/`; the visual summary is
+Town growth is now an **agrarian economy**: land- and labour-limited
+farming, conservative food trade, food-limited births, surplus-labour
+migration, and market services. This doc is the one place for the
+model, the parameters (all real-world quantities) and the sanity
+results. The earlier fitted realism model (2026-09-12, `a/K/c` +
+access/migration kernels) is superseded; its suite still runs via
+`benchmarks/growth_realism.py --system fitted` and the plot at
 `docs/realism_plots/realism_fit.png`.
 
-## The model
+## Constants (geography / game)
 
-```
-g(P)   = a*P - (a/K)*P^2 - c*P^3                 # a lone town
-W(i,j) = alpha*P_i*sig((P_j-P_i)/gate) * e^(-(d/rho)^2) * win(d)
-       + mu*P_i*P_j/(P_i+P_j)*(P_i-P_j) * e^(-d/rho) * win(d)
-net_i  = g(P_i) + sum_j W(i,j)
-win(d) = sig(D^2/d^2 - D^2/(D^2-d^2)),  D = info_speed = 150 km
-```
-
-| param | config field | value | job |
+| symbol | config | value | real-world meaning |
 |---|---|---|---|
-| `a` | `population_growth` | 8.2e-05 | fertility (~0.4%/yr villages) |
-| `K` | `land_capacity` | 3e5 | saturation; quadratic term `a/K` |
-| `c` | `urban_sink` | 1e-14 | urban mortality; net negative past ~78k |
-| `alpha` | `access_alpha` | 1.8e-05 | market access (bigger serves smaller) |
-| `rho` | `kernel_scale` | 270 | shared kernel decay scale |
-| `mu` | `migration_mu` | 2.7e-09 | gravity migration toward larger towns |
-| — | `service_gate` | 30 | sigmoid width of "meaningfully bigger" |
-| — | `town_min_population` | 0 | death floor (die at pop <= 0) |
+| `R` | `farm_radius_km` | 5 | farm walking radius — nobody farms further |
+| `rho` | `rural_density` | 30 /km² | subsistence rural density (England/France c.1600) |
+| `Lc` | `cart_distance_km` | 20 | distance over which carting doubles grain price |
+| — | `turns_per_year` | 52 | 1 turn = 1 week |
+| `sf` | `farm_workers_yield` | 1.3 | people fed per farm worker |
+| `b` | `birth_rate` | 35 /1000/yr | crude birth rate |
+| `m` | `death_rate` | 31 /1000/yr | crude death rate (`b−m` = 0.4%/yr) |
+| `sm` | `market_premium` | 0.25 | max farm-output premium from market services |
+| `th` | `migration_share` | 0.5 | share of natural increase that emigrates |
+| `nu` | `surplus_mobility` | 0.05 /yr | share of surplus labour that emigrates |
+| `Lm` | `migration_scale_km` | 50 | migration distance scale |
+| — | `town_min_population` | **10** | minimum settlement size (die at or below) |
 
-Conventions: 1 turn = 1 week; game km are real km. `win` is a single
-C-infinity curve with one constant: exactly 1 at d=0, exactly 0 at
-d=150, all derivatives vanish at the rim. Pairs at d >= 150 km are
-inert (hard bound, also the engine's neighbour cutoff). The only
-discontinuity kept is the exact-stack rule (d=0: smaller town dies,
-larger ignores) — maps never stack, and it keeps viceroy founding
-merging into a friendly town.
+Derived: `Y_ring = rho·πR²` ≈ 2356 people (one ring's food), `h = b/m − 1` ≈ 0.13.
 
-What it changed, qualitatively:
+## Formulae (per turn)
 
-- **Slow demographic clock**: villages ~0.4%/yr (was ~5%/yr).
-- **No crowding tax**: equal neighbours coexist; gaps can be farmed.
-- **Directed access**: bigger places lift smaller ones (market halo).
-- **Migration circuit**: people drift to bigger towns; a big city
-  drains its neighbours (shadow near, halo further out) and is itself
-  fed by villages.
-- **Villages live**: the 500 floor is gone; 200-400 hamlets persist.
+```
+curves      win(d;D) = sig(D^2/d^2 - D^2/(D^2-d^2))     D = info_speed
+            c(d)     = 2^(-d/Lc) in reach, 0 beyond 3·Lc (~60 km)
 
-## How it scores
+land        area_i = Voronoi cell within R (nearest-farmer, sampled)
+serv_j  = max(0, P_j - Y_j/sf)                          non-farm population
+mkt_i   = sum_j serv_j * c(d_ij)
+boost_i = sm * mkt_i/(mkt_i + P_i)                      services per head served
+Y_i     = (1 + boost_i) * min(rho*area_i, sf*P_i)       production
 
-`benchmarks/growth_realism.py` (16 scenarios, closeness 0..1, composite
-= mean; frozen thresholds; `--system engine|fitted`):
+trade       surplus_j = max(0, Y_j - P_j); deficit_i = max(0, P_i - Y_i)
+            greedy nearest-first with hard caps (conservative)
+            S_i = Y_i + imports_i                       food commanded
 
-| | engine before | engine now |
+births      B_i = b*P_i * S_i/(S_i + h*P_i)             f=1 -> births=deaths
+deaths      D_i = m*P_i
+
+migration   out_i   = th*max(0,B_i-D_i) + nu*max(0, P_i - Y_i/sf)
+            attr_ij = max(0,P_j-P_i) * min(1,S_j/P_j) * e^(-d/Lm) * win(d)
+            flow_ij = out_i * attr_ij / sum_k attr_ik
+            net_ij  = flow_ij - flow_ji
+
+update      P_i' = P_i + B_i - D_i + sum_j net_ij
+```
+
+Conservation: trade ships each surplus unit once (`Σimports = Σexports`,
+unreached surplus simply not eaten); migration is origin-budgeted and
+antisymmetric (people only move). Only births and deaths change the
+total. Exact stacks keep the engine rule (smaller dies, larger ignores).
+
+## Sanity results (3 archetype runs)
+
+**Lone settlements** (3,000 turns ≈ 58 yrs):
+
+| start | end | %/yr |
 |---|---|---|
-| composite | 0.224 | **0.949** |
+| village 300 | 315 | +0.08 |
+| town 2,400 | 2,392 | −0.01 |
+| city 20,000 | 10,448 | −1.12 |
 
-Held-out `macro` 0.83; held-out CV (leave-fold, λ=0.02) 0.79 — that is
-the honest generalisation number, not the in-sample 0.95. Remaining
-sub-scores: `hierarchy` 0.82, `urban` 0.78, `hinterland` 0.80,
-`sinkflow` 0.96. `hierarchy` vs `urban` is a structural tension of the
-single-town curve (if 20k sinks, 34k sinks deeper), not a tuning miss.
+**Equal population (4,200) in one 120 km region** (10,000 turns):
 
-Reproduce: `python benchmarks/growth_realism.py --system engine`;
-`python benchmarks/growth_realism.py --system fitted`;
-`python benchmarks/realism_plots.py` (regenerates the PNG).
+| structure | end | %/yr |
+|---|---|---|
+| 14 villages × 300 | 4,936 | +0.084 |
+| 10 villages + 1,200 town | 4,936 | +0.084 |
+| 6 villages + 2,400 town | 4,600 | +0.047 |
+| 3 villages + 3,300 town | 4,222 | +0.003 |
+| 1 town 4,200 | 3,061 | −0.164 |
 
-## Companion change: BUILD yield
+**City systems, equal population 20,400 within carting range** (20,000 turns):
 
-Same rework, same turn: a trained army (cost 1000 pop) now converts at
-90% instead of 50%. `build_efficiency` 0.5 → 0.9, so BUILD and
-MOVE_CAPITAL found towns at **900** pop and boost an existing town by
-**+900**. Capture is unchanged (still halves): it no longer shares the
-field — it reads the new `capture_loss` 0.5. Bots that priced captures
-via `build_efficiency` need to switch to `capture_loss` (bot agent).
+| structure | end | %/yr |
+|---|---|---|
+| 68 villages | 28,177 | +0.084 |
+| **1×2,400 town + 60 villages** | **30,319** | **+0.103** |
+| 1×4,800 town + 52 villages | 29,457 | +0.096 |
+| 1×8,400 town + 40 villages | 27,428 | +0.077 |
+| 1×12,000 town + 28 villages | 21,052 | +0.008 |
+| 1 city 20,400 | 3,268 | −0.475 |
 
-## Engine notes
+Findings: a **low urban fraction** (~12% market town) pays for itself
+through market services and beats pure villages (+0.103 vs +0.084 %/yr);
+oversized towns/cities starve and drag the system down; a 2,400 town is
+already too big for only 1,800 rural neighbours. Towns are population
+sinks (natural growth 0 when fed — they live on migration), which is
+the intended urban-graveyard behaviour.
 
-- `src/engine/economy.py` holds the model; numba batch/row kernels and
-  the cached distance matrix keep the old performance shape.
-- All maps carry the new parameters explicitly (old crowding keys are
-  gone), so a game cannot silently fall back to old values.
-- Bots are untouched: their 500-pop survive floor still reads the
-  legacy `config.death_threshold` property (`army_cost × build_efficiency`),
-  separate from the engine floor. Bot-side retuning (expansion pricing
-  now reads the slow clock) is the bot agent's task; three bot tests
-  still encode the old economy.
+Run them: `python benchmarks/sanity_agrarian.py [turns]`,
+`sanity_agrarian_struct.py`, `sanity_agrarian_city.py`.
+
+## Status / open items
+
+- Engine tests + integration are green; 9 bot-side tests still encode
+  the old economy and are the bot agent's remit (`tests/bots/`).
+- The realism suite (`growth_realism.py --system engine`) now measures
+  the agrarian model through a compatibility adapter; its scores are
+  not re-fitted yet (the suite was built for the fitted model).
+- Calibration knobs with priors: `market_premium` (0.05–0.5, anchor
+  `market_access_ratio`), `farm_workers_yield` (1.2–1.5),
+  `surplus_mobility` and `migration_share`.
