@@ -151,16 +151,20 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         if foe_print_factor(state, u.faction) > 0.3:
             need += 1
         if not priced:
-            score = u.population / (1.0 + dist / 300.0)
+            score = u.population / (1.0 + min(arrival_t, 4.0))
             ranked.append((score, u, need, s))
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
-            # Bird-in-hand: an executable take now beats a bigger prize
+            # Arrival-muster discount (was weak dist-penalty): foes print
+            # during the march (reactive muster, unmodeled) — far takes face
+            # mustered defense (donations!). Discount by arrival turns
+            # (prints/turn), capped (near takes stay takeable, far need huge
+            # prizes to justify).
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready. Capitals carry a
             # beheading premium (permanent; universal GTO).
-            score = prize / (1.0 + dist / 300.0) / (1.0 + s + w) \
+            score = prize / (1.0 + min(arrival_t, 4.0)) / (1.0 + s + w) \
                 / (1.0 + max(0, need - len(fieldable)))
             if u.is_capital:
                 score *= 1.5

@@ -2613,3 +2613,11 @@ TAKE VOLUME beats take quality (packs must take anything for snowball fuel;
 selectivity starves). NEXT (parallel takes, queued): raid_targets k=3-5
 (simultaneous multi-takes, volume snowball) — brain uses k=1 (serial) now.
 Parked (main keeps 42.2).
+
+### Aggressive arrival-muster discount (2026-09-12 18:48 BST)
+Donations persist despite grave/stale-floor/rate systems: foes print DURING
+the march (reactive muster, unmodeled) — far takes face mustered defense.
+FIX (raid scores): discount /(1+arrival_turns capped 4) instead of weak
+/(1+dist/300) (6x stronger, muster-proportional). Near takes stay takeable;
+far need huge prizes (justified). Predicts: donations drop (far), near
+takes persist. Bar: aggressive gate (>=47.2 AND takes).
