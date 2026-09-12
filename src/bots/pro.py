@@ -29,7 +29,39 @@ def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
     return home + printable < n
 
 
+def _one_colony(state: BotState, config: GameConfig) -> bool:
+    """One-colony compounder (gate win, ported): the pure compounder's
+    capital logistic-caps at ~99k; a second town >=150km out (no
+    crowding) adds ~90k by t10000 for ~1k of lost compounding. Found
+    ONCE, early; needs 1 town, >=2500 pop, >=4000t left, no settler out."""
+    own_t = state.own_towns()
+    if len(own_t) != 1:
+        return False
+    turns_left = (getattr(config, "max_turns", 10000) or 10000) - state.turn
+    if turns_left < 4000:
+        return False
+    cap = state.world.faction_capital(state.faction)
+    if cap is None:
+        return False
+    floor = config.army_cost + config.death_threshold
+    if cap.population < floor + config.army_cost:
+        return False
+    for a in state.own_armies():
+        tgt = state.army_target(a.id)
+        if tgt is not None and all(
+                math.hypot(tgt[0] - t.x, tgt[1] - t.y) > 20 for t in own_t):
+            return False  # settler already marching
+    return True
+
+
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
+    out: list[str] = []
+    if _one_colony(state, config):
+        cap = state.world.faction_capital(state.faction)
+        if cap is not None and cap.id not in state._pending_trains:
+            out.append(f"TRAIN {cap.id}")
+            state.note_train(cap.id)
+            return out
     # P3b: empty-field economy — no foes means nothing to fight or settle
     # against; holding compounds (policy optimum 5254: never train).
     # Pro-only (void settlers need trains in the other bots). Recon
@@ -131,6 +163,13 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             continue  # handled by the builds stage
         if p.id in held:
             continue
+        # One-colony march (see _one_colony): found before raid logic.
+        if _one_colony(state, config):
+            site = find_build_site(state, config, p.x, p.y,
+                                   rmin=160, rmax=300, salt=11, who=p.id)
+            if site is not None:
+                out.extend(order_move(state, config, p, site[0], site[1]))
+                continue
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue
