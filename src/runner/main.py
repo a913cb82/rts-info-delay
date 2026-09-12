@@ -654,7 +654,8 @@ def run_game(
 
         # Write turn record
         if record_path is not None:
-            write_turn_line(turn, world, events, record_path)
+            write_turn_line(turn, world, events, record_path,
+                            orders=orders_dict)
 
 
 

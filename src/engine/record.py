@@ -24,8 +24,12 @@ def write_config_line(config: GameConfig, f: Path) -> None:
         out.write(line + "\n")
 
 
-def write_turn_line(turn: int, world: World, events: list[dict], f: Path) -> None:
-    """Write one turn's full state + events as a JSON line."""
+def write_turn_line(turn: int, world: World, events: list[dict], f: Path,
+                    orders: dict | None = None) -> None:
+    """Write one turn's full state + events as a JSON line.
+
+    orders (optional, additive): {faction: [order strs]} for order tracing
+    (precise autopsies: why takes were/weren't issued)."""
     path = Path(f)
     data = {
         "type": "turn",
@@ -33,6 +37,8 @@ def write_turn_line(turn: int, world: World, events: list[dict], f: Path) -> Non
         "world": world_to_dict(world),
         "events": events,
     }
+    if orders is not None:
+        data["orders"] = {str(k): list(v) for k, v in orders.items()}
     line = json.dumps(data, sort_keys=True)
     with open(path, "a") as out:
         out.write(line + "\n")
