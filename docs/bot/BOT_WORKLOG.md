@@ -2861,3 +2861,10 @@ denial already targets biggest-near (=engines; deny-by-size built in).
 Deny-by-growth killed (data unsuitable: _growth accumulated, age-biased).
 Bot is thoroughly optimized (50+ lessons); remaining ideas keep proving
 built-in. Next: volume (stop analyzing, just grind).
+
+### Buzzer 245g + F1 epidemic (picket rung queued) (2026-09-12 23:13 BST)
+Buzzer +20g (245 total) -> ord 65.4 (mu 69.0, was 70.7/225g): -1.7 on a
+spike-batch (240k+ everywhere; F1-death THREE times; 55% wins). F1 keeps
+killing (unseen packs behead naked capitals). NEXT RUNG (queued, fresh):
+blanket 1-home picket (never leave, not threat-gated, not recall) —
+1 idle army premium vs F1-beheading; priced +1 net (save half the 7%).
