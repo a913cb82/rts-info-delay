@@ -1937,3 +1937,35 @@ rung (fork-max-fix-expander-loss via spend-to-take-MID (5k+ viable, rally-
 cohesive 7-pack lands vs mustering sprawl (needs rally (prereq)), hold+
 compound takes (win); mu 72-75 new max) -> search-iff-capped (distilled
 caps <80). NEXT TURN: code rally (loop/bold-cohesion from main).
+
+### Bold literature sources (2026-09-12, full URLs for D1-D7 above)
+FOG/RTS (scouting/particles/delay): Steamhammer scout/Recon (satirist.org/
+ai/starcraft/blog/archives/435); imp42 heatmap scout manager (teamliquid.net/
+blogs/514487); 7-bot survey (davechurchill.ca/publications/pdf/ecgg15);
+Weber particle model +10% (cdn.aaai.org/ojs/12424); DefogGAN (cdn.aaai.org/
+ojs/5853); NeurIPS Defogger (proceedings.neurips.cc/paper_files/paper/2018/
+file/287e041302f34b11ddfb57afc8048cd8); delay-augmentation DRDQN (ar5iv.labs.
+arxiv.org/html/2108.07555); delayed-observation world models (arxiv.org/html/
+2403.12309).
+SEARCH/FFA (ISMCTS/opponent-model/paranoid-BRS/decompose): ISMCTS founding
+(eprints.whiterose.ac.uk/id/eprint/75048/1); re-determinizing (arxiv.org/pdf/
+1902.06075); multiplayer imperfect-info survey 2024 (doi.org/10.1145/3719545.
+3721108); AlphaExploitem poker (arxiv.org/html/2605.09150); 3-player kingmaking
+(skeletoncodemachine.com/p/three-player-problem); StarCraft MCTS+priors
+(ojs.aaai.org/index.php/AIIDE/article/view/12852); StarAlgo decompose
+(ar5iv.labs.arxiv.org/html/1812.11371); tactical MCTS horizon (dke.maastricht-
+university.nl/games/files/bsc/Soemers_BSc-paper.pdf); paranoid/BRS vs MaxN
+(dke.maastrichtuniversity.nl/m.winands/documents/policies.pdf); focusing-on-
+yourself BRS wins short-time (ir.cwi.nl/pub/30608/30608.pdf); dynamic determs
+(arvix.org/html/2607.13007v1); search-vs-knowledge shallow+eval (webdocs.cs.
+ualberta.ca/~jonathan/publications/ai_publications/svsk.pdf).
+TEMPO/ATTRITION (Lanchester/timing/thickness/raiding): Lanchester laws
+(en.wikipedia.org/wiki/Lanchester%27s_laws); concentration origin (dupuy-
+institute.org/2018/12/14/comparing-force-ratios-to-casualty-exchange-ratios);
+3:1 rule explainer (usernotices.com/finance-and-business/accountancy-careers/
+what-is-the-3-1-rule-of-combat); rush math deficit (shamusyoung.com/
+twentysidedtale/?p=20025); timing attacks (waywardstrategy.com/2015/12/09/
+timing-attacks/); Steinitz accumulation (exeterchessclub.org.uk/content/when-
+and-where-attack-steinitz-accumulation-theory); thickness/power (senseis.xmp.
+net/?Power); influence use (boardgames.stackexchange.com/questions/5533);
+raiding logistics DTIC (apps.dtic.mil/sti/html/tr/ADA279587/index.html).
