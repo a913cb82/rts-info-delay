@@ -2854,3 +2854,10 @@ Quantified: cutting deaths 7%->0% saves mu +2-3 (16 zeros->mids) + sigma
 packs unbeatable; evac-bar dead; nomad blind). Partial cuts unproven.
 Lit recycle (signaling/focal/equilibrium-selection): nothing new (takes
 already opponent-adaptive priced/unpriced). No code change.
+
+### Two more kills (already optimal) (2026-09-12 23:12 BST)
+Moves order: takes already FIRST (settlers last; no starvation). Unpriced
+denial already targets biggest-near (=engines; deny-by-size built in).
+Deny-by-growth killed (data unsuitable: _growth accumulated, age-biased).
+Bot is thoroughly optimized (50+ lessons); remaining ideas keep proving
+built-in. Next: volume (stop analyzing, just grind).
