@@ -86,3 +86,25 @@ of the turns (t3000-4000). The viewer can steer playback speed by action:
   (0.08/frame). Under auto, turns advance at most 12/frame so a burst
   can never be skipped between frames.
 - The live effective multiplier is shown next to the checkbox.
+
+### Target-duration mode (fit the replay into N seconds)
+
+The `auto` control's second select sets a total runtime (reactive / 15s /
+30s / 1 / 2 / 5 / 10 min; URL `&auto=60`). The viewer builds a smooth
+per-turn speed profile — triangular kernel around every action burst
+(lookahead 5, linger 8) — and solves for the quiet speed so the summed
+per-turn times hit the target exactly (binary search, 80 iterations).
+
+Action segments have a visibility floor of **2x preferred**, escalating
+(3x, 4x, 6x ...) only when the target cannot otherwise be met; quiet
+stretches have NO floor and can run to **65536x** (turns advance from a
+cumulative wall-clock schedule, so the total is guaranteed). Observed on
+quad_10000 (270 action turns):
+
+    45s -> action 2x  quiet 491x    20s -> action 3x  quiet 2578x
+    30s -> action 2x  quiet 1718x   10s -> action 6x  quiet 5155x
+    60s -> action 2x  quiet 286x     5s -> action 12x quiet 10311x
+
+Faction-aware: select a faction (fog selector) and the profile is built
+from THAT faction's action only; the profile recomputes on selection or
+target change. Manual seeks re-anchor the schedule clock.
