@@ -181,7 +181,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             _blitz = (_cap is not None
                       and math.hypot(_cap.x - nearest.x, _cap.y - nearest.y) <= 250.0
                       and free_n >= _need + 1
-                      and nearest.population >= 3000)
+                      and nearest.population >= 2000)
             if not _blitz:
                 continue  # not a keeper (far/thin/unguarded-take = gift) — hold
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
@@ -221,12 +221,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if site is not None and not staged and not war_print_need(state, config) \
                     and not site_pays(state, config, site[0], site[1]):
                 site = None
-            # Zero-founding (pure conquest): colonies split thin and
-            # feed/double-tap (see autopsy); all growth via keeper takes.
-            # Staging rides takes (forward keepers print locally), never
-            # speculative bases. (If takes never land, we lose small — but
-            # founding while losing is just slower death with more mouths.)
-            if site:
+            # Forward-staging-one (conqueror staging): exactly ONE
+            # forward base allowed (raid logistics + forward presence);
+            # zero/few keeps split-risk low (2 towns max, both garrisonable),
+            # one gives staging without sprawl-feed. (Pure zero-founding
+            # passed ordinal 48.2 but failed style: 0 staging, passive.
+            # One base restores conqueror staging; keeper takes still gate
+            # growth. If it feeds, revert to zero.)
+            n_forward = sum(1 for t in own_t if not t.is_capital)
+            if site and n_forward >= 1:
                 site = None
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))

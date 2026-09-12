@@ -1958,3 +1958,17 @@ Conqueror masses to kill packs (offensive defense), not to fortress
 (rest raids; demobs on arrival). Predicts: hopeless takes become saves
 (deaths down further), foe packs die (weaker foes -> easier takes, wins
 up), no donation (massed, not piecemeal).
+
+### GOAL-80, worst (aggressive) 8: style-completion (2026-09-12)
+MASS (05437ba) rated 40g -> ord 48.2 (mu 53.7). ORDINAL PASSES (>46.7)
+but STYLE FAILS (canonical F2: 0 captures, 0 staging, 3rd-most-active
+behind expander — survivor, not predator). Crash scare (1/40, t9970 eof)
+did NOT reproduce on rerun (same field, clean) -> environmental, no fix.
+To convert near-win: STYLE-COMPLETION on mass base (use 1.5 slack to buy
+conquest): (i) keeper pop 3000->2000 (more takes qualify; still alive),
+(ii) zero-founding -> ONE forward staging base max (raid logistics +
+forward presence; 2 towns max garrisonable; takes count as forward so
+1 total). Keeps mass/home/war-chest (survival); adds staging+takes
+(conquest). Predicts: 1-3 takes/game (initiates captures ✓), 1 forward
+(forward staging ✓), still active (packs blitz keepers); ordinal holds
+47+ (takes add wins offsetting slight risk) AND style passes -> MERGE.
