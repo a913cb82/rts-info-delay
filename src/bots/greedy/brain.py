@@ -3,7 +3,12 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .core import BotForecast, BotState, bot_main, can_train_standard, demand_trains, drive_scout, drop_dead_notes, expansion_demand, find_build_site, hold_defenders, inbound_eta, inbound_force, maybe_assign_scout, note_wave_watch, order_move, raid_target, should_hold_home
+from .intel import *
+from .scout import *
+from .threat import *
+from .raid import *
+from .settle import *
+from .economy import *
 
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
