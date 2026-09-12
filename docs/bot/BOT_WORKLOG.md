@@ -2592,3 +2592,15 @@ unbuilt): march iff overmatch-confirmed (fresh intel 2v1+), else hold/build.
 (NOTE 2026-09-12 18:20 BST: prior worklog timestamps this session were
 written from memory and are unreliable (hours off); all future entries use
 `date` output. Past entry TIMES suspect, entry ORDER/content intact.)
+
+### Aggressive take-doctrine v3 (vulture + march-gate) (2026-09-12 18:41 BST)
+LITERATURE FIRST (bold mandate): positional theory (strategy-stealing:
+Second cannot force wins in symmetric Maker-Maker (First wins-or-draws);
+Second's ceiling = draw) + FFA kingmaking (nonparticipant wins gladiator;
+losers decide winners). IMPLICATIONS: (1) don't try to WIN mirrors as F1
+(impossible systematically) — aim PARITY/draws (stop losses!); (2) FFA wins
+go to nonparticipants who eat losers (vulture-takes + survival, not races).
+V3 combines vulture-select (proven direction) + march-gate (complete packs
+march iff target fresh <=30t, else hold intact; scouts refresh; strike
+exempt). 3 march tests + 2 savings tests. Bar: aggressive gate (>=47.2 AND
+takes).
