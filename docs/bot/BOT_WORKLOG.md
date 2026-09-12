@@ -2518,3 +2518,14 @@ Enabled, contact-triggered (P3b void-block intact!) + settler-grade print
 contact pre-bloodbath (maps staging/musters/packs beyond LOS: mode, tactics,
 doom informed). Predicts: fewer blind surprises (F1-donations, naked takes,
 misread modes). Bar 56.7+.
+
+### S0 scout verdict: FAIL, reverted (2026-09-12 21:21 BST)
+Rated clean 15g -> ord 40.5 (mu 48.1): FAIL (bar 56.7+). Deaths 29% (vs 7%
+baseline): scout+settler out + thin capital (2500->1500 prober print) =
+0-1 home -> single takes thin capital (sting) + double-taps both towns
+(elimination). Intel never pays back (dies first). PARADOX (permanent):
+scouting needs surplus (3+ armies, 1 stays) but early game never has it
+(scout strips -> death machine); late surplus exists but wars already
+visible (diminishing value). Pro scouting = death machine early, marginal
+late. Queued low-priority (late-scout only, surplus-gated). Code parked on
+loop/pro-scout (main keeps 56.7 line).
