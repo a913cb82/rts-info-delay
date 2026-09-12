@@ -349,6 +349,35 @@ village-to-village services, so the best achievable rate falls from
 +0.1242 (flat, gamma 1, premium 0.25) / +0.1629 (flat, premium 0.5) to
 +0.1193 / +0.1568.
 
+
+### Scale: 1 million people with gamma=1.15, premium=0.5
+
+The emergent hierarchy scales as a copy of the 100k one - counts x10,
+tier sizes roughly constant (`benchmarks/sanity_agrarian_1m.py`):
+
+| config | villages | market towns | regional | capital | urban | %/yr |
+|---|---|---|---|---|---|---|
+| flat 3,001 x 333 @ 3 km | 3,001 | - | - | - | 0% | **+0.1631** |
+| q=(5,5,5) m=(2,2,5) @ 3.5 km | 2,882 x 318 @ 3.5 km | 114 x 636 @ 18 km | 4 x 1,271 @ 88 km | 1 x 6,357 | 8.4% | +0.1576 |
+| q=(4,4,4) m=(2,3,3) @ 3.5 km | 2,818 x 309 @ 3.5 km | 172 x 617 @ 14 km | 10 x 1,852 @ 56 km | 1 x 5,556 | 13.0% | +0.1552 |
+
+Two things change with scale:
+
+- **The hierarchy stops winning.** At 100k the gamma=1.15 hierarchy
+  edged the flat mesh (+0.1568 vs +0.1535); at 1M the flat mesh wins
+  (+0.1631 vs +0.1576), because more villages make the mesh's mutual
+  services more valuable while town services saturate. If a 1M world
+  needs the hierarchy, gamma (or `market_premium`) has to be higher.
+- **The top of the system stays small.** The capital lands at
+  2,500-7,400 - the service premium saturates at market-town scale.
+  A 1600s province of 1M had chef-lieux of 10-30k; the model needs
+  denser hinterlands, more agglomeration, or non-food urban functions
+  to get there.
+
+The flat mesh remains the growth optimum; the realistic-looking 1M
+hierarchy is `q=(5,5,5), m=(2,2,5)` at 3.5 km spacing (8.4% urban,
+~31,000 km2).
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
