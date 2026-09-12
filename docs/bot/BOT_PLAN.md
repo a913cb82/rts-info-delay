@@ -65,7 +65,10 @@ Treat anything here that hasn't been re-confirmed recently as suspect.
 
 ## Iteration backlog (this loop's open work, in order)
 
-**The loop (how bots improve).** Repeat forever, in order:
+**The loop (how bots improve).** One iteration = fix the WORST
+performer. Pick the lowest-ordinal main-tip package bot (>=10 games),
+improve THAT package until it is no longer the worst, keeping its style
+(see `README.md` style table). Repeat forever, in order:
 1. **Analyse** the current canonical game (`recordings/empty_10000.jsonl`
    — the viewer location; `benchmarks/ascii_view.py`, how: `VIEWER.md`):
    per-bot story (what did each do well/badly?), war forensics (who

@@ -7,27 +7,55 @@ is one iteration of it, plus logs.
 
 ## The loop
 
-Repeat forever, on a branch (`loop/<idea>`):
-1. **Watch** the canonical game (`VIEWER.md`; `ascii_view.py report` /
+One iteration = **fix the worst performer**. Repeat forever, on a branch
+(`loop/<idea>`):
+
+1. **Pick the target**: the WORST-PERFORMING personality = lowest live
+   ordinal among the four main-tip package bots (`<p>-<HEAD>`, >=10
+   games for a stable read; ties -> the larger gap to the next
+   personality). State the pick + numbers in the worklog before coding.
+2. **Watch** the canonical game (`VIEWER.md`; `ascii_view.py report` /
    `lead` / `health`): activity, flips, indicators (`INDICATORS.md`).
-2. **Story**: per bot, turn by turn (`flip -F` / `fog` / `autopsy`).
-   Right/wrong per bot; audits for lead flips. Report cards in
-   `EMPTY_10000.md`.
-3. **Ideas** from the mistakes (doctrine first, code second; `GTO.md`
-   §9 keeps personalities skewed). Sparks → `BRAINSTORM.md`.
-4. **Code** one idea per bot on the branch; **commit first** (bots
-   need IDs to play). Fast suite per change; `pytest` green.
-5. **Rate** with the purist matchmaker (`matchmake.py --play N` —
+3. **Story**: per bot, turn by turn (`flip -F` / `fog` / `autopsy`).
+   Focus on the target personality: where does it concede games?
+4. **Ideas** from the mistakes — **style-gated**: every idea must be
+   congruent with the target's style (table below). Doctrine first,
+   code second (`GTO.md`). Sparks -> `BRAINSTORM.md`.
+   If an idea requires changing shared/other-package code, it is a PORT
+   (`benchmarks/port.py`, explicit + justified) or it is out of scope.
+5. **Code** one idea, INSIDE the target package
+   (`src/bots/<p>/brain.py` | `core.py`) — package isolation means the
+   other three personalities cannot regress by construction. **Commit
+   first** (bots need IDs to play). Fast suite per change; `pytest`
+   green; `liveness.py` clean.
+6. **Rate** with the purist matchmaker (`matchmake.py --play N` —
    propose/play/update one at a time, uncertainty drives). Every game
-   logged; clean trees only (`--dirty` = unlogged iteration).
-   Bar: expander-84b32be ordinal ~44.
-6. **Merge** iff any branch-tip personality beats its HISTORIC MAX
-   (per-personality frontier over the whole pool, ≥3 games) AND pool
-   all at 3+ games (grind new brains first; ratings+replot in the
-   merge). Bars: pro 42.2, expander 43.6, aggressive 39.7, turtle 35.8.
-   On regression: next loop picks master or branch (`BOT_WORKLOG.md`).
-7. **Generate** the canonical game to BOTH viewer spots (`recordings/`
+   logged; clean trees only (`--dirty` = unlogged iteration). Grind the
+   new brain to **>=15 games** before judging (seeded package bots keep
+   their winner ratings; genuinely new brains start fresh).
+7. **Merge** iff the target is **NO LONGER the worst**: its ordinal
+   (>=15 games) exceeds the next-lowest personality's ordinal, AND the
+   style invariants hold in the canonical game (table below). Package
+   isolation guarantees the other three are untouched. If it fails,
+   iterate on the branch (one idea at a time, measure, keep or revert).
+8. **Generate** the canonical game to BOTH viewer spots (`recordings/`
    + `viewer/public/`, `md5sum` match).
+
+## Personalities & style invariants
+
+The classification is a hard constraint: an iteration may make a bot
+better, but never into a different archetype. Review with the canonical
+game's report (`ascii_view.py report`) before merging.
+
+| package | style | must hold (canonical game) |
+|---|---|---|
+| `pro` | compounder/economist | compounds (capital = top-pop town); <=1 well-spaced colony; avoids sustained raiding; no wide sprawl |
+| `aggressive` | conqueror/predator | initiates captures/raids; forward staging; must be the field's most march-active early |
+| `expander` | colonist | founds the most towns in the field; colonies are cheap/expendable; does not turtle |
+| `turtle` | fortress/tall | guards every town; founds few, spaced, defensible towns; keeps armies home; no long-range early raids |
+
+Invariant checks are reviewer gates, not automated assertions (they need
+per-map calibration); note the observed numbers in the worklog entry.
 
 Per-iteration gates (every loop through step 4): fast suite per change (~1.5s); strategic at milestones
 (~10s); `pytest` green; judge vs fog-era table with margin; worklog entry
