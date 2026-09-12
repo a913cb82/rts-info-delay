@@ -41,6 +41,41 @@ One iteration = **fix the worst performer**. Repeat forever, on a branch
 8. **Generate** the canonical game to BOTH viewer spots (`recordings/`
    + `viewer/public/`, `md5sum` match).
 
+## Two tracks (incremental AND bold — 80 needs both)
+
+Incremental (above: worst-first tweaks, +3-5 each) grinds parity and
+lifts the field toward ~60-65. It cannot reach 80 (mu 80+ needs 90%+ wins;
+tweaks diminish + escalate; mid caps ~55 (can't beat strong), pro ~70-72).
+80 needs BREAKTHROUGHS (+8-15: ladder rungs raising max, new architectures,
+new mechanics). So the loop runs BOTH:
+
+- **Bold track**: breakthrough experiments for max-raising rungs and new
+  capability (fork-max-fix-worst-loss ladder rungs; full package rewrites;
+  new architectures (search/MCTS/opponent-modeling/RL-scaffolding);
+  new mechanics exploitation). Allowed the full package rewrite (still
+  inside `src/bots/<p>/`, still style-gated, still package-isolated;
+  cross-package ports explicit via `port.py`). Branches `loop/bold-<idea>`.
+- **Research first**: no bold code before (i) internet literature (other
+  games' bots — RTS fog-of-war (StarCraft/BWAPI), board-game search
+  (MCTS/alpha-beta), POMDP/planning-under-uncertainty, opponent modeling,
+  tempo/attrition theory) via `ketch`/subagents with cited notes, AND
+  (ii) this-game mechanics deep-dives (combat weakness math, intel/mail
+  delays, crowding/logistic optima like the 1.71M 1-player ceiling,
+  take/muster timing) with measured exploits. Doctrine from first
+  principles + literature, not vibes. Research notes -> worklog/BRAINSTORM.
+- **Persistence**: bold gets 3+ iterations MINIMUM (refine, don't abandon
+  on first fail). Tweaks fail fast (1 grind, keep/revert); bold matures
+  (mechanism first (does it fire? survive?), tuning later (thresholds)).
+  Judge trajectory + mechanism (autopsy: does it do the new thing? survive
+  longer? take more?) not single-grind ordinal. Document each iteration
+  (what refined, what learned). Giving up after 1 red grind is forbidden.
+- **When bold**: stuck 3+ tweaks on a personality (mechanisms exhausted) OR
+  ladder rung needed (max needs +8 (tweaks give +3-5)) OR new capability
+  (intel/search/modeling the current architecture can't express). Otherwise
+  incremental (cheaper, safer). Both tracks log to worklog; both rate >=15g;
+  both merge on (ordinal up + style holds). Bold may take weeks (RL training,
+  multi-iteration refinement) — that is expected and funded.
+
 ## Personalities & style invariants
 
 The classification is a hard constraint: an iteration may make a bot
