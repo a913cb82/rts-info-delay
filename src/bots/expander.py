@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotState, DemandParams, bot_main, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .common import home_count, BotState, DemandParams, bot_main, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -34,6 +34,20 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # over the death line covers mail lag).
         depth_extra=200.0, raid_margin=300.0, payback_mult=0.3,
         probe_armies=1, void_horizon=100, rates=False, serial=False)))
+    # Standing guard (era-expander weakness, autopsy-verified: a single
+    # raider beheads a naked capital while armies settle — pro's army 2
+    # turns out, capital 0 defenders, dead t2733). One guard per rich
+    # town once a foe army is VISIBLE (deterrence vs nobody is waste —
+    # r129); conservative floor so guards never ride the death line.
+    if any(a.faction != faction for a in state.world.armies):
+        _home = {t.id: home_count(state, t) for t in own_t}
+        for t in sorted(own_t, key=lambda x: -x.population):
+            if _home.get(t.id, 0) == 0 and t.id not in state._pending_trains \
+                    and t.population - config.army_cost \
+                    >= config.death_threshold + 1000:
+                out.append(f"TRAIN {t.id}")
+                state.note_train(t.id)
+                break
 
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
