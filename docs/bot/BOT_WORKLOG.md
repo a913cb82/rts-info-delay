@@ -2745,3 +2745,10 @@ Buzzer +15g fresh-field (global dedup active, no crashes) -> ord 62.0 (mu
 20% wins, 20% deaths incl F1 twice). Variance assessment (not mechanism):
 188k-attractor loses to spikes; next batch may normalize (regression).
 No verdict change (single batch, sigma 1.9). Continue banking.
+
+### Buzzer 150g + regression confirmed (2026-09-12 22:03 BST)
+Buzzer +15g (150 total) -> ord 63.2 (mu 66.8, was 65.7/135g): +1.2.
+7W/15 (47%, incl 382k/268k/264k dominants + quality wins vs twins) + 1
+death. DIP WAS VARIANCE (predicted recovery to 63+ hit exactly). Volume
+path validated (regression-tested): bank +1-2/turn toward ~70 asymptote
+(mu caps ~73-75 on mirror lottery; sigma shrinks underneath).
