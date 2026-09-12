@@ -2103,3 +2103,19 @@ stays) + >=4000t left + slot free -> reassign IDLE guard as settler (no
 print, no thinning; print gate keeps 2500). Predicts (rematch): F0 refounds
 ~t3000, 2-town compound, survives bloodbath, contends (flips 0 to 100k+).
 Style: compounder (rebuilds the single colony, still <=1 well-spaced).
+
+### Rung 2b: dispatch unfreeze (the true mechanism) (2026-09-12)
+REFOUND ALONE BYTE-IDENTICAL (0 again): predicate fires (t3398+) but no
+march. Chain traced: march gate reached, site found (219,866), but
+order_move->ready_to_dispatch FALSE every turn. ROOT BUG (structural,
+all common-core personalities): trails refresh EVERY turn (2-event engine
+reports all entities every turn), so a visible stationary's trail age is
+ALWAYS 0 < 2xdelay -> the quiescence gate (meant to block stale-intel dead
+letters) freezes EVERY continuously-visible army: heirloom guards, pack
+re-tasks, refounds, scout re-hops. Late-game agency silently dies (packs
+are single-use; guards irrecoverable; compounding meta as adaptation!).
+FIX (pro/scout.py): stationary-converged (fresh trail + <=5km displacement
+= belief==truth) dispatches. Marching-fresh still waits (belief lags);
+stale keeps status quo (no D1 change). Rung = unfreeze + refound-direction
+(neither works alone; one mechanism). Predicts (rematch): F0 refounds
+~t3400, 2-town compound, survives; heirlooms re-task generally.
