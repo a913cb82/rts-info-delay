@@ -2582,3 +2582,13 @@ savings override (sterile-rich assumes reactive muster). 5 unit tests.
 Rescued via cherry-pick across branch sprawl (use full loop/ names!).
 Predicts: viable takes first (snowball), hostages fallback (no starvation),
 no donations into savings. Bar: aggressive gate (ord>=47.2 AND takes).
+
+### Viable-takes v2 verdict: FAIL (takes work, deaths dominate) (2026-09-12 18:21 BST)
+Rated clean 15g -> ord 21.0 (mu 29.1): FAIL (gate 47.2+). SPLIT: take engine
+PROVEN (572077 dominant win + 98k win; takes snowball when they land) but
+deaths dominate (7+ zeros: packs march without overmatch and donate).
+Vulture selects, nothing gates marches. NEXT (march discipline, queued,
+unbuilt): march iff overmatch-confirmed (fresh intel 2v1+), else hold/build.
+(NOTE 2026-09-12 18:20 BST: prior worklog timestamps this session were
+written from memory and are unreliable (hours off); all future entries use
+`date` output. Past entry TIMES suspect, entry ORDER/content intact.)
