@@ -339,12 +339,22 @@ CHECKS = [r1_growth_rate, r2_recovery, r3_viability, r4_infill,
 
 def main(argv):
     global G
-    want = [a for a in argv[1:] if not a.startswith("-")]
-    as_json = "--json" in argv
+    toks = argv[1:]
     sysname = "engine"
-    for a in argv[1:]:
-        if a.startswith("--system"):
-            sysname = a.split("=", 1)[1] if "=" in a else argv[argv.index(a) + 1]
+    rest = []
+    skip = False
+    for i, a in enumerate(toks):
+        if skip:
+            skip = False
+            continue
+        if a.startswith("--system="):
+            sysname = a.split("=", 1)[1]
+        elif a == "--system" and i + 1 < len(toks):
+            sysname, skip = toks[i + 1], True
+        else:
+            rest.append(a)
+    want = [a for a in rest if not a.startswith("-")]
+    as_json = "--json" in argv
     if sysname not in SYSTEMS:
         print(f"unknown system {sysname!r} (have: {sorted(SYSTEMS)})")
         return 2
