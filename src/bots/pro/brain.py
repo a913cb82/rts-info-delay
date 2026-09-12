@@ -75,7 +75,8 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     if not any(t.faction != state.faction for t in state.world.towns) and not any(
             a.faction != state.faction for a in state.world.armies):
         return []
-    out.extend(demand_trains(state, config, can_train_standard))
+    out.extend(demand_trains(state, config, can_train_standard,
+                               block_expand=dark_pack(state, config) >= 2))
     return out
 
 
@@ -131,6 +132,20 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue
+        # Dark-pack recall (port): foe mass exists but stale — inbound logic
+        # is blind, so free field armies come home until 2 defenders (else
+        # an unseen pack meets a naked capital). Seen/empty fields unaffected.
+        if dark_pack(state, config) >= 2 and p.id not in held:
+            home_n = sum(1 for a in state.own_armies()
+                         if any(math.hypot(a.x - t.x, a.y - t.y) <= 20.0
+                                for t in state.own_towns()))
+            if home_n < 2:
+                home = min(state.own_towns(),
+                           key=lambda t: math.hypot(t.x - p.x, t.y - p.y),
+                           default=None)
+                if home is not None and math.hypot(p.x - home.x, p.y - home.y) > 20.0:
+                    out.extend(order_move(state, config, p, home.x, home.y))
+                    continue
         if pack_building:
             if not probe_armed or probe_sent or probe_tgt is None or \
                     math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:

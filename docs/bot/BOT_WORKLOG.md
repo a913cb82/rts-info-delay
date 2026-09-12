@@ -2786,3 +2786,9 @@ attractor dominance is slot-invariant (deterministic, not lottery).
 Losses = disruption games (knocked off attractor by bloodbaths/spikes).
 NEXT RUNG (queued): buzzer-line + threat-survival (dark-pack mechanism
 port: hold attractor under fire, win disrupted games, cut deaths).
+
+### Buzzer-defense (dark-pack port) built (2026-09-12 22:52 BST)
+Disruption-path build: port dark-pack mechanism (stale unseen mass>=2 ->
+veto expansion trains + recall field armies to 2 home; seen/empty fields
+unaffected). 3 small edits (threat.dark_pack + economy block_expand +
+brain hooks). Bar (ladder): exceed buzzer 69.2 (win disrupted games).

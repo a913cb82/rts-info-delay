@@ -42,7 +42,8 @@ def can_train_standard(state: "BotState", town) -> bool:
 def demand_trains(state: "BotState", config, can_train,
                   *, depth_extra: float = 0.0, raid_margin: float = 200.0,
                   payback_mult: float = 1.0, threat_window: float = 4.0,
-                  probe_armies: int = 0, void_horizon: int = 500) -> list[str]:
+                  probe_armies: int = 0, void_horizon: int = 500,
+                  block_expand: bool = False) -> list[str]:
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
     rule, raid pipeline (pack deficit for the priced target), expansion
     pipeline (void merit / contested payback), plus the prober pipeline
@@ -68,7 +69,7 @@ def demand_trains(state: "BotState", config, can_train,
         deficit = [max(0, need - fieldable)]
     else:
         deficit = [0]
-    expand = expansion_demand(state, config, payback_mult, void_horizon)
+    expand = None if block_expand else expansion_demand(state, config, payback_mult, void_horizon)
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
                                   state.get_growth(t.id), t.population))

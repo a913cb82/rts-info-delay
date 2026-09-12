@@ -160,4 +160,28 @@ def home_count(state: "BotState", t, radius: float = 20.0) -> int:
                if math.hypot(a.x - t.x, a.y - t.y) <= radius)
 
 
+def dark_pack(state, config, window: float = 30.0,
+              stale_after: float = 4.0) -> int:
+    """Unaccounted foe mass (dark-pack port): foe armies last seen within
+    `window` turns but not fresh (older than `stale_after`). A pack that
+    exists but isn't visible — the inbound model can't see it, so neither
+    muster nor hold fires, and the capital sits naked. Ghosts (seen longer
+    ago than `window`) are ignored. Returns the count (0 = empty/seen/dead)."""
+    now = state.turn
+    n = 0
+    for a in state.world.armies:
+        if a.faction == state.faction:
+            continue
+        seen = state._last_seen.get(("army", a.id))
+        if seen is None:
+            continue
+        age = now - seen
+        if age <= stale_after:
+            continue  # fresh-visible: normal inbound logic owns it
+        if age > window:
+            continue  # ghost
+        n += 1
+    return n
+
+
 
