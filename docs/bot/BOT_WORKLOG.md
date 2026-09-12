@@ -20,6 +20,44 @@ Self-play diffs 0.
 
 ## Log
 
+### GOAL-100, ceiling iter 1: pro dark-pack (NEUTRAL, reverted) (2026-09-12)
+GOAL >=100 ordinal. Scale math (closed sim vs top-50): P1=0.44->~55,
+0.60->~57, 0.80->~62, 0.95->~75; always-win 50g->60, 300g->70, 1000g->78,
+2000g->84. 100 needs ~never-lose + thousands of games. Only pro (51.8)
+in range -> ceiling iterations on pro (not README worst-first); adapted
+gate: merge iff new pro brain ord (>=15g) >= 51.8.
+DATA: pro townless 30/119 (25%); alive wins 58%; solo-pro wins 31%.
+Expander beats pro in 34/67 non-wins.
+DEATH D1 (autopsied, solo pro vs 2xaggr+exp+turtle): capital falls t3940
+to UNSEEN 4-pack (intel 818t stale); vanguard mutuals onesie guard, pack
+walks in; field armies dead/away colonizing; capital spent to 1469
+(below train AND evac floors) on a far colonist. P6 holds 0 home in big
+wars; threat model never fired (no detection).
+IDEA: dark-pack protocol (branch loop/dark-pack, commit 40145e1):
+foe mass seen<=30t but stale>4t = unaccounted pack; while >=2: (i) veto
+expansion trains, (ii) recall free armies to 2 home, (iii) veto new far
+settles. Suites: fast 3153/3241 (identical to parent), pytest green
+(minus 2 load-flaky engine timing asserts that pass quiet), liveness
+clean, strategic 12.5s PASS. Also fixed 2 pre-existing tool breaks found
+en route (strategic_bench skips teamless ffa maps; perf test SendState
+call) — merged to main as 682afa2-side docs/tool commits.
+RATED 24g -> ord 43.2 (gate >=51.8: FAIL).
+H2H vs incumbent, position-controlled (18g, slots balanced): EXACTLY
+TIED {1:9,2:3,3:2,5:4} both. The early 9-0 was POSITIONAL (fixed slots;
+safe slot always wins; scores byte-identical on swap). LESSON: h2h must
+balance slots (swap half the games) or the measurement is worthless.
+VERDICT: neutral (tied), reverted. It targeted D1 but the h2h deaths are
+D2 (early neighbor overrun t2000-3000, fresh-visible) — never tested D1.
+D2 story (F1 t2000-32xx): colony starved (pop 0), thin capital (354!)
+taken by 1 expander army, 0 home (armies suicided in 1v1 mutuals).
+One-colony fires blindly into the dangerous slot. NEXT: D2 idea.
+RATINGS HYGIENE: a grind script replayed 6 deterministic duplicate games
+(same field -> same game); caught via byte-identical scores, removed the
+6 lines + rebuilt elos.json by replay (seeds preserved, verified
+non-dup entries identical). Rule: vary fields AND slots every game;
+never replay a field (deterministic -> duplicate, zero information,
+inflates ratings).
+
 ### Pro — best-of-all assembly (2026-09-04)
 Fast: endgame 2245→3249 (counter-punch breaks mirror), opening 3240→4316,
 defense 1109 (holds). Slow: efficiency 59%→100% (P3b empty-field hold =
