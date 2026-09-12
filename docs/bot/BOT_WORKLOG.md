@@ -2487,3 +2487,15 @@ FIX: rich foe (>=25k single known town: prints 20+, sustains 3+ packs)
 for sprawl). 7 unit tests (incl rich-blanket + thin-precision). Predicts:
 weak-wins persist (47%) + strong placements recover (2nd-4th via mutuals).
 Bar 50+.
+
+### Turtle v3 verdict: FAIL (2026-09-12 20:41 BST)
+Rated clean 15g -> ord 27.2 (mu 35.4): FAIL (bar 50+). Wins persist (4,
+202-255k) but deaths/4ths vs strong AND a crash (g7 turn 1364). Crash
+diagnosed ENVIRONMENTAL (clean 10k-turn repro, no traceback; load-OOM era
+artifact like prior timeout verdicts — no code bug). Substantive: v3 still
+loses strong (thickness mistimed? rich-gate late (towns must REACH 25k
+before blanket (by then overrun in motion!)). Rich-gate is LAGGING (reacts
+to grown foes, not growing ones). NEXT (v4?): foe GROWTH-RATE (not level)
+gates thickness (printing fast = future-rich = blanket early); or anticip-
+atory (staging+closing like pro siege work). Code parked on loop/turtle-
+thick2.
