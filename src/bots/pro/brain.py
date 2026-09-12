@@ -11,25 +11,28 @@ from .settle import *
 from .economy import *
 
 
-def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
-    """Port of turtle's hopeless: home force can't grow before contact and
-    is outnumbered."""
-    faction = state.faction
-    own_t = state.own_towns()
-    threat_eta = float("inf")
-    for a in state.world.armies:
-        if a.faction == faction:
-            continue
-        for t in own_t:
-            eta = math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
-            if eta < threat_eta:
-                threat_eta = eta
-    if threat_eta == float("inf"):
+def _capital_doomed(state: BotState, config: GameConfig) -> bool:
+    """Beheading-futility (evac gate): the capital WILL fall and flight
+    is affordable and timely. Defense = home + printable-before-arrival
+    (1 train/turn!); doomed iff raiders exceed it by MARGIN (cohesion-proof:
+    even staggered arrivals can't mutual-save). Survival-via-flight beats
+    elimination even single-town (500-far compounds; 0 doesn't). Conservative
+    margins (false evac gifts the capital intact = catastrophic)."""
+    cap = state.world.faction_capital(state.faction)
+    if cap is None or cap.population < config.army_cost + config.death_threshold:
         return False
-    reinforce = any(t.population + (state.get_growth(t.id) or 3.0) * threat_eta
-                    >= min(bar, config.army_cost + 200) for t in own_t)
-    foes = sum(1 for a in state.world.armies if a.faction != faction)
-    return not reinforce and len(state.own_armies()) <= foes
+    force = inbound_force(state, config)
+    if cap.id not in force:
+        return False  # no counted inbound: nothing to flee
+    eta, n = force[cap.id]
+    if eta < 2.0:
+        return False  # too late (viceroy caught; fight mutuals instead)
+    home = sum(1 for a in state.own_armies()
+               if math.hypot(a.x - cap.x, a.y - cap.y) <= 20.0)
+    printable = max(0.0, (cap.population - config.army_cost - config.death_threshold)
+                    / config.army_cost)
+    defense = home + min(printable, math.floor(eta))
+    return n >= defense + 1.0
 
 
 def _one_colony(state: BotState, config: GameConfig) -> bool:
@@ -245,12 +248,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
-    # P4: evac (turtle doctrine) — hopeless + 2x cost: fly the commander
-    # out to coords away from the threat. Covers naked-home 3-pack marches.
+    # P4: evac (beheading-futility) — the old hopeless gate was dead code
+    # (needed cap>=2000 AND all-towns-<1200; the capital vetoed its own
+    # rescue, so it never fired). Evacuate iff the capital WILL fall
+    # (defense can't match, cohesion-proof margin), flight is affordable,
+    # and there's time to lift (else fight mutuals). Survival beats
+    # elimination even single-town.
     cap = state.world.faction_capital(state.faction)
     evacuating = any(a.faction == state.faction and a.is_viceroy for a in state.world.armies)
-    if cap is not None and not evacuating and cap.population >= 2 * config.army_cost \
-            and _pro_hopeless(state, config, 1700):
+    if cap is not None and not evacuating and _capital_doomed(state, config):
         foes = [a for a in state.world.armies if a.faction != state.faction]
         if foes:
             fx = sum(a.x for a in foes) / len(foes)
