@@ -2344,3 +2344,17 @@ False (selective freeze: open sectors re-task (unfreeze), sandwiches sit
 Known-threat sandwiches only (stale counts; never-seen misses documented).
 Predicts: F1-sandwich survival (donations stop, thin compounds); open games
 unchanged. Bar: F1-survival + ord 56.3+.
+
+### Rung F1 verdict: FAIL (2026-09-12 17:21 BST)
+Sandwich stillness rated clean 15g -> ord 51.1 (mu 58.5): FAIL (bar 56.3+).
+F1-death PERSISTS (g11 mineF1 0). Deeper read: accidental total-freeze
+(parent bug) is sandwich-OPTIMAL (never feed blind meetings); every
+deliberate unfreeze variant reintroduces blind donations somewhere (open
+pays a little, sandwich pays a lot). Net wash (56-57 all variants).
+Intel-quality rule (queued, NOT coded — fresh turn only): dispatch gated
+by destination knowledge (near/home-turf always; void (no known towns
+near) always; fresh-target raids iff target seen within lag+margin; stale-
+target holds). Uses existing _last_seen + mail-lag machinery; central in
+order_move; replaces trail/staleness/count proxies. Falsifiable: F1
+donations stop, open raids continue. Reverted (main keeps 57.3/56.3 line).
+Code parked on loop/pro-f1fix.
