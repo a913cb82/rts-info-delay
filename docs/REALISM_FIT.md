@@ -15,9 +15,19 @@ W(i,j) = alpha*P_i*sig((P_j-P_i)/30) * e^(-(d/rho)^2) * win(d)   # access
 net_i  = g(P_i) + sum_j W(i,j);   P <- max(P + net, 0)
 
 win(d) = 1                         d <= 120 km
-       = smoothstep taper         120 < d < 150 km  (argument is d^2)
+       = C-infinity flat blend    120 < d < 150 km  (argument is d^2;
+                                  e^(-1/t) blend, all derivatives
+                                  vanish at both joins)
        = 0                        d >= 150 km   (HARD BOUND)
 ```
+
+`win` is continuous and C-infinity everywhere: the transition
+`s(t) = e^(-1/t) / (e^(-1/t) + e^(-1/(1-t)))` has `s=0`/`s=1` with all
+right/left derivatives zero at `t=0`/`t=1` (verified numerically), so
+there is no kink in value, slope, curvature, or any higher derivative.
+(The double-precision tail underflows ~0.04 km before the bound, so the
+effective transition is [~130, ~150) km; inside 130 km the window is
+exactly 1.)
 
 The two kernels keep the shapes agreed in the design: **Gaussian on
 access**, **exponential on migration**. At rho = 270 km both are nearly
@@ -86,6 +96,11 @@ zero derivative at the edge — no kink.
   0.9540/0.9540/0.9540/0.9539/0.9539/0.9537/0.9533 (train mean), and
   freeing the centre (`theta` 0-1000) never beat 0.953. Kept 30, now
   with evidence rather than assumption.
+- **Maximal smoothness: smoothstep → C-infinity blend, free.** The
+  first window was C1 (second derivative jumped at 120 and 150 km).
+  Replacing the polynomial with the `e^(-1/t)` flat blend leaves the
+  composite unchanged (0.949) and the 2-s.f. lattice descent lands on
+  exactly the same five values (0.9541 train). Recommended default.
 - **2 significant figures cost ~0.0003 and diens recovered it.** Full
   quantisation 0.9537; lattice descent (last-digit steps) 0.9541 vs
   0.9540 continuous. Quantisation is therefore free regularisation

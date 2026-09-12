@@ -15,8 +15,9 @@ documented in the fit report:
                                                     (land competition)
                                                     (migration to big)
   K1 = exp(-(d/rho)^2), K2 = exp(-d/delta)
-  all pairwise terms are multiplied by a hard-bound window: exactly 0
-  for d >= 150 km, smoothstep taper over [120,150]
+  all pairwise terms are multiplied by a hard-bound window win(d):
+  exactly 0 for d >= 150 km, C-infinity flat transition over [120,150]
+  (exp(-1/t) blend; all derivatives vanish at both joins)
 
   net_i = g(P_i) + sum_j W(i,j);  P <- max(P + net, 0)
 
@@ -63,7 +64,9 @@ try:
                     continue
                 if d2 > _TAPER2:
                     t = (d2 - _TAPER2) / (_DCUT2 - _TAPER2)
-                    w = 1.0 - t * t * (3.0 - 2.0 * t)
+                    e0 = math.exp(-1.0 / t)
+                    e1 = math.exp(-1.0 / (1.0 - t))
+                    w = 1.0 - e0 / (e0 + e1)
                 else:
                     w = 1.0
                 k1 = w * math.exp(-d2 / (rho * rho))
@@ -177,7 +180,9 @@ class FittedGrowth:
         p = self.p
         if d2 > _TAPER2:
             t = (d2 - _TAPER2) / (_DCUT2 - _TAPER2)
-            w = 1.0 - t * t * (3.0 - 2.0 * t)
+            e0 = math.exp(-1.0 / t)
+            e1 = math.exp(-1.0 / (1.0 - t))
+            w = 1.0 - e0 / (e0 + e1)
         else:
             w = 1.0
         th = 0.0 if self.theta0 else p["theta"]
@@ -233,7 +238,9 @@ class FittedGrowth:
         w = np.ones_like(d2)
         mid = (d2 > _TAPER2) & (d2 < _DCUT2)
         t = (d2[mid] - _TAPER2) / (_DCUT2 - _TAPER2)
-        w[mid] = 1.0 - t * t * (3.0 - 2.0 * t)
+        e0 = np.exp(-1.0 / np.maximum(t, 1e-12))
+        e1 = np.exp(-1.0 / np.maximum(1.0 - t, 1e-12))
+        w[mid] = 1.0 - e0 / (e0 + e1)
         w[d2 >= _DCUT2] = 0.0
         k1 = w * np.exp(-d2 / (p["rho"] * p["rho"]))
         sig = 1.0 / (1.0 + np.exp(-((Pn[None, :] - Pn[:, None] - p["theta"]) / p["m"])))
