@@ -38,6 +38,26 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
+    # Mass-to-N+1 recall (anti-abandon): hold_defenders RETREATS hopeless
+    # towns (home<=N-2 holds none -> take -> death), but recalling free
+    # surplus to N+1 turns the abandon into a clean-kill save (pack walks
+    # into M>N home and dies, town intact, foe bled for our takes). Most
+    # urgent (lowest ETA) under-massed town first; surplus-only (never
+    # strip other threatened towns; packs keep targets). Conqueror masses
+    # to kill packs, not to fortress (rest still raids; demobs on arrival).
+    mass_tgt = None
+    mass_need = 0
+    for tid, (eta, n) in sorted(force.items(), key=lambda kv: kv[1][0]):
+        if eta > 8.0:
+            continue
+        t = next((x for x in own_t if x.id == tid), None)
+        if t is None:
+            continue
+        home_here = sum(1 for a in state.own_armies()
+                        if math.hypot(a.x - t.x, a.y - t.y) <= 20.0)
+        if home_here < n + 1:
+            mass_tgt, mass_need = t, (n + 1) - home_here
+            break
     # A1 lives inside raid_target now (duel-gated viability + priced
     # selection, margin 100 for initiative). Priced for duels, pressure
     # for big wars.
@@ -125,6 +145,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         if p.id in held:
             continue
+        # Mass recall: FREE surplus converges on the urgent town (N+1).
+        # Targeted armies (packs/settlers/scouts) keep missions (don't
+        # strip offense; surplus-only mass). Surplus that arrives holds
+        # via guard_duty (no disband) + hold_defenders next turns.
+        if mass_tgt is not None and mass_need > 0 \
+                and not state.army_has_target(p.id):
+            if math.hypot(p.x - mass_tgt.x, p.y - mass_tgt.y) > 20.0:
+                out.extend(order_move(state, config, p, mass_tgt.x, mass_tgt.y))
+                mass_need -= 1
+                continue
         if should_hold_home(state, config, p, inbound, hold_second):
             continue
         # Stay-behind vs live threat (shared): last home guard holds.

@@ -1942,3 +1942,19 @@ pair 5175 / starve 5612 (holds blitz gain) / viable 5324. Predicts: takes
 stick (land+held+viable = net territory, not gifts), no splits (1 thick
 + keepers), no donations (massed), wins up (territory+pop), deaths down
 (held keepers + thick home).
+
+### GOAL-80, worst (aggressive) 7: mass-to-N+1 recall (2026-09-12)
+PACKAGE (pure conquest) rated 15g -> 27.3 (2W/9S/4D). FAIL (>46.7).
+Survival way up (deaths 67%->27%, best ever) but wins rare (13%: takes
+2/15; keeper gate too strict + packs still donate vs mustering foes).
+ROOT of remaining deaths AND missing wins: hold_defenders RETREATS
+hopeless (home<=N-2 holds none -> take -> death) and packs meet foes
+piecemeal. But recalling free surplus to N+1 turns abandons into
+clean-kill saves (M>N home kills pack, town intact, foe bled for takes).
+IDEA (1, on package base): MASS-TO-N+1 — most urgent (lowest ETA<=8)
+under-massed town recalls free surplus (targeted packs/settlers keep
+missions; surplus-only, no strip) to N+1; arrivals hold via guard_duty.
+Conqueror masses to kill packs (offensive defense), not to fortress
+(rest raids; demobs on arrival). Predicts: hopeless takes become saves
+(deaths down further), foe packs die (weaker foes -> easier takes, wins
+up), no donation (massed, not piecemeal).
