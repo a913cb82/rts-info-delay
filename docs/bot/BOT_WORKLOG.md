@@ -3034,3 +3034,7 @@ compute (RL/search) unavailable here.
 ### Buzzer 510g (2026-09-13 01:00 BST)
 Buzzer +10g (510 total) -> ord 62.7 (mu 66.0, was 65.5/500g): +0.5 on
 50% wins + 1 F1-death. 510 games.
+
+### Buzzer 520g (2026-09-13 01:05 BST)
+Buzzer +10g (520 total) -> ord 63.6 (mu 67.0, was 66.0/510g): +0.9 on
+3W (388k/260k/297k) + quality mids + ZERO deaths. 520 games.
