@@ -206,8 +206,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             built = True
             continue
         if not built and own_t:
-            # threatened home armies hold position — never dispatch them out
-            if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
+            # threatened home armies hold position — never dispatch them out,
+            # EXCEPT one builder while sprawl incomplete (sprawl-through:
+            # Game A founded 4 thin towns through contact to 302k; holding
+            # everything stalls to 12k. One at a time; holds resume at 5.
+            if threatened and len(own_t) >= 5 and \
+                    any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
                 continue
             biggest = max(own_t, key=lambda t: t.population)
             # Spacing (turtle was its own worst neighbour: satellites
