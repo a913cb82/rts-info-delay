@@ -7,9 +7,17 @@ from .common import home_count, BotState, DemandParams, bot_main, coverage_order
 
 
 def _can_train_expander(state: BotState, town) -> bool:
-    """Floor only + pending guard (sprawl prints everywhere affordable)."""
+    """Floor only + pending guard (sprawl prints everywhere affordable).
+    Capital-compound rule (raider autopsy: the capital training settlers
+    down to ~1500 is what gets it killed — a rich capital converts a
+    raider for free, a poor one dies). Once colonies exist, the capital
+    only prints above 6000; colonies carry the sprawl (expendable)."""
     from .common import train_floor
-    return town.population >= train_floor(state, state.config)
+    floor = train_floor(state, state.config)
+    cap = state.world.faction_capital(state.faction)
+    if cap is not None and town.id == cap.id and len(state.own_towns()) > 1:
+        floor = max(floor, 6000.0)
+    return town.population >= floor
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -163,21 +171,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
         if site is not None and not site_pays(state, config, site[0], site[1]):
             site = None
-        # Crowding veto (24-town games: towns average 7.6k while a spaced
-        # town reaches ~95k — growth tax within 150km stalls the sprawl).
-        # No colony within 150km of ANY known town; a vetoed settler hops
-        # away from the nearest town to re-roll siting from new ground.
-        if site is not None:
-            _near = min(state.world.towns,
-                        key=lambda t: math.hypot(site[0] - t.x, site[1] - t.y))
-            _nd = math.hypot(site[0] - _near.x, site[1] - _near.y)
-            if _nd < 150.0:
-                _dx, _dy = site[0] - _near.x, site[1] - _near.y
-                _d = math.hypot(_dx, _dy) or 1.0
-                _hx = max(20.0, min(980.0, site[0] + _dx / _d * 120))
-                _hy = max(20.0, min(980.0, site[1] + _dy / _d * 120))
-                out.extend(order_move(state, config, p, _hx, _hy))
-                continue
         if site:
             sx, sy = site
             out.extend(dispatch_settler(state, config, p, sx, sy))
