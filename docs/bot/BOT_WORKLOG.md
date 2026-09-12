@@ -1898,3 +1898,42 @@ TAKES (skip train/travel/500-start) skewed by fight+garrison+see costs
 over-guard (survives, too small to win). Each personality's growth
 direction is toward base disciplined by its constraint. (Notes preserved
 from 2026-09-12 exercise; harness committed.)
+
+### Bold research synthesis (literature + mechanics -> doctrine) (2026-09-12)
+THREE lit reports (subagents, cited, full text in session): fog-rts
+(BWAPI scouting/particles/delay-theory), imperfect-search (ISMCTS/
+opponent-modeling/paranoid-BRS/StarCraft-decompose/budgets), tempo-
+attrition (Lanchester/3:1-myth/rush-math/Steinitz/thickness/raiding).
+MECHANICS (mine, exact): combat simultaneous snapshot, weakness=enemy
+count in 10km, dies iff enemy weakness<=own -> clean kill iff M>=N+1 IN
+ONE BUBBLE; staggered arrivals donate vs mustering foes (each subgroup
+1v3 dies); cohesion requires common-start (same town->same dist->same
+arrival, 0 spread) or sterile targets (no muster to kill subgroups).
+Take-vs-muster race: need grows S+W+P (P=prints during march); pack lands
+iff N>=need-on-arrival (not at launch); slow/staggered marches face grown
+need -> donate (0 takes vs mustering = all 11 aggressive fails).
+BOLD DOCTRINE D1-D7 (BRAINSTORM/GTO next): D1 cohesion rally+launch
+(common-start packs, 0-spread, land vs mustering; fixes donations for ALL;
+unblocks takes (wins+style) for aggressive (worst-stuck) + enables pro-
+ladder MID-takes (which muster)); D2 raid value=pop*P(absent) (staleness
+cone: ghost after mail-lag+2-4 turns; march iff confidence*value>cost else
+probe; +10% wins precedent (EISBot particles)); D3 opponent rates per
+faction (aggression/expansion/muster, trivial floats -> predict raids,
+time musters/takes); D4 FFA paranoid-capital (assume gang-up, never richest
+visible) + BRS pile-on-weak/third-parties + avoid-leader; D5 tempo (strike
+banked windows (scout-then-strike, Steinitz, initiative expires); thickness
+fights (central pack raids, NEVER parks — indicts idle piles); raid
+logistics (flip frontier cheap (DTIC) vs siege capitals); D6 scouting
+(1-2 scouts, key-region-first (capitals->towns), aging re-sweep D/150+2,
+recon-in-force (1 detaches town-to-town (scout+deny)), scout-death fallback
+(assume starts)); D7 search-iff-capped (depth-2 ISMCTS over macro-actions
+(raid A/B, defend, muster, expand), <=20 staleness-cone worlds + rate-
+rollouts, ONLY choice-turns, 100ms arithmetic (no engine); full rewrite
+LAST resort (distill D1-D6 to heuristics first; search iff capped <80)).
+SEQUENCING: rally (mechanism, 2-3 iters to mature: rally->timing->hold) in
+AGGRESSIVE fresh bold branch (worst-first compliant (worst-stuck), baseline
++rally only (no failed stack), unblocks takes) -> port to pro for LADDER
+rung (fork-max-fix-expander-loss via spend-to-take-MID (5k+ viable, rally-
+cohesive 7-pack lands vs mustering sprawl (needs rally (prereq)), hold+
+compound takes (win); mu 72-75 new max) -> search-iff-capped (distilled
+caps <80). NEXT TURN: code rally (loop/bold-cohesion from main).
