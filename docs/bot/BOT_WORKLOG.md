@@ -2021,3 +2021,20 @@ ratings invalidated (no replay needed). New tool benchmarks/rate_brain.py
 for efficient >=15g grinds). Pool suitability (pre-protocol old brains that
 crash vs HEAD events distort via free wins) flagged follow-up (exclude by
 protocol-era cutoff or per-brain liveness; not implemented (scope)).
+
+### Bold takes package (war-chest + rally-9 + spaced-MID) (2026-09-12)
+FORCE AUDIT (war-chest game): max 6 armies, 10 towns, 9 takes (all thin
+<1000 hostages). Rally-9 IMPOSSIBLE (max 6 < 9 needed vs mustering MID).
+To land MID takes (5k+, viable, compound to wins) need 9-pack (overwhelm
+mustering need 5-6+1-2 prints) + thicker force (12k+ capital for 10+
+armies) + spaced takes (grow uncrowded to 20k+, not stunt). PACKAGE (3,
+coherent take-wins doctrine): (i) thicker war-chest 2500->8000 (print to
+12+ force (15k+ capital), not 6 max); (ii) rally-9 (cohesive common-start
+packs (0-spread arrivals) land vs mustering (9>=7), not staggered donate);
+(iii) spaced-MID takes only (pop>=5000 viable + >=150km from own (grow
+uncrowded to 20k+ wins); skip clustered (stunt) + thin (hostages) + strong
+(donate)). Chain 2-3 (pack depletes via garrisons (9->7->5, stop)) +
+compound takes (grow to wins 160k+ vs 150k pros (quality wins -> mu 65+ new
+max?)). Predicts (mechanism, bold 1/3 (not ordinal yet): packs rally
+(cohesive 0-spread), takes land vs MID-mustering (9>=7), takes grow
+(spaced uncrowded 2500->20k+), wins vs mid-strong (150k+ quality).
