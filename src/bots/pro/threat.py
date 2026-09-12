@@ -61,6 +61,83 @@ def buzzer_active(state: "BotState", config) -> bool:
 
 
 
+def closing_contacts(state: "BotState", config: "GameConfig",
+                     min_speed: float = 15.0) -> int:
+    """Foe armies verifiably closing on my towns (early warning).
+
+    Trail velocity toward the nearest own town (>min_speed km/turn).
+    Single-point contacts (just entered vision = moving inward by
+    construction) count. Stale trails (>20t, gone not closing) don't.
+    Stationary/unknown-velocity contacts don't (they're the parked
+    loiterers guards already price). Zero new state (trails exist)."""
+    import math as _m
+    faction = state.faction
+    own_t = state.own_towns()
+    if not own_t:
+        return 0
+    speed = max(1.0, config.army_speed)
+    n = 0
+    for a in state.world.armies:
+        if a.faction == faction:
+            continue
+        trail = (state._trails.get(a.id)
+                 if hasattr(state, "_trails") else None) or ()
+        if len(trail) < 2:
+            n += 1  # new sighting inside vision = closing in
+            continue
+        (t0, x0, y0), (t1, x1, y1) = trail[-2], trail[-1]
+        if state.turn - t1 > 20:
+            continue  # stale (gone, not closing)
+        dt = t1 - t0
+        if dt <= 0:
+            continue
+        d0 = min(_m.hypot(x0 - u.x, y0 - u.y) for u in own_t)
+        d1 = min(_m.hypot(x1 - u.x, y1 - u.y) for u in own_t)
+        if (d0 - d1) / dt > min_speed:
+            n += 1
+    return n
+
+
+def mustering_staging(state: "BotState", config: "GameConfig") -> int:
+    """Foe staging towns (<=150km) with field activity nearby.
+
+    Forces loitering near (15-100km, not garrisoned on) a staging town =
+    mustering/pressure. Quiet neighboring colonies (zero armies) don't
+    count (the contact-streak over-fire, fixed). Guards-on-town excluded
+    (garrison, like inbound_force)."""
+    import math as _m
+    faction = state.faction
+    own_t = state.own_towns()
+    if not own_t:
+        return 0
+    n = 0
+    for u in state.world.towns:
+        if u.faction == faction:
+            continue
+        if min(_m.hypot(u.x - t.x, u.y - t.y) for t in own_t) > 150.0:
+            continue
+        for a in state.world.armies:
+            if a.faction != u.faction:
+                continue
+            d = _m.hypot(a.x - u.x, a.y - u.y)
+            if 15.0 < d <= 100.0:
+                n += 1
+                break
+    return n
+
+
+def siege_active(state: "BotState", config: "GameConfig") -> bool:
+    """Bloodbath the bot can't count (intel shows <=1 foe faction) but
+    can hear: closing contacts (early warning) or mustering staging.
+    Quiet neighbors (close towns, zero armies, nothing closing) stay
+    silent; approaching raiders arm. Duel-quiet behavior unchanged."""
+    war_foes = ({t.faction for t in state.world.towns if t.faction != state.faction}
+                | {a.faction for a in state.world.armies if a.faction != state.faction})
+    if len(war_foes) > 1:
+        return False  # true multi-foe: existing bloodbath rules own this
+    return closing_contacts(state, config) > 0 or mustering_staging(state, config) > 0
+
+
 def inbound_force(state: "BotState", config: "GameConfig",
                   max_eta: float = 8.0) -> dict[int, tuple[float, int]]:
     """Per-own-town inbound threat (ETA, force) by nearest-own-town.

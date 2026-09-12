@@ -96,6 +96,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # bleeds pressure and loses slowly (endurance 6424->904); there, all-out.
     war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
     duel_ctx = len(war_foes) <= 1
+    # Siege (closing+muster): bloodbath intel can't count (<=1 known foe)
+    # but can hear (closing contacts = early warning; mustering staging =
+    # prints seen). Quiet neighbors stay silent; duel-quiet unchanged.
+    siege = siege_active(state, config)
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
     sel = raid_target(state, config, priced=duel_ctx)
@@ -162,7 +166,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # (3-pack forced marches re-lost the home race 3249->1647;
             # evac saves the commander, not the score. Rope stays.)
             spent = foe_score < 0.5 * my_score and len(state.own_armies()) >= 2
-            if duel and enemy_armies and not spent:
+            # Siege release: heard-bloodbath with one counted foe. Hold-
+            # everything then dies slowly; surplus marches via normal gates
+            # (held-set keeps N+1 home).
+            if duel and not siege and enemy_armies and not spent:
                 continue  # rope-a-dope: let them come
             if not duel:
                 # Big wars: pure pressure (old-greedy style). ANY hold here

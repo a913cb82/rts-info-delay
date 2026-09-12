@@ -2415,3 +2415,13 @@ toward my towns, early warning) + staging towns WITH field activity
 existing trails + _foe_prints. Falsifiable: arms on approaching raiders
 t3200-style, silent on loiterers/neighbors. Code parked here (reuses
 _prev_near/trail parts); NO rating (inert, would twin parent).
+
+### Closing-siege KILLED pre-rating (trace-gate failed) (2026-09-12 19:52 BST)
+Unit tests pass (8); live trace FAILS the bloodbath criterion: siege never
+arms pre-take (F1 dead ~t3400, all False). Worse: arming couldn't save —
+no surplus exists (thin sandwich, 0-2 guards); P2-release needs forces.
+Poverty-trap analysis (final): thin-sandwich death is overdetermined
+(no guards to hold, no surplus to march, no time to grow) — mode flips
+can't fix poverty. Remaining lever: evac-bar (flee thin-sandwiches BEFORE
+beheading; P4 exists, bar untuned; doom-forecast accuracy is the risk).
+No rating (gate failed, saves 25min). Code parked on loop/pro-closing.
