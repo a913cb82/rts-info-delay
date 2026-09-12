@@ -201,7 +201,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
                 continue
             biggest = max(own_t, key=lambda t: t.population)
-            site = find_build_site(state, config, biggest.x, biggest.y, rmin=40, rmax=140, salt=13, who=p.id)
+            # Spacing (turtle was its own worst neighbour: satellites
+            # at 40-140km sit inside the 150km crowding radius, taxing
+            # BOTH towns' growth — and growth IS the tall score).
+            # Still tall, still calm-only: just far enough to compound
+            # independently.
+            site = find_build_site(state, config, biggest.x, biggest.y, rmin=180, rmax=320, salt=13, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
                 built = True
