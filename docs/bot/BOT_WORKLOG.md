@@ -2988,3 +2988,7 @@ buzzer 61.7). Parked on loop/buzzer-mass.
 ### Buzzer 400g milestone (2026-09-13 00:25 BST)
 Buzzer +5g (400 total) -> ord 62.2 (mu 65.6, was 65.0/395g): +0.5 on
 3W/1S/1M. 400 games banked (most-measured brain in pool). True ~61-63.
+
+### Buzzer 410g (2026-09-13 00:32 BST)
+Buzzer +10g (410 total) -> ord 63.0 (mu 66.4, was 65.6/400g): +0.8 on
+3W + quality mids. Oscillation 61-64.
