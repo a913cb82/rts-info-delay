@@ -2053,3 +2053,21 @@ range. FORK (user decides): (persist 12th recall-reserve? low EV, 0-for-11)
 | (redirect pro-80 directly, fastest to goal). No unilateral move (process
 owned by user; 2 prior corrections respected). Main stays baseline 42.2
 (all experiment branches unmerged, parked, documented).
+
+### GOAL-80, worst (aggressive): CONFIRMED STUCK, takes-in-win fails (2026-09-12)
+PATH-(a) VERIFICATION (takes in rated wins?): reran deterrence best win
+(156k vs weak-mid): 0 captures, 2 FOUNDED, 25 hoarded armies. Won by
+found+hoard+compound (3 towns to 131k + 25k idle), NOT takes. DEFINITIVE:
+all high-ordinal variants win WITHOUT takes (colonist/fortress drift);
+true takers die (baseline). DO NOT MERGE deterrence (51.8) as aggressive
+(wrong archetype; corrupts classification). Park it (good player, useful
+founding+hoarding insight for expander/pro, but not conqueror).
+STUCK CONFIRMED (11 ideas + verification): joint gate (ordinal>=46.7 AND
+style-takes) unachievable — takes-vs-mustering-defense (escalation) caps
+takers ~42; holders/founders reach 50+ but drift style. No 12th (remaining:
+recall-reserve/siege/intel/trash — all low-EV tweaks on proven-drift base,
+or gate-contradicted). FORK (user decides, no unilateral 12th/park/merge):
+(persist 12th? futile) | (park@42.2-baseline, expander next (recommended:
+productive to 80; return w/ take-breakthrough if found)) | (redirect pro-80
+direct, fastest) | (change gate/canonical, process fix). Main clean
+(baseline 42.2; 11 branches parked, documented, unmerged).
