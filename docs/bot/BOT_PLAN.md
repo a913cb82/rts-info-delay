@@ -210,6 +210,18 @@ unchanged (rating IDs stable); port explicitly per package (port.py).
 Do it when the loop stalls on edit friction, not before (behavior-identity
 must be re-verified byte-for-byte per package after the split).
 
+TODO (docs debt, filed 2026-09-12): big reorganisation + cleanup of
+`docs/bot/*.md`. Years of appended iterations have left stale/duplicate/
+contradictory guidance across README/BOT_PLAN/BOT_BENCH/BOT_WORKLOG/GTO/
+BOTS/BOT_TIME/VIEWER/INDICATORS/BRAINSTORM/EMPTY_10000 (e.g. retired maps
+and eras presented as current, superseded numbers, three places defining
+the loop). Consolidate to: README (loop + style table, the contract),
+BOT_PLAN (doctrine + backlog only), BOT_WORKLOG (append-only log),
+one strategy reference (merge GTO/BOTS/BRAINSTORM), one methods note
+(merge BOT_BENCH/BOT_TIME/VIEWER/INDICATORS), archive the rest. Do it in
+a quiet turn (no active branches), verifying every cross-link; do NOT
+lose the gate numbers or the failed-attempts list (they prevent retries).
+
 ## empty_3000 findings → per-bot items (3000t rematch evidence, PRE-SCOUT game — re-analysis below supersedes for the scout era)
 
 The whole game: 15000 pop_changes, 9 spawns, 42 moves, **0 battles, 0

@@ -33,6 +33,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
     held = hold_defenders(state, config, force)
+    # Secure-capital garrison (anti-death): while foe field armies exist,
+    # pin up to 2 home armies on the capital (standing, not threat-gated —
+    # threat-gated holds leave it naked in peace and it dies unseen).
+    # The pack still raids with the surplus; forward bases are expendable
+    # staging (take-guard + muster cover them). Conqueror holds its head;
+    # it does not fortress (bases ungarrisoned, pack out).
+    if enemy_armies:
+        capg = state.world.faction_capital(faction)
+        if capg is not None:
+            home2 = sorted((a for a in state.own_armies()
+                            if a.id not in held
+                            and math.hypot(a.x - capg.x, a.y - capg.y) <= 20.0),
+                           key=lambda a: math.hypot(a.x - capg.x, a.y - capg.y))
+            for a in home2[:2]:
+                held.add(a.id)
     # A1 lives inside raid_target now (duel-gated viability + priced
     # selection, margin 100 for initiative). Priced for duels, pressure
     # for big wars.
@@ -166,18 +181,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if site is not None and not staged and not war_print_need(state, config) \
                     and not site_pays(state, config, site[0], site[1]):
                 site = None
-            # Naked-town founding veto (anti-overextension): no new town
-            # (staged or economic) while any own town has 0 home AND foe
-            # field armies exist — speculative bases for unready packs
-            # dissipate force into thin naked towns that starve/feed
-            # (F2: 3 founded, 2 starved, 2 retaken, 0 takes). Garrison
-            # first (recall/hold covers it), then stage. Safe-peace
-            # sprawl unaffected (veto needs a live threat). Conqueror
-            # paces conquest; raids/packs untouched.
-            if site is not None and enemy_armies and any(
-                    not any(math.hypot(a.x - t.x, a.y - t.y) <= 20.0
-                            for a in state.own_armies())
-                    for t in own_t):
+            # Capital-naked founding veto (secure-capital): no new town
+            # while the CAPITAL has 0 home and foe armies exist. (The
+            # any-town veto failed alone 6.7/15g — it strangled expansion
+            # without garrisoning home. This paces sprawl to capital
+            # safety only; naked forward bases are expendable staging,
+            # a naked capital is death.) Safe-peace sprawl unaffected.
+            cap0 = state.world.faction_capital(faction)
+            if site is not None and enemy_armies and cap0 is not None and not any(
+                    math.hypot(a.x - cap0.x, a.y - cap0.y) <= 20.0
+                    for a in state.own_armies()):
                 site = None
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))

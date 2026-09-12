@@ -1881,3 +1881,14 @@ while any own town has 0 home AND foe field armies exist. Paces conquest
 sustainably (garrison first, then stage); raids/packs untouched; safe-peace
 sprawl unaffected (veto needs a live threat). Predicts: fewer starves/
 retakes, stronger packs (force concentrated), deaths down, takes up.
+
+### GOAL-80, worst-iter (aggressive) 2: secure-capital (2026-09-12)
+VETO ALONE FAILED: aggressive-629c059 rated 15g -> ord 6.7 (3W/2S/10D,
+67% deaths). It cut sprawl but left home naked (capital still taken).
+REPLACEMENT IDEA (1, conqueror-congruent): secure the capital — (i) pin
+up to 2 home armies on the capital standing (not threat-gated) while foe
+armies exist (pack raids with surplus; bases expendable staging);
+(ii) capital-naked founding veto only (any-town veto strangled; forward
+naked bases acceptable, naked capital is death). Predicts: capital takes
+down (deaths cut), packs still take (wins kept/grown), no fortress drift
+(bases ungarrisoned, pack out, march-active).
