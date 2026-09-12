@@ -2630,3 +2630,21 @@ Deeper: thin packs can't overmatch either way (near mutuals, far musters).
 NEXT (two-phase, queued): compound-to-rich first (tall, no raids till force
 8+/pop 15k+), then raid-surplus covered (clean kills, snowball). Hybrid
 timing (pro-early + aggressive-late), untested class. Parked (main 42.2).
+
+### Aggressive two-phase (2026-09-12 18:50 BST)
+Thin packs can't overmatch either way (near mutuals, far musters) — donate
+and die (proven 0s). FIX (sel-march gate): raid iff force >=8 (covered
+5-pack + home); else compound phase (settlers/guards, no raids — tall).
+Poor phases degrade gracefully (tall-stall beats raid-death). Rich forces
+march covered (clean kills, snowball). Hybrid timing (pro-early tall +
+aggressive-late raid), untested class. Predicts: deaths drop (no thin
+donations) + wins persist/grow (rich takes snowball). Bar: aggressive gate
+(ord>=47.2 AND takes).
+
+### Two-phase verdict: FAIL, timing-sweep complete (2026-09-12 18:58 BST)
+Rated clean 15g -> ord 36.4 (mu 44.0): FAIL (gate 47.2+). Delayed snowball
+(tempo loss: wins max 166k vs baseline 572k) + counter-take deaths (packs
+leave home thin-ish, raided back). TIMING SWEEP COMPLETE: early+thin (donate,
+die) / mid-baseline (42.2, balanced) / late+rich (small wins, counter-takes).
+Baseline timing OPTIMAL among timings. Aggressive EXHAUSTED (selection,
+gating, need, march, timing all fail or worse). PARKED (main keeps 42.2).
