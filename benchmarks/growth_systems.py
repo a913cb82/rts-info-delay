@@ -79,3 +79,9 @@ class EngineGrowth(GrowthSystem):
 
 
 SYSTEMS = {"engine": EngineGrowth()}
+
+try:  # candidate plug-in (duck-typed; no import cycle)
+    from candidate_growth import FITTED, FITTED_VARIANT, FittedGrowth  # noqa: E402
+    SYSTEMS["fitted"] = FittedGrowth(FITTED, **FITTED_VARIANT)
+except Exception as _e:  # pragma: no cover
+    print(f"candidate_growth unavailable: {_e}")
