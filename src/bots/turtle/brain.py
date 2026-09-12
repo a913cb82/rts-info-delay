@@ -3,7 +3,12 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .core import BotState, bot_main, drop_dead_notes, defense_train_ok, order_move, find_build_site, staging_eta, towns_by_train_priority, PEAK_LOW, PEAK_HIGH
+from .intel import *
+from .scout import *
+from .threat import *
+from .raid import *
+from .settle import *
+from .economy import *
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
