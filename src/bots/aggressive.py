@@ -32,10 +32,16 @@ def _one_colony(state: BotState, config: GameConfig) -> bool:
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
-    """Thin cushion (fights): floor only + pending guard. Forward towns
-    must print (raid logistics) — no distance rule, no peak cap."""
+    """Thin cushion (fights) + capital-compound (expander's winning rule:
+    a rich capital converts raiders for free; a poor one is a corpse).
+    Once the forward base exists, the CAPITAL prints only above 6000 —
+    raids launch from the base, the core compounds."""
     from .common import train_floor
-    return town.population >= train_floor(state, state.config)
+    floor = train_floor(state, state.config)
+    cap = state.world.faction_capital(state.faction)
+    if cap is not None and town.id == cap.id and len(state.own_towns()) > 1:
+        floor = max(floor, 6000.0)
+    return town.population >= floor
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
