@@ -2659,3 +2659,11 @@ QUANTITY (many cheap foundings, colonist style intact) + fixes SPACING
 (uncrowded engines grow). Predicts: sprawl compounds (parallel engines)
 instead of stunting; fewer starve-deaths. Bar: expander gate (ord>=47.3+
 exceed turtle, AND most-foundings/cheap style).
+
+### Spacing verdict: FAIL, quantity-survives (2026-09-12 19:09 BST)
+Rated clean 15g -> ord 35.0 (mu 42.6): FAIL (bar 47.3+). Strict spacing wins
+OPEN (6 wins, 44-149k) but dies CROWDED (30% zeros: can't found when full,
+holds 1-2 thin, raided). Loose sprawl survives crowded (many thin towns,
+some live via mutuals, place mid) but stunts open. NET loose > strict
+(crowded fields common). Quantity-survives beats quality-wins here.
+Reverted (main keeps 47.2). Expander 4 fails, parked firmer.
