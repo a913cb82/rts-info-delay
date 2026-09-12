@@ -111,6 +111,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # Far unknowns hold for the pack (no 600km donations into printers).
     probe_armed = pack_building and sel[2] == 0
     probe_sent = False
+    cover_used: dict[int, int] = {}  # departures per home town (covered march)
     probe_reach = 6.0 * max(1.0, config.army_speed)
     probe_tgt = sel[0] if probe_armed else None
     for p in state.own_armies():
@@ -173,6 +174,17 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 home = min(state.own_towns(), key=lambda t: math.hypot(t.x - p.x, t.y - p.y), default=None)
                 if home is not None and home.population >= 2 * config.army_cost:
                     continue  # solo vs peer with empty field: wait for pack
+            # Covered march (never-naked): home guards marching out leave
+            # the town to unseen raiders (proven F1DEATH t3376: 3 marched
+            # blind, single raider took 1958 capital). March iff >=1 stays;
+            # held-back armies stay free for other missions (unlike holds).
+            ht = min(state.own_towns(), key=lambda t: math.hypot(p.x - t.x, p.y - t.y), default=None)
+            if ht is not None and math.hypot(p.x - ht.x, p.y - ht.y) <= 20.0:
+                home_n = sum(1 for a in state.own_armies()
+                             if math.hypot(a.x - ht.x, a.y - ht.y) <= 20.0)
+                if home_n - cover_used.get(ht.id, 0) < 2:
+                    continue  # keep 1 home; wait for surplus
+                cover_used[ht.id] = cover_used.get(ht.id, 0) + 1
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             # Pack-only interceptions (D2 fix): never march a lone army

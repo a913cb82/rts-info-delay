@@ -2529,3 +2529,13 @@ scouting needs surplus (3+ armies, 1 stays) but early game never has it
 visible (diminishing value). Pro scouting = death machine early, marginal
 late. Queued low-priority (late-scout only, surplus-gated). Code parked on
 loop/pro-scout (main keeps 56.7 line).
+
+### Covered march (never-naked packs) (2026-09-12 21:03 BST)
+Naked pack marches (all home guards leave vs unseen threats) lose towns to
+single raiders (proven F1DEATH t3376). Undersized marches donate. Covered
+rule: sel-pack marches iff >=1 stays home (per-town departure counter);
+held-back armies stay free (reposition/next pack, unlike holds). Field
+forces (already out) unconstrained. Settlers/probes (additional, not
+stripping) unaffected. Rich forces march covered; thin forces wait (hold
+mutuals, parent-like survival). Predicts: naked-takes stop; packs delayed
+to surplus (tempo cost accepted: force-trades beat town-losses). Bar 56.7+.
