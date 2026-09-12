@@ -2008,3 +2008,25 @@ STYLE FAILS (canonical 0 takes: +1 packs march <=250km/5 turns, foe prints
 (3-turn arrivals face 1 print (+1 absorbs) so takes land; fewer eligible
 (near only) but landing vs donating). Predicts: takes land (1-3/game,
 style takes+staging+active ✓ + wins ✓), ordinal holds 47+ -> MERGE BOTH.
+
+### GOAL-80, worst (aggressive): GATE-CONTRADICTION found, stuck after 11 (2026-09-12)
+RANGE-150 rated 15g -> 38.7 (mu 46.7, tied baseline). FAIL. 11 ideas total
+(veto, garrison, evac, war-chest, blitz, package, mass, style, overwhelm,
+deterrence, range): best ordinal deterrence 51.8/40g + style 50.0/23g
+(both style-fail 0/0 in canonical), best style-true baseline 42.2.
+F2e8087 canonical (style base): 0 takes + 0 staging (same as all variants).
+ROOT CAUSE (structural, not tweakable): canonical takes available are
+TRASH (dying pros' 1k towns: style-takes yes, ordinal no-wins) or FORTRESS
+(99k guarded pros: donate, both fail). KEEPER takes (3k+ viable, wins)
+DON'T EXIST vs monsters (targets are 99k-forts or 1k-corpses, no middle).
+So ORDINAL (hold-compound, no trash/fort donations) and STYLE-TAKES-IN-
+CANONICAL (take trash/forts) are OPPOSED here — can't maximize both;
+must trade (trash: style pass + ordinal ~44 fail; hold: ordinal ~50 pass
++ style fail). GATE (both) UNACHIEVABLE in this canonical as defined.
+OPTIONS (user decides, not unilateral): (a) change style test to rated
+games (keepers exist vs weak-mid; takes land there) not canonical-brutal;
+(b) change canonical (weaker field where keepers exist); (c) accept tradeoff
+(merge best-ordinal 51.8 deterrence w/ style-note, or best-style baseline);
+(d) persist 12th (trash-taker for style? low EV for ordinal); (e) park
+aggressive (12 fails incl 6 prior), fix expander (46.7) next, return later.
+No 12th unilaterally (11 comprehensive fails cover the space).
