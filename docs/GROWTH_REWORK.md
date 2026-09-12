@@ -402,10 +402,23 @@ with ~8-13% urban. There is no scale flip.
    mechanics demand — there are no global couplings.)
 
 Cheap replacement: `benchmarks/hierarchy_opt.py` builds matched
-shapes on a moderate region (N ~= 570, ~1 s/config, ~3 MB matrices)
-and measures windowed rates. Validated: its ranking matches the 1M
-region (N ~= 3150, ~30 s/config) shape-for-shape, and warm 4 + span 6
-matches warm 10 + span 20 to 4 decimals.
+shapes on a moderate region (N ~= 570, ~0.3 s/config, ~3 MB matrices)
+and measures windowed rates (warm 2 + span 2; verified identical to
+warm 4 + span 6 and warm 10 + span 20 — the feedback settles into a
+period-2 cycle by t3, so any even post-warmup window has the same
+mean). Validated: its ranking matches the 1M region (N ~= 3150)
+shape-for-shape.
+
+Profiled costs per `_step_core` turn (shared 3.8 GB box, numba on):
+N=570: everything ~= 0.06 s. N=3150: land 2.3 s once per new town
+set (cached after), dist matrix 0.6 s once (76 MB, cached), market
+boost 0.6 s/turn (N x N matmul), migration 1-4 s/turn (four N x N
+float64 temporaries, ~300 MB — the memory hog), trade negligible.
+Guidance: screen at N ~= 500-600; keep 1M validations rare, one at a
+time, with caches cleared between geometries (`eco._dist_cache`,
+`eco._land_cache`). The engine itself needs no changes for this —
+real games stay at hundreds of towns where every kernel is
+milliseconds; the N x N matrices only bite in benchmark worlds.
 
 Note on older tables: every growth table predating this section used
 2-turn snapshots, which overstate flat meshes by ~30-40% (oscillation

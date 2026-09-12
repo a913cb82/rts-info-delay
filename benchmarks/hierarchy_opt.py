@@ -24,11 +24,16 @@ import engine.economy as eco
 from engine.config import GameConfig
 from engine.world import Town
 
-CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0,
-              market_scaling=1.15, market_premium=0.5)
+BASE_CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0,
+                   market_scaling=1.15, market_premium=0.5)
+CFG = BASE_CFG
 S_V = 4.0
 P_V = 300.0
-WARM, SPAN = 4, 6
+# Warm 2 + span 2 suffices: the serv feedback settles into a period-2
+# cycle by t3 (hierarchies converge; flat meshes ring with constant
+# amplitude), so any even post-warmup window has the identical mean.
+# Verified warm2/span2 == warm4/span6 to 4 decimals on all shapes.
+WARM, SPAN = 2, 2
 
 
 def lattice(rmax, s, ox=0.0, oy=0.0):
@@ -60,14 +65,15 @@ def build(rmax, s_t, T, capital=0.0, s_r=0.0, R=0.0):
     return spec
 
 
-def windowed_rate(spec, warm=WARM, span=SPAN, map_size=(2000, 2000)):
+def windowed_rate(spec, warm=WARM, span=SPAN, map_size=(2000, 2000), cfg=None):
+    cfg = cfg or CFG
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y, population=p)
              for k, (x, y, p) in enumerate(spec)]
     tot = sum(t.population for t in towns)
     serv = None
     rates = []
     for t in range(1, warm + span + 1):
-        n2, serv_now = eco._step_core(towns, list(map_size), CFG, serv)
+        n2, serv_now = eco._step_core(towns, list(map_size), cfg, serv)
         serv = {tt.id: float(v) for tt, v in zip(towns, serv_now)}
         if t > warm:
             rates.append((sum(n2) - tot) / tot * 52.0 * 100.0)
@@ -102,7 +108,12 @@ SHAPES = [
 ]
 
 
-def main(rmax=50.0):
+def main(rmax=50.0, gamma=None, premium=None):
+    cfg = BASE_CFG
+    if gamma is not None or premium is not None:
+        cfg = replace(BASE_CFG,
+                      market_scaling=BASE_CFG.market_scaling if gamma is None else gamma,
+                      market_premium=BASE_CFG.market_premium if premium is None else premium)
     print(f"{'shape':>18} {'N':>5} {'urban%':>7} {'rate':>9}")
     rows = []
     for label, s_t, T, cap in SHAPES:
@@ -114,7 +125,7 @@ def main(rmax=50.0):
         tot = sum(p for (_, _, p) in spec)
         urb = 100.0 * sum(p for (_, _, p) in spec if p > P_V) / tot
         clear()
-        g, n = windowed_rate(spec)
+        g, n = windowed_rate(spec, cfg=cfg)
         dt = time.perf_counter() - t0
         rows.append((g, label, n, urb, dt))
         print(f"{label:>18} {n:5d} {urb:7.1f} {g:+9.4f}  ({dt:.1f}s)")
@@ -130,4 +141,6 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--rmax", type=float, default=50.0)
+    ap.add_argument("--gamma", type=float, default=None)
+    ap.add_argument("--premium", type=float, default=None)
     sys.exit(main(**vars(ap.parse_args())))
