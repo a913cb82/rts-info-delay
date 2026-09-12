@@ -2140,3 +2140,18 @@ end-of-run save — procedure recorded here for redo). FIXED bot_rundir
 SURVIVES (analytical, code+unit proven): dispatch-freeze mechanism +
 refound-deadlock analysis (game STORIES retracted as mirror lotteries).
 Rung-2 empirical basis reset: must re-run sprawl field with REAL brains.
+
+### Rung 2 verdict: FAIL, reverted (2026-09-12)
+Unfreeze+refound rated CLEAN 15g (fixed plumbing, real brains) -> ord 43.2
+(mu 50.8, 19g incl 4 mystery; ~6W visible + deaths g5/g10 + mids).
+FAIL (bar 58; parent 57.2). Ablation inside the games: unfreeze beats
+refound-only sibling 5-2 h2h (narrow but consistent — unfreeze has value,
+refound adds little: still-1-town games show refound rarely fires (holds/
+pack-poach block the march gate even when unfrozen)). Wins mostly weak-mid
+(194k-attractor solitaire); dies vs strong (pro-b05d0f4 175k kills; greedy
+320k/254k benefit from late load-timeouts). Load-12 caveat: 4/10 visible
+games had late timeout kills (symmetric noise, documented).
+Code stays on loop/pro-sprawl2 (main src/ untouched). NEXT (rung 3):
+pack-only-in-bloodbath — parent>>child 27x real game (219k vs 8k same
+field): does solos-hold (child) lose vs intercept (parent) when meeting
+raiders clean? Autopsy that game, then gate the hold on bloodbath context.
