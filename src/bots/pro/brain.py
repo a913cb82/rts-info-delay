@@ -170,10 +170,13 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     continue  # solo vs peer with empty field: wait for pack
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
-            fc = BotForecast(state, config)
-            forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
-            (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
-            out.extend(order_move(state, config, p, fx, fy))
+            # Pack-only interceptions (D2 fix): never march a lone army
+            # to meet a known foe army — 1v1 mutuals waste 1000 pop AND
+            # strip the capital naked for the single-raider take. Solos
+            # hold (garrison); field meetings are 2v1+ via the raid pack
+            # (sel branch) or not at all. (Foe scouts roam free — accepted;
+            # killing one costs the guard that the pack then needs.)
+            continue
         else:
             # G2: settle on demand only (same gate as trains: void merit
             # or contested payback) — else recycle home for +500 pop-add,
