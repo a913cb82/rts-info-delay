@@ -178,9 +178,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # branch (big wars); duels march the priced take at +1.
             nearest, _need, _ = sel
             _cap = state.world.faction_capital(faction)
+            # Overwhelm +2 (not +1): foe prints 2-3 during our march;
+            # +1 arrives to find need grown past it and donates (0 takes in
+            # canonical vs mustering expander). +2 absorbs the prints so
+            # takes LAND (style needs landed takes, not marched donations).
+            # Fewer attempts (need 6-7 free, rarer) but landing (wins).
             _blitz = (_cap is not None
                       and math.hypot(_cap.x - nearest.x, _cap.y - nearest.y) <= 250.0
-                      and free_n >= _need + 1
+                      and free_n >= _need + 2
                       and nearest.population >= 2000)
             if not _blitz:
                 continue  # not a keeper (far/thin/unguarded-take = gift) — hold

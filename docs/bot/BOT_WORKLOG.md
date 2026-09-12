@@ -1972,3 +1972,12 @@ forward presence; 2 towns max garrisonable; takes count as forward so
 (conquest). Predicts: 1-3 takes/game (initiates captures ✓), 1 forward
 (forward staging ✓), still active (packs blitz keepers); ordinal holds
 47+ (takes add wins offsetting slight risk) AND style passes -> MERGE.
+
+### GOAL-80, worst (aggressive) 9: keeper-overwhelm +2 (2026-09-12)
+STYLE-COMPLETION (f2e8087) rated 23g -> ord 50.0 (mu 56.7). ORDINAL PASSES
+but STYLE FAILS (canonical: 0 takes (marched 3477km but 0 landed vs
+mustering expander: +1 arrives to find need grown past it, donates) + 0
+staging). Takes must LAND (not just march) for style AND wins. IDEA (1,
+one number): keeper overwhelm +1 -> +2 (absorb 2-3 foe prints during
+march; fewer attempts (need 6-7 free) but landing). Predicts: takes land
+(1-3/game, style takes ✓ + wins ✓), donations stop, ordinal holds 47+.
