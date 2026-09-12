@@ -1691,3 +1691,27 @@ NEXT IDEAS (untried): raid_margin sweep (100 -> 200/300: fewer better
 raids), payback_mult 3.0 -> 1.0 (more towns = more score), or a late-game
 "conquest dividend" (convert surplus armies to colonies once rich).
 Gate status: pro/expander/turtle PASSED; aggressive PENDING.
+
+## *** AGGRESSIVE GATE PASSED (merge 7d1517c) ***
+- aggressive-df34823: ord **43.9** (mu 49.1, 42g) > bar 42.7 (mu 46.5,
+  158g). The +2.6 mu edge HELD as the sample grew 10 -> 42 games (the
+  earlier +3 readings that reverted were noise; this one didn't).
+- Fix: survivor gate ported onto main (raid_targets skips towns whose
+  capture halves below the death floor — priced AND denial). ffcfe0e
+  aggressive body + main common. Merged src == rated config (brain
+  hash e6ba60bfb8 verified via matchmake dedup).
+- Failed attempts (documented, do not retry): comfort cushion floor
+  +1500 (mu 45.9), forward base one-colony (45.0), capital-compound
+  (40.3), raid margin 300 (45.9), payback 1.0 (46.0). The aggressive's
+  era design resists the compound-core patterns — its raids ARE its
+  economy; only the survivor gate (stop feeding on corpses) helped.
+
+## *** ALL FOUR GATES PASSED ***
+| personality | bot         | ord  | bar  | merge   |
+|-------------|-------------|------|------|---------|
+| pro         | 12b6801     | 52.9 | 50.4 | dad7180 |
+| turtle      | a82f53d     | 51.3 | 41.6 | 47939e1 |
+| expander    | 80c67fe     | 46.1 | 45.5 | 7633dad |
+| aggressive  | df34823     | 43.9 | 42.7 | 7d1517c |
+(Bars = the era-peak holders each bot had to beat; ratings from the
+1321-game unified log. Merged main src == each rated winner.)
