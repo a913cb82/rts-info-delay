@@ -20,44 +20,6 @@ Self-play diffs 0.
 
 ## Log
 
-### GOAL-100, ceiling iter 1: pro dark-pack (NEUTRAL, reverted) (2026-09-12)
-GOAL >=100 ordinal. Scale math (closed sim vs top-50): P1=0.44->~55,
-0.60->~57, 0.80->~62, 0.95->~75; always-win 50g->60, 300g->70, 1000g->78,
-2000g->84. 100 needs ~never-lose + thousands of games. Only pro (51.8)
-in range -> ceiling iterations on pro (not README worst-first); adapted
-gate: merge iff new pro brain ord (>=15g) >= 51.8.
-DATA: pro townless 30/119 (25%); alive wins 58%; solo-pro wins 31%.
-Expander beats pro in 34/67 non-wins.
-DEATH D1 (autopsied, solo pro vs 2xaggr+exp+turtle): capital falls t3940
-to UNSEEN 4-pack (intel 818t stale); vanguard mutuals onesie guard, pack
-walks in; field armies dead/away colonizing; capital spent to 1469
-(below train AND evac floors) on a far colonist. P6 holds 0 home in big
-wars; threat model never fired (no detection).
-IDEA: dark-pack protocol (branch loop/dark-pack, commit 40145e1):
-foe mass seen<=30t but stale>4t = unaccounted pack; while >=2: (i) veto
-expansion trains, (ii) recall free armies to 2 home, (iii) veto new far
-settles. Suites: fast 3153/3241 (identical to parent), pytest green
-(minus 2 load-flaky engine timing asserts that pass quiet), liveness
-clean, strategic 12.5s PASS. Also fixed 2 pre-existing tool breaks found
-en route (strategic_bench skips teamless ffa maps; perf test SendState
-call) — merged to main as 682afa2-side docs/tool commits.
-RATED 24g -> ord 43.2 (gate >=51.8: FAIL).
-H2H vs incumbent, position-controlled (18g, slots balanced): EXACTLY
-TIED {1:9,2:3,3:2,5:4} both. The early 9-0 was POSITIONAL (fixed slots;
-safe slot always wins; scores byte-identical on swap). LESSON: h2h must
-balance slots (swap half the games) or the measurement is worthless.
-VERDICT: neutral (tied), reverted. It targeted D1 but the h2h deaths are
-D2 (early neighbor overrun t2000-3000, fresh-visible) — never tested D1.
-D2 story (F1 t2000-32xx): colony starved (pop 0), thin capital (354!)
-taken by 1 expander army, 0 home (armies suicided in 1v1 mutuals).
-One-colony fires blindly into the dangerous slot. NEXT: D2 idea.
-RATINGS HYGIENE: a grind script replayed 6 deterministic duplicate games
-(same field -> same game); caught via byte-identical scores, removed the
-6 lines + rebuilt elos.json by replay (seeds preserved, verified
-non-dup entries identical). Rule: vary fields AND slots every game;
-never replay a field (deterministic -> duplicate, zero information,
-inflates ratings).
-
 ### Pro — best-of-all assembly (2026-09-04)
 Fast: endgame 2245→3249 (counter-punch breaks mirror), opening 3240→4316,
 defense 1109 (holds). Slow: efficiency 59%→100% (P3b empty-field hold =
@@ -1805,3 +1767,76 @@ MIGRATION (staged):
   clean; packages run under the pool runners.
 - NOTE: greedy is the legacy personality (42aba25 lineage), packaged for
   completeness/tests; scale-out (per-package test suites) is future work.
+
+### GOAL-100, ceiling iter 1: pro dark-pack (NEUTRAL, reverted) (2026-09-12)
+GOAL >=100 ordinal. Scale math (closed sim vs top-50): P1=0.44->~55,
+0.60->~57, 0.80->~62, 0.95->~75; always-win 50g->60, 300g->70, 1000g->78,
+2000g->84. 100 needs ~never-lose + thousands of games. Only pro (51.8)
+in range -> ceiling iterations on pro (not README worst-first); adapted
+gate: merge iff new pro brain ord (>=15g) >= 51.8.
+DATA: pro townless 30/119 (25%); alive wins 58%; solo-pro wins 31%.
+Expander beats pro in 34/67 non-wins.
+DEATH D1 (autopsied, solo pro vs 2xaggr+exp+turtle): capital falls t3940
+to UNSEEN 4-pack (intel 818t stale); vanguard mutuals onesie guard, pack
+walks in; field armies dead/away colonizing; capital spent to 1469
+(below train AND evac floors) on a far colonist. P6 holds 0 home in big
+wars; threat model never fired (no detection).
+IDEA: dark-pack protocol (branch loop/dark-pack, commit 40145e1):
+foe mass seen<=30t but stale>4t = unaccounted pack; while >=2: (i) veto
+expansion trains, (ii) recall free armies to 2 home, (iii) veto new far
+settles. Suites: fast 3153/3241 (identical to parent), pytest green
+(minus 2 load-flaky engine timing asserts that pass quiet), liveness
+clean, strategic 12.5s PASS. Also fixed 2 pre-existing tool breaks found
+en route (strategic_bench skips teamless ffa maps; perf test SendState
+call) — merged to main as 682afa2-side docs/tool commits.
+RATED 24g -> ord 43.2 (gate >=51.8: FAIL).
+H2H vs incumbent, position-controlled (18g, slots balanced): EXACTLY
+TIED {1:9,2:3,3:2,5:4} both. The early 9-0 was POSITIONAL (fixed slots;
+safe slot always wins; scores byte-identical on swap). LESSON: h2h must
+balance slots (swap half the games) or the measurement is worthless.
+VERDICT: neutral (tied), reverted. It targeted D1 but the h2h deaths are
+D2 (early neighbor overrun t2000-3000, fresh-visible) — never tested D1.
+D2 story (F1 t2000-32xx): colony starved (pop 0), thin capital (354!)
+taken by 1 expander army, 0 home (armies suicided in 1v1 mutuals).
+One-colony fires blindly into the dangerous slot. NEXT: D2 idea.
+RATINGS HYGIENE: a grind script replayed 6 deterministic duplicate games
+(same field -> same game); caught via byte-identical scores, removed the
+6 lines + rebuilt elos.json by replay (seeds preserved, verified
+non-dup entries identical). Rule: vary fields AND slots every game;
+never replay a field (deterministic -> duplicate, zero information,
+inflates ratings).
+
+### GOAL-100, ceiling iter 2: pro pack-only interceptions (2026-09-12)
+TARGET: D2 (dominant measured death). D2 story (h2h_verify F1 t2000-32xx):
+colony starved (pop 0), thin capital (354!) taken by 1 expander army,
+0 home — armies suicided in 1v1 mutuals (t2160, t2728) after spending
+the capital down. Root: solo armies march to meet known foe armies
+(`elif enemy_armies` interception) -> 1v1 mutuals waste 1000 pop AND
+strip the capital naked; then a single raider takes the thin capital.
+IDEA (1, pro-congruent): pack-only interceptions — never march a lone
+army vs a known foe army; solos hold home (become the garrison). Only
+2v1+ meets in the field. Keeps capital guarded + stops pop waste;
+preserves P6 pack pressure (packs still march; S0 scout + S==0 probes
+vs towns/unknowns untouched). Predicts: dangerous-slot survival up,
+thin-capital takes down, no loss of pack wins.
+
+### GOAL-100 iter 2 validation (2026-09-12)
+Pack-only code: 1-line veto (`elif enemy_armies` -> hold) + perf-test
+SendState port. Suites: fast 3153/3241 (identical, no regression),
+pytest green (2 load-flaky engine timing deselected), liveness clean,
+strategic 14.5s PASS. Committed on loop/pack-only. Rating next (>=15g,
+slots balanced from game 1).
+
+### GOAL-100 iter 2 verdict: PACK-ONLY WINS, MERGE (2026-09-12)
+RATED 16g (slots balanced from game 1, opponents rotated, no repeats):
+mine wins 12/16 (safe 8/8, dangerous 4/8 + 4 survivals); inc wins 4/16
+(all safe). Dangerous slot: mine SURVIVES 8/8 (2nd-3rd, 56k-189k) vs inc
+dies 4/9. Safe slot: mine 8/8 vs inc 4/8. Ord pro-6f463c9 57.2 (mu 65.6,
+16g) >= 51.8: GATE PASSES. Mechanism: no solo suicide-mutuals (pop kept
++ capital guarded) + efficiency edge in compounding races (batch 2:
+mine 1st 8/8, beats inc head-to-head by 10k-50k).
+STYLE (branch canonical, byte-identical game to main canonical):
+F0 wins 122k as compounder; F1 positional death (main F1 dies identically);
+F0 3 towns = main F0 3 towns (colony+take, not sprawl). Invariants hold
+as well as incumbent (the style reference). No crashes/timeouts in 16g.
+Suites green, liveness clean. MERGED to main.
