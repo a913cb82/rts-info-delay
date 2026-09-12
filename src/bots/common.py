@@ -1970,6 +1970,12 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                  if t.population * (1.0 - eff) > cost * eff + 200]
     else:
         cands = list(enemy_towns)
+    # Survivor gate (r79/r95, ported: diagnostic game — aggressive took a
+    # 702-pop town t3693 that halved below the death floor and died t4172,
+    # after feeding single armies into its defenders). A capture halves
+    # the pop: below 2x floor the prize is a corpse and the march is a
+    # feed. Applies to denial too (an unpriced corpse still costs armies).
+    cands = [t for t in cands if t.population >= 2 * config.death_threshold]
     if not cands:
         return None
     fieldable = [a for a in state.own_armies()
