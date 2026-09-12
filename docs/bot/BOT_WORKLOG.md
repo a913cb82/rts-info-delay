@@ -2499,3 +2499,33 @@ to grown foes, not growing ones). NEXT (v4?): foe GROWTH-RATE (not level)
 gates thickness (printing fast = future-rich = blanket early); or anticip-
 atory (staging+closing like pro siege work). Code parked on loop/turtle-
 thick2.
+
+### Turtle v4: factory anticipation (2026-09-12 20:41 BST)
+V3 rich-blanket HURT (27.2 vs 39.3: mistimed thickness, spends late vs
+overrun-in-motion). Dropped rich; v4 = v2-precision + factory-rate: blanket
+when any known foe town printed (>=900 single-update drop = a train;
+growth offsets tens). Anticipates (packs form at 5-15k, blanket before
+25k+). Zero new state (uses _prev_pop; only fresh-visible prints show;
+blind printers = fog tax). 7 unit tests. Predicts: weak-wins persist +
+strong placements recover (early blanket holds via mutuals). Bar 50+.
+
+### S0 scout reactivation (2026-09-12 20:59 BST)
+FOG IS THE BINDING CONSTRAINT (sim, intel-gates, mode-detection all die on
+it). S0 machinery existed but FULLY UNWIRED (no callers; probe_armies=0).
+Enabled, contact-triggered (P3b void-block intact!) + settler-grade print
+(2500+, safe) + colony fallback (2+ towns, D2-averse) + converts on contact
+(raid/guard owns it; unfreeze re-tasks afterwards). Costs 1 army post-
+contact pre-bloodbath (maps staging/musters/packs beyond LOS: mode, tactics,
+doom informed). Predicts: fewer blind surprises (F1-donations, naked takes,
+misread modes). Bar 56.7+.
+
+### S0 scout verdict: FAIL, reverted (2026-09-12 21:21 BST)
+Rated clean 15g -> ord 40.5 (mu 48.1): FAIL (bar 56.7+). Deaths 29% (vs 7%
+baseline): scout+settler out + thin capital (2500->1500 prober print) =
+0-1 home -> single takes thin capital (sting) + double-taps both towns
+(elimination). Intel never pays back (dies first). PARADOX (permanent):
+scouting needs surplus (3+ armies, 1 stays) but early game never has it
+(scout strips -> death machine); late surplus exists but wars already
+visible (diminishing value). Pro scouting = death machine early, marginal
+late. Queued low-priority (late-scout only, surplus-gated). Code parked on
+loop/pro-scout (main keeps 56.7 line).
