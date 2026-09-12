@@ -2234,3 +2234,12 @@ sparsity; horizon adapts (60 bloodbath / 100 quiet); clock-aware depth in
 M2 (budget_ms input gates spend). No numba needed. NO behavior change
 (brain untouched — new files only; rides to M4, no twin-seed churn).
 NEXT M2: choice-turn detection + candidate enumeration + clock-aware rank.
+
+### Search M2 done: live site-choice search (branch loop/pro-search1) (2026-09-12)
+candidates.py (site_plans + rank + choose_site) + find_build_sites top-K +
+brain wiring (one-colony march only) + tests/bots/test_search_rank.py (5:
+clear-wins, margin-tie, low/unknown/full clock paths). Clock-gated
+(banked>=25ms only; else heuristic best, deterministic). Margin 2% (S3
+static-foe bias must not flip near-ties). First live search: founding site
+(1-2x/game, peaceful, high-value, bank-always-full early). Suites green,
+liveness clean. Bar 58 (new max); floor: match 57.2 (mechanism + fresh).

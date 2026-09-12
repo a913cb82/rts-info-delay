@@ -94,6 +94,40 @@ def find_build_site(state, config: GameConfig, ref_x: float, ref_y: float, rmin:
         _build_site_cache.clear()
     return res
 
+
+_build_sites_cache: dict = {}
+
+
+def find_build_sites(state, config: GameConfig, ref_x: float, ref_y: float,
+                     rmin: float = 80, rmax: float = 300, salt: int = 0,
+                     who: int = 0, k: int = 3) -> list[tuple[float, float]]:
+    """Best-first site plus diverse alternates (salt-shifted spins).
+    For search candidates (M2): sites[0] is the heuristic best (the
+    find_build_site pick); the rest are distinct alternates for the
+    rollout rank to judge."""
+    key = (state.turn, int(ref_x), int(ref_y), rmin, rmax, salt, who, state.faction, k)
+    if key in _build_sites_cache:
+        return _build_sites_cache[key]
+    # Reuse the singular (identical ranking: best == sites[0]).
+    out: list[tuple[float, float]] = []
+    seen: set[tuple[int, int]] = set()
+    for dk in range(16):
+        site = find_build_site(state, config, ref_x, ref_y, rmin, rmax,
+                               salt + dk * 977, who)
+        if site is None:
+            continue
+        q = (round(site[0]), round(site[1]))
+        if q in seen:
+            continue
+        seen.add(q)
+        out.append(site)
+        if len(out) >= k:
+            break
+    _build_sites_cache[key] = out
+    if len(_build_sites_cache) > 2000:
+        _build_sites_cache.clear()
+    return out
+
 # ── BotState ──
 
 
