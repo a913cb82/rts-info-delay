@@ -1648,3 +1648,29 @@ NEXT LOOPS (one per branch):
 Each: git checkout -b from the era commit, port the tiny policy,
 rate with elo_field fields (fast convergence: 15-20 games), merge iff
 branch max > that personality's live max.
+
+## *** TURTLE GATE PASSED (merge 47939e1) ***
+- turtle-a82f53d: ord **45.2** (mu 54.6, 9g) > bar 41.6 (80g).
+- Two fixes on the 850b426 tall-turtle lineage:
+  1. Spacing: colonies 40-140km -> 180-320km (satellites sat inside
+     the 150km crowding radius, taxing BOTH towns' growth; pop IS the
+     tall score).
+  2. Deep sleep: peace bars 2000/2600 -> 5000/7000 (towns hovered near
+     the bar, printing guards forever, scoring 10-20k; rich towns also
+     convert raiders for free — the compounder's survival trick).
+- Ported onto main as a file swap (branch loop/turtle-main) to keep
+  the pro/expander wins; picket tests dropped (predate the lineage).
+
+## GATE LEDGER (live)
+- pro      51.2 (12b6801)  PASSED (merge dad7180)
+- expander 47.2 (80c67fe)  PASSED (merge 7633dad)
+- turtle   45.2 (a82f53d)  PASSED (merge 47939e1)
+- aggressive ~41.1 (ffcfe0e)  PENDING
+
+## TOOLING/HOST HYGIENE (thrashing lesson)
+- /tmp accumulated 167 git worktrees (one per rated sha) + 122
+  recordings = ~15GB; on a 3.7GB-RAM box the page cache/swap thrashed
+  during game batches. Guardrails: after each rating series run
+  `rm -rf /tmp/botwork_*; git worktree prune` and delete recordings
+  once analyzed; keep batches <=6 games; check `free -h` first.
+  TODO: prune old worktrees automatically in elo_field/matchmake.
