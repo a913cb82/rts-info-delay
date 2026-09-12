@@ -2358,3 +2358,24 @@ target holds). Uses existing _last_seen + mail-lag machinery; central in
 order_move; replaces trail/staleness/count proxies. Falsifiable: F1
 donations stop, open raids continue. Reverted (main keeps 57.3/56.3 line).
 Code parked on loop/pro-f1fix.
+
+### Intel-gated dispatch (2026-09-12 17:41 BST)
+RULE: march only into known space (central order_move gate): home turf
+(own LOS) + void always pass; near known foe towns pass iff seen <=30t
+(mail max-lag ~7t + muster cycle); stale-only holds (no blind donations).
+Recalls (home turf) + void settlers (early founding) always pass. Uses
+existing _last_seen + LOS; 4 unit tests. Asymmetry favors gate (missed
+takes rare in solitaire meta; donations bleed thin towns to beheadings).
+Predicts: F1 blind donations stop; bloodbath real-time fights continue
+(contact refreshes intel); open raids continue. Bar 56.7+.
+
+### Intel-gate verdict: FAIL, reverted (2026-09-12 18:02 BST)
+Rated clean 15g -> ord 43.3 (mu 51.0): FAIL (bar 56.7+). Deaths ~30% vs
+expander-sprawl (0s vs 133-575k snowballs): gate holds everything when
+intel is stale-everywhere (sprawl flicker) -> sit -> surrounded -> overrun.
+CONFIRMED the predicted bloodbath-passivity failure. REFINEMENT (M3 fuel):
+gate conflates stale-TARGET (don't go THERE) with stale-EVERYWHERE (do
+nothing). Correct response is RANKING (fresh targets first, stale demoted
+but actionable), not binary VETO — target ranking with freshness-discounted
+values is now M3's sharpest spec. Fix never merged (main keeps 56.7 line).
+Code parked on loop/pro-intelgate.
