@@ -2752,3 +2752,13 @@ Buzzer +15g (150 total) -> ord 63.2 (mu 66.8, was 65.7/135g): +1.2.
 death. DIP WAS VARIANCE (predicted recovery to 63+ hit exactly). Volume
 path validated (regression-tested): bank +1-2/turn toward ~70 asymptote
 (mu caps ~73-75 on mirror lottery; sigma shrinks underneath).
+
+### Buzzer 170g + attractor dominance (2026-09-12 22:11 BST)
+Buzzer +20g (170 total) -> ord 66.8 (mu 70.4, was 66.6/150g): +3.6 on 65%
+wins (13/20, 1 death). MECHANISM (deterministic, not lottery): scores lock
+to fixed points per (brain, context) (mine 233548x4/239874x4/188784x2...;
+foes likewise) — games are parallel fixed-point races, winner = highest
+attractor. Buzzer attractor (muster+takes: 230k+) beats twins (190-200k)
+deterministically when uninterrupted; takes disrupt foes off theirs.
+80-PATH MICRO: raise attractor to 300k+ (sprawl+takes+muster hybrid) +
+disrupt foes (knock them down). Queued (hybrid new-bot or sprawl-rung).
