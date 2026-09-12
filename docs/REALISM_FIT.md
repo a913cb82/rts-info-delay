@@ -10,14 +10,22 @@ plugged in as `benchmarks/candidate_growth.py` (`--system fitted`).
 
 ```
 g(P)   = a*P - (a/3e5)*P^2 - c*P^3
-W(i,j) = [ alpha*P_i*sig((P_j-P_i)/30)
-         + mu*P_i*P_j*(P_i-P_j)/(P_i+P_j)*e^(-d/rho) ] * win(d)
+W(i,j) = alpha*P_i*sig((P_j-P_i)/30) * e^(-(d/rho)^2) * win(d)   # access
+       + mu*P_i*P_j*(P_i-P_j)/(P_i+P_j) * e^(-d/rho) * win(d)   # migration
 net_i  = g(P_i) + sum_j W(i,j);   P <- max(P + net, 0)
 
 win(d) = 1                         d <= 120 km
-       = smoothstep taper         120 < d < 150 km
+       = smoothstep taper         120 < d < 150 km  (argument is d^2)
        = 0                        d >= 150 km   (HARD BOUND)
 ```
+
+The two kernels keep the shapes agreed in the design: **Gaussian on
+access**, **exponential on migration**. At rho = 270 km both are nearly
+flat inside the taper (access 0.99 at 30 km, 0.87 at 100, 0.82 at 120;
+migration 0.90 / 0.69 / 0.64), so inside 120 km the shape difference is
+mild (the Gaussian is fatter mid-range); 120-150 km the window takes
+over and forces the hard bound (access weight 0.42 at 135 km, 0.07 at
+145, 0.000 at 150).
 
 | param | value | job |
 |---|---|---|
