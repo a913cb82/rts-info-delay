@@ -2874,3 +2874,11 @@ Beheading-insurance build: capital-nearest idle stations ALWAYS (marches
 home if away, sits if home; excluded from packs). 1-army premium vs
 F1-unseen beheading (station, not recall — no bleed). Bar (ladder):
 exceed 65.4 + F1-deaths drop.
+
+### Picket verdict: FAIL (42.2, packs knife-edge) (2026-09-12 23:23 BST)
+Rated clean 15g -> ord 42.2 (mu 49.7): FAIL (bar 65.4+). Picket breaks
+packs (need-met minus 1 -> takes starve -> attractor capped 150-215k vs
+230k+; lose take-races; 40% wins vs should-win weak). Premium (-5) >> leak
+(+1): pack-membership is knife-edge; premiums must NEVER touch packs.
+Conditional picket = back to field-dependent recall (dead). Picket dead.
+Reverted (main keeps buzzer 65.4). Parked on loop/buzzer-picket.
