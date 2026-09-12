@@ -54,8 +54,9 @@ Turn-based. Each turn consists of phases:
     - Population halves on capture and capitals demoted to normal towns
 
 #### Economy
-- Towns grow logistically, with crowding from nearby towns
-- Towns under 500 population die
+- Towns grow slowly: logistic with a city-scale sink past ~78k
+- Neighbouring towns share market access and migration (within 150km)
+- Towns at zero population die
 - Armies with build orders found new towns or boost existing towns
 
 #### Knowledge
@@ -64,8 +65,8 @@ Turn-based. Each turn consists of phases:
 ### Details
 
 - Score = Σ town population + 1000 per army. Highest score at end wins.
-- Growth per turn: `0.001·P·(1 − P/100000) × (1 − Σ crowding)` at population `P`
-    -  `crowding = (1 + 0.01·ln(Pn/P)) × (0.1·√min(Pn,P) / d)^0.8` for neighbour with population `Pn` at distance `d <= 150km`
+- Lone-town growth per turn: `8.2e-5·P − (8.2e-5/3e5)·P² − 1e-14·P³` (villages ~0.4%/yr, cities shrink past ~78k)
+- Neighbours within 150km: market access (directed, bigger towns serve smaller) + migration (people drift toward larger towns); pairs beyond 150km are ignored
 - Eliminated when no capital and no viceroy in flight.
 - Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
 - `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.

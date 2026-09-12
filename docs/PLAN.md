@@ -1,5 +1,9 @@
 # Plan — `rl_game_min`
 
+> **Note (2026-09-12):** the growth model below is the original
+> logistic+crowding design. The engine now uses the fitted realism
+> model — see `GROWTH_REWORK.md`.
+
 ## Engine: Python
 
 Core game logic in Python (`engine/` package). Game runner also Python — spawns bot subprocesses, manages stdin/stdout, enforces time limits. Bots in Python.

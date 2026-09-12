@@ -1,5 +1,9 @@
 # Tests — `rl_game_min`
 
+> **Note (2026-09-12):** the growth model below is the original
+> logistic+crowding design. The engine now uses the fitted realism
+> model — see `GROWTH_REWORK.md`.
+
 > Coverage audit of `docs/PLAN.md`. Each section below maps 1:1 to a PLAN heading.
 > Existing tests flagged **FIX** were numerically or logically wrong; **NEW** fill gaps.
 
