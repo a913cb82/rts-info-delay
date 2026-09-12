@@ -2792,3 +2792,11 @@ Disruption-path build: port dark-pack mechanism (stale unseen mass>=2 ->
 veto expansion trains + recall field armies to 2 home; seen/empty fields
 unaffected). 3 small edits (threat.dark_pack + economy block_expand +
 brain hooks). Bar (ladder): exceed buzzer 69.2 (win disrupted games).
+
+### Defense verdict: FAIL (47.0, field-dependent recall) (2026-09-12 23:02 BST)
+Rated clean 15g -> ord 47.0 (mu 54.3): FAIL (ladder bar 69.2). Recall
+over-fires in stale-rich diverse fields (mass>=2 chronic -> permanent
+recall -> pressure bleeds -> takes never fire -> attractor 100-200k,
+lose take-races; 27% wins vs should-win weak fields). Dark-pack mechanism
+is field-dependent (helps mirror-top where stale-mass is rare; hurts
+diverse where chronic). Reverted (main keeps buzzer 69.2). Parked.
