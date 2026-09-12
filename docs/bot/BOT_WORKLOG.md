@@ -2005,3 +2005,19 @@ for tweaks (monolith tolerable)). Pre-aggr-split canonical baseline saved
 aggressive-split verification (must match)). Ratings preserved (seeds).
 Bold rally/ladder/search unblocked (modular pro ready for ladder ports;
 aggressive split just-in-time with rally coding on resume).
+
+### Methodology: tip-of-master enforced + rate_brain tool (2026-09-12)
+ALL matchmaking runs now use tip-of-master for everything outside src/bots
+(user requirement): elo_field/master_src (main worktree src for in-process
+engine/runner/config/map) + bot_cmd (brain-only temp copy /tmp/botrun_<sha>
+with HEAD engine FIRST on PYTHONPATH — only brains time-travel, never rules)
++ master_map (main maps/empty.json, not stale recordings). Enforced centrally
+(matchmake --play + elo_field main use helpers; update-only paths unaffected).
+Verified (import + paths resolve to main worktree + 1 full test game, temp DB
+discarded, real ratings untouched). Currently no-op (no engine diffs on any
+branch — verified empty) = preventive robustness + strict compliance, no
+ratings invalidated (no replay needed). New tool benchmarks/rate_brain.py
+(fixed-seed full-pop proposing + forced inclusion + slot rotation + dup-assert;
+for efficient >=15g grinds). Pool suitability (pre-protocol old brains that
+crash vs HEAD events distort via free wins) flagged follow-up (exclude by
+protocol-era cutoff or per-brain liveness; not implemented (scope)).

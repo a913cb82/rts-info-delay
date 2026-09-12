@@ -23,12 +23,60 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from engine.config import GameConfig
-from runner.main import run_game
-
 ROOT = Path(__file__).resolve().parents[1]
 ELO_PATH = ROOT / "benchmarks" / "elos.json"
 K = 16.0
+MASTER_REF = "main"  # tip-of-master for everything outside src/bots (methodology)
+
+
+def master_sha() -> str:
+    """Short sha of main tip (explicit, not HEAD — grinds may run on branches)."""
+    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", MASTER_REF],
+                         capture_output=True, text=True, check=True)
+    return out.stdout.strip()
+
+
+def master_src() -> Path:
+    """src/ dir of main-tip worktree (engine/runner/config/map always from here)."""
+    return ensure_worktree(master_sha()) / "src"
+
+
+def ensure_master_engine() -> Path:
+    """Prepend main-tip src to sys.path (call BEFORE importing engine/runner
+    in any game-playing path — guarantees tip-of-master rules even when the
+    workspace sits on a loop branch). Idempotent; lazy (no worktree on import,
+    only when playing). Returns main src."""
+    ms = str(master_src())
+    if ms not in sys.path:
+        sys.path.insert(0, ms)
+    return Path(ms)
+
+
+def master_map(max_turns: int = 10000) -> dict:
+    """Tip-of-master canonical map+rules (not a possibly-stale recording)."""
+    import json as _json
+    d = _json.loads((master_src().parents[0] / "maps" / "empty.json").read_text())
+    d["max_turns"] = max_turns
+    return d
+
+
+def bot_rundir(sha: str) -> Path:
+    """Cached per-sha brain-only dir (/tmp/botrun_<sha>/<name>/, no engine).
+    Lets bot subprocesses import HEAD engine (via PYTHONPATH order) while
+    running worktree brains — only brains time-travel, never rules."""
+    import shutil as _sh
+    d = Path(f"/tmp/botrun_{sha}")
+    marker = d / ".ok"
+    if not marker.exists():
+        _sh.rmtree(d, ignore_errors=True)
+        src = ensure_worktree(sha) / "src" / "bots"
+        for pkg in src.iterdir():
+            if not pkg.is_dir():
+                continue
+            dest = d / pkg.name
+            _sh.copytree(pkg, dest, ignore=_sh.ignore_patterns("__pycache__"))
+        marker.touch()
+    return d
 
 
 def sha_of(commit: str) -> str:
@@ -50,12 +98,17 @@ def ensure_worktree(sha: str) -> Path:
 
 def bot_cmd(name: str, sha: str) -> str:
     # ALWAYS a clean worktree (dirty workspace never plays logged games —
-    # the name-sha ID guarantees the exact code).
+    # the name-sha ID guarantees the exact code). Brain runs from a brain-
+    # ONLY temp dir (/tmp/botrun_<sha>) with HEAD engine FIRST on PYTHONPATH
+    # (tip-of-master rules: bot reads values via stdin config + HEAD engine
+    # types; only the brain time-travels, never engine/runner).
     if name == "HEAD":
         raise ValueError("bad spec (need name-commit)")
-    d = ensure_worktree(sha)
+    ensure_worktree(sha)  # validates sha (brain source of truth)
+    rd = bot_rundir(sha)
+    ms = ensure_master_engine()
     py = sys.executable
-    return f"cd {d} && PYTHONPATH={d}/src {py} -m bots.{name}"
+    return f"PYTHONPATH={rd}:{ms} {py} -m bots.{name}"
 
 
 def load_elo(path: Path) -> dict:
@@ -113,10 +166,13 @@ def main(argv=None) -> int:
         field[f] = key
         cmds[f] = bot_cmd(name, sha)
     elo = load_elo(Path(args.elo))
-    cfg = {k: v for k, v in
-           json.loads(open("recordings/empty_10000.jsonl").readline().strip()).items()
-           if k != "type"}
-    cfg = GameConfig.from_dict(cfg)
+    # Tip-of-master engine/runner/map (methodology): in-process game code
+    # resolves to main-tip worktree, never workspace/branch. Deferred imports
+    # (top-level engine imports were removed so update-only paths stay light).
+    ensure_master_engine()
+    from engine.config import GameConfig  # noqa: E402 (main-tip, see above)
+    from runner.main import run_game  # noqa: E402
+    cfg = GameConfig.from_dict(master_map())
     t0 = time.perf_counter()
     games_log = ROOT / "benchmarks" / "elo_games.jsonl"
     for i in range(args.games):
