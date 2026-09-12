@@ -130,6 +130,12 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         if arrival_t > turns_left:
             continue
         w = min(printable, arrival_t) * foe_print_factor(state, u.faction)
+        # Savings override (reactive-muster): sterile towns hoard unspent pop
+        # (like we do); raiding triggers spending. Printable >= 5 loads a
+        # pack on raid regardless of print history — assume full muster
+        # (else donations into savings). Thin-sterile can't muster (safe).
+        if printable >= 5.0:
+            w = max(w, min(printable, arrival_t))
         # Buzzer (r50 lesson: t9000+ silence — needs exceed everyone).
         # Retaliation time has run out: no future to defend, so W -> 0
         # explicitly (arrival doesn't collapse on its own). Bare S+1+dist.

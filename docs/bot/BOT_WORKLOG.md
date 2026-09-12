@@ -2574,3 +2574,11 @@ selects targets; nothing gates MARCHES on confirmed overmatch (fresh intel
 2v1+). NEXT (march discipline, queued): march iff overmatch-confirmed,
 else hold/build (don't donate). Falsifiable: death-rate halves, wins hold.
 Parked (main keeps 42.2).
+
+### Aggressive viable-takes v2 (vulture + demote + savings) (2026-09-12 22:03 BST)
+Consolidated take-doctrine (all ranking, never gating): vulture x3
+(weakened-viable jumps queue) + hostage x0.3 (fallback, not starvation) +
+savings override (sterile-rich assumes reactive muster). 5 unit tests.
+Rescued via cherry-pick across branch sprawl (use full loop/ names!).
+Predicts: viable takes first (snowball), hostages fallback (no starvation),
+no donations into savings. Bar: aggressive gate (ord>=47.2 AND takes).
