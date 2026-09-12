@@ -2243,3 +2243,16 @@ clear-wins, margin-tie, low/unknown/full clock paths). Clock-gated
 static-foe bias must not flip near-ties). First live search: founding site
 (1-2x/game, peaceful, high-value, bank-always-full early). Suites green,
 liveness clean. Bar 58 (new max); floor: match 57.2 (mechanism + fresh).
+
+### M2 verdict: FAIL, wiring reverted (M1 infra stands) (2026-09-12)
+Rated 15g -> 49.8; h2h vs behavior-identical sibling 6-4 (weak +, with
+mirror-pair wash: slot-alternation + similar complements replays same game
+with swapped scores (g2/g3, g6/g7 -> 1-1 wash); future h2hs need DIVERSE
+complement sets per half). Scratch: search fires 1-2x/game, usually keeps
+default (margin) — near-parent behavior + overhead. Sibling rates 42.8 vs
+parent 57.2 SAME behavior -> 15g ratings underpowered under chaos (field
+variance >> openskill sigma; small edges need 30g+ or h2h). Wiring cut
+(8ms founding searches = clock risk under load for ~neutral benefit);
+M1 stepper/prune/tests + rank/candidates modules KEPT (tested, zero
+behavior risk, M3 fuel). Site-search direction closed; tactical search
+(bigger deltas) is the track's remaining hope.
