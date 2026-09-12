@@ -3,13 +3,13 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
+from .core import BotForecast, BotState, DemandParams, bot_main, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, war_print_need, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
     """Thin cushion (fights): floor only + pending guard. Forward towns
     must print (raid logistics) — no distance rule, no peak cap."""
-    from .common import train_floor
+    from .core import train_floor
     return town.population >= train_floor(state, state.config)
 
 

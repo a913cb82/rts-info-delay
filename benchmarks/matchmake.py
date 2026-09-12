@@ -30,30 +30,50 @@ def all_commits() -> list[str]:
 
 
 def bots_at(commit: str) -> list[str]:
+    """Personalities at a commit: package dirs (src/bots/<name>/) plus
+    legacy flat modules (src/bots/<name>.py)."""
     out = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "-r",
                           "--name-only", commit, "--", "src/bots/"],
                          capture_output=True, text=True).stdout
     names = set()
     for line in out.splitlines():
-        if line.endswith(".py"):
-            n = line.split("/")[-1][:-3]
+        if not line.endswith(".py"):
+            continue
+        parts = line.split("/")
+        if len(parts) >= 4:  # src/bots/<pkg>/<file>.py
+            names.add(parts[2])
+        else:
+            n = parts[-1][:-3]
             if n not in ("common", "stub", "__init__"):
                 names.add(n)
     return sorted(names)
 
 
 def brain_hash(commit: str, bot: str) -> str:
-    """Content hash of the bot's brain (bot file + common + engine).
-    Identical brains across commits = one candidate (first commit kept)."""
-    # Brain = bot file + shared common (engine is the referee; bot
-    # decisions come from bots/. Bot file + common hash).
+    """Content hash of the bot's brain.
+
+    Package layout (refactor): a personality lives in src/bots/<bot>/
+    and its brain = EVERY file in that directory (brain.py + its own
+    core.py). A change to one personality's core can no longer re-hash
+    another's brain. Legacy flat commit: bot file + common.py."""
+    import hashlib
     out = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "-r", commit,
                           "--", "src/bots/"],
                          capture_output=True, text=True).stdout
-    blobs = sorted(l.split()[2] for l in out.splitlines()
-                   if l.strip() and (l.split(None, 3)[3].endswith(f"/{bot}.py")
-                                     or l.split(None, 3)[3].endswith("/common.py")))
-    import hashlib
+    pkg = []
+    flat = []
+    for l in out.splitlines():
+        if not l.strip():
+            continue
+        parts = l.split(None, 3)
+        if len(parts) < 4:
+            continue
+        path = parts[3]
+        if path.startswith(f"src/bots/{bot}/"):
+            pkg.append(parts[2])
+        elif path.endswith(f"/{bot}.py") or path.endswith("/common.py"):
+            flat.append(parts[2])
+    blobs = sorted(pkg) if pkg else sorted(flat)
     return hashlib.sha1("".join(blobs).encode()).hexdigest()[:10]
 
 

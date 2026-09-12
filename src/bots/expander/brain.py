@@ -3,7 +3,7 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .common import home_count, BotState, DemandParams, bot_main, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
+from .core import home_count, BotState, DemandParams, bot_main, coverage_orders, buzzer_active, demand_trains, drive_scout, drop_dead_notes, expansion_demand, recall_deficit, find_build_site, en_route, hold_defenders, inbound_eta, inbound_force, jit_ready, maybe_assign_scout, note_wave_watch, probe_ok, order_move, order_march_exact, dispatch_settler, raid_target, reinforce_orders, should_hold_home, site_pays, strike_target, stay_behind_hold, tip_safe, respin_tip, maybe_schedule_scout, pack_print
 
 
 def _can_train_expander(state: BotState, town) -> bool:
@@ -12,7 +12,7 @@ def _can_train_expander(state: BotState, town) -> bool:
     down to ~1500 is what gets it killed — a rich capital converts a
     raider for free, a poor one dies). Once colonies exist, the capital
     only prints above 6000; colonies carry the sprawl (expendable)."""
-    from .common import train_floor
+    from .core import train_floor
     floor = train_floor(state, state.config)
     cap = state.world.faction_capital(state.faction)
     if cap is not None and town.id == cap.id and len(state.own_towns()) > 1:
