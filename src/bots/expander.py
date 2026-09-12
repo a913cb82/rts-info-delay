@@ -28,11 +28,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # impatient expansion (payback x0.3, horizon 100, parallel, rates
     # overridden — sprawl accepts -EV for slots/print; race-sites filed).
     out.extend(demand_trains(state, config, _can_train_expander, DemandParams(
-        # Sprawl cadence (trace: floor 1500+1000 meant the first
-        # settler waited for pop 2500 @t1632; 200 -> gate 1700
-        # @~t1235, +400t of compounding per colony; 200 pop buffer
-        # over the death line covers mail lag).
-        depth_extra=200.0, raid_margin=300.0, payback_mult=0.3,
+        # Sprawl cadence: keep the tuned floor (1500+1000: a settler
+        # leaves >=1500, survivable vs one raider — the 200 variant
+        # created a vulnerable 700-window and died 4/6 games).
+        depth_extra=1000.0, raid_margin=300.0, payback_mult=0.3,
         probe_armies=1, void_horizon=100, rates=False, serial=False)))
     # Standing guard (era-expander weakness, autopsy-verified: a single
     # raider beheads a naked capital while armies settle — pro's army 2
@@ -164,6 +163,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
         if site is not None and not site_pays(state, config, site[0], site[1]):
             site = None
+        # Crowding veto (24-town games: towns average 7.6k while a spaced
+        # town reaches ~95k — growth tax within 150km stalls the sprawl).
+        # No colony within 150km of ANY known town; a vetoed settler hops
+        # away from the nearest town to re-roll siting from new ground.
+        if site is not None:
+            _near = min(state.world.towns,
+                        key=lambda t: math.hypot(site[0] - t.x, site[1] - t.y))
+            _nd = math.hypot(site[0] - _near.x, site[1] - _near.y)
+            if _nd < 150.0:
+                _dx, _dy = site[0] - _near.x, site[1] - _near.y
+                _d = math.hypot(_dx, _dy) or 1.0
+                _hx = max(20.0, min(980.0, site[0] + _dx / _d * 120))
+                _hy = max(20.0, min(980.0, site[1] + _dy / _d * 120))
+                out.extend(order_move(state, config, p, _hx, _hy))
+                continue
         if site:
             sx, sy = site
             out.extend(dispatch_settler(state, config, p, sx, sy))
