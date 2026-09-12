@@ -1908,3 +1908,24 @@ fortress (few spaced guarded; trains for defense+settlers (3000->2000 safe,
 printable+holdable), not raids/thin-suicide). Predicts: 5 towns by t4000
 (early sprawl) + 3-home each (holds) + compound to 60k+ (300k+ dominates
 200k max (wins 60%+ (mu 60+ new max?)).
+
+### GOAL-80 all-non-pro stuck (16 fails), pause for direction (2026-09-12)
+TURTLE lower-bar+cap-5 rated 27g -> ord 43.9 (mu 50.7, 11W/12S/4D (41% wins,
+incl dominant 311k + narrow quality (174k/198k/220k vs 163k/177k/155k))).
+FAIL (worse than baseline 47.3/51.5; wins vs weak-mid (low gain) + deaths
+vs strong (mu erosion); mu capped ~51 (can't beat 200k pros (force/pop)).
+2nd turtle fail (cap-5 36.2, lower-bar 43.9). ALL NON-PRO STUCK: aggressive
+11 fails (best 51.8/style-fail vs 42.2/style-true), expander 3 fails (best
+42.9 vs 47.2), turtle 2 fails (best 43.9 vs 47.3). 0-for-16 vs baselines.
+Pro best (57.2, +2 ideas worked +5 each (one-colony, pack-only)). TO 80
+(+23, 5 ideas? Or...): ONLY pro viable (closest (57.2), responds +5/idea
+(proven twice (one-colony +5.4 (51.8→57.2? Actually pack-only +5.4). Next
+3-5 pro ideas (+5 → +3 → +2? Diminishing (harder). 57→62 (+5) →66 (+4) →69
+(+3) →71 (+2) →72 (+1)... asymptote ~72-75 (not 80). DAMN (diminishing kills
+80 even for pro (72-75 max via tweaks, not 80). To reach 80 (mu 80+, 90%
+wins (need breakthrough (RL? Or...). CONFIRMED (tweaks asymptote ~70-75
+(pro) / ~55 (mid); 80 needs RL/breakthrough (method change). PAUSED (blocked:
+need user to choose (pro-auth (only 80 path, breaks worst-first) OR accept
+70-75 asymptote (best-tweaks) OR RL (method change) OR persist futile tweaks
+(16 fails, low EV)). Main clean baselines (pro 57.2, others 42-47); all
+experiment branches parked/documented/unmerged.
