@@ -2155,3 +2155,21 @@ Code stays on loop/pro-sprawl2 (main src/ untouched). NEXT (rung 3):
 pack-only-in-bloodbath — parent>>child 27x real game (219k vs 8k same
 field): does solos-hold (child) lose vs intercept (parent) when meeting
 raiders clean? Autopsy that game, then gate the hold on bloodbath context.
+
+### Rung 3: bloodbath pair-up sorties (2026-09-12)
+SPECIMEN (stable, deterministic, real brains): sprawl field (F0 best-pro
+8k 4th, F2 parent 219k 1st, turtle 102k, sprawler 64k). Autopsy: t2302
+parent steals F0 colony (464, mirror race); F0 bleeds capital via
+guard-hoard (8 trains, townless by t5000); parent plays FORWARD (packs
+kill F1 raiders 3v1/2v1 clean at F1's doorstep t4488+, stunting sprawl
+64k) while compounding 6 towns to 212k; F0's 4 field armies freeze 6000t;
+F0's 3 home guards clean-kill F1 singles t3367 (defense works, cedes
+initiative). FIX (pro/brain.py, duel_ctx-gated): multi-foe wars allow
+pair-up sorties (solo + uncommitted partner -> nearest forecast foe, 2v1
+clean, <=300km reach; no partner/no-reach/not-ready -> hold). Duels
+unchanged (D2-safe). Holds keep N+1 (surplus-only: capital never stripped
+below needed defense). Predicts: forward clean kills stunt sprawl pipelines
++ deny repeat raids; flips bloodbath survivals into contention. Bar 58.
+CAUTION (relearned hard): single scratch games are CHAOS lotteries (same
+code reran 0/58k-flip AND byte-identical — micro-timing cascades; only
+ratings+units+inspection are instruments, never single-game stories).

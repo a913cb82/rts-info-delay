@@ -111,6 +111,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # Far unknowns hold for the pack (no 600km donations into printers).
     probe_armed = pack_building and sel[2] == 0
     probe_sent = False
+    sortie_used: set[int] = set()  # rung 3: pair-up sortie partners, per turn
     probe_reach = 6.0 * max(1.0, config.army_speed)
     probe_tgt = sel[0] if probe_armed else None
     for p in state.own_armies():
@@ -175,12 +176,40 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                     continue  # solo vs peer with empty field: wait for pack
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
-            # Pack-only interceptions (D2 fix): never march a lone army
-            # to meet a known foe army — 1v1 mutuals waste 1000 pop AND
-            # strip the capital naked for the single-raider take. Solos
-            # hold (garrison); field meetings are 2v1+ via the raid pack
-            # (sel branch) or not at all. (Foe scouts roam free — accepted;
-            # killing one costs the guard that the pack then needs.)
+            # Pack-only holds in DUELS (D2 fix preserved): never march a lone
+            # army to meet a known foe army — 1v1 mutuals waste 1000 pop AND
+            # strip the capital naked for the single-raider take. Solos hold.
+            # Bloodbath pair-up sorties (rung 3): in multi-foe wars HOLDING
+            # cedes the field (sprawlers print through it: parent bled F1's
+            # pipeline 3v1/2v1 forward while child sat home, 219k-vs-8k).
+            # A solo with an uncommitted partner sorties to the nearest
+            # forecast foe (2v1 clean, bounded reach); a solo WITHOUT a
+            # partner still holds (no 1v1 donations, ever).
+            if duel_ctx:
+                continue
+            partner = None
+            for q in state.own_armies():
+                if q.id == p.id or q.id in sortie_used:
+                    continue
+                if state.army_has_target(q.id) or q.id in held:
+                    continue
+                partner = q
+                break
+            if partner is None:
+                continue
+            fc = BotForecast(state, config)
+            forecast = [(fc.forecast_army_pos(e), e) for e in enemy_armies]
+            (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
+            if math.hypot(fx - p.x, fy - p.y) > 6.0 * max(1.0, config.army_speed):
+                continue  # too far: hold (no far donations)
+            mv = order_move(state, config, p, fx, fy)
+            mv2 = order_move(state, config, partner, fx, fy)
+            if not mv or not mv2:
+                continue  # either can't go: hold (no solo)
+            out.extend(mv)
+            out.extend(mv2)
+            sortie_used.add(p.id)
+            sortie_used.add(partner.id)
             continue
         else:
             # G2: settle on demand only (same gate as trains: void merit
