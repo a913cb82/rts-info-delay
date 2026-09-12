@@ -1840,3 +1840,19 @@ F0 wins 122k as compounder; F1 positional death (main F1 dies identically);
 F0 3 towns = main F0 3 towns (colony+take, not sprawl). Invariants hold
 as well as incumbent (the style reference). No crashes/timeouts in 16g.
 Suites green, liveness clean. MERGED to main.
+
+### GOAL-100, ceiling iter 3: pro grinder mobilization (2026-09-12)
+TARGET: attrition bleed (the 100-minus-57 gap). WATCH (canonical F1):
+122 prints at capital, 111 died, capital fell anyway to weak F3 (24k).
+NOT colony-bleed (122/125 spawns at capital), NOT solo-suicides
+(pack-only stopped those) — it's TRICKLE-FEED: 1-2 home vs 2-3 raiders
+= mutuals, repeated 111x vs an 11-town foe that outproduces 1 town.
+A 50k capital CAN hold (5 home vs 3 = clean kill, 0 losses, repeat) but
+it trickled (1-2 home, mutuals) instead of massing. ROOT: muster prints
+1/turn reactively and feeds waves piecemeal; no escalation on first blood.
+IDEA (1, pro-congruent): mobilize on home blood — first own home death
+=> (i) print every turn at bloodied town (prioritize muster), (ii) recall
+ALL free field armies home, (iii) hold all home (veto outbound). Mass to
+5+, clean-kill waves (0 losses), break the raid, demobilize after 50t
+quiet. Predicts: meat-grinder losses collapse (111 -> single digits),
+big capitals hold vs sustained weak raids, compounding continues.

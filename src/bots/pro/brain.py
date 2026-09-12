@@ -3,7 +3,9 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .core import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, should_hold_home
+from .core import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drop_dead_notes, expansion_demand, hold_defenders, home_count, inbound_force, mobilized, note_home_blood, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, should_hold_home
+
+MOB_HOME = 5  # mobilized mass target (clean-kill vs 3-4 waves, 0 losses)
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -55,6 +57,22 @@ def _one_colony(state: BotState, config: GameConfig) -> bool:
 
 def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
+    # Mobilization prints FIRST (before colony/void/demand): a bloodied
+    # town masses to MOB_HOME via print-every-turn, not trickle-feed.
+    # Affordable-above-floor only (don't gut to mass); bare last-stand
+    # still bypasses via demand_trains below.
+    floor = config.army_cost + config.death_threshold
+    for t in state.own_towns():
+        if not mobilized(state, t):
+            continue
+        if t.id in state._pending_trains and state.turn <= state._pending_trains[t.id]:
+            continue
+        if home_count(state, t) >= MOB_HOME:
+            continue
+        if can_train_standard(state, t) and t.population - config.army_cost >= floor - 1e-9:
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
+            return out
     # One-colony settler FIRST (must fire in void too — the whole
     # compounder game is played without contact; the logistic math does
     # not care, and the old never-train-in-void rule gated it off).
@@ -99,6 +117,19 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # growing pack.
     free_n = sum(1 for a in state.own_armies()
                  if not state.army_has_target(a.id) and a.id not in held)
+    # Grinder mobilization: home blood recently and below mass -> ALL
+    # free field armies recall home and NOTHING marches out (packs,
+    # solos, settlers all hold) until MOB_HOME or 50t quiet. Massed
+    # clean-kills (0 losses) break sustained weak raids; trickle-feed
+    # (1-2 home, mutuals) is what bled 122 defenders for 0 saves.
+    mob_towns = [t for t in state.own_towns() if mobilized(state, t)]
+    # Mass the weakest bloodied town (not the max — a safe colony's
+    # garrison must not mask the capital's deficit); recalls go THERE.
+    mob_target = min(mob_towns, key=lambda t: home_count(state, t),
+                     default=None)
+    mob_need = (MOB_HOME - home_count(state, mob_target)) \
+        if mob_target is not None else 0
+    mob_hold = bool(mob_towns)
     pack_building = sel is not None and sel[1] > free_n
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # the first NEARBY free army (recon by fire — bounded risk, gains
@@ -125,6 +156,15 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
                 continue
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
+            continue
+        # Mobilization recall: free fielders mass to the bloodied town.
+        if mob_need > 0 and mob_target is not None and p.id not in held:
+            if math.hypot(p.x - mob_target.x, p.y - mob_target.y) > 20.0:
+                out.extend(order_move(state, config, p, mob_target.x, mob_target.y))
+                mob_need -= 1
+                continue
+        # Mobilization hold: nothing marches out while bloodied.
+        if mob_hold and p.id not in held:
             continue
         if pack_building:
             if not probe_armed or probe_sent or probe_tgt is None or \
@@ -240,6 +280,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if state.should_yield():
         return out
     drop_dead_notes(state)  # unstrand armies whose orders died in flight
+    note_home_blood(state)  # grinder signal (once per decide, both stages use it)
     # P4: evac (turtle doctrine) — hopeless + 2x cost: fly the commander
     # out to coords away from the threat. Covers naked-home 3-pack marches.
     cap = state.world.faction_capital(state.faction)

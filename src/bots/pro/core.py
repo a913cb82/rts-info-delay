@@ -140,6 +140,8 @@ class BotState:
         self._trails: dict = {}  # army_id -> deque[(turn, x, y)] (velocity)
         self._wave_ids: set = set()
         self._wave_hold_until: int = -1
+        self._home_map: dict = {}  # army_id -> town_id (home at last decide)
+        self._home_blood: dict = {}  # town_id -> turn of last home death
         self._foe_first_seen: dict[int, int] = {}  # faction -> turn first observed
         self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
@@ -179,6 +181,8 @@ class BotState:
         self._last_seen = {}
         self._trails = {}
         self._wave_ids = set()
+        self._home_map = {}
+        self._home_blood = {}
         self._foe_first_seen = {}
         self._foe_prints = {}
         self._scout_id = None
@@ -1038,6 +1042,37 @@ def inbound_eta(state: "BotState", config: "GameConfig",
     Returns {town_id: min_eta} for towns with eta <= max_eta."""
     return {tid: eta for tid, (eta, _) in
             inbound_force(state, config, max_eta).items()}
+
+
+def note_home_blood(state: "BotState") -> dict:
+    """Home-blood tracker: own armies that vanished (not via noted BUILD)
+    while home (within 20 of an own town) died defending — the grinder
+    signal. Call once per decide; returns {town_id: turn} of fresh blood.
+    Mobilization (brain) masses on this, instead of trickle-feeding."""
+    import math as _math
+    cur_map: dict = {}
+    for a in state.own_armies():
+        for t in state.own_towns():
+            if _math.hypot(a.x - t.x, a.y - t.y) <= 20.0:
+                cur_map[a.id] = t.id
+                break
+    fresh: dict = {}
+    if state._home_map:
+        gone = (set(state._home_map) - set(cur_map)
+                - set(state._pending_builds))
+        for aid in gone:
+            tid = state._home_map[aid]
+            state._home_blood[tid] = state.turn
+            fresh[tid] = state.turn
+    state._home_map = cur_map
+    return fresh
+
+
+def mobilized(state: "BotState", town, window: float = 50.0) -> bool:
+    """Grinder mobilization: home blood at this town within `window`
+    turns. While mobilized the brain masses (print+recall+hold) instead
+    of trickling single defenders into sustained waves."""
+    return state.turn - state._home_blood.get(town.id, -10 ** 9) < window
 
 
 def note_wave_watch(state: "BotState") -> bool:
