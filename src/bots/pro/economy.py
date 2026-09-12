@@ -91,11 +91,12 @@ def demand_trains(state: "BotState", config, can_train,
             want = True
         if expand:
             want = True
-        # Buzzer strip-mine (free force): towns >=60k have ~zero/negative
-        # marginal growth (logistic peak) — mustering to 60k costs nothing
-        # (score-neutral now: 1000->1000) and fields take-snowball force
-        # for the endgame (900+ turns). Growers (<60k) keep compounding.
-        if buzzer_active(state, config) and t.population >= 60000:
+        # Buzzer strip-mine (leveraged force): towns >=40k muster toward
+        # 40k (more force earlier, longer snowball). Costs growth below the
+        # peak (marginal positive at 40-60k: ~24/turn) but force takes
+        # snowball bigger (300k+ wins vs 240k spikes outweigh foregone
+        # growth when takes land; donations when they don't — leveraged).
+        if buzzer_active(state, config) and t.population >= 40000:
             want = True
         if len(state.own_armies()) < probe_armies:
             want = True

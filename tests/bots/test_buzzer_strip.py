@@ -24,7 +24,7 @@ def _feed(b, turn, towns=(), armies=()):
 
 def test_strip_mine_fires_in_buzzer():
     b = _bot()
-    _feed(b, 9500, towns=[(1, 500, 500, 0, 70000, True),
+    _feed(b, 9500, towns=[(1, 500, 500, 0, 50000, True),
                          (2, 900, 900, 1, 500, False)])
     out = demand_trains(b, CFG, can_train_standard)
     assert any(o == "TRAIN 1" for o in out), out
@@ -32,7 +32,7 @@ def test_strip_mine_fires_in_buzzer():
 
 def test_no_strip_before_buzzer():
     b = _bot()
-    _feed(b, 5000, towns=[(1, 500, 500, 0, 70000, True),
+    _feed(b, 5000, towns=[(1, 500, 500, 0, 50000, True),
                          (2, 900, 900, 1, 500, False)])
     out = demand_trains(b, CFG, can_train_standard)
     assert not any(o == "TRAIN 1" for o in out), out
