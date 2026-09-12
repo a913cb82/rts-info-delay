@@ -2825,3 +2825,11 @@ bound (mirrors guard everything; no empty viable towns exist), NOT gate-
 bound — loosening gates fires at nothing. Takes happen naturally in
 diverse fields (mistake-prone foes leave targets; dedup descends there).
 No code change. Branch deleted.
+
+### Slot-luck exceeds edge (2026-09-12 23:13 BST)
+Self-play trace: all 5 colonies found ~t1640 (synchronized; timing is NOT
+the differentiator), yet identical brains diverge 190k-260k (70k slot-
+luck swing) — exceeding the buzzer-vs-twins brain edge (40k). Dominance
+needs edge > luck (attractor 330k+, beyond practical 300k). Doom-survival
+exists (evac) but fog-bound in F1 (evac-bar dead). 80 unreachable via
+edge (luck dominates); ceiling ~66-69 stands (6+ proofs).
