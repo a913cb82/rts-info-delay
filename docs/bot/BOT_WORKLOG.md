@@ -2731,3 +2731,10 @@ Take-all (baseline, hostages included) beats every selective/gated variant
 (42.2 > 34.6/26.9/21.1/17.3/15.2/11.1). Gates starve raiders; volume wins.
 Reverted (main keeps 42.2). Aggressive EXHAUSTED + baseline-optimal proven.
 Code parked on loop/aggr-rewrite.
+
+### Take-spacing ABANDONED pre-rating (2026-09-12 19:59 BST)
+Spaced takes are UNAFFORDABLE for poor (big need from far-muster W;
+pipeline never completes; starve) while near takes stunt (crowded).
+Affordability dominates spacing (take what you can afford!). Poverty-trap
+again (thin can't take-near (stunt) or far (unaffordable); rich takes both).
+No code change (reverted before commit). Expander stays parked (main 47.2).
