@@ -2221,3 +2221,16 @@ ARCH: scripted doctrine proposes 2-4 order-sets on choice-turns; search
 ranks by 100-turn rollout value (+margin for S3); duels keep scripted holds.
 NEXT: M1 fast stepper (10us/turn) in src/bots/pro/search/; M2 choice-turn
 hooks; M3 fog worlds; M4 rating gate (bar 58+, style holds).
+
+### Search M1 done: fast stepper (branch loop/pro-search1, unmerged) (2026-09-12)
+src/bots/pro/search/ (stepper.py + __init__; stdlib-only, no numpy/numba —
+bot cold-start stays light) + tests/bots/test_search_stepper.py (10 pass:
+6 battle cases + logistic/crowding/prune/score). Matrices + prune:
+32us/turn small-N (3x spike), 611us bloodbath-N (21T/39A; prune no help
+when dense — correct). BUDGET (revised): byo-yomi has a 100ms BANK
+(refill 10ms/turn; bots bank +7-9ms on quiet turns) — bursts affordable:
+60-100-turn candidates (2-60ms) every ~10-15 turns from bank + choice-turn
+sparsity; horizon adapts (60 bloodbath / 100 quiet); clock-aware depth in
+M2 (budget_ms input gates spend). No numba needed. NO behavior change
+(brain untouched — new files only; rides to M4, no twin-seed churn).
+NEXT M2: choice-turn detection + candidate enumeration + clock-aware rank.
