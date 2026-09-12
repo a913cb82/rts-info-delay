@@ -1946,3 +1946,17 @@ engines) + guard-or-rich kicks in (thicker=>guarded=>holds). Redundancy
 (12 survive) + territory + growth (fed, not founded). Still colonist
 (most 12 vs 2-3). Predicts: thin->mid via compounding (scores up 60k+),
 holds up (guarded), deaths down (redundant+held), ordinal 49+.
+
+### GOAL-80, active-worst (expander) 3: cap-15 + spacing-160 (2026-09-12)
+CAP-12 rated 8g -> ord 2.2 (7 deaths!). FAIL (worse; 12 < wipe-threshold,
+redundancy needs 15+ to survive raids; baseline 15-20 survives 81%).
+LESSON (refined): COUNT (15+ redundancy+territory) is load-bearing; don't
+cut it. To thicken WITHOUT cutting count: cap HIGHER (15, stop infinite
+20+ sprawl but keep redundancy) + SPACE WIDER (160km uncrowded room to
+compound 30k+; 120km crowds/stunts at 2-3k) + FEED (freed pop compounds
+existing thin->30k+ (automatic when stop founding) + guard-or-rich holds
+thick (automatic)). 15x30k=450k (beats pro 150k 3x) via parallel engines.
+IDEA (2 numbers on cap base): cap 12->15 + spacing 120->160. Predicts:
+15 spaced (survive raids (redundant) + hold territory) compound to 30k+
+(uncrowded, fed) to 300k+ (wins); guards hold thick (survival up); ordinal
+49+ (scores up (3rd not 4th) + wins up).

@@ -172,9 +172,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # freed pop compounds EXISTING (thin->mid 5k+, engines) + guard-or-
         # rich kicks in (thicker=>guarded=>holds). Redundancy (12 survive) +
         # territory + growth. Still colonist (most foundings 12 vs 2-3).
-        if len(state.own_towns()) < 12 and expansion_demand(state, config, DemandParams(
+        if len(state.own_towns()) < 15 and expansion_demand(state, config, DemandParams(
                 payback_mult=0.3, void_horizon=100, rates=False, serial=False)):
-            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
+            site = find_build_site(state, config, p.x, p.y, rmin=160, rmax=350, salt=11, who=p.id)
         if site is not None and not site_pays(state, config, site[0], site[1]):
             site = None
         if site:
