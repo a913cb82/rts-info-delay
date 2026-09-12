@@ -2030,3 +2030,26 @@ games (keepers exist vs weak-mid; takes land there) not canonical-brutal;
 (d) persist 12th (trash-taker for style? low EV for ordinal); (e) park
 aggressive (12 fails incl 6 prior), fix expander (46.7) next, return later.
 No 12th unilaterally (11 comprehensive fails cover the space).
+
+### GOAL-80, worst (aggressive): STUCK after 11, fork (2026-09-12)
+DETERRENCE rated 27g -> 51.8 (mu 58.0, beats 3-4 pro fields regularly).
+But TAKES-IN-WIN check (reran 132k-vs-4-pros win): 0 captures, 1 founding
+(won by founding+compounding 2 towns, NOT taking). All high-ordinal
+variants (war-chest 37.6, style 50.0, deterrence 51.8, range 38.7) win by
+HOLD+FOUND+COMPOUND (0 takes); true conquerors (takers) die (baseline
+42.2, 63% deaths). STYLE VERDICT: high-ordinal brains are colonist/
+compounder drift, NOT conqueror. DO NOT MERGE as aggressive (wrong
+archetype; corrupts classification).
+ROOT (structural): takes don't land vs mustering defense (packs donate:
+need grows during march via foe prints = ESCALATION; only non-mustering
+weak crack, and those are trash/hostages or rare). Instant packs via
+idle recall-reserve could beat escalation (untried, complex, 12th idea).
+Holding without takes = compounding (not conquering). So conqueror
+(take+hold+win vs good defense) appears CAPPED ~42; compounders reach 50+.
+11 ideas fail joint gate (ordinal>=46.7 AND style-takes): veto, garrison,
+evac, war-chest, blitz, package, mass, style, overwhelm, deterrence,
+range. FORK (user decides): (persist 12th recall-reserve? low EV, 0-for-11)
+| (park aggressive@42.2-baseline, fix expander 46.7 next, return later)
+| (redirect pro-80 directly, fastest to goal). No unilateral move (process
+owned by user; 2 prior corrections respected). Main stays baseline 42.2
+(all experiment branches unmerged, parked, documented).
