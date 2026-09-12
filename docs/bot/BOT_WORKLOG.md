@@ -2089,3 +2089,54 @@ overgrowth) — the live "expander beats pro" specimen (34/67 stat); fork it.
 Also: solitaire-attractor 194042 (uncontested pro-family converges EXACT —
 par score; games decided by interaction deltas); F0/F1 slot mirror (same
 numbers swapped with slots).
+
+### Rung 2: refound-dispatch (lost-colony deadlock breaker) (2026-09-12)
+SPECIMEN: sprawl-repro (best-pro F0 DIES 0; expander-1040c1b sprawls 1->24
+towns, wins 76k bloodbath; parent 6k, aggressive 0). Autopsy: t2302 PARENT
+steals F0's fresh colony (464); F0 sits 1-town 7000 turns (pop flat ~2000:
+6 guard prints eat all growth; 6-7 idle heirlooms); t6000-6500 bloodbath
+(F2/F4 die, F0 capital 2003->661 holds); t9328 F1 snowball (22 towns)
+cracks 6 guards + 5044 capital. ROOT: deadlock (threat->guards->pop<2500
+->_one_colony never re-fires->1-town->death). FIX (_one_colony_refound,
+march-gate only): 1 town + turn>=2500 + capital>=2000 + >=2 armies (one
+stays) + >=4000t left + slot free -> reassign IDLE guard as settler (no
+print, no thinning; print gate keeps 2500). Predicts (rematch): F0 refounds
+~t3000, 2-town compound, survives bloodbath, contends (flips 0 to 100k+).
+Style: compounder (rebuilds the single colony, still <=1 well-spaced).
+
+### Rung 2b: dispatch unfreeze (the true mechanism) (2026-09-12)
+REFOUND ALONE BYTE-IDENTICAL (0 again): predicate fires (t3398+) but no
+march. Chain traced: march gate reached, site found (219,866), but
+order_move->ready_to_dispatch FALSE every turn. ROOT BUG (structural,
+all common-core personalities): trails refresh EVERY turn (2-event engine
+reports all entities every turn), so a visible stationary's trail age is
+ALWAYS 0 < 2xdelay -> the quiescence gate (meant to block stale-intel dead
+letters) freezes EVERY continuously-visible army: heirloom guards, pack
+re-tasks, refounds, scout re-hops. Late-game agency silently dies (packs
+are single-use; guards irrecoverable; compounding meta as adaptation!).
+FIX (pro/scout.py): stationary-converged (fresh trail + <=5km displacement
+= belief==truth) dispatches. Marching-fresh still waits (belief lags);
+stale keeps status quo (no D1 change). Rung = unfreeze + refound-direction
+(neither works alone; one mechanism). Predicts (rematch): F0 refounds
+~t3400, 2-town compound, survives; heirlooms re-task generally.
+
+### bot_cmd mirror-lottery catastrophe + excision (2026-09-12)
+CRITICAL (self-found): bot_rundir laid rd/<pkg>/ (not rd/bots/<pkg>/), so
+`bots.<name>` fell through to main-tip src — EVERY bot_cmd game since the
+methodology commit ran main-tip mirrors in all slots. VOID: rung-1 15g +
+h2h 10g (25 games; pro-7970559 42.1 is position-lottery fiction; h2h 5-5
+likewise; g3/g6/g9 triple = same mirrors deterministically, NOT twins;
+194042-attractor + slot-mirror "discoveries" retracted as mirror artifacts;
+twin-shadow diagnosis downgraded: names appeared but twin brains never ran
+— pool() oldest-tie-break + exclusions kept as harmless hygiene).
+EXCISED idx1672-1696 (contiguous 25) + rebuilt elos by replay (4bcc7de base
++ 4 kept games; backups /tmp/elo_games.bak /tmp/elos.bak). KEPT idx1697+
+(4 games logged 14:06-14:10 by an out-of-band writer — concurrent session
+active on this box (load 12, fit_growth 8-worker job, 2 old pi procs);
+treated as valid (real commit names); my elos-rebuild may race their
+end-of-run save — procedure recorded here for redo). FIXED bot_rundir
+(rd/bots/<pkg>/ + legacy flat + .ok2 marker) + bot_cmd resolve self-test
+(file assert; resolve-verified per-sha brains + main-tip engine).
+SURVIVES (analytical, code+unit proven): dispatch-freeze mechanism +
+refound-deadlock analysis (game STORIES retracted as mirror lotteries).
+Rung-2 empirical basis reset: must re-run sprawl field with REAL brains.

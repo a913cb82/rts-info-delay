@@ -61,20 +61,32 @@ def master_map(max_turns: int = 10000) -> dict:
 
 
 def bot_rundir(sha: str) -> Path:
-    """Cached per-sha brain-only dir (/tmp/botrun_<sha>/<name>/, no engine).
+    """Cached per-sha brain-only dir (/tmp/botrun_<sha>/bots/<name>/).
     Lets bot subprocesses import HEAD engine (via PYTHONPATH order) while
-    running worktree brains — only brains time-travel, never rules."""
+    running worktree brains — only brains time-travel, never rules.
+    Layout MUST be rd/bots/<pkg>/ (so `bots.<name>` resolves under rd
+    BEFORE main-tip src — a flat rd/<pkg>/ silently runs main-tip brains
+    in every slot (mirror lottery; voided 25 games 2026-09-12). Legacy
+    flat commits (src/bots/<name>.py + common.py) map to rd/bots/ too."""
     import shutil as _sh
     d = Path(f"/tmp/botrun_{sha}")
-    marker = d / ".ok"
+    marker = d / ".ok2"  # v2 layout (rd/bots/<pkg>/); v1 (.ok) was broken
     if not marker.exists():
         _sh.rmtree(d, ignore_errors=True)
         src = ensure_worktree(sha) / "src" / "bots"
-        for pkg in src.iterdir():
-            if not pkg.is_dir():
-                continue
-            dest = d / pkg.name
-            _sh.copytree(pkg, dest, ignore=_sh.ignore_patterns("__pycache__"))
+        bd = d / "bots"
+        bd.mkdir(parents=True)
+        (bd / "__init__.py").touch()
+        pls = [p for p in src.iterdir() if p.is_dir()]
+        if pls:
+            for pkg in pls:
+                _sh.copytree(pkg, bd / pkg.name,
+                             ignore=_sh.ignore_patterns("__pycache__"))
+        else:
+            # legacy flat layout: <name>.py + common.py straight under bots/
+            for f in src.iterdir():
+                if f.is_file() and f.suffix == ".py":
+                    _sh.copy2(f, bd / f.name)
         marker.touch()
     return d
 
@@ -99,13 +111,17 @@ def ensure_worktree(sha: str) -> Path:
 def bot_cmd(name: str, sha: str) -> str:
     # ALWAYS a clean worktree (dirty workspace never plays logged games —
     # the name-sha ID guarantees the exact code). Brain runs from a brain-
-    # ONLY temp dir (/tmp/botrun_<sha>) with HEAD engine FIRST on PYTHONPATH
-    # (tip-of-master rules: bot reads values via stdin config + HEAD engine
-    # types; only the brain time-travels, never engine/runner).
+    # ONLY temp dir (/tmp/botrun_<sha>/bots/<name>/) FIRST on PYTHONPATH,
+    # engine/runner resolve from main-tip src (only brains time-travel).
     if name == "HEAD":
         raise ValueError("bad spec (need name-commit)")
     ensure_worktree(sha)  # validates sha (brain source of truth)
     rd = bot_rundir(sha)
+    # Self-test (never silent mirrors again): the requested brain MUST
+    # resolve under rd (else `bots.<name>` falls through to main-tip).
+    if not ((rd / "bots" / name / "__init__.py").exists()
+            or (rd / "bots" / f"{name}.py").exists()):
+        raise FileNotFoundError(f"bot_cmd: {name}@{sha} missing under {rd}/bots/")
     ms = ensure_master_engine()
     py = sys.executable
     return f"PYTHONPATH={rd}:{ms} {py} -m bots.{name}"
