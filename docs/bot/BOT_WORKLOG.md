@@ -2760,3 +2760,13 @@ sigma shrink offset). Wins 35% (down from 40%+), deaths 20% (F1 twice).
 Fields all-pro mirrors (slot lotteries) + 240k+ spikes. VOLUME STALLS
 without mu gains (sigma shrink insufficient when mu flat). Capability wall
 stands (all directions mapped). Banked honest (100g, sigma ~1.3).
+
+### Spike autopsy: takes snowball, timing is everything (2026-09-12 20:41 BST)
+336k specimen (exact repro): F0 compounds quietly to 39k (SLOWER than mine
+67k!), then TRIPLE-TAKES t7026-57 (52k from collapsing F1/F4) + musters 24
+-> 5 towns compound to 312k. Mine: 0 takes + 0 muster -> capped 178k. Takes
+snowball (52k -> 150k+ growth) wins; pure compound caps. TIMING: takes must
+land t6000-8000 (3000t snowball); buzzer musters/takes t9000+ (1000t, small).
+NEXT (force-first packs, queued): print packs proactively t3000-5000 (force
+8+ ready BEFORE t7000 windows) vs reactively (no force when needed). Falsi-
+fiable: packs ready at t6000? takes land t7000+? snowball wins?
