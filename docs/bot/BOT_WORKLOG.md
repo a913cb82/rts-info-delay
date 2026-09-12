@@ -2723,3 +2723,9 @@ route (settlers die marching warzones: wasted + bled + 0s) worse than
 holding (12k-stall survives small). (Gate note: rewrite bar is simply best-
 ordinal-for-personality, not worst-first or tie-break bars.) Reverted (main
 keeps 47.3). Code parked on loop/turtle-rewrite.
+
+### Process fix (2026-09-12 19:55 BST)
+Selective-merges (`checkout branch -- benchmarks docs`) clobber uncommitted
+working-tree methodology fixes (lost skip-seen/ban once; restored + committed
+now). RULE: commit methodology to its branch BEFORE any selective-merge, and
+verify markers (`banned`, `bot_cmd`, `master_map`, `OLDEST`) after every merge.
