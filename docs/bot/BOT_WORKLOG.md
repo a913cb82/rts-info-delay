@@ -2140,3 +2140,15 @@ end-of-run save — procedure recorded here for redo). FIXED bot_rundir
 SURVIVES (analytical, code+unit proven): dispatch-freeze mechanism +
 refound-deadlock analysis (game STORIES retracted as mirror lotteries).
 Rung-2 empirical basis reset: must re-run sprawl field with REAL brains.
+
+### Plumbing fix verified + legacy-flat gap closed (2026-09-12)
+bot_rundir fixed (rd/bots/<pkg>/ + flat-always + __pycache__ guard) +
+bot_cmd resolve self-test. VERIFIED: per-sha brains resolve, engine
+main-tip. Legacy gap found by the self-test (flat commits have no pkg
+dirs; __pycache__ hijacked the branch) — fixed. True-behavior sprawl
+repro (REAL brains): best-pro 8k 4th (alive, not dead), parent 219k 1st,
+turtle 102k 2nd, sprawler 64k — "sprawl kills pro" VOID (was mirror
+lottery); new honest gap (parent>>child same field, 27x) is chaos-amplified
+single-game noise until rated. Old brains run clean on new engine (no
+crashes — no API quarantine needed). Suite green minus 4 load-flakes
+(documented deselects; box load 12 + foreign 8-worker job).
