@@ -2702,3 +2702,16 @@ Rated clean 15g -> ord 34.9 (mu 43.1): FAIL (bar 62+). Wins exist (194k/
 Nucleus enables takes (sel prices) but doesn't fix need-exactness (packs
 still donate) or timing (late smalls). Parked (main keeps buzzer 62.0).
 REWRITE AUTHORIZED (worse personalities, big rewrites from lessons).
+
+### Aggressive rewrite spec (2026-09-12 21:09 BST)
+ take-doctrine v2 parts, proven separately: vulture-select (weakened-viable
+ jumps queue; take engine proven 572k) + covered-march (packs keep 1 home;
+ force trades beat town-losses) + rich-timing (compound first, raid surplus;
+ untested) + savings-override (sterile-rich muster; untested in combo).
+ Failed parts EXCLUDED: floor-gate (starves), march-gate-hold (sit-die),
+ arrival-discount (variance), thin-packs (donate), parallel-split (donate).
+ARCH (clean decide flow): compound phase (tall, no raids till force 8+) ->
+ vulture scan (weakened-viable scan all foes) -> covered march (need-met +
+ 1 home stays) -> snowball (takes compound, force grows, repeat). Single
+ coherent doctrine (not stacked tweaks). Bar: aggressive gate (>=47.2 AND
+ takes occur).
