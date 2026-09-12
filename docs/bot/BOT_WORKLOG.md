@@ -2269,3 +2269,13 @@ re-tasks/refounds never dispatch) WITHOUT refound (which dispatched idle
 into warzones). Ablation suggested unfreeze >= refound-only (5-2 h2h).
 Ex-ante positive (re-tasked follow same doctrine gates; no extra donation
 vs fresh armies). Bar 55+ (beats all failed rungs, approaches parent).
+
+### Rung-2b verdict: PASS, merged (2026-09-12 15:27 BST)
+Unfreeze-alone rated clean 15g -> ord 57.3 (mu 65.0): PASS (bar 55+;
+ties best 57.2). Highlights: two 250k+ dominants (336k, 257k vs rung-2
+259k/241k), competitive 2nd/3rds vs 240k-pros (217k, 217k, 188k), one
+death (5th-0 vs three 228k+). Leak-fix confirmed live (heirlooms re-task;
+no regression). Merged to main (package-scoped scout.py + loop amendment;
+style untouched — plumbing, not doctrine). New max-ish (57.3) but NOT 80;
+ladder continues (next: raid-initiative gap? F1-mirror doctrine? M3?).
+NOTE (convention): all future worklog entries carry full datetime.
