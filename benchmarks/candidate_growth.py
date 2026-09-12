@@ -15,6 +15,8 @@ documented in the fit report:
                                                     (land competition)
                                                     (migration to big)
   K1 = exp(-(d/rho)^2), K2 = exp(-d/delta)
+  all pairwise terms are multiplied by a hard-bound window: exactly 0
+  for d >= 150 km, smoothstep taper over [120,150]
 
   net_i = g(P_i) + sum_j W(i,j);  P <- max(P + net, 0)
 
@@ -29,6 +31,13 @@ import math
 import numpy as np
 
 MIG_LIN, MIG_GRAV = 0, 1
+
+# Hard interaction bound (game requirement + engine efficiency): pairs
+# beyond DCUT contribute exactly zero; a smoothstep taper over
+# [TAPER, DCUT] keeps the decay C1 so there is no kink at the edge.
+DCUT = 150.0
+TAPER = 120.0
+_DCUT2, _TAPER2 = DCUT * DCUT, TAPER * TAPER
 try:
     import numba
 
@@ -50,9 +59,16 @@ try:
                 dx = X[i] - X[j]
                 dy = Y[i] - Y[j]
                 d2 = dx * dx + dy * dy
-                k1 = math.exp(-d2 / (rho * rho))
+                if d2 >= _DCUT2:
+                    continue
+                if d2 > _TAPER2:
+                    t = (d2 - _TAPER2) / (_DCUT2 - _TAPER2)
+                    w = 1.0 - t * t * (3.0 - 2.0 * t)
+                else:
+                    w = 1.0
+                k1 = w * math.exp(-d2 / (rho * rho))
                 sig = 1.0 / (1.0 + math.exp(-((P[j] - pi - th) / mm)))
-                k2 = math.exp(-math.sqrt(d2) / dl)
+                k2 = w * math.exp(-math.sqrt(d2) / dl)
                 if variant == MIG_LIN:
                     mj = mu * (pi - P[j]) * k2
                 else:
@@ -95,16 +111,16 @@ def _sig(x):
 
 
 FITTED = {
-    "a": 8.156406287e-05,
-    "b": 2.896659395e-10,
-    "c": 9.247444441e-15,
-    "alpha": 2.076470354e-05,
-    "theta": 614.1872942,
-    "m": 1229.833134,
-    "gamma": 4.411043393e-07,
-    "rho": 105.6864235,
-    "mu": 3.55202253e-09,
-    "delta": 12.02597789
+    "a": 8.2e-05,
+    "b": 1.3e-09,
+    "c": 1e-14,
+    "alpha": 1.8e-05,
+    "theta": 1000.0,
+    "m": 430.0,
+    "gamma": 1.4e-07,
+    "rho": 270.0,
+    "mu": 2.7e-09,
+    "delta": 17.0
 }
 FITTED_VARIANT = dict(variant=MIG_GRAV, theta0=True, share=True, mfix=30.0, bfixK=3e5, nogamma=True)
 
@@ -156,15 +172,22 @@ class FittedGrowth:
         return float(self._g(float(pop)))
 
     def _pair(self, Pi, Pj, d2):
+        if d2 >= _DCUT2:
+            return 0.0
         p = self.p
+        if d2 > _TAPER2:
+            t = (d2 - _TAPER2) / (_DCUT2 - _TAPER2)
+            w = 1.0 - t * t * (3.0 - 2.0 * t)
+        else:
+            w = 1.0
         th = 0.0 if self.theta0 else p["theta"]
         dl = p["rho"] if self.share else p["delta"]
         mm = self.mfix if self.mfix > 0.0 else p["m"]
         gg = 0.0 if self.nogamma else p["gamma"]
-        k1 = math.exp(-d2 / (p["rho"] * p["rho"]))
+        k1 = w * math.exp(-d2 / (p["rho"] * p["rho"]))
         access = p["alpha"] * Pi * _sig((Pj - Pi - th) / mm) * k1
         comp = gg * min(Pi, Pj) * k1
-        k2 = math.exp(-math.sqrt(d2) / dl)
+        k2 = w * math.exp(-math.sqrt(d2) / dl)
         mig = (p["mu"] * (Pi - Pj) * k2 if self.variant == MIG_LIN
                else p["mu"] * Pi * Pj * (Pi - Pj) / (Pi + Pj) * k2)
         return access - comp + mig
@@ -207,11 +230,16 @@ class FittedGrowth:
         dx = x[:, None] - x[None, :]
         dy = y[:, None] - y[None, :]
         d2 = dx * dx + dy * dy
-        k1 = np.exp(-d2 / (p["rho"] * p["rho"]))
+        w = np.ones_like(d2)
+        mid = (d2 > _TAPER2) & (d2 < _DCUT2)
+        t = (d2[mid] - _TAPER2) / (_DCUT2 - _TAPER2)
+        w[mid] = 1.0 - t * t * (3.0 - 2.0 * t)
+        w[d2 >= _DCUT2] = 0.0
+        k1 = w * np.exp(-d2 / (p["rho"] * p["rho"]))
         sig = 1.0 / (1.0 + np.exp(-((Pn[None, :] - Pn[:, None] - p["theta"]) / p["m"])))
         W = p["alpha"] * Pn[:, None] * sig * k1
         W -= p["gamma"] * np.minimum(Pn[:, None], Pn[None, :]) * k1
-        W += p["mu"] * (Pn[:, None] - Pn[None, :]) * np.exp(-np.sqrt(d2) / p["delta"])
+        W += p["mu"] * (Pn[:, None] - Pn[None, :]) * w * np.exp(-np.sqrt(d2) / p["delta"])
         np.fill_diagonal(W, 0.0)
         return (g + W.sum(axis=1)).tolist()
 
