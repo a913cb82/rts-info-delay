@@ -2389,3 +2389,15 @@ P2-hold released in siege (surplus marches via normal sel gates; held-set
 keeps N+1 home). Duel-quiet provably UNCHANGED (streak can't reach 300;
 holds/G-defense/pricing untouched). Predicts: persistent-threat blinds
 pressure instead of sitting (F0 t2600+); quiet games identical. Bar 56.7+.
+
+### Siege verdict: FAIL, mechanism mis-fires (2026-09-12 19:03 BST)
+Rated clean 15g -> ord 49.7 (mu 57.0): FAIL (bar 56.7+). Trace diagnosis:
+streak hits 361 by t2000 and never clears (ANY contact counts: staging
+colonies + trickle scouts = perpetual in 5-player games) -> siege nearly
+ALWAYS-ON after early game -> P2-holds released game-wide -> over-marching
+into mutuals (donation disease). Inert-when-quiet + harmful-when-dense:
+contact-persistence != war. REDESIGN QUEUED (engagement-streak): count
+FIGHTS (own deaths + foe disappearances near my towns), not presence;
+quiet loitering must not advance it. Falsifiable trace criteria: OFF in
+dense-quiet, ON in real wars. Code parked on loop/pro-siege (main keeps
+56.7 line).
