@@ -212,6 +212,34 @@ full ring, so a small market town can still have net importers and
 service capacity).
 
 
+
+### Multiple towns: 10k primary + 5k secondaries + villages
+
+One-turn rates for a 100k hierarchy (`benchmarks/sanity_agrarian_hier.py`):
+
+| layout | compact (all villages within ~50 km) | thin spread (villages 300, region ~92 km) |
+|---|---|---|
+| 1×9,600 town | **+0.1154** | +0.0954 |
+| + 2×2,400 secondaries | +0.1100 | +0.0989 |
+| + 4×2,400 secondaries | — | **+0.1010** |
+| + 2×4,800 secondaries | +0.1066 | +0.0993 |
+| 1×10,000 + 3×5,000 | +0.1000 | +0.0989 |
+| villages only | +0.0840 | +0.0840 |
+
+- In a **compact** countryside (every village within one town's 60 km
+  reach), secondary towns only duplicate services and add zero-growth
+  urban population: one ~10k town wins.
+- Secondary towns pay only when they **extend coverage** — thin, spread
+  settlements beyond the primary's reach. Then small secondaries just
+  above the non-farm threshold (~2,400; services start at
+  `Y_ring/sf ≈ 1,812`) beat 5k ones: 4×2,400 (+0.1010) beats
+  1×10,000+3×5,000 (+0.0989), because a 5k town's extra people add
+  little saturated service and dilute growth.
+- Rule: urban ≈ 10–15% of the population; one primary ≈10% of the
+  total, secondaries ~2,400 placed in the coverage gaps (each village
+  within 60 km of some town); never pay for 5k secondaries unless they
+  cover new countryside.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
