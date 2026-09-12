@@ -2809,3 +2809,11 @@ DOWN — oscillation around ord ~66-67 (mu ~70), NOT a climb. Volume EV ~0
 (mean-reversion); asymptote is HERE. To climb: survive spike-batches
 (hold attractor under fire; cut F1-deaths). NEXT RUNG (queued): preemption
 (deny-takes: kill spikers' engines before they spike; offense as defense).
+
+### Strip-endgame correction (2026-09-12 23:03 BST)
+Killed a rung pre-build (theory dead on inspection): strip-mine is
+buzzer_active-gated (endgame last-10% ONLY, not all-game) — there is NO
+mid-game muster tax; compound runs undisturbed. Raising 60k->80k would
+only cut endgame take-force (neutral-to-worse). Spike-batches = better-
+compound foes + F1-lottery (both structural). Oscillation accepted
+(66-67 asymptote); volume continues for dominance data (EV ~0 near-term).
