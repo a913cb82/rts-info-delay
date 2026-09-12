@@ -28,7 +28,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # impatient expansion (payback x0.3, horizon 100, parallel, rates
     # overridden — sprawl accepts -EV for slots/print; race-sites filed).
     out.extend(demand_trains(state, config, _can_train_expander, DemandParams(
-        depth_extra=1000.0, raid_margin=300.0, payback_mult=0.3,
+        # Sprawl cadence (trace: floor 1500+1000 meant the first
+        # settler waited for pop 2500 @t1632; 200 -> gate 1700
+        # @~t1235, +400t of compounding per colony; 200 pop buffer
+        # over the death line covers mail lag).
+        depth_extra=200.0, raid_margin=300.0, payback_mult=0.3,
         probe_armies=1, void_horizon=100, rates=False, serial=False)))
 
     hold_second = note_wave_watch(state)
