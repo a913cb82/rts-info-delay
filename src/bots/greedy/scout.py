@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from .intel import *  # noqa: F401,F403
+from .settle import expansion_demand  # noqa: F401
 import json
 import sys
 import time

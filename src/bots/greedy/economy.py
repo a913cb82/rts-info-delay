@@ -19,22 +19,6 @@ def towns_by_train_priority(state: "BotState", conservative: bool = False) -> li
     return cands
 
 
-
-def can_train_safely(town: Town, conservative: bool = False) -> bool:
-    if town.population < 1600:
-        return False
-    if conservative:
-        if town.population < 2600:
-            return False
-        if PEAK_LOW <= town.population <= PEAK_HIGH:
-            return False
-    if town.population > 90000:
-        return False
-    return True
-
-# ── Shared subprocess protocol ──
-
-
 def can_train_standard(state: "BotState", town) -> bool:
     """
 import json
@@ -56,7 +40,6 @@ Comfort gates (pro/greedy shared): 1500-90000, no double-order,
         if dist > 100 and town.population < 1500 + int(dist / 150 * 400):
             return False
     return True
-
 
 
 def demand_trains(state: "BotState", config, can_train,
@@ -126,7 +109,6 @@ def demand_trains(state: "BotState", config, can_train,
             state.note_train(t.id)
             deficit[0] = max(0, deficit[0] - 1)
     return out
-
 
 
 def hold_defenders(state: "BotState", config, force: dict) -> set:

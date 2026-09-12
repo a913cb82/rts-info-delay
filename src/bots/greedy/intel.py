@@ -10,6 +10,47 @@ import math
 from engine.config import GameConfig
 from engine.world import Town, Army, World
 
+def _batch_ids(events) -> tuple[set, set]:
+    """Town/army ids a batch names (growth bookkeeping scope)."""
+    towns: set = set()
+    armies: set = set()
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        eid = ev.get("id")
+        if eid is None:
+            continue
+        if ev.get("kind") == "town_update":
+            towns.add(eid)
+        elif ev.get("kind") == "army_update":
+            armies.add(eid)
+    return towns, armies
+
+
+def _hash(turn: int, i: int, salt: int = 0) -> int:
+    h = (turn * 73856093) ^ (i * 19349663) ^ (salt * 83492791)
+    return h & 0x7FFFFFFF
+
+
+PEAK_LOW = 35000
+PEAK_HIGH = 65000
+
+
+def can_train_safely(town: Town, conservative: bool = False) -> bool:
+    if town.population < 1600:
+        return False
+    if conservative:
+        if town.population < 2600:
+            return False
+        if PEAK_LOW <= town.population <= PEAK_HIGH:
+            return False
+    if town.population > 90000:
+        return False
+    return True
+
+# ── Shared subprocess protocol ──
+
+
 @dataclass
 class BotState:
     def __init__(self):

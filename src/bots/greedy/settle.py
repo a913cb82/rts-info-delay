@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from .intel import *  # noqa: F401,F403
+from .intel import _hash  # noqa: F401
 import json
 import sys
 import time
@@ -10,9 +11,6 @@ from engine.world import World, Town, Army
 import math
 from engine.config import GameConfig
 
-def _hash(turn: int, i: int, salt: int = 0) -> int:
-    h = (turn * 73856093) ^ (i * 19349663) ^ (salt * 83492791)
-    return h & 0x7FFFFFFF
 
 def _site(turn, i, cfg, own_towns, salt=0, rmin=80.0, rmax=250.0, around=None):
     th = cfg.map_size[0] if isinstance(cfg.map_size, (list, tuple)) else 1000
@@ -36,21 +34,6 @@ def _site(turn, i, cfg, own_towns, salt=0, rmin=80.0, rmax=250.0, around=None):
         min(th - SITE_MARGIN, max(SITE_MARGIN, c["y"])),
     )
 
-def _batch_ids(events) -> tuple[set, set]:
-    """Town/army ids a batch names (growth bookkeeping scope)."""
-    towns: set = set()
-    armies: set = set()
-    for ev in events:
-        if not isinstance(ev, dict):
-            continue
-        eid = ev.get("id")
-        if eid is None:
-            continue
-        if ev.get("kind") == "town_update":
-            towns.add(eid)
-        elif ev.get("kind") == "army_update":
-            armies.add(eid)
-    return towns, armies
 
 # ── Shared build-site finder ──
 
@@ -123,7 +106,6 @@ def void_note_busy(state: "BotState") -> bool:
     return False
 
 
-
 def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
                      void_horizon: int = 0) -> bool:
     """Settler pipeline demand. Void (no known foes): colonies ARE the
@@ -153,6 +135,5 @@ def expansion_demand(state: "BotState", config, payback_mult: float = 1.0,
     home_rate = max((state.get_growth(t.id) or 3.0) for t in state.own_towns()) \
         if state.own_towns() else 3.0
     return 0.75 > home_rate
-
 
 
