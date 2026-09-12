@@ -132,6 +132,43 @@ Method note: one turn (two with the market-service lag) gives the
 instantaneous rate and the equilibrium direction; long runs are only
 needed to quantify slow accumulation effects like town growth.
 
+
+### Best growth layout for 100,000 people
+
+Compactness and service coverage dominate. One-turn rates (top of
+`benchmarks/sanity_agrarian_layout.py`), hex lattice at 10 km spacing
+(cell 87 km² > ring 79, so no farmland overlap), villages within ~55 km
+of a market town (carting reach 60 km):
+
+| layout | villages | village pop | %/yr |
+|---|---|---|---|
+| 1×9,600 town + 120 villages | 120 | 753 | **+0.1161** |
+| 1×9,600 + 100 villages | 100 | 904 | +0.1154 |
+| 2×4,800 + 100 villages | 100 | 904 | +0.1152 |
+| 1×9,600 + 80 villages | 80 | 1,130 | +0.1146 |
+| 1×14,400 + 100 villages | 100 | 856 | +0.1136 |
+| 1×9,600 + 60 villages | 60 | 1,507 | +0.1132 |
+| villages only | 56 | 1,786 | +0.0840 |
+
+Rules that fall out:
+
+- **~10% urban**: one market town of ~10k (or two of ~5k) per 100k
+  people; this is the smallest urban fraction that saturates the
+  market-service premium (the town has ~7,800 non-farm people).
+- **Villages of 700–1,200**, never above ~1,800 — the farm-labour cap;
+  beyond it a settlement becomes land-limited and its per-capita growth
+  falls (it then also has its own non-farm people, which lets dense big
+  villages serve each other: a 48×2,100 lattice grows at ~0.088%/yr).
+- **10 km minimum spacing** (ring packing) and **≤60 km to a market
+  town**. The 100k compact layout spans a ~50 km radius; spreading the
+  same people thinly (333×300 over ~95 km) drops growth to ~0.09–0.10%
+  even with several towns, because distant villages lose services and
+  trade.
+- **Scale the town lattice, not the town size**: one market town per
+  ~50–60 km radius (spacing ~100–120 km), each sized ~10% of its local
+  population. A bigger single town only pays if the countryside is
+  correspondingly bigger and mature (see the packing section above).
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
