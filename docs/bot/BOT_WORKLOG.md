@@ -1969,3 +1969,20 @@ timing-attacks/); Steinitz accumulation (exeterchessclub.org.uk/content/when-
 and-where-attack-steinitz-accumulation-theory); thickness/power (senseis.xmp.
 net/?Power); influence use (boardgames.stackexchange.com/questions/5533);
 raiding logistics DTIC (apps.dtic.mil/sti/html/tr/ADA279587/index.html).
+
+### Infra milestone: docs reorged + greedy/pro modularised (2026-09-12)
+DOCS: 7->2 merges complete (STRATEGY 708 lines (GTO+BOTS+BRAINSTORM verbatim,
+live-marked) + METHODS 783 lines (BENCH binding table verbatim + suites/
+clock/viewer/indicators); EMPTY_10000 archived; active links clean;
+history/code-comment dangling documented (resolve via mapping in merge
+commit). 3838 -> ~2600 active lines (WORKLOG untouched append-only).
+CODE: greedy + pro core.py split to modules (intel/scout/threat/raid/
+settle/economy/protocol, mechanical verbatim moves + DAG star imports).
+Lessons: superset headers (constants/caches), decorator-aware slicing
+(@dataclass), owner-modules for cross-uses (_batch_ids/_hash/can_train_
+safely->intel, scout imports expansion_demand), exhaustive AST cross-use
+scan (found 3, else whack-a-mole), byte-identical proof (battery 8/8 +
+fast identical + canonical match (1-pop timing noise, re-run matched)).
+Ratings preserved via 8046816-style seeding (pro-65a702b <- d658df5 57.2;
+greedy unrated safe). Era 3 (aggressive/expander/turtle, same hardened
+script) next. (Bold rally/ladder/search unblocked by editability.)
