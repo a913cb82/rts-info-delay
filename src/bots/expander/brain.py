@@ -173,7 +173,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         site = None
         if expansion_demand(state, config, DemandParams(
                 payback_mult=0.3, void_horizon=100, rates=False, serial=False)):
-            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
+            site = find_build_site(state, config, p.x, p.y, rmin=180, rmax=350, salt=11, who=p.id)
         if site is not None and not site_pays(state, config, site[0], site[1]):
             site = None
         if site:

@@ -2648,3 +2648,14 @@ leave home thin-ish, raided back). TIMING SWEEP COMPLETE: early+thin (donate,
 die) / mid-baseline (42.2, balanced) / late+rich (small wins, counter-takes).
 Baseline timing OPTIMAL among timings. Aggressive EXHAUSTED (selection,
 gating, need, march, timing all fail or worse). PARKED (main keeps 42.2).
+
+### Expander strict spacing (2026-09-12 19:02 BST)
+CONTRASTIVE (take-snowball 479k vs crowded-starve 0): thin takes WIN when
+SPACE (uncrowded, grow) and DIE when crowded (stunt). Expander founds at
+40-120km (inside 150km crowding radius: own worst neighbor). FIX (strict
+180km minimum: brain 120->180, tip-fallbacks 40->180, drop incompatible
+(79,150); hold when full (no founding better than stunt-both)). Keeps
+QUANTITY (many cheap foundings, colonist style intact) + fixes SPACING
+(uncrowded engines grow). Predicts: sprawl compounds (parallel engines)
+instead of stunting; fewer starve-deaths. Bar: expander gate (ord>=47.3+
+exceed turtle, AND most-foundings/cheap style).

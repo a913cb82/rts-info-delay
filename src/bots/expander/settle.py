@@ -41,8 +41,8 @@ def respin_tip(state: "BotState", config, tx: float, ty: float):
     usually cold) — the optimizer finds the best site NEAR the tip
     instead of founding at the ray-clamped endpoint. Returns a gated
     site or None (then march home)."""
-    for salt, rmax in ((77, 250), (78, 250), (79, 150)):
-        site = find_build_site(state, config, tx, ty, rmin=40, rmax=rmax,
+    for salt, rmax in ((77, 250), (78, 250)):
+        site = find_build_site(state, config, tx, ty, rmin=180, rmax=rmax,
                                salt=salt, who=int(tx + ty) & 0xFFFF)
         if site is None:
             continue
