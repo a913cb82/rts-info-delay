@@ -2729,3 +2729,18 @@ Selective-merges (`checkout branch -- benchmarks docs`) clobber uncommitted
 working-tree methodology fixes (lost skip-seen/ban once; restored + committed
 now). RULE: commit methodology to its branch BEFORE any selective-merge, and
 verify markers (`banned`, `bot_cmd`, `master_map`, `OLDEST`) after every merge.
+
+### Strip-40k (leveraged force) (2026-09-12 19:53 BST)
+Buzzer wins (260k+) but loses to 240k+ spikes (need 250k+ to beat). Strip
+threshold 60k->40k (more force earlier, longer snowball; costs growth below
+peak (~24/turn) but takes snowball bigger when they land). Leveraged bet
+(bigger wins + bigger donations). Bar 62+ (exceed buzzer).
+
+### Strip-40k verdict: FAIL, variance hurts ordinal (2026-09-12 19:59 BST)
+Rated clean 15g -> ord 50.1 (mu 57.6): FAIL (bar 62+). Wins bigger (372k/
+260k!) but deaths dominate (17% zeros): leveraged force trades towns for
+packs (donations kill, towns thin, taken). PERMANENT LESSON (risk mgmt):
+deaths punish ordinal more than wins reward (asymmetric!); consistency
+(top-3 always, mu 55-60) beats volatility (1st/5th flips, mu 57 but ord 50
+via sigma+deaths). Reverted (main keeps buzzer-60k 62.0). Code parked on
+loop/pro-strip40.
