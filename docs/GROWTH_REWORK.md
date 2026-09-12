@@ -414,6 +414,29 @@ hierarchy won stand and are stronger than reported; close calls and
 the exact optima (town/village sizes) should be re-run with
 `hierarchy_opt.py` before being trusted.
 
+### Optimal hierarchy: two levels suffice
+
+Adding a third tier (9.6k regionals every 96 km) or a capital (6k,
+20k) on top of the optimal 2-level pattern never helps — windowed
+rates, matched shapes, both scales:
+
+| shape | ~110k region | ~1.05M region |
+|---|---|---|
+| flat villages | +0.1106 | +0.1144 |
+| + market towns 2.4k / 32 km | **+0.1444** | **+0.1489** |
+| + regionals 9.6k / 96 km | +0.1388 | +0.1422 |
+| + capital 6k | +0.1411 | +0.1482 |
+| + capital 20k | +0.1307 | +0.1466 |
+
+The extra urban population has zero natural growth when fed, so each
+added tier dilutes faster than its extra services repay. Optimal:
+**villages (300, 4 km hex) + market towns (~2.4k, every ~32 km)**,
+~8-13% urban. Concretely: ~110k region (r=40 km, ~5,000 km2) holds
+~360 villages + 7 market towns; ~1.05M region (r=118 km, ~43,700 km2)
+holds ~3,090 villages + 55 market towns. A 9.6k regional tier or any
+capital is dead weight for growth (they may still be wanted for
+non-growth reasons: administration, defence — out of scope here).
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode

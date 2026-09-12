@@ -45,11 +45,13 @@ def lattice(rmax, s, ox=0.0, oy=0.0):
     return pts
 
 
-def build(rmax, s_t, T, capital=0.0):
+def build(rmax, s_t, T, capital=0.0, s_r=0.0, R=0.0):
     vill = lattice(rmax, S_V)
     towns = []
     if s_t:
         towns = [(x + s_t / 2, y, T) for (x, y) in lattice(rmax, s_t)]
+    if s_r:
+        towns += [(x, y, R) for (x, y) in lattice(rmax, s_r)]
     if capital:
         towns.append((0.0, 0.0, capital))
     spec = [(x, y, P_V) for (x, y) in vill
@@ -78,6 +80,17 @@ def clear():
     eco._land_cache["areas"] = None
 
 
+def build_regional(rmax):
+    # 2.4k towns every 32 km + 9.6k regionals every 96 km + villages elsewhere
+    tpts = [(x + 16.0, y, 2400.0) for (x, y) in lattice(rmax, 32.0)]
+    rpts = [(x, y, 9600.0) for (x, y) in lattice(rmax, 96.0)
+            if all(math.hypot(x - tx, y - ty) > 2.0 for (tx, ty, _) in tpts)]
+    taken = [(x, y) for (x, y, _) in tpts + rpts]
+    vill = [(x, y, P_V) for (x, y) in lattice(rmax, S_V)
+            if all(math.hypot(x - tx, y - ty) > 0.6 * S_V for (tx, ty) in taken)]
+    return vill + tpts + rpts
+
+
 SHAPES = [
     ("flat", 0.0, 0.0, 0.0),
     ("s16/T600", 16.0, 600.0, 0.0),
@@ -85,6 +98,7 @@ SHAPES = [
     ("s32/T2400+cap20k", 32.0, 2400.0, 20000.0),
     ("s64/T2400", 64.0, 2400.0, 0.0),
     ("s64/T9600", 64.0, 9600.0, 0.0),
+    ("+regional 9.6k", 0.0, 0.0, 0.0),
 ]
 
 
@@ -93,7 +107,10 @@ def main(rmax=50.0):
     rows = []
     for label, s_t, T, cap in SHAPES:
         t0 = time.perf_counter()
-        spec = build(rmax, s_t, T, cap)
+        if label.startswith("+regional"):
+            spec = build_regional(rmax)
+        else:
+            spec = build(rmax, s_t, T, cap)
         tot = sum(p for (_, _, p) in spec)
         urb = 100.0 * sum(p for (_, _, p) in spec if p > P_V) / tot
         clear()
