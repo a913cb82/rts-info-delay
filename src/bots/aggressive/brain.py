@@ -47,6 +47,18 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     free_ids = [a.id for a in state.own_armies()
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
+    # Blitz-gating (take lethality): march the sel pack ONLY for near
+    # fast overwhelm (target <=250km from capital = <=5 turns; free >=
+    # need+2 absorbing foe prints during the march). Far/slow/under-sized
+    # raids arrive to find need grown past them and donate (0 net takes).
+    # Else hold (build/compound, don't feed) — leapfrog conquest takes
+    # near, stages there, blitzes next-near. Patient predator, not passive.
+    if sel is not None:
+        _tgt, _need, _ = sel
+        _cap = state.world.faction_capital(faction)
+        if _cap is None or math.hypot(_cap.x - _tgt.x, _cap.y - _tgt.y) > 250.0 \
+                or free_n < _need + 2:
+            sel = None
     pack_building = sel is not None and sel[1] > free_n \
         and not jit_ready(state, config, sel[0], sel[1], free_ids,
         sel[0].faction)

@@ -1895,3 +1895,32 @@ wobble under load (16-17ms vs 16ms = 1ms over, within known ±50 wobble).
 No code change (don't fix noise). Noted; merge-blocking only if systematic
 (liveness + profiling gate it). Rating grind for war-chest to 15g delegated
 to subagent (aggr-grind) while designing take-side next idea.
+
+### GOAL-80, worst (aggressive) 4: war-chest verdict + blitz next (2026-09-12)
+WAR-CHEST (2500 floor) RATED 22g -> ord 37.6 (mu 44.9). FAIL (>46.7) but
+BEST yet (6.7->11.2->22.1->37.6; mu near baseline 47.3). It fixed POVERTY
+(force up, survival up) but not TAKES (wins vs weak/collapsed only; 0
+takes vs strong; packs donate vs good defense). Gap to gate is WINS.
+ROOT (take-side): need (4-5, rising as foe prints during 10t marches) >
+free (2-3) -> packs never ready OR march under-sized and donate (0 net
+takes). NEXT IDEA (1, pro-action): BLITZ-GATING — march sel pack ONLY if
+arrival<=5 turns AND free>=need+2 (fast overwhelm absorbing foe prints);
+else hold (build/compound, don't donate). Patient predator (waits for
+winnable, then kills); no donations. Predicts: takes land (vs weak-near),
+packs survive (overwhelm), donations stop, wins up. (Subagent finished
+war-chest to 22g total, 0 duplicates, all distinct fields — more games
+than planned because its first attempt actually played 7 unreported games
+before the env failure; all valid, kept. Lesson: subagent must confirm
+game count via log, not just script output.)
+
+### GOAL-80, worst (aggressive) 5: blitz-gating (2026-09-12)
+WAR-CHEST alone rated 22g -> 37.6 (mu 44.9). FAIL (>46.7) but best (force
++ survival fixed; TAKES still missing — wins vs weak/collapsed only, 0
+vs strong; packs donate vs good defense: need 4-5 rising during 10t
+marches > free 2-3). IDEA (1, pro-action, on war-chest base): BLITZ-GATE
+sel marches — only if target<=250km from capital (<=5 turns) AND
+free>=need+2 (overwhelm absorbing foe prints); else hold (build/compound,
+don't donate). Leapfrog conquest (take near, stage, blitz next-near).
+Suites: starve_trap 3317->5612 (stops feeding!), pair/viable flat-good.
+Predicts: takes land (near-weak), packs survive (overwhelm), donations
+stop, wins up (vs mid too, not just weak).
