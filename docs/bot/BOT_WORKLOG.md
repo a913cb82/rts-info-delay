@@ -2071,3 +2071,18 @@ or gate-contradicted). FORK (user decides, no unilateral 12th/park/merge):
 productive to 80; return w/ take-breakthrough if found)) | (redirect pro-80
 direct, fastest) | (change gate/canonical, process fix). Main clean
 (baseline 42.2; 11 branches parked, documented, unmerged).
+
+### GOAL-80, worst (aggressive): STUCK, fork (2026-09-12, summary)
+11 ideas on loop/aggr-chest (ventures: veto, garrison, evac, war-chest,
+blitz, package, mass, style, overwhelm, deterrence, range; full detail on
+branch): ordinals 6.7->11.2->22.1->37.6->23.9->27.3->44.2/48.2->50.0/43.1->
+38.7->51.8/41.5->39.5. Best ordinal deterrence 51.8/40g (mu 58.0, beats
+pro-heavy fields) but takes-in-win check (reran 156k win): 0 captures, 2
+founded, 25 hoarded — wins by founding+compounding (colonist drift), NOT
+takes. Best style-true baseline 42.2 (takes-and-dies). JOINT GATE
+(ord>=46.7 AND style-takes) UNACHIEVABLE: takes don't land vs mustering
+defense (escalation); holders/founders drift style. DO NOT MERGE high-
+ordinal (wrong archetype). Main stays baseline 42.2. FORK (user): persist
+12th (low EV) | park, expander next (recommended) | redirect pro-80 |
+change gate. (1-player optimal 1.71M + pool full-pop + renames + TODOs
+also landed this turn; see entries.)
