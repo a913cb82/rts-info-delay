@@ -10,12 +10,8 @@
  "army_speed": 50.0,
  "army_cost": 1000,
  "interact_radius": 10.0,
- "population_cap": 100000.0,
- "population_growth": 0.001,
+ "population_growth": 8.2e-05,
  "build_efficiency": 0.5,
- "equilibrium_spacing": 0.1,
- "crowding_decay": 0.8,
- "crowding_asymmetry": 0.01,
  "teams": {
   "0": "expander"
  },
@@ -24,5 +20,12 @@
   "type": "towns_ge",
   "faction": 0,
   "n": 2
- }
+ },
+ "land_capacity": 300000.0,
+ "urban_sink": 1e-14,
+ "access_alpha": 1.8e-05,
+ "kernel_scale": 270.0,
+ "migration_mu": 2.7e-09,
+ "service_gate": 30.0,
+ "town_min_population": 0.0
 }

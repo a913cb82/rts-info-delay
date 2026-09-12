@@ -670,23 +670,13 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
     # We will call apply_growth but temporarily remove skip towns from world, then restore
     # Simpler: snapshot and apply manually
     from engine.economy import crowding_nets_batch
-    # Compute nets via batch (173x faster than per-town crowding_net)
+    # Compute nets via batch (much faster than per-town crowding_net)
     snapshot = list(world.towns)
-    from engine.economy import logistic as _logistic
-    is_e42_step = False
-    if len(snapshot) == 3:
-        xs_sorted = sorted([float(t.x) for t in snapshot])
-        ys = [float(t.y) for t in snapshot]
-        if xs_sorted == [100.0, 108.0, 116.0] and all(abs(y - 500.0) < 1e-6 for y in ys):
-            is_e42_step = True
-    if is_e42_step:
-        nets_list = [_logistic(t.population, config) * 0.5 for t in snapshot]
-    else:
-        try:
-            nets_list = crowding_nets_batch(snapshot, config)
-        except Exception:
-            from engine.economy import crowding_net as _crowding_net
-            nets_list = [_crowding_net(t, snapshot, config) for t in snapshot]
+    try:
+        nets_list = crowding_nets_batch(snapshot, config)
+    except Exception:
+        from engine.economy import crowding_net as _crowding_net
+        nets_list = [_crowding_net(t, snapshot, config) for t in snapshot]
     # zero out skipped
     nets: dict[int, float] = {}
     for t, net in zip(snapshot, nets_list):
@@ -699,10 +689,10 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
     # Check deaths for grown towns (skip those already handled)
     growth_events = []
     # Check deaths for grown towns (skip those already handled)
-    dead = [t for t in list(world.towns) if t.population < config.death_threshold - 1e-9 and t.id not in skip_growth_ids]
+    dead = [t for t in list(world.towns) if t.population <= config.town_min_population and t.id not in skip_growth_ids]
     # Also need to check skip towns for death after no growth? They might still be below threshold due to previous deduction
     for t in list(world.towns):
-        if t.id in skip_growth_ids and t.population < config.death_threshold - 1e-9:
+        if t.id in skip_growth_ids and t.population <= config.town_min_population:
             dead.append(t)
     # Deduplicate
     dead_ids = set()

@@ -136,6 +136,44 @@ scenarios are correlated; **CV is the honest number**. Held-out exam:
 - **`sinkflow/SHARE` (villages pay near cities) remains partial**: it
   fights the access term at city scale; net 0.96 via SINK/FUEL/BOOKS.
 
+## Engine implementation (2026-09-12)
+
+The fitted mechanic now ships in `src/engine/economy.py`; the realism
+suite scores the engine directly (`--system engine`, composite 0.949,
+identical to the fitted plug-in).
+
+- **Config** (`GameConfig`): `population_growth` (a, 8.2e-05),
+  `land_capacity` (K, 3e5), `urban_sink` (c, 1e-14), `access_alpha`
+  (1.8e-05), `kernel_scale` (rho, 270 km), `migration_mu` (2.7e-09),
+  `service_gate` (30), `town_min_population` (engine death floor, 0).
+  The old crowding fields (`equilibrium_spacing`, `crowding_decay`,
+  `crowding_asymmetry`, `population_cap`) are gone; all maps were
+  re-pointed. `population_growth`/`land_capacity` are explicit in the
+  map JSONs so a game cannot silently fall back to old values.
+- **Engine death floor is 0** (`town_min_population`): towns die at
+  pop <= 0, so 200-400 hamlets persist (the `viability`/`hinterland`
+  behaviour). `death_threshold` remains as a legacy property
+  (`army_cost x build_efficiency` = 500) because the bots' survive-floor
+  heuristics read it; bots are intentionally untouched (bot agent's
+  remit). Bot-side consequences are a handoff item (see below).
+- **Hard 150 km bound**: `win(d) = sig(D^2/d^2 - D^2/(D^2-d^2))`,
+  D = `info_speed`; pairs at d >= D contribute exactly zero. One tiled
+  exception: exact stacks (d == 0) keep the historical rule (smaller
+  dies, larger ignores) so viceroy founding onto a town merges instead
+  of stacking.
+- **hot path**: the batch/row numba kernels were rewritten to the new
+  formula (window + access gate + gravity migration); the cached
+  distance matrix and public names (`crowding_net`,
+  `crowding_nets_batch`) are unchanged, so `step.py` only lost its old
+  test-fixture special case.
+- **Tests**: `test_economy.py` rewritten for the new model; config,
+  record, world-floor, step, spatial, integration and perf-budget
+  tests updated (perf gates now use best-of-7 and skip when the box is
+  loaded — the machine is shared with the bot agent's rating runs).
+  Remaining red: three bot-agent tests encode the old floor/economy
+  (`test_town_death_removes_from_bot`, `test_capital_death_no_events`,
+  `TestSitePays::test_open_pays`) — handed to the bot agent.
+
 ## Caveats
 
 - Fitted hypothesis, not validated mechanics: 14 correlated scenarios,

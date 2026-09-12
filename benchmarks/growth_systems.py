@@ -50,7 +50,7 @@ class GrowthSystem:
 
 
 class EngineGrowth(GrowthSystem):
-    """Current engine: logistic x (1 - crowding), numba batch."""
+    """Current engine: fitted base curve + directed interaction kernel."""
 
     name = "engine"
 
@@ -58,7 +58,7 @@ class EngineGrowth(GrowthSystem):
         self.cfg = cfg or GameConfig()  # defaults match maps/*.json
 
     def isolated(self, pop):
-        return eco.logistic(float(pop), self.cfg)
+        return eco.base_growth(float(pop), self.cfg)
 
     def nets(self, towns):
         # Canonical path is the batch kernel (per-town crowding_net is a

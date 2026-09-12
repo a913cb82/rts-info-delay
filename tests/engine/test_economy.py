@@ -1,4 +1,11 @@
-"""Tests for engine/economy — logistic growth, crowding, TRAIN, BUILD."""
+"""Tests for engine/economy — fitted realism growth model, TRAIN, BUILD.
+
+Growth (config defaults, all 2 s.f.):
+    g(P)   = a*P - (a/K)*P^2 - c*P^3
+    W(i,j) = alpha*Pi*sig((Pj-Pi)/gate)*e^-(d/rho)^2 * win(d)
+           + mu*Pi*Pj/(Pi+Pj)*(Pi-Pj)*e^-(d/rho) * win(d)
+    win(d) = sig(D^2/d^2 - D^2/(D^2-d^2)),  D = info_speed = 150 km
+"""
 
 from __future__ import annotations
 
@@ -11,15 +18,20 @@ from engine.economy import (
     apply_build,
     apply_growth,
     apply_train,
-    asymmetry,
+    base_growth,
     check_town_death,
     crowding_net,
-    equilibrium_distance,
-    logistic,
+    crowding_nets_batch,
+    interaction_window,
+    pair_gain,
 )
-from engine.world import Army, StandingOrder, CommandType, Town, World
+from engine.world import Army, CommandType, StandingOrder, Town, World
 
 CFG = GameConfig()  # default config for all economy tests
+A = CFG.population_growth
+K = CFG.land_capacity
+C = CFG.urban_sink
+D2 = CFG.info_speed * CFG.info_speed
 
 
 def _town(x: float, y: float, pop: float, faction: int = 0, cap: bool = False, tid: int = 0) -> Town:
@@ -27,301 +39,250 @@ def _town(x: float, y: float, pop: float, faction: int = 0, cap: bool = False, t
     return Town(id=tid, faction=faction, x=x, y=y, population=pop, is_capital=cap)
 
 
-class TestLogisticGrowth:
-    """E1–E6c: Pure logistic function."""
+class TestBaseGrowth:
+    """E1–E6: Lone-town curve (fertility, saturation, urban sink)."""
 
-    def test_village_isolated(self) -> None:
-        """E1: logistic(500) ≈ 0.4975."""
-        result = logistic(500, CFG)
-        assert result == pytest.approx(0.4975, abs=1e-3)
+    def test_zero_pop(self) -> None:
+        assert base_growth(0.0, CFG) == 0.0
 
-    def test_city_at_peak(self) -> None:
-        """E2: logistic(50000) ≈ 25.0."""
-        result = logistic(50_000, CFG)
-        assert result == pytest.approx(25.0, abs=1e-6)
+    def test_village_slow_and_positive(self) -> None:
+        """E1: a 500 village grows ~0.041/turn (~0.43%/yr, historical band)."""
+        g = base_growth(500.0, CFG)
+        assert g == pytest.approx(0.041, abs=1e-3)
+        annual = g / 500 * 52 * 100
+        assert 0.1 <= annual <= 0.5
 
-    def test_at_cap(self) -> None:
-        """E3: logistic(100000) == 0."""
-        result = logistic(100_000, CFG)
-        assert result == pytest.approx(0.0, abs=1e-9)
+    def test_grows_until_late(self) -> None:
+        """E2: 500 / 5k / 20k all still grow."""
+        for p in (500.0, 5_000.0, 20_000.0):
+            assert base_growth(p, CFG) > 0
 
-    def test_over_cap(self) -> None:
-        """E4: logistic(120000) ≈ -24.0."""
-        result = logistic(120_000, CFG)
-        assert result == pytest.approx(-24.0, abs=1e-6)
+    def test_urban_sink(self) -> None:
+        """E3: beyond ~78k a lone town shrinks (urban graveyard)."""
+        assert base_growth(80_000.0, CFG) < 0
+        assert base_growth(120_000.0, CFG) < 0
+
+    def test_peak_location(self) -> None:
+        """E4: net growth peaks in the tens of thousands."""
+        vals = {p: base_growth(float(p), CFG) for p in range(10_000, 100_001, 5_000)}
+        peak = max(vals, key=vals.get)
+        assert 20_000 <= peak <= 70_000
+        assert vals[peak] > base_growth(10_000.0, CFG)
+        assert vals[peak] > base_growth(100_000.0, CFG)
 
     def test_annualised_village(self) -> None:
-        """E5: 52 turns from pop 500 → ~526 (±1)."""
+        """E5: 52 turns from 500 → ~502 (a year of village growth)."""
         pop = 500.0
         for _ in range(52):
-            pop += logistic(pop, CFG)
-        assert pop == pytest.approx(526, abs=1)
+            pop += base_growth(pop, CFG)
+        assert pop == pytest.approx(502.1, abs=1.0)
 
-    def test_annualised_city(self) -> None:
-        """E6: 52 turns from pop 50000 → ~51300 (±50)."""
-        pop = 50_000.0
-        for _ in range(52):
-            pop += logistic(pop, CFG)
-        assert pop == pytest.approx(51_300, abs=50)
-
-    def test_per_turn_formula(self) -> None:
-        """E6b: Exact per-turn formula for several populations."""
-        for a in [500, 1000, 50_000, 100_000]:
-            expected = 0.001 * a * (1 - a / 100_000)
-            assert logistic(a, CFG) == pytest.approx(expected, abs=1e-9)
-
-    def test_logistic_peak_location(self) -> None:
-        """E6c: Peak at A=50000, value=25."""
-        best_pop = 0
-        best_val = -float("inf")
-        for a in range(0, 100_001, 100):
-            val = logistic(float(a), CFG)
-            if val > best_val:
-                best_val = val
-                best_pop = a
-        assert best_pop == 50_000
-        assert best_val == pytest.approx(25.0, abs=0.1)
+    def test_city_grows_slowly(self) -> None:
+        """E6: a 60k town is nearly flat (<0.3%/yr)."""
+        annual = base_growth(60_000.0, CFG) / 60_000 * 52 * 100
+        assert 0.0 < annual < 0.3
 
 
-class TestCrowding:
-    """E7–E34: Crowding formula, asymmetry, equilibrium distance."""
+class TestInteractionWindow:
+    """E7–E10: the hard-bounded window win(d)."""
+
+    def test_full_at_zero(self) -> None:
+        assert interaction_window(0.0, CFG) == 1.0
+
+    def test_hard_bound(self) -> None:
+        """E7: d >= 150 km contributes exactly zero."""
+        assert interaction_window(D2, CFG) == 0.0
+        assert interaction_window(D2 + 1.0, CFG) == 0.0
+        assert interaction_window(200 * 200, CFG) == 0.0
+
+    def test_monotone(self) -> None:
+        """E8: the window never increases with distance."""
+        prev = 1.0
+        for d in range(0, 150):
+            w = interaction_window(d * d, CFG)
+            assert w <= prev + 1e-12
+            prev = w
+
+    def test_midrange_shape(self) -> None:
+        """E9: meaningful weight at market range, tiny near the bound."""
+        assert 0.85 <= interaction_window(75 * 75, CFG) <= 1.0
+        assert interaction_window(100 * 100, CFG) < 0.8
+        assert interaction_window(148 * 148, CFG) < 1e-2
+
+
+class TestPairGain:
+    """E11–E20: directed pairwise influence (access + migration)."""
+
+    def test_bound_zero(self) -> None:
+        """E11: a pair beyond 150 km is inert."""
+        assert pair_gain(500.0, 500.0, 160.0 ** 2, CFG) == 0.0
+
+    def test_equal_villages_help(self) -> None:
+        """E12: equal neighbours serve each other (access at parity)."""
+        assert pair_gain(500.0, 500.0, 25.0, CFG) > 0
+
+    def test_village_gains_from_market(self) -> None:
+        """E13: a small village near a market town gains."""
+        assert pair_gain(300.0, 2_500.0, 10.0 ** 2, CFG) > 0
+
+    def test_direction_asymmetry(self) -> None:
+        """E14: the market lifts the village more than the village lifts the market."""
+        up = pair_gain(300.0, 2_500.0, 10.0 ** 2, CFG)
+        down = pair_gain(2_500.0, 300.0, 10.0 ** 2, CFG)
+        assert up > down
+
+    def test_migration_is_conserving(self) -> None:
+        """E15: migration part of a pair sums to zero (access adds growth)."""
+        pi, pj, d2 = 300.0, 60_000.0, 30.0 ** 2
+        rho = CFG.kernel_scale
+        win = interaction_window(d2, CFG)
+        mig_ij = (CFG.migration_mu * pi * pj / (pi + pj) * (pi - pj)
+                  * math.exp(-math.sqrt(d2) / rho) * win)
+        mig_ji = (CFG.migration_mu * pj * pi / (pi + pj) * (pj - pi)
+                  * math.exp(-math.sqrt(d2) / rho) * win)
+        assert mig_ij + mig_ji == pytest.approx(0.0, abs=1e-12)
+
+    def test_city_shadow(self) -> None:
+        """E16: right next to a 60k city a village is drained (pull > access)."""
+        village = _town(0, 0, 300, tid=0)
+        city = _town(20, 0, 60_000, tid=1)
+        net = crowding_net(village, [village, city], CFG)
+        assert net < base_growth(300.0, CFG)
+
+    def test_market_halo(self) -> None:
+        """E17: near a market the village grows faster than alone."""
+        village = _town(0, 0, 300, tid=0)
+        market = _town(10, 0, 2_500, tid=1)
+        net = crowding_net(village, [village, market], CFG)
+        assert net > base_growth(300.0, CFG)
+
+
+class TestCrowdingNet:
+    """E21–E27: per-town and batch net growth."""
 
     def _net_for(self, a: Town, others: list[Town]) -> float:
-        """Helper: compute crowding_net for town a among others."""
-        all_towns = [a] + others
-        return crowding_net(a, all_towns, CFG)
-
-    def test_two_villages_at_d_eq(self) -> None:
-        """E7: A=B=500 at d_eq → net ≈ 0."""
-        d_eq = 0.1 * math.sqrt(500)
-        a = _town(0, 0, 500, tid=0)
-        b = _town(d_eq, 0, 500, tid=1)
-        net = self._net_for(a, [b])
-        assert net == pytest.approx(0.0, abs=0.05)
-
-    def test_two_markets_at_d_eq(self) -> None:
-        """E8: A=B=1000 at d_eq → net ≈ 0."""
-        d_eq = 0.1 * math.sqrt(1000)
-        a = _town(0, 0, 1000, tid=0)
-        b = _town(d_eq, 0, 1000, tid=1)
-        net = self._net_for(a, [b])
-        assert net == pytest.approx(0.0, abs=0.1)
-
-    def test_two_cities_at_d_eq(self) -> None:
-        """E9: A=B=50000 at d_eq → net ≈ 0."""
-        d_eq = 0.1 * math.sqrt(50_000)
-        a = _town(0, 0, 50_000, tid=0)
-        b = _town(d_eq, 0, 50_000, tid=1)
-        net = self._net_for(a, [b])
-        assert net == pytest.approx(0.0, abs=1.0)
-
-    def test_closer_than_d_eq(self) -> None:
-        """E10: A=B=500 at dist=1 (<d_eq=2.24) → net < 0."""
-        a = _town(0, 0, 500, tid=0)
-        b = _town(1, 0, 500, tid=1)
-        net = self._net_for(a, [b])
-        assert net < logistic(50000, CFG)  # crowding reduces growth from isolated
-
-    def test_farther_than_d_eq(self) -> None:
-        """E11: A=B=500 at dist=12 (>d_eq) → net > 0 but < isolated."""
-        a = _town(0, 0, 500, tid=0)
-        b = _town(12, 0, 500, tid=1)
-        net = self._net_for(a, [b])
-        isolated = logistic(500, CFG)
-        assert 0 < net < isolated
-
-    def test_village_near_city(self) -> None:
-        """E12: A=500 near B=50000 at dist=5 → net(A) strongly negative."""
-        a = _town(0, 0, 500, tid=0)
-        b = _town(5, 0, 50_000, tid=1)
-        net = self._net_for(a, [b])
-        assert net < logistic(50000, CFG)  # crowding reduces growth from isolated
-
-    def test_city_near_village(self) -> None:
-        """E13: A=50000 near B=500 at dist=5 → crowding per PLAN formula.
-        With d_eq=0.4*sqrt(500)=8.94, asym=1+0.006*ln(500/50000)=0.972, ratio=(8.94/5)^0.3≈1.19,
-        term≈1.16, net=25*(1-1.16)≈-3.9 (strongly crowded, not ≈logistic). Small asym dampens only slightly.
-        """
-        a = _town(0, 0, 50_000, tid=0)
-        b = _town(5, 0, 500, tid=1)
-        net = self._net_for(a, [b])
-        # Per PLAN: city is still significantly crowded by nearby village due to flat gamma=0.3
-        assert net < logistic(50000, CFG)  # crowding reduces growth from isolated
-        assert net < logistic(50000, CFG)  # crowded
-
-    def test_cross_size_at_d_eq(self) -> None:
-        """E14: A=500, B=50000, dist=d_eq(min=500)=8.94 → net ≈ 0."""
-        d_eq = 0.1 * math.sqrt(500)
-        a = _town(0, 0, 500, tid=0)
-        b = _town(d_eq, 0, 50_000, tid=1)
-        net = self._net_for(a, [b])
-        assert net == pytest.approx(0.0, abs=0.1)
-
-    def test_market_provincial_d_eq(self) -> None:
-        """E15: A=1000, B=10000 at d_eq(min=1000)=12.65 → net ≈ 0."""
-        d_eq = 0.1 * math.sqrt(1000)
-        a = _town(0, 0, 1000, tid=0)
-        b = _town(d_eq, 0, 10_000, tid=1)
-        net = self._net_for(a, [b])
-        assert net == pytest.approx(0.0, abs=0.1)
-
-    def test_asymmetry_direction(self) -> None:
-        """E16: Larger B → more negative net for A."""
-        a = _town(0, 0, 500, tid=0)
-        b_big = _town(10, 0, 50_000, tid=1)
-        b_small = _town(10, 0, 500, tid=2)
-        net_big = self._net_for(a, [b_big])
-        net_small = self._net_for(a, [b_small])
-        assert net_big < net_small
-
-    def test_village_crowded_more_by_city_than_equal(self) -> None:
-        """Asymmetry: village near city is hit harder (proportionally) than village near equal-pop town."""
-        village = _town(0, 0, 500, tid=0)
-        city = _town(5, 0, 50_000, tid=1)
-        equal = _town(5, 0, 500, tid=2)
-        net_near_city = self._net_for(village, [city])
-        net_near_equal = self._net_for(village, [equal])
-        # City's asymmetry factor > 1 (crowds harder), equal's = 1
-        # So village near city grows less (or shrinks more) than village near equal
-        assert net_near_city < net_near_equal
-
-    def test_asymmetry_log_scale(self) -> None:
-        """E17: 100× population only slightly worse than 2× at same dist."""
-        a = _town(0, 0, 500, tid=0)
-        b_100x = _town(10, 0, 50_000, tid=1)
-        b_2x = _town(10, 0, 1000, tid=2)
-        net_100x = self._net_for(a, [b_100x])
-        net_2x = self._net_for(a, [b_2x])
-        # 100× is worse, but log compression means not dramatically so
-        assert net_100x < net_2x
-        # The ratio of asymmetry factors is small
-        asy_100x = asymmetry(500, 50_000, CFG)
-        asy_2x = asymmetry(500, 1000, CFG)
-        assert asy_100x / asy_2x < 1.5  # log compression
-
-    def test_symmetric_asym(self) -> None:
-        """E18: A=B → asymmetry = 1."""
-        assert asymmetry(500, 500, CFG) == pytest.approx(1.0, abs=1e-9)
-        assert asymmetry(10_000, 10_000, CFG) == pytest.approx(1.0, abs=1e-9)
-
-    def test_asymmetry_numeric(self) -> None:
-        """E18b: asymmetry(500, 50000) ≈ 1.0276."""
-        result = asymmetry(500, 50_000, CFG)
-        # 1 + 0.01 × ln(100) = 1 + 0.006 × 4.60517 ≈ 1.02763
-        assert result == pytest.approx(1.046, abs=0.001)
-
-    def test_d_eq_uses_min(self) -> None:
-        """E18c: d_eq = 0.4 × sqrt(min(A,B)), not sqrt(max)."""
-        # A=500, B=50000 → d_eq = 0.4 × sqrt(500) ≈ 8.94
-        result = equilibrium_distance(500, 50_000, CFG)
-        expected = 0.1 * math.sqrt(500)
-        assert result == pytest.approx(expected, abs=1e-6)
-        # Same result regardless of argument order
-        assert equilibrium_distance(50_000, 500, CFG) == pytest.approx(expected, abs=1e-6)
-
-    def test_two_neighbours_sum(self) -> None:
-        """E19: Two B's at d_eq → Σ has 2 terms → more negative."""
-        d_eq = 0.1 * math.sqrt(500)
-        a = _town(0, 0, 500, tid=0)
-        b1 = _town(d_eq, 0, 500, tid=1)
-        b2 = _town(-d_eq, 0, 500, tid=2)
-        net_one = self._net_for(a, [b1])
-        net_two = self._net_for(a, [b1, b2])
-        assert net_two < net_one
-
-    def test_mixed_near_far(self) -> None:
-        """E20: B1 close (crowding) + B2 far → additive Σ, more neighbours = more crowding.
-        net_both = logistic*(1 - term_near - term_far) < net_near and < net_far (mirror E34)."""
-        a = _town(0, 0, 500, tid=0)
-        b_near = _town(6, 0, 500, tid=1)
-        b_far = _town(20, 0, 500, tid=2)
-        net_near_only = self._net_for(a, [b_near])
-        net_both = self._net_for(a, [b_near, b_far])
-        net_far_only = self._net_for(a, [b_far])
-        # Additive crowding: both is more negative than either alone
-        assert net_both < net_near_only
-        assert net_both < net_far_only
+        return crowding_net(a, [a] + others, CFG)
 
     def test_no_neighbours(self) -> None:
-        """E21: Single town → net = logistic."""
+        """E21: single town → base growth."""
         a = _town(0, 0, 500, tid=0)
-        net = self._net_for(a, [])
-        expected = logistic(500, CFG)
-        assert net == pytest.approx(expected, abs=1e-9)
+        assert self._net_for(a, []) == pytest.approx(base_growth(500.0, CFG), abs=1e-12)
 
-    def test_cutoff_at_info_speed(self) -> None:
-        """E30: Town beyond info_speed excluded from Σ."""
+    def test_far_neighbour_inert(self) -> None:
+        """E22: neighbour at 151 km contributes nothing."""
         a = _town(0, 0, 500, tid=0)
-        b = _town(151, 0, 500, tid=1)  # 151 > info_speed=150
-        net = self._net_for(a, [b])
-        expected = logistic(500, CFG)
-        assert net == pytest.approx(expected, abs=1e-9)
+        b = _town(151, 0, 500, tid=1)
+        assert self._net_for(a, [b]) == pytest.approx(base_growth(500.0, CFG), abs=1e-12)
 
-    def test_just_inside_cutoff(self) -> None:
-        """E31: Town at 149 km (just inside 150) → included."""
+    def test_near_neighbours_add(self) -> None:
+        """E23: two nearby equal villages grow faster than one alone."""
         a = _town(0, 0, 500, tid=0)
-        b = _town(149, 0, 500, tid=1)
-        net = self._net_for(a, [b])
-        expected = logistic(500, CFG)
-        assert net < expected  # crowding reduces growth
+        b = _town(12, 0, 500, tid=1)
+        c = _town(-12, 0, 500, tid=2)
+        assert self._net_for(a, [b, c]) > base_growth(500.0, CFG)
 
-    def test_flat_gamma_long_range(self) -> None:
-        """E32: At dist=100 km, crowding still significant (γ=0.3 is flat)."""
-        d_eq = 0.1 * math.sqrt(500)  # ~8.94
-        a = _town(0, 0, 500, tid=0)
-        b = _town(100, 0, 500, tid=1)
-        net = self._net_for(a, [b])
-        isolated = logistic(500, CFG)
-        # (8.94/100)^0.3 ≈ 0.48-0.52, so ~48-52% crowding weight
-        # net = isolated × (1 - 1 × 0.48) = isolated × 0.52 ≈0.256; allow up to 0.6*isolated
-        assert net < isolated  # crowding reduces growth  # meaningfully reduced (relaxed from 0.4 to 0.6 to match formula)
-        assert net > 0  # still positive
+    def test_batch_matches_per_town(self) -> None:
+        """E24: batch == per-town path (1e-9)."""
+        towns = [
+            _town(0, 0, 500, tid=0),
+            _town(30, 0, 2_000, tid=1),
+            _town(120, 0, 10_000, tid=2),
+            _town(300, 0, 500, tid=3),  # out of range
+        ]
+        batch = crowding_nets_batch(towns, CFG)
+        for i, t in enumerate(towns):
+            assert batch[i] == pytest.approx(crowding_net(t, towns, CFG), abs=1e-9)
 
-    def test_cannot_skip_distant_pairs(self) -> None:
-        """E33: 5 towns 80 km apart all 500 pop → each has 4 crowding terms."""
-        towns = [_town(i * 80, 0, 500, tid=i) for i in range(5)]
-        for t in towns:
-            net = self._net_for(t, [o for o in towns if o.id != t.id])
-            isolated = logistic(500, CFG)
-            assert net < isolated  # significant total crowding
+    def test_batch_single(self) -> None:
+        towns = [_town(0, 0, 500, tid=0)]
+        assert crowding_nets_batch(towns, CFG)[0] == pytest.approx(base_growth(500.0, CFG))
 
-    def test_three_body_sum(self) -> None:
-        """E34: Σ = term1 + term2 (additive, not sequential)."""
-        a = _town(0, 0, 500, tid=0)
-        b1 = _town(10, 0, 500, tid=1)
-        b2 = _town(20, 0, 500, tid=2)
-        net_b1 = self._net_for(a, [b1])
-        net_b2 = self._net_for(a, [b2])
-        net_both = self._net_for(a, [b1, b2])
-        # Net with both = logistic × (1 - asym×ratio1 - asym×ratio2)
-        # Should be less than either alone
-        assert net_both < net_b1
-        assert net_both < net_b2
+    def test_batch_empty(self) -> None:
+        assert crowding_nets_batch([], CFG) == []
+
+    def test_deterministic(self) -> None:
+        """E25: repeated evaluation is bit-identical."""
+        towns = [_town(0, 0, 500, tid=0), _town(10, 0, 500, tid=1)]
+        vals = {tuple(crowding_nets_batch(towns, CFG)) for _ in range(50)}
+        assert len(vals) == 1
+
+
+class TestGrowthApplication:
+    """E28–E34: apply_growth semantics."""
+
+    def test_isolated_village_grows(self) -> None:
+        t = _town(500, 500, 500, tid=1)
+        w = World()
+        w.towns.append(t)
+        for _ in range(52):
+            apply_growth(w, CFG)
+        assert 500.5 < t.population < 504
+
+    def test_town_dies_at_zero(self) -> None:
+        """E28: a town at exactly the floor (0) dies."""
+        t = _town(500, 500, 0.0, tid=1)
+        w = World()
+        w.towns.append(t)
+        apply_growth(w, CFG)
+        assert not w.towns
+
+    def test_small_town_survives(self) -> None:
+        """E29: a 200 hamlet persists (no 500 floor any more)."""
+        t = _town(500, 500, 200, tid=1)
+        w = World()
+        w.towns.append(t)
+        for _ in range(52):
+            apply_growth(w, CFG)
+        assert w.get_town(1) is not None
+        assert t.population > 200
+
+    def test_lone_city_shrinks(self) -> None:
+        """E30: a lone 90k city loses population (sink)."""
+        t = _town(500, 500, 90_000, tid=1)
+        w = World()
+        w.towns.append(t)
+        for _ in range(52):
+            apply_growth(w, CFG)
+        assert t.population < 90_000
+
+    def test_villages_feed_the_city(self) -> None:
+        """E31: a village ring feeds the city (migration circuit)."""
+        for base in (60_000.0, 90_000.0):
+            lone = _town(500, 500, base, tid=1)
+            wl = World()
+            wl.towns.append(lone)
+            ringed = _town(500, 500, base, tid=1)
+            wr = World()
+            wr.towns.append(ringed)
+            for i in range(6):
+                ang = i * math.pi / 3
+                wr.towns.append(_town(500 + 30 * math.cos(ang),
+                                      500 + 30 * math.sin(ang), 500, tid=2 + i))
+            for _ in range(52):
+                apply_growth(wl, CFG)
+                apply_growth(wr, CFG)
+            assert ringed.population > lone.population
+
+    def test_hamlet_cluster_coexists(self) -> None:
+        """E32: five close hamlets coexist (no crowding death spiral)."""
+        w = World()
+        for i in range(5):
+            w.towns.append(_town(100 + i * 5, 100, 500, tid=i))
+        for _ in range(100):
+            apply_growth(w, CFG)
+        assert len(w.towns) == 5
 
 
 class TestEconomyCommands:
-    """E22–E31d: check_town_death, apply_build, apply_train."""
+    """E35+: check_town_death, apply_build, apply_train."""
 
-    def test_town_dies_at_499(self) -> None:
-        """E22: Town with pop=499 → dies."""
-        t = _town(0, 0, 499, tid=0)
-        assert check_town_death(t, CFG) is True
+    def test_town_dies_at_floor(self) -> None:
+        assert check_town_death(_town(0, 0, 0.0, tid=0), CFG) is True
 
-    def test_town_survives_at_500(self) -> None:
-        """E23: Town with pop=500 → survives."""
-        t = _town(0, 0, 500, tid=0)
-        assert check_town_death(t, CFG) is False
-
-    def test_isolated_never_dies(self) -> None:
-        """E24: Isolated village pop=500 grows over 100 turns."""
-        t = _town(0, 0, 500, tid=0)
-        pop = t.population
-        for _ in range(100):
-            pop += logistic(pop, CFG)
-        assert pop > 500
+    def test_town_survives_above_floor(self) -> None:
+        assert check_town_death(_town(0, 0, 1.0, tid=0), CFG) is False
 
     def test_build_empty_ground(self) -> None:
-        """E25: BUILD on empty ground → new town, army consumed."""
         w = World()
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
@@ -330,11 +291,9 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
         )
         events = apply_build(w, CFG)
-        # Should find army at (100,200) with no town there → found new town
         assert any(e.get("kind") == "town_spawn" for e in events)
 
     def test_build_on_town(self) -> None:
-        """E26: BUILD on existing town → pop += army_cost × build_efficiency."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -349,7 +308,6 @@ class TestEconomyCommands:
         assert t.population == pytest.approx(2000 + 1000 * 0.5)
 
     def test_build_consumes_army(self) -> None:
-        """E27: BUILD removes army from world."""
         w = World()
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
@@ -362,7 +320,6 @@ class TestEconomyCommands:
         assert w.get_army(aid) is None
 
     def test_build_distance_fail(self) -> None:
-        """E28: BUILD army far from target → no town created."""
         w = World()
         w.map_size = [1000, 1000]
         a = Army(id=w.allocate_id(), faction=0, x=0, y=0)
@@ -370,23 +327,16 @@ class TestEconomyCommands:
         w.standing_orders.append(
             StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 0])
         )
-        # Build at (100,0) but army at (0,0) → far away (dist 100 > interact_radius 10)
         events = apply_build(w, CFG)
-        town_events = [e for e in events if e.get("kind") == "town_spawn"]
-        assert len(town_events) == 0
-        # Army should survive distance fail
+        assert not [e for e in events if e.get("kind") == "town_spawn"]
         assert w.get_army(a.id) is not None
 
     def test_train_reduces_pop(self) -> None:
-        """E29: TRAIN on town → pop -= army_cost."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
         t = Town(id=tid, faction=0, x=300, y=400, population=2000)
         w.towns.append(t)
-        # Add a standing TRAIN order
-        from engine.world import StandingOrder, CommandType
-
         w.standing_orders.append(
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
@@ -394,14 +344,11 @@ class TestEconomyCommands:
         assert t.population == pytest.approx(1000)
 
     def test_train_spawns_at_town(self) -> None:
-        """E30b: TRAIN spawns army at town position."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
         t = Town(id=tid, faction=0, x=300, y=400, population=2000)
         w.towns.append(t)
-        from engine.world import StandingOrder, CommandType
-
         w.standing_orders.append(
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
@@ -412,62 +359,47 @@ class TestEconomyCommands:
         assert spawn_events[0]["y"] == 400
 
     def test_train_insufficient_pop(self) -> None:
-        """E31d: TRAIN when pop < army_cost → no spawn."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
         t = Town(id=tid, faction=0, x=300, y=400, population=400)
         w.towns.append(t)
-        from engine.world import StandingOrder, CommandType
-
         w.standing_orders.append(
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
         events = apply_train(w, CFG)
-        spawn_events = [e for e in events if e.get("kind") == "army_spawn"]
-        assert len(spawn_events) == 0
+        assert not [e for e in events if e.get("kind") == "army_spawn"]
 
     def test_train_standing_order(self) -> None:
-        """E31c: TRAIN standing order spawns one army, then is consumed (one-shot)."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
         t = Town(id=tid, faction=0, x=300, y=400, population=5000)
         w.towns.append(t)
-        from engine.world import StandingOrder, CommandType
-
         w.standing_orders.append(
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
-        # Run 3 economy steps
         for _ in range(3):
             apply_train(w, CFG)
-        # TRAIN is one-shot: only 1 army spawned, standing order consumed
         assert len(w.armies) == 1
         assert len(w.standing_orders) == 0
 
     def test_train_ownership_check(self) -> None:
-        """E31e: TRAIN on enemy town → ignored."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
-        t = Town(id=tid, faction=1, x=300, y=400, population=2000)  # faction 1
+        t = Town(id=tid, faction=1, x=300, y=400, population=2000)
         w.towns.append(t)
-        from engine.world import StandingOrder, CommandType
-
-        # Faction 0 tries to TRAIN faction 1's town
         w.standing_orders.append(
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town", args=[0.0])
         )
         events = apply_train(w, CFG)
-        spawn_events = [e for e in events if e.get("kind") == "army_spawn"]
-        assert len(spawn_events) == 0
+        assert not [e for e in events if e.get("kind") == "army_spawn"]
 
     def test_build_new_town_faction(self) -> None:
-        """E31f: BUILD by faction B → new town faction=B."""
         w = World()
         w.map_size = [1000, 1000]
-        a = Army(id=w.allocate_id(), faction=1, x=100, y=200)  # faction 1
+        a = Army(id=w.allocate_id(), faction=1, x=100, y=200)
         w.armies.append(a)
         w.standing_orders.append(
             StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 200])
@@ -478,7 +410,7 @@ class TestEconomyCommands:
             assert town_events[0]["faction"] == 1
 
     def test_train_pop_800_dies(self) -> None:
-        """E31b: TRAIN when pop=800 → pop goes to -200, town dies."""
+        """TRAIN when pop=800 → pop goes to -200, town dies."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -488,18 +420,14 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
         apply_train(w, CFG)
-        # Pop 800 - 1000 = -200, town dies
         assert all(town.id != tid for town in w.towns)
 
     def test_build_on_enemy_town(self) -> None:
-        """E31g: BUILD on enemy town blocks (decided: hold, don't donate)."""
         w = World()
         w.map_size = [1000, 1000]
-        # Enemy town at (100,200)
         tid = w.allocate_id()
         enemy_town = Town(id=tid, faction=1, x=100, y=200, population=2000)
         w.towns.append(enemy_town)
-        # Our army at same position
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
         w.armies.append(a)
         w.standing_orders.append(
@@ -507,18 +435,17 @@ class TestEconomyCommands:
         )
         events = apply_build(w, CFG)
         assert not [e for e in events if e.get("kind") == "town_spawn"]
-        assert enemy_town.population == 2000  # untouched, not donated to
-        assert w.get_army(a.id) is not None  # army waits
+        assert enemy_town.population == 2000
+        assert w.get_army(a.id) is not None
 
 
 class TestStandingOrderCleanup:
     """Standing order cleanup on entity death."""
 
     def test_TRAIN_order_removed_when_town_dies(self) -> None:
-        """Town dies → standing TRAIN order removed."""
         w = World()
         w.map_size = [1000, 1000]
-        t = Town(id=1, faction=0, x=500, y=500, population=1)
+        t = Town(id=1, faction=0, x=500, y=500, population=0)
         w.towns.append(t)
         w.standing_orders.append(
             StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
@@ -528,7 +455,6 @@ class TestStandingOrderCleanup:
         assert len(w.standing_orders) == 0
 
     def test_BUILD_order_removed_when_army_dies(self) -> None:
-        """Army dies → standing BUILD order removed."""
         from engine.combat import resolve_combat
 
         w = World()
@@ -545,7 +471,6 @@ class TestStandingOrderCleanup:
         assert all(so.target_id != 1 for so in w.standing_orders)
 
     def test_move_orders_removed_when_army_dies(self) -> None:
-        """Army dies → its move orders (has_target) cleared."""
         from engine.combat import resolve_combat
 
         w = World()
@@ -558,8 +483,7 @@ class TestStandingOrderCleanup:
 
 
 class TestBuildBlocked:
-    """BUILD onto an enemy town blocks (army waits, order retained)
-    until the town is captured or gone."""
+    """BUILD onto an enemy town blocks (army waits, order retained)."""
 
     def _world(self):
         w = World()
@@ -578,9 +502,9 @@ class TestBuildBlocked:
         self._order(w, a.id, 100, 200)
         events = apply_build(w, CFG)
         assert not [e for e in events if e.get("kind") == "town_spawn"]
-        assert w.get_army(a.id) is not None  # not consumed
-        assert w.get_town(0).population == 2000  # untouched
-        assert any(so.command == CommandType.BUILD for so in w.standing_orders)  # retained
+        assert w.get_army(a.id) is not None
+        assert w.get_town(0).population == 2000
+        assert any(so.command == CommandType.BUILD for so in w.standing_orders)
 
     def test_blocked_build_fires_after_capture(self) -> None:
         w = self._world()
@@ -603,8 +527,7 @@ class TestBuildBlocked:
         w.armies.append(a)
         self._order(w, a.id, 100, 200)
         apply_build(w, CFG)
-        world_remove = w.get_town(t.id)
-        assert world_remove is not None
+        assert w.get_town(t.id) is not None
         w.remove_town(t.id)  # starved/destroyed
         events = apply_build(w, CFG)
         assert any(e.get("kind") == "town_spawn" for e in events)
@@ -628,7 +551,7 @@ class TestTrainCap:
                 StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
         events = apply_train(w, CFG)
         assert len([e for e in events if e.get("kind") == "army_spawn"]) == 1
-        assert w.get_town(tid).population == pytest.approx(4000)  # one deduction only
+        assert w.get_town(tid).population == pytest.approx(4000)
         assert not [so for so in w.standing_orders if so.command == CommandType.TRAIN]
 
     def test_cap_is_per_town(self) -> None:

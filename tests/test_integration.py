@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from engine.config import GameConfig
-from engine.economy import logistic
+from engine.economy import base_growth
 from engine.ledger import Ledger
 from engine.record import write_config_line, write_turn_line
 from engine.step import step
@@ -42,7 +42,7 @@ class TestIntegration:
     """Z1–Z5: Full-game integration tests."""
 
     def test_growth_only(self) -> None:
-        """Z1: 2 towns far apart, 50 turns → both grow per logistic, no deaths."""
+        """Z1: 2 towns far apart, 50 turns → both grow per base curve, no deaths."""
         csv = "100,100,A,500\n800,800,B,500\n"
         w, ledger = _run_game(map_csv=csv, turns=50)
         # Both towns should have grown
@@ -58,19 +58,16 @@ class TestIntegration:
         # After several turns, armies should have interacted
         assert len(w.armies) <= 2  # some may have died
 
-    def test_crowding_kills_town(self) -> None:
-        """Z3: 5 towns clustered at 5 km → at least one dies within 100 turns."""
-        # Place 5 towns very close together
+    def test_close_hamlets_coexist(self) -> None:
+        """Z3: 5 hamlets clustered at 5 km → they coexist (fitted model has
+        no crowding-death spiral; the access halo feeds them)."""
         csv_lines = []
         for i in range(5):
             csv_lines.append(f"{100 + i * 5},100,A,500")
         csv = "\n".join(csv_lines) + "\n"
         w, ledger = _run_game(map_csv=csv, turns=100)
-        # With crowding, some towns should die
-        alive = [t for t in w.towns if t.population >= 500]
-        dead = [t for t in w.towns if t.population < 500]
-        # At least one should have died (crowding kills)
-        assert len(dead) > 0 or all(t.population > 500 for t in w.towns)
+        assert len(w.towns) == 5
+        assert all(t.population > 500 for t in w.towns)
 
     def test_viewer_replays_record(self) -> None:
         """Z4: Run game → write JSONL → verify entity counts per turn match."""
@@ -125,9 +122,10 @@ class TestIntegration:
         from runner.main import score
 
         csv = "100,100,A,500\n"
-        w, ledger = _run_game(map_csv=csv, turns=10)
+        w, ledger = _run_game(map_csv=csv, turns=200)
         result = score(w, CFG)
-        # Town should have grown
+        # Town should have grown (fitted clock: ~0.4%/yr, score is int)
+        assert w.towns[0].population > 500
         assert result[0] > 500
 
     def test_deterministic_replay(self) -> None:
@@ -162,6 +160,8 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        assert h == "8ce39f1c7bb5305f0bcf167d663ed944480ccfc98dfc65838132fd8d288c08a9"
+        # Re-based 2026-09-12 for the fitted growth mechanic (was
+        # 8ce39f1c... on the logistic+crowding engine).
+        assert h == "5f28d76fcdedf216791ee8b864ed579f8a46e45455412dd229da4f255ae087b8"
     finally:
         path.unlink(missing_ok=True)

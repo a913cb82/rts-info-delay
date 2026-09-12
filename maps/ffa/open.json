@@ -2,9 +2,6 @@
  "army_cost": 1000,
  "army_speed": 50.0,
  "build_efficiency": 0.5,
- "crowding_asymmetry": 0.01,
- "crowding_decay": 0.8,
- "equilibrium_spacing": 0.1,
  "info_speed": 150.0,
  "interact_radius": 10.0,
  "line_of_sight": 150.0,
@@ -15,8 +12,7 @@
   1000
  ],
  "max_turns": 3000,
- "population_cap": 100000.0,
- "population_growth": 0.001,
+ "population_growth": 8.2e-05,
  "time_increment_ms": 10.0,
  "turn_time_ms": 100,
  "teams": {
@@ -27,5 +23,12 @@
   "4": "turtle-050d575"
  },
  "focal": 0,
- "note": "pure expansion"
+ "note": "pure expansion",
+ "land_capacity": 300000.0,
+ "urban_sink": 1e-14,
+ "access_alpha": 1.8e-05,
+ "kernel_scale": 270.0,
+ "migration_mu": 2.7e-09,
+ "service_gate": 30.0,
+ "town_min_population": 0.0
 }

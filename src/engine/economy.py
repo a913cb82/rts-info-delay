@@ -1,4 +1,25 @@
-"""Economy — logistic growth, crowding, TRAIN, BUILD, town death."""
+"""Economy — fitted realism growth (base curve + directed interactions),
+TRAIN, BUILD, town death.
+
+Growth model (fitted to bench/growth_realism, 2026-09-12; params are
+config defaults, all 2 significant figures):
+
+    g(P)   = a*P - (a/K)*P^2 - c*P^3                (a lone town)
+    W(i,j) = alpha*P_i*sig((P_j-P_i)/gate) * e^(-(d/rho)^2) * win(d)
+           + mu*P_i*P_j/(P_i+P_j)*(P_i-P_j) * e^(-d/rho) * win(d)
+    net_i  = g(P_i) + sum_j W(i,j)
+
+    win(d) = sig(D^2/d^2 - D^2/(D^2-d^2)),  D = info_speed (150 km)
+
+``win`` is a single C-infinity curve with one constant: exactly 1 at
+d=0, exactly 0 at d=D, and pairs at d >= D contribute exactly zero
+(hard interaction bound, also the engine's neighbour cutoff).
+The first term is market access (directed: bigger places serve smaller
+ones); the second is gravity migration toward larger towns (population
+conserving). There is no separate crowding tax: fewer than ~60 km the
+access halo dominates, and a big city's pull drains its neighbours
+(the urban graveyard circuit).
+"""
 
 from __future__ import annotations
 
@@ -10,25 +31,62 @@ from engine.config import GameConfig
 from engine.world import Army, CommandType, Town, World
 
 
-def logistic(population: float, config: GameConfig) -> float:
-    return config.population_growth * population * (1.0 - population / config.population_cap)
+def base_growth(population: float, config: GameConfig) -> float:
+    """Net growth per turn of a lone town: aP - (a/K)P^2 - cP^3."""
+    a = config.population_growth
+    b = a / config.land_capacity
+    return population * (a - b * population - config.urban_sink * population * population)
 
 
-# Near-zero distances (dist < 1e-9) cannot occur in-game: BUILD merges
-# within 10km, viceroy founding merges into friendly towns, parse_map
-# rejects stacked maps. The max() floors below keep the formula total
-# (no singularity branch) for degenerate constructed states only.
+def interaction_window(d2: float, config: GameConfig) -> float:
+    """Hard-bound C-infinity window: 1 at d=0, 0 at d >= info_speed."""
+    dcut2 = config.info_speed * config.info_speed
+    if d2 >= dcut2:
+        return 0.0
+    if d2 <= 0.0:
+        return 1.0
+    x = dcut2 / d2 - dcut2 / (dcut2 - d2)
+    if x >= 0.0:
+        return 1.0 / (1.0 + math.exp(-x))
+    e = math.exp(x)
+    return e / (1.0 + e)
 
-# Cache soundness rule (applies to all three caches below): entries are
-# keyed by id(list) for O(1) lookup but ALWAYS validated by a full
-# element-identity loop against strong town refs held by the entry.
-# Identity on live refs is exact: GC cannot reuse addresses of held
-# objects, Town.x/Town.y are never mutated, and in-place middle swaps
-# fail the `is` check. Pops are always read fresh, so pop changes need
-# no invalidation.
-_crowding_cache: dict = {"towns": None, "xs": None, "ys": None, "ids": None}
-_hash_cache: dict = {}  # id(all_towns) -> [towns_ref, SpatialHash]
-_dist_cache: dict = {}  # id(all_towns) -> [towns_ref, D, xs, ys, ids]
+
+def _sigmoid(x: float) -> float:
+    if x >= 0.0:
+        return 1.0 / (1.0 + math.exp(-x))
+    e = math.exp(x)
+    return e / (1.0 + e)
+
+
+def pair_gain(pi: float, pj: float, d2: float, config: GameConfig) -> float:
+    """Influence of town j on town i: access (directed) + migration.
+
+    Exact stacks (d2 == 0) are the one non-smooth rule kept for engine
+    invariants: the smaller town dies, the larger ignores the neighbour
+    (maps never stack; a viceroy founding onto a friendly town merges).
+    """
+    if d2 <= 1e-18:
+        return 0.0 if pj <= pi else -1e6
+    win = interaction_window(d2, config)
+    if win <= 0.0:
+        return 0.0
+    rho = config.kernel_scale
+    access = (config.access_alpha * pi
+              * _sigmoid((pj - pi) / config.service_gate)
+              * math.exp(-d2 / (rho * rho)) * win)
+    total = pi + pj
+    mig = (config.migration_mu * (pi * pj / total if total > 0.0 else 0.0)
+           * (pi - pj) * math.exp(-math.sqrt(d2) / rho) * win)
+    return access + mig
+
+
+# ---------------------------------------------------------------------------
+# Pairwise kernels (numba when available; numpy/python fallbacks otherwise).
+# The distance matrix and the identity-validated caches are shared by both
+# crowding_net (single row) and crowding_nets_batch (full matrix).
+
+_dist_cache: dict = {}  # id(all_towns) -> [towns_ref, D, ids]
 
 
 def _same_towns(ref: list[Town] | None, all_towns: list[Town]) -> bool:
@@ -40,328 +98,206 @@ def _same_towns(ref: list[Town] | None, all_towns: list[Town]) -> bool:
     return True
 
 
-def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float:
-    log = logistic(town.population, config)
-    if not all_towns or len(all_towns) <= 1:
-        return log
-    # Fast path via cached distance matrix (static positions)
-    try:
-        D, xs, ys, ids = _get_dist_matrix(all_towns)
-        # C-speed index lookup (was O(n) Python linear scan)
-        matches = np.where(ids == town.id)[0]
-        if matches.size > 0:
-            idx = int(matches[0])
-            pops = np.array([t.population for t in all_towns], dtype=np.float64)
-            if _row_numba_inner is not None:
-                try:
-                    total = _row_numba_inner(
-                        D[idx], pops, idx, float(town.population),
-                        config.info_speed + 1e-9,
-                        config.equilibrium_spacing,
-                        config.crowding_decay,
-                        config.crowding_asymmetry,
-                    )
-                    return log * (1.0 - float(total))
-                except Exception:
-                    pass
-            dists = D[idx]
-            mask = (dists <= config.info_speed + 1e-9)
-            mask[idx] = False
-            if not np.any(mask):
-                return log
-            pj = pops[mask]
-            d = np.maximum(dists[mask], 1e-9)
-            mins = np.minimum(pj, town.population)
-            mins = np.maximum(mins, 0.0)
-            d_eqs = config.equilibrium_spacing * np.sqrt(mins)
-            asy = np.ones_like(d)
-            if town.population > 0:
-                valid = pj > 0
-                if np.any(valid):
-                    asy[valid] = 1.0 + config.crowding_asymmetry * np.log(pj[valid] / town.population)
-            ratios = np.where(d_eqs > 0, (d_eqs / d) ** config.crowding_decay, 0.0)
-            total = float(np.sum(asy * ratios))
-            return log * (1.0 - total)
-    except Exception:
-        pass
-    # Use spatial hash to find neighbours within info_speed instead of scanning all
-    try:
-        from engine.spatial import SpatialHash
-        # cache hash per town set (validated by identity, see rule above)
-        e = _hash_cache.get(id(all_towns))
-        sh = e[1] if e is not None and _same_towns(e[0], all_towns) else None
-        if sh is None:
-            sh = SpatialHash.__new__(SpatialHash)
-            sh.config = config
-            sh.cell_size = float(config.info_speed)
-            try:
-                mx, my = config.map_size[0], config.map_size[1]
-            except Exception:
-                mx, my = 1000, 1000
-            sh.width = int(math.ceil(mx / sh.cell_size)) if sh.cell_size != 0 else 1
-            sh.height = int(math.ceil(my / sh.cell_size)) if sh.cell_size != 0 else 1
-            sh.cells = {}
-            pos = np.array([[t.x, t.y] for t in all_towns], dtype=float)
-            sh.positions = pos
-            for idx2, (x2, y2) in enumerate(pos):
-                key = (int(math.floor(x2 / sh.cell_size)), int(math.floor(y2 / sh.cell_size)))
-                sh.cells.setdefault(key, []).append(idx2)
-            _hash_cache[id(all_towns)] = [list(all_towns), sh]
-            # prune cache
-            if len(_hash_cache) > 20:
-                _hash_cache.clear()
-                _hash_cache[id(all_towns)] = [list(all_towns), sh]
-        # query neighbours
-        neigh = sh.query_radius(float(town.x), float(town.y), float(config.info_speed + 1e-9))
-        # filter self
-        neigh = [i for i in neigh if all_towns[i].id != town.id]
-        if not neigh:
-            return log
-        # Build arrays for neighbours only
-        pops_f = np.array([all_towns[i].population for i in neigh], dtype=float)
-        xs_f = np.array([all_towns[i].x for i in neigh], dtype=float)
-        ys_f = np.array([all_towns[i].y for i in neigh], dtype=float)
-        dx = town.x - xs_f
-        dy = town.y - ys_f
-        dists = np.maximum(np.hypot(dx, dy), 1e-9)
-        mins = np.minimum(pops_f, town.population)
-        mins = np.maximum(mins, 0.0)
-        d_eqs = config.equilibrium_spacing * np.sqrt(mins)
-        asy = np.ones_like(dists)
-        valid = (pops_f > 0) & (town.population > 0)
-        if np.any(valid):
-            ratio_log = np.log(pops_f[valid] / town.population)
-            asy[valid] = 1.0 + config.crowding_asymmetry * ratio_log
-        ratios = np.where(d_eqs>0, (d_eqs / dists) ** config.crowding_decay, 0.0)
-        total = float(np.sum(asy * ratios))
-        return log * (1.0 - total)
-    except Exception:
-        pass
-    global _crowding_cache
-    # Cache positions/ids only (identity-validated); pops are ALWAYS read
-    # fresh so middle-town pop changes can never go stale.
-    xs = ys = ids = None
-    try:
-        if _crowding_cache["xs"] is not None and _same_towns(_crowding_cache["towns"], all_towns):
-            xs = _crowding_cache["xs"]
-            ys = _crowding_cache["ys"]
-            ids = _crowding_cache["ids"]
-        else:
-            xs = np.array([t.x for t in all_towns], dtype=float)
-            ys = np.array([t.y for t in all_towns], dtype=float)
-            ids = np.array([t.id for t in all_towns], dtype=int)
-            _crowding_cache["towns"] = list(all_towns)
-            _crowding_cache["xs"] = xs
-            _crowding_cache["ys"] = ys
-            _crowding_cache["ids"] = ids
-        pops = np.array([t.population for t in all_towns], dtype=float)
-    except Exception:
-        total = 0.0
-        for other in all_towns:
-            if other.id == town.id:
-                continue
-            dx = town.x - other.x
-            dy = town.y - other.y
-            dist = math.hypot(dx, dy)
-            if dist > config.info_speed + 1e-9:
-                continue
-            dist = max(dist, 1e-9)
-            d_eq = equilibrium_distance(town.population, other.population, config)
-            asym = asymmetry(town.population, other.population, config)
-            ratio = (d_eq / dist) ** config.crowding_decay
-            total += asym * ratio
-        return log * (1.0 - total)
-    try:
-        mask_self = ids != town.id
-        xs_f = xs[mask_self]
-        ys_f = ys[mask_self]
-        pops_f = pops[mask_self]
-        if xs_f.size == 0:
-            return log
-        dx = town.x - xs_f
-        dy = town.y - ys_f
-        dists = np.hypot(dx, dy)
-        mask = dists <= config.info_speed + 1e-9
-        if not np.any(mask):
-            return log
-        dists = np.maximum(dists[mask], 1e-9)
-        pops_f = pops_f[mask]
-        mins = np.minimum(pops_f, town.population)
-        mins = np.maximum(mins, 0.0)
-        d_eqs = config.equilibrium_spacing * np.sqrt(mins)
-        asy = np.ones_like(dists)
-        valid = (pops_f > 0) & (town.population > 0)
-        if np.any(valid):
-            ratio_log = np.log(pops_f[valid] / town.population)
-            asy[valid] = 1.0 + config.crowding_asymmetry * ratio_log
-        ratios = (d_eqs / dists) ** config.crowding_decay
-        total = float(np.sum(asy * ratios))
-        return log * (1.0 - total)
-    except Exception:
-        total = 0.0
-        for other in all_towns:
-            if other.id == town.id:
-                continue
-            dx = town.x - other.x
-            dy = town.y - other.y
-            dist = math.hypot(dx, dy)
-            if dist > config.info_speed + 1e-9:
-                continue
-            dist = max(dist, 1e-9)
-            d_eq = equilibrium_distance(town.population, other.population, config)
-            asym = asymmetry(town.population, other.population, config)
-            ratio = (d_eq / dist) ** config.crowding_decay
-            total += asym * ratio
-        return log * (1.0 - total)
-
-
-def asymmetry(a_pop: float, b_pop: float, config: GameConfig) -> float:
-    if a_pop <= 0 or b_pop <= 0:
-        return 1.0
-    return 1.0 + config.crowding_asymmetry * math.log(b_pop / a_pop)
-
-
-def equilibrium_distance(a_pop: float, b_pop: float, config: GameConfig) -> float:
-    m = min(a_pop, b_pop)
-    if m < 0:
-        m = 0
-    return config.equilibrium_spacing * math.sqrt(m)
-
-
 def _get_dist_matrix(all_towns: list[Town]):
-    """Cached NxN distance matrix. See the cache soundness rule at module top."""
+    """Cached NxN distance matrix keyed by list identity + full element check."""
     e = _dist_cache.get(id(all_towns))
     if e is not None and _same_towns(e[0], all_towns):
-        return e[1], e[2], e[3], e[4]
-    xs_new = np.array([t.x for t in all_towns], dtype=np.float64)
-    ys_new = np.array([t.y for t in all_towns], dtype=np.float64)
-    ids_new = np.array([t.id for t in all_towns], dtype=np.int64)
-    dx = xs_new[:, None] - xs_new[None, :]
-    dy = ys_new[:, None] - ys_new[None, :]
-    D = np.sqrt(dx*dx + dy*dy)
-    _dist_cache[id(all_towns)] = [list(all_towns), D, xs_new, ys_new, ids_new]
+        return e[1], e[2]
+    xs = np.array([t.x for t in all_towns], dtype=np.float64)
+    ys = np.array([t.y for t in all_towns], dtype=np.float64)
+    ids = np.array([t.id for t in all_towns], dtype=np.int64)
+    dx = xs[:, None] - xs[None, :]
+    dy = ys[:, None] - ys[None, :]
+    D = np.sqrt(dx * dx + dy * dy)
+    _dist_cache[id(all_towns)] = [list(all_towns), D, ids]
     if len(_dist_cache) > 20:
-        oldest = next(iter(_dist_cache))
-        del _dist_cache[oldest]
-    return D, xs_new, ys_new, ids_new
+        del _dist_cache[next(iter(_dist_cache))]
+    return D, ids
+
+
+def _win_np(d2: np.ndarray, dcut2: float) -> np.ndarray:
+    with np.errstate(divide="ignore", over="ignore"):
+        pos = np.maximum(d2, 1e-300)
+        rest = np.maximum(dcut2 - d2, 1e-300)
+        x = dcut2 / pos - dcut2 / rest
+        w = np.where(x >= 0.0,
+                     1.0 / (1.0 + np.exp(-np.minimum(x, 700.0))),
+                     np.exp(np.maximum(x, -700.0)) / (1.0 + np.exp(np.maximum(x, -700.0))))
+    return np.where(d2 >= dcut2, 0.0, w)
+
+
+def _nets_np(all_towns: list[Town], config: GameConfig) -> list[float]:
+    """Vectorised numpy fallback for the batch path (no numba)."""
+    n = len(all_towns)
+    pops = np.array([t.population for t in all_towns], dtype=np.float64)
+    a = config.population_growth
+    b = a / config.land_capacity
+    c = config.urban_sink
+    g = pops * (a - b * pops - c * pops * pops)
+    if n == 1:
+        return [float(g[0])]
+    D, _ = _get_dist_matrix(all_towns)
+    dcut2 = config.info_speed * config.info_speed
+    rho = config.kernel_scale
+    win = _win_np(D * D, dcut2)
+    gate = 1.0 / (1.0 + np.exp(-np.clip((pops[None, :] - pops[:, None]) / config.service_gate, -700, 700)))
+    access = config.access_alpha * pops[:, None] * gate * np.exp(-(D * D) / (rho * rho)) * win
+    total = pops[:, None] + pops[None, :]
+    mig = (config.migration_mu
+           * np.where(total > 0, pops[:, None] * pops[None, :] / total, 0.0)
+           * (pops[:, None] - pops[None, :]) * np.exp(-D / rho) * win)
+    stack = D * D <= 1e-18
+    # exact stacks: smaller dies, larger ignores the neighbour
+    W = np.where(stack & (pops[None, :] > pops[:, None]), -1e6,
+                 np.where(stack, 0.0, access + mig))
+    np.fill_diagonal(W, 0.0)
+    return (g + W.sum(axis=1)).tolist()
+
 
 try:
     import numba
-    @numba.njit
-    def _batch_numba_inner(D_, pops_, logs_, R_, eq_sp, decay, asym, out_):
-        n_ = pops_.shape[0]
-        for i in range(n_):
-            total = 0.0
-            pi = pops_[i]
-            for j in range(n_):
-                if i == j: continue
-                d = D_[i, j]
-                if d > R_: continue
-                pj = pops_[j]
-                m = pi if pi < pj else pj
-                if m < 0: m = 0
-                d_eq = eq_sp * math.sqrt(m) if m > 0 else 0.0
-                if d < 1e-9:
-                    d = 1e-9
-                a = 1.0
-                if pi > 0 and pj > 0:
-                    a = 1.0 + asym * math.log(pj / pi)
-                ratio = (d_eq / d) ** decay if d_eq > 0 else 0.0
-                total += a * ratio
-            out_[i] = logs_[i] * (1.0 - total)
 
-    @numba.njit
-    def _row_numba_inner(D_row_, pops_, idx_, pi_, R_, eq_sp_, decay_, asym_):
-        # Single-row version of _batch_numba_inner: same math, same order,
-        # so per-town and batch paths agree bit-for-bit. One call replaces
-        # ~10 small numpy ops (each with its own overhead) on the hot path.
-        total = 0.0
-        n_ = pops_.shape[0]
-        for j in range(n_):
-            if j == idx_:
-                continue
-            d = D_row_[j]
-            if d > R_:
-                continue
-            pj = pops_[j]
-            if d < 1e-9:
-                d = 1e-9
-            m = pi_ if pi_ < pj else pj
-            if m < 0.0:
-                m = 0.0
-            d_eq = eq_sp_ * math.sqrt(m) if m > 0.0 else 0.0
-            a = 1.0
-            if pi_ > 0.0 and pj > 0.0:
-                a = 1.0 + asym_ * math.log(pj / pi_)
-            ratio = (d_eq / d) ** decay_ if d_eq > 0.0 else 0.0
-            total += a * ratio
-        return total
+    @numba.njit(cache=True)
+    def _sig_nb(x):
+        if x >= 0.0:
+            return 1.0 / (1.0 + math.exp(-x))
+        e = math.exp(x)
+        return e / (1.0 + e)
 
-    # Pre-compile both kernels at import so the first real call never pays
-    # ~600ms JIT latency (that latency alone busts the <100ms perf test
-    # when it runs in isolation). One-time ~1s import cost.
+    @numba.njit(cache=True)
+    def _win_nb(d2, dcut2):
+        if d2 >= dcut2:
+            return 0.0
+        if d2 <= 0.0:
+            return 1.0
+        x = dcut2 / d2 - dcut2 / (dcut2 - d2)
+        if x >= 0.0:
+            return 1.0 / (1.0 + math.exp(-x))
+        e = math.exp(x)
+        return e / (1.0 + e)
+
+    @numba.njit(cache=True)
+    def _batch_kernel(D, pops, a, b, c, alpha, gate, rho, mu, dcut2, out):
+        n = pops.shape[0]
+        rho2 = rho * rho
+        for i in range(n):
+            pi = pops[i]
+            s = pi * (a - b * pi - c * pi * pi)
+            for j in range(n):
+                if j == i:
+                    continue
+                d2 = D[i, j] * D[i, j]
+                if d2 <= 1e-18:
+                    if pops[j] > pi:
+                        s -= 1e6
+                    continue
+                if d2 >= dcut2:
+                    continue
+                w = _win_nb(d2, dcut2)
+                tot = pi + pops[j]
+                s += (alpha * pi * _sig_nb((pops[j] - pi) / gate)
+                      * math.exp(-d2 / rho2) * w)
+                if tot > 0.0:
+                    s += (mu * pi * pops[j] / tot * (pi - pops[j])
+                          * math.exp(-D[i, j] / rho) * w)
+            out[i] = s
+
+    @numba.njit(cache=True)
+    def _row_kernel(D_row, pops, idx, a, b, c, alpha, gate, rho, mu, dcut2):
+        n = pops.shape[0]
+        rho2 = rho * rho
+        pi = pops[idx]
+        s = pi * (a - b * pi - c * pi * pi)
+        for j in range(n):
+            if j == idx:
+                continue
+            d2 = D_row[j] * D_row[j]
+            if d2 <= 1e-18:
+                if pops[j] > pi:
+                    s -= 1e6
+                continue
+            if d2 >= dcut2:
+                continue
+            w = _win_nb(d2, dcut2)
+            tot = pi + pops[j]
+            s += alpha * pi * _sig_nb((pops[j] - pi) / gate) * math.exp(-d2 / rho2) * w
+            if tot > 0.0:
+                s += mu * pi * pops[j] / tot * (pi - pops[j]) * math.exp(-D_row[j] / rho) * w
+        return s
+
+    # Pre-compile so the first real call never pays JIT latency.
     try:
-        _warm_D = np.zeros((2, 2), dtype=np.float64)
-        _warm_pops = np.array([500.0, 500.0], dtype=np.float64)
-        _warm_logs = np.array([0.25, 0.25], dtype=np.float64)
-        _warm_out = np.zeros(2, dtype=np.float64)
-        _batch_numba_inner(_warm_D, _warm_pops, _warm_logs, 150.0, 0.1, 0.8, 0.01, _warm_out)
-        _row_numba_inner(_warm_D[0], _warm_pops, 0, 500.0, 150.0, 0.1, 0.8, 0.01)
-        del _warm_D, _warm_pops, _warm_logs, _warm_out
+        _wD = np.zeros((2, 2), dtype=np.float64)
+        _wp = np.array([500.0, 500.0], dtype=np.float64)
+        _wo = np.zeros(2, dtype=np.float64)
+        _batch_kernel(_wD, _wp, 8.2e-5, 8.2e-5 / 3e5, 1e-14, 1.8e-5, 30.0, 270.0, 2.7e-9, 22500.0, _wo)
+        _row_kernel(_wD[0], _wp, 0, 8.2e-5, 8.2e-5 / 3e5, 1e-14, 1.8e-5, 30.0, 270.0, 2.7e-9, 22500.0)
+        del _wD, _wp, _wo
     except Exception:
         pass
-except Exception:
-    _batch_numba_inner = None  # type: ignore
-    _row_numba_inner = None  # type: ignore
+except Exception:  # pragma: no cover
+    _batch_kernel = None  # type: ignore
+    _row_kernel = None  # type: ignore
+
+
+def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float:
+    """Net growth per turn for one town among all_towns (its neighbours only)."""
+    if not all_towns or len(all_towns) <= 1:
+        return base_growth(town.population, config)
+    pops = [t.population for t in all_towns]
+    try:
+        if _row_kernel is not None:
+            D, ids = _get_dist_matrix(all_towns)
+            matches = np.where(ids == town.id)[0]
+            if matches.size > 0:
+                idx = int(matches[0])
+                pn = np.array(pops, dtype=np.float64)
+                a = config.population_growth
+                return float(_row_kernel(
+                    D[idx], pn, idx, a, a / config.land_capacity,
+                    config.urban_sink, config.access_alpha, config.service_gate,
+                    config.kernel_scale, config.migration_mu,
+                    config.info_speed * config.info_speed))
+            raise RuntimeError("town not in matrix")
+        else:
+            raise RuntimeError("no numba")
+    except Exception:
+        pass
+    # pure-python fallback: correct for any size, slow but O(n)
+    s = base_growth(town.population, config)
+    pi = town.population
+    for other in all_towns:
+        if other is town or other.id == town.id:
+            continue
+        dx = town.x - other.x
+        dy = town.y - other.y
+        s += pair_gain(pi, other.population, dx * dx + dy * dy, config)
+    return s
 
 
 def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float]:
+    """Per-town net growth for the whole town list (fast path per step)."""
     n = len(all_towns)
     if n == 0:
         return []
     if n == 1:
-        return [logistic(all_towns[0].population, config)]
-    # e42 special
-    if n == 3:
-        xs_sorted = sorted([float(t.x) for t in all_towns])
-        ys = [float(t.y) for t in all_towns]
-        if xs_sorted == [100.0, 108.0, 116.0] and all(abs(y - 500.0) < 1e-6 for y in ys):
-            return [logistic(t.population, config) * 0.5 for t in all_towns]
-    D, xs, ys, ids = _get_dist_matrix(all_towns)
+        return [base_growth(all_towns[0].population, config)]
     pops = np.array([t.population for t in all_towns], dtype=np.float64)
-    # logistic vector
-    logs = config.population_growth * pops * (1.0 - pops / config.population_cap)
-    R = config.info_speed + 1e-9
-    nets = np.empty(n, dtype=np.float64)
-    if _batch_numba_inner is not None:
+    a = config.population_growth
+    b = a / config.land_capacity
+    c = config.urban_sink
+    if _batch_kernel is not None:
         try:
-            _batch_numba_inner(D, pops, logs, R, config.equilibrium_spacing, config.crowding_decay, config.crowding_asymmetry, nets)
-            return nets.tolist()
+            D, _ = _get_dist_matrix(all_towns)
+            out = np.empty(n, dtype=np.float64)
+            _batch_kernel(D, pops, a, b, c, config.access_alpha,
+                          config.service_gate, config.kernel_scale,
+                          config.migration_mu,
+                          config.info_speed * config.info_speed, out)
+            return out.tolist()
         except Exception:
             pass
-    # fallback numpy per-row vectorized
-    for i in range(n):
-        pi = pops[i]
-        # mask
-        mask = (D[i] <= R)
-        mask[i] = False
-        if not np.any(mask):
-            nets[i] = logs[i]
-            continue
-        pj = pops[mask]
-        dists = np.maximum(D[i][mask], 1e-9)
-        mins = np.minimum(pj, pi)
-        mins = np.maximum(mins, 0.0)
-        d_eqs = config.equilibrium_spacing * np.sqrt(mins)
-        asy = np.ones_like(dists)
-        valid = (pj > 0) & (pi > 0)
-        if np.any(valid):
-            # valid is for pj, but pi is scalar, so if pi>0 then valid = pj>0
-            asy[valid] = 1.0 + config.crowding_asymmetry * np.log(pj[valid] / pi)
-        ratios = np.where(d_eqs > 0, (d_eqs / dists) ** config.crowding_decay, 0.0)
-        total = float(np.sum(asy * ratios))
-        nets[i] = float(logs[i] * (1.0 - total))
-    return nets.tolist()
+    return _nets_np(all_towns, config)
 
 
 def apply_growth(world: World, config: GameConfig) -> list[dict]:
@@ -369,39 +305,20 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
     if not world.towns:
         return events
     snapshot = list(world.towns)
-    is_e42 = False
-    if len(snapshot) == 3:
-        xs_sorted = sorted([float(t.x) for t in snapshot])
-        ys = [float(t.y) for t in snapshot]
-        if xs_sorted == [100.0, 108.0, 116.0] and all(abs(y - 500.0) < 1e-6 for y in ys):
-            is_e42 = True
-    if is_e42:
-        nets: list[float] = [logistic(t.population, config) * 0.5 for t in snapshot]
-    else:
-        # batch path is ~5-10x faster and no alloc per town
-        try:
-            nets = crowding_nets_batch(snapshot, config)
-        except Exception:
-            nets = []
-            for t in snapshot:
-                net = crowding_net(t, snapshot, config)
-                nets.append(net)
+    try:
+        nets = crowding_nets_batch(snapshot, config)
+    except Exception:
+        nets = [crowding_net(t, snapshot, config) for t in snapshot]
     for t, net in zip(snapshot, nets):
-        old_pop = t.population
         t.population += net
         if abs(net) > 1e-9:
             events.append({"kind": "pop_change", "id": t.id, "population": t.population})
-    dead: list[Town] = []
-    for t in list(world.towns):
-        if t.population < config.death_threshold - 1e-9:
-            if is_e42:
-                t.population = config.death_threshold
-                continue
-            dead.append(t)
+    dead = [t for t in list(world.towns) if t.population <= config.town_min_population]
     for t in dead:
         was_capital = t.is_capital
         world.remove_town(t.id)
-        events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction, "is_capital": was_capital})
+        events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y,
+                       "faction": t.faction, "is_capital": was_capital})
     return events
 
 
@@ -444,7 +361,7 @@ def apply_train(world: World, config: GameConfig, pre_capture_factions: dict[int
             army = Army(id=new_id, faction=original_faction, x=town.x, y=town.y, is_viceroy=False)
             world.armies.append(army)
             events.append({"kind": "army_spawn", "id": army.id, "faction": army.faction, "x": army.x, "y": army.y, "is_viceroy": False})
-        if town.population < config.death_threshold - 1e-9:
+        if town.population <= config.town_min_population:
             tid = town.id
             tx, ty = town.x, town.y
             tf = town.faction
@@ -526,7 +443,7 @@ def check_town_death(*args, **kwargs) -> bool | list[dict]:
             raise TypeError("config required")
         dead_ids: list[int] = []
         for t in list(world.towns):
-            if t.population < config.death_threshold - 1e-9:
+            if t.population <= config.town_min_population:
                 dead_ids.append(t.id)
         for tid in dead_ids:
             world.remove_town(tid)
@@ -536,4 +453,4 @@ def check_town_death(*args, **kwargs) -> bool | list[dict]:
         config: GameConfig = args[1] if len(args) > 1 else kwargs.get("config")  # type: ignore
         if config is None:
             raise TypeError("config required")
-        return town.population < config.death_threshold - 1e-9
+        return town.population <= config.town_min_population

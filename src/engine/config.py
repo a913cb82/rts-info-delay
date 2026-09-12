@@ -26,15 +26,19 @@ class GameConfig:
     army_cost: int = 1000
     interact_radius: float = 10.0
 
-    # Economy
-    population_cap: float = 100_000.0
-    population_growth: float = 0.001
+    # Economy — fitted realism growth model (2026-09-12; all 2 s.f.)
+    #   g(P) = aP - (a/K)P^2 - cP^3
+    #   W(i,j) = alpha*Pi*sig((Pj-Pi)/gate)*e^-(d/rho)^2 * win(d)
+    #          + mu*Pi*Pj/(Pi+Pj)*(Pi-Pj)*e^-(d/rho) * win(d)
+    population_growth: float = 8.2e-05   # a: fertility (linear term)
+    land_capacity: float = 300_000.0     # K: saturation, b = a/K
+    urban_sink: float = 1.0e-14          # c: cubic urban mortality
+    access_alpha: float = 1.8e-05        # alpha: market access strength
+    kernel_scale: float = 270.0          # rho: shared kernel decay (km)
+    migration_mu: float = 2.7e-09        # mu: gravity migration strength
+    service_gate: float = 30.0           # sigmoid width of "bigger serves smaller"
+    town_min_population: float = 0.0     # death floor (0 = only at pop <= 0)
     build_efficiency: float = 0.5
-
-    # Crowding
-    equilibrium_spacing: float = 0.1
-    crowding_decay: float = 0.8
-    crowding_asymmetry: float = 0.01
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> GameConfig:
@@ -52,5 +56,8 @@ class GameConfig:
 
     @property
     def death_threshold(self) -> float:
-        """Town dies below this population (army_cost × build_efficiency)."""
+        """Legacy policy floor (army_cost x build_efficiency, 500).
+
+        Kept for the bots' survive-floor heuristics; the ENGINE's death
+        rule is `town_min_population` (0 in the fitted model)."""
         return self.army_cost * self.build_efficiency

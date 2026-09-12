@@ -20,12 +20,15 @@ class TestConfig:
         assert cfg.army_speed == 50.0
         assert cfg.army_cost == 1000
         assert cfg.interact_radius == 10.0
-        assert cfg.population_cap == 100_000.0
-        assert cfg.population_growth == 0.001
+        assert cfg.population_growth == 8.2e-05
+        assert cfg.land_capacity == 300_000.0
+        assert cfg.urban_sink == 1.0e-14
+        assert cfg.access_alpha == 1.8e-05
+        assert cfg.kernel_scale == 270.0
+        assert cfg.migration_mu == 2.7e-09
+        assert cfg.service_gate == 30.0
+        assert cfg.town_min_population == 0.0
         assert cfg.build_efficiency == 0.5
-        assert cfg.equilibrium_spacing == 0.1
-        assert cfg.crowding_decay == 0.8
-        assert cfg.crowding_asymmetry == 0.01
 
     def test_config_overrides(self) -> None:
         """X2: from_dict overrides specified fields, keeps defaults."""
@@ -35,12 +38,15 @@ class TestConfig:
         assert cfg.info_speed == 150.0
         assert cfg.army_cost == 1000
         assert cfg.interact_radius == 10.0
-        assert cfg.population_cap == 100_000.0
-        assert cfg.population_growth == 0.001
+        assert cfg.population_growth == 8.2e-05
+        assert cfg.land_capacity == 300_000.0
+        assert cfg.urban_sink == 1.0e-14
+        assert cfg.access_alpha == 1.8e-05
+        assert cfg.kernel_scale == 270.0
+        assert cfg.migration_mu == 2.7e-09
+        assert cfg.service_gate == 30.0
+        assert cfg.town_min_population == 0.0
         assert cfg.build_efficiency == 0.5
-        assert cfg.equilibrium_spacing == 0.1
-        assert cfg.crowding_decay == 0.8
-        assert cfg.crowding_asymmetry == 0.01
         assert cfg.map_size == [1000, 1000]
         assert cfg.max_turns == 500
         assert cfg.turn_time_ms == 1000
@@ -48,10 +54,13 @@ class TestConfig:
     def test_field_names_match_plan(self) -> None:
         """X3: Field names use PLAN names, not k/gamma/c."""
         names = {f.name for f in fields(GameConfig)}
-        assert "equilibrium_spacing" in names
-        assert "crowding_decay" in names
-        assert "crowding_asymmetry" in names
-        assert "population_cap" in names
+        assert "land_capacity" in names
+        assert "urban_sink" in names
+        assert "access_alpha" in names
+        assert "kernel_scale" in names
+        assert "migration_mu" in names
+        assert "service_gate" in names
+        assert "town_min_population" in names
         # Old/regression names must NOT exist
         assert "k" not in names
         assert "gamma" not in names
