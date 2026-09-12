@@ -2695,3 +2695,10 @@ nucleus): first 2 idle (beyond 1-per-town home, or field/townless) stay free
 for sel-packs (march on sel, nothing else). Idle-home still defends
 positionally (combat needs no orders); opportunity is pack-takes. Predicts:
 sel prices (takes land t6000-8000, snowball wins). Bar 62+ (exceed buzzer).
+
+### Nucleus verdict: FAIL (2026-09-12 20:56 BST)
+Rated clean 15g -> ord 34.9 (mu 43.1): FAIL (bar 62+). Wins exist (194k/
+218k/219k/307k!) but mu crushed (losses + mids vs weak-mid drag; deaths).
+Nucleus enables takes (sel prices) but doesn't fix need-exactness (packs
+still donate) or timing (late smalls). Parked (main keeps buzzer 62.0).
+REWRITE AUTHORIZED (worse personalities, big rewrites from lessons).
