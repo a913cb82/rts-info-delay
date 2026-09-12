@@ -18,6 +18,16 @@ def _can_train_aggressive(state: BotState, town) -> bool:
     return town.population >= train_floor(state, state.config)
 
 
+def _target_fresh(state: BotState, town, window: int = 30) -> bool:
+    """March discipline (overmatch-confirmed): need is computed on intel;
+    stale need understates printers (donations when need-met on paper).
+    March iff target seen within `window` (mail max-lag ~7t + muster
+    cycle); else hold (pipeline builds, scouts refresh, then march fresh).
+    Uniform per target (whole pack holds together, no stagger). Strike
+    path exempt (windows close; buzzer overrides)."""
+    return state.turn - state._last_seen.get(("town", town.id), state.turn) <= window
+
+
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
@@ -136,6 +146,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # A3: leader-targeting survives inside raid_target's pressure
             # branch (big wars); duels march the priced take at +1.
             nearest, _, _ = sel
+            if not _target_fresh(state, nearest):
+                continue  # stale need: hold (pipeline/scouts refresh first)
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
