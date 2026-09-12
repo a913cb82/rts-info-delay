@@ -317,6 +317,38 @@ trade in manufactures, or defence/administration. Historically,
 central-place hierarchies existed for those reasons, not because they
 maximised local demographic growth.
 
+
+### Which `market_scaling` gives a realistic hierarchy?
+
+Score of the growth-optimal 100k layout against the 1600s anchors
+(village 150-400 @ 2-5 km, bourgs 300-1,500 @ 10-20 km, chef-lieu
+5-10k, region 2.5-4k km², zipf 5-50), over the hierarchy search
+(`benchmarks/sanity_agrarian_realism.py`):
+
+| gamma | premium 0.25 | premium 0.50 |
+|---|---|---|
+| 1.00 | flat wins, realism 0.48 | flat wins, realism 0.48 |
+| 1.10 | flat wins (L4 competitive, 0.92) | L4 competitive, 0.92 |
+| **1.15** | **L4 wins, realism 0.92** | **L4 wins, realism 0.92** |
+| 1.2-3.0 | L4 wins, realism 0.92 | L4 wins, realism 0.92 |
+
+The emergent hierarchy is the same for every gamma >= 1.15: **280
+villages of 296 at 4 km, 20 market towns of 592 at 16 km, one
+chef-lieu of 5,325** (~3,900 km², top/median ~18, ~17% non-farm).
+It matches every anchor except "urban 8-12%", which counts only towns
+>2,000 (the model then has ~5-7% in the chef-lieu; its 592-bourgs are
+non-farm but not "urban" in that metric).
+
+So: `market_scaling = 1.15` (the Bettencourt urban-scaling exponent) is
+the natural value - the minimum at which the growth-optimal layout
+becomes the central-place hierarchy - with `market_premium = 0.5` (top
+of the market-access anchor) to make the hierarchy win robustly.
+Higher gamma (1.5-2) keeps the same shape but strengthens the
+hierarchy's advantage. The cost is growth: enabling gamma > 1 removes
+village-to-village services, so the best achievable rate falls from
++0.1242 (flat, gamma 1, premium 0.25) / +0.1629 (flat, premium 0.5) to
++0.1193 / +0.1568.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
