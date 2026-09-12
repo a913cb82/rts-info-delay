@@ -117,11 +117,38 @@ def ready_to_dispatch(state: "BotState", config, p) -> bool:
     return False
 
 
+def _dest_known(state: "BotState", tx: float, ty: float, fresh: int = 30) -> bool:
+    """Destination-knowledge gate (intel-quality rule): march only into
+    known space. Home turf (<=150km of any own town/army = live LOS) and
+    void (no known non-own town within 150km = nothing to meet) always
+    pass. Near known foe towns: pass iff any was seen within `fresh`
+    turns (informed); stale-only means blind meetings (donations) -> hold.
+    Recalls always pass (destination IS home turf). Settlers to void pass
+    (early founding preserved). 30t: mail max-lag ~7t + a muster cycle."""
+    for t in state.own_towns():
+        if math.hypot(tx - t.x, ty - t.y) <= 150.0:
+            return True
+    for a in state.own_armies():
+        if math.hypot(tx - a.x, ty - a.y) <= 150.0:
+            return True
+    near = [t for t in state.world.towns
+            if t.faction != state.faction
+            and math.hypot(tx - t.x, ty - t.y) <= 150.0]
+    if not near:
+        return True
+    for t in near:
+        if state.turn - state._last_seen.get(("town", t.id), -10 ** 9) <= fresh:
+            return True
+    return False
+
+
 def order_move(state: "BotState", config, p, tx: float, ty: float) -> list[str]:
     """MOVE_TO from converged intel (quiescence-gated) + note. [] when
     the order would die in flight — retry next turns, it converges."""
     if not ready_to_dispatch(state, config, p):
         return []
+    if not _dest_known(state, float(tx), float(ty)):
+        return []  # blind dispatch (stale turf): hold, don't donate
     state.note_move(p.id, float(tx), float(ty))
     return [f"MOVE_TO {p.id} {p.x:.1f} {p.y:.1f} {float(tx):.1f} {float(ty):.1f}"]
 
