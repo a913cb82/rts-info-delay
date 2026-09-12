@@ -198,6 +198,18 @@ discs on purpose — needs the evaluator first so we know what secrecy is
 worth). Retired from this list: per-faction sent-tracking for landing
 fog — the rework's send-state + S + amnesia solved it in the engine.
 
+TODO (infra debt, filed 2026-09-12): split `src/bots/*/core.py` into
+modules. They are huge and mostly duplicated across personalities
+(aggressive/expander/turtle ~3000 lines each of era machinery; pro/greedy
+~1400 of modern; ~13k total) — every loop iteration pays navigation +
+edit-risk tax in them. Split per package into `intel.py` (BotState/world
+mirror/trackers), `threat.py` (inbound/muster/holds), `raid.py`
+(targets/packs/strikes), `settle.py` (sites/expansion/escorts),
+`protocol.py` (bot_main/IO/clock). Keep `brain.py` + package hash layout
+unchanged (rating IDs stable); port explicitly per package (port.py).
+Do it when the loop stalls on edit friction, not before (behavior-identity
+must be re-verified byte-for-byte per package after the split).
+
 ## empty_3000 findings → per-bot items (3000t rematch evidence, PRE-SCOUT game — re-analysis below supersedes for the scout era)
 
 The whole game: 15000 pop_changes, 9 spawns, 42 moves, **0 battles, 0
