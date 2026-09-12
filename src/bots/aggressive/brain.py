@@ -135,7 +135,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if sel is not None:
             # A3: leader-targeting survives inside raid_target's pressure
             # branch (big wars); duels march the priced take at +1.
+            # Compound-gate (rich raids): thin packs donate even with margin
+            # (can't afford mass); raid iff force >=6 (covered overmatch
+            # packs + home). Poor phases compound tall instead (settlers/
+            # guards, no raids) — degrades gracefully (tall-stall beats raid-death).
+            # Packs + takes snowball when rich (win big).
             nearest, _, _ = sel
+            if len(state.own_armies()) < 6:
+                continue  # compound phase: hold (build force, don't donate)
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
             forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]

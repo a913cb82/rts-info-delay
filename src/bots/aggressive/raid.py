@@ -105,9 +105,9 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                  if t.population * (1.0 - eff) > cost * eff + 200]
     else:
         cands = list(enemy_towns)
-    # Survivor gate (ported): a capture halves pop — below 2x the death
-    # floor the prize is a corpse and the march is a feed (diag game:
-    # aggressive took a 702-pop town t3693, it died t4172). Denial too.
+    # Survivor note (ranking, never gate: gating thin starves the raider
+    # (proven 11.1: no takes -> no snowball -> death). Hostages demoted to
+    # fallback (take if nothing better: something beats starving).
     cands = [t for t in cands if t.population >= 2 * config.death_threshold]
     if not cands:
         return None
@@ -130,6 +130,12 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
         if arrival_t > turns_left:
             continue
         w = min(printable, arrival_t) * foe_print_factor(state, u.faction)
+        # Savings override (reactive-muster): sterile towns hoard unspent pop
+        # (like we do); raiding triggers spending. Printable >= 5 loads a
+        # pack on raid regardless of print history — assume full muster
+        # (else donations into savings). Thin-sterile can't muster (safe).
+        if printable >= 5.0:
+            w = max(w, min(printable, arrival_t))
         # Buzzer (r50 lesson: t9000+ silence — needs exceed everyone).
         # Retaliation time has run out: no future to defend, so W -> 0
         # explicitly (arrival doesn't collapse on its own). Bare S+1+dist.
@@ -160,10 +166,30 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready. Capitals carry a
             # beheading premium (permanent; universal GTO).
+            # Overmatch margin (mass, not timing): packs at need parity trade
+            # mutuals (donations); +2 overmatches for clean kills (pack intact,
+            # chains, snowballs). Unpriced denial stays lean (mass pressure).
+            need += 2
             score = prize / (1.0 + dist / 300.0) / (1.0 + s + w) \
                 / (1.0 + max(0, need - len(fieldable)))
             if u.is_capital:
                 score *= 1.5
+            if u.population < 4 * config.death_threshold:
+                score *= 0.3  # hostage fallback (take if nothing better)
+            # Vulture (timing): weakened-viable jumps queue (windows close
+            # as victims regrow). Weakened = pop-drop >=1000 (a train+ lost
+            # to battle/take, NOT prints) AND foe field flat/down (prints
+            # mean arming = stronger, not weaker) AND still viable (>=4x floor: regrowable, not hostage). x3 outranks capitals.
+            prev_pop = state._prev_pop.get(u.id, u.population) \
+                if hasattr(state, "_prev_pop") else u.population
+            cur_n = sum(1 for a in state.world.armies if a.faction == u.faction)
+            prev_n = state._foe_armies_prev.get(u.faction, cur_n) \
+                if hasattr(state, "_foe_armies_prev") else cur_n
+            if hasattr(state, "_foe_armies_prev"):
+                state._foe_armies_prev[u.faction] = cur_n
+            if u.population >= 4 * config.death_threshold and prev_pop - u.population >= 1000 \
+                    and cur_n <= prev_n:
+                score *= 3.0
             ranked.append((score, u, need, s))
             if best is None or score > best[0]:
                 best = (score, u, need, s)

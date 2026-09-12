@@ -91,6 +91,7 @@ class BotState:
         self._wave_hold_until: int = -1
         self._foe_first_seen: dict[int, int] = {}  # faction -> turn first observed
         self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
+        self._foe_armies_prev: dict[int, int] = {}  # faction -> field count last call (vulture)
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
         self._scout_id2: int | None = None  # second concurrent probe (fan-out: different ray)
         self._scout_gen: int = -1  # probe generation (first assign -> 0, legacy ray)
@@ -147,6 +148,7 @@ class BotState:
         self._wave_ids = set()
         self._foe_first_seen = {}
         self._foe_prints = {}
+        self._foe_armies_prev = {}
         self._bloodied = {}
         self._grave_pos = {}
         self._mapper = {}
