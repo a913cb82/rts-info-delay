@@ -2932,3 +2932,9 @@ Buzzer +15g (335 total) -> ord 63.2 (mu 66.7, was 67.0/320g): -0.4 on
 branches ≈ twins when their mechanism lies dormant; attractor coin-flips,
 all mid). Can't climb vs self (structural saturation); need diverse
 non-clones (dedup descends but info-optimal reconverges on top).
+
+### Buzzer 350g (parity-equilibrium) (2026-09-12 23:56 BST)
+Buzzer +15g (350 total) -> ord 61.8 (mu 65.2, was 66.7/335g): -1.4 on
+13% wins (2/15) + 1 F1-death. Pool top in parity (all 60-65, coin flips;
+failed-branch clones tie-or-beat buzzer). Equilibrium (no one climbs;
+80 impossible via scripted play). 350 games banked.
