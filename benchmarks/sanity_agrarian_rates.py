@@ -1,10 +1,11 @@
 """One-turn structural rates: is >2400 ever better than 2400?
 
-Each structure: instantaneous annualized growth measured on turn 2
-(turn 1 primes market services). No long simulations.
+Each structure: instantaneous annualized growth from a single turn.
+No long simulations.
 """
 import math, sys
 from dataclasses import replace
+from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from engine.config import GameConfig
 from engine.economy import _step_core
@@ -20,9 +21,7 @@ def rate(cfg, spec):
     towns = [Town(id=i, faction=0, x=float(x), y=float(y), population=float(p),
                   is_capital=(i == 0)) for i, (x, y, p) in enumerate(spec)]
     pops = sum(t.population for t in towns)
-    _n1, serv = _step_core(towns, [1000, 1000], cfg, None)      # turn 1: no services
-    last = {t.id: float(s) for t, s in zip(towns, serv)}
-    n2, serv2 = _step_core(towns, [1000, 1000], cfg, last)      # turn 2: services live
+    n2, _serv2 = _step_core(towns, [1000, 1000], cfg)   # single turn: services live
     tot2 = sum(n2)
     growth = (tot2 - pops) / pops * 52.0 * 100.0
     town_net = n2[0] - towns[0].population
@@ -36,7 +35,7 @@ def sweep(tag, cfg, village=300.0):
         nv = max(1, round((TOTAL-town)/village))
         spec = ([(500,500,town)] if town else []) + spiral(nv,500,500,55,village)
         g, tot, tn = rate(cfg, spec)
-        print(f"   {label:9s} growth {g:+.4f}%/yr  turn2 total {tot:9.0f}  town net {tn:+8.1f}")
+        print(f"   {label:9s} growth {g:+.4f}%/yr  total {tot:9.0f}  town net {tn:+8.1f}")
 
 sweep("base", BASE)
 sweep("premium 0.5", replace(BASE, market_premium=0.5))

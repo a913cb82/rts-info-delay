@@ -2,8 +2,8 @@
 
 Sites on a 10 km hex lattice (cell 87 km2 > ring 79, no crowding).
 Towns spread by farthest-point sampling; villages are the sites
-closest to a town. Measures the 2-turn per-capita rate (turn 2 primes
-market services) and prints the top layouts.
+closest to a town. Measures the single-turn per-capita rate (services
+resolve in-turn) and prints the top layouts.
 """
 import math
 import sys
@@ -79,8 +79,7 @@ def rate(spec):
     towns = [Town(id=i, faction=0, x=x, y=y, population=p, is_capital=(i == 0))
              for i, (x, y, p) in enumerate(spec)]
     total = sum(t.population for t in towns)
-    _n, serv = _step_core(towns, [1000, 1000], CFG, None)
-    n2, _s = _step_core(towns, [1000, 1000], CFG, {t.id: float(v) for t, v in zip(towns, serv)})
+    n2, _s = _step_core(towns, [1000, 1000], CFG)
     return (sum(n2) - total) / total * 52.0 * 100.0
 
 

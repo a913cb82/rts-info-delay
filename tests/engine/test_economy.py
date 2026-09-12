@@ -180,10 +180,17 @@ class TestMarketAccess:
     def test_market_yield_reaches_the_village(self) -> None:
         village = _town(500, 500, 300.0, tid=1)
         town = _town(530, 500, 2400.0, tid=2)
-        base, _ = _step_core([village, town], [1000, 1000], NO_MIG, None)
-        boosted, _ = _step_core([village, town], [1000, 1000], NO_MIG,
-                                {town.id: 588.0})
-        assert boosted[0] > base[0]
+        alone, _ = _step_core([village], [1000, 1000], NO_MIG)
+        together, _ = _step_core([village, town], [1000, 1000], NO_MIG)
+        assert together[0] > alone[0]
+
+    def test_one_turn_is_stateless(self) -> None:
+        """Same inputs give same outputs; no priming turn needed."""
+        towns = [_town(500, 500, 300.0, tid=1),
+                 _town(530, 500, 2400.0, tid=2)]
+        first, _ = _step_core(towns, [1000, 1000], CFG)
+        second, _ = _step_core(towns, [1000, 1000], CFG)
+        assert list(first) == list(second)
 
 
 class TestWindow:

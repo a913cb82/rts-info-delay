@@ -50,8 +50,7 @@ def run(T1, n2, T2, Pt, mode, r2=42.0):
     tw=[Town(id=i,faction=0,x=500+x,y=500+y,population=p,is_capital=(i==0))
         for i,(x,y,p) in enumerate(spec)]
     tot=sum(t.population for t in tw)
-    _n,serv=_step_core(tw,[1000,1000],CFG,None)
-    n2_,_= _step_core(tw,[1000,1000],CFG,{t.id:float(v) for t,v in zip(tw,serv)})
+    n2_,_ = _step_core(tw,[1000,1000],CFG)
     return (sum(n2_)-tot)/tot*52*100, P, len(towns)
 
 for mode in ("compact","spread"):

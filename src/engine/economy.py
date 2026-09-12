@@ -18,14 +18,15 @@ Every parameter is a real-world quantity (see GameConfig):
 
 Per turn (TURNS_PER_YEAR = config.turns_per_year):
 
-    Y_i     = (1+boost_i) * min(rho*area_i, sf*P_i)      production
+    Y0_i    = min(rho*area_i, sf*P_i)                     own-land production
+    serv_j  = max(0, P_j - Y0_j/sf)                       non-farm workforce
     boost_i = sm * mkt_i/(mkt_i + P_i)
     mkt_i   = sum_j P_market*(serv_j/P_market)^g * c(d_ij)
-    serv_j  = max(0, P_j - Y_j/sf)                        non-farm population
+    Y_i     = (1+boost_i) * Y0_i                          production
     S_i     = Y_i + imports_i                             food commanded
     B_i     = b*P_i * S_i/(S_i + h*P_i),  h = b/m - 1
     D_i     = m*P_i
-    out_i   = th*max(0,B_i-D_i) + nu*max(0,P_i - Y_i/sf)
+    out_i   = th*max(0,B_i-D_i) + nu*max(0,P_i - Y0_i/sf)
     mig_ij  = out_i * attr_ij / sum_k attr_ik
     attr_ij = max(0,P_j-P_i) * min(1,S_j/P_j) * e^(-d/Lm) * win(d)
 
@@ -369,21 +370,28 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
 # ---------------------------------------------------------------------------
 # Core step
 
-def _step_core(towns: list[Town], map_size, config: GameConfig,
-               last_serv: dict[int, float] | None = None):
+def _step_core(towns: list[Town], map_size, config: GameConfig):
+    """One turn of the economy as a pure function of the towns.
+
+    No cross-turn state: the non-farm workforce is measured against
+    base (unboosted) yields, so boosted output per farmer rises by the
+    same factor and everything resolves in a single pass:
+    land -> own-land production -> services -> boosted production ->
+    trade -> births/deaths -> migration.
+    """
     n = len(towns)
     if n == 0:
         return np.zeros(0), np.zeros(0)
     pops = np.array([t.population for t in towns], dtype=np.float64)
     y_ring, p_market, h, b_t, m_t, nu_t = derived(config)
+    sf = max(config.farm_workers_yield, 1e-12)
     areas = land_areas(towns, map_size, config)
     D = _get_dist_matrix(towns) if n >= 2 else None
-    if n >= 2 and last_serv:
-        serv = np.array([float(last_serv.get(t.id, 0.0)) for t in towns])
-        boost = _market_boost(serv, pops, D, config, p_market)
-    else:
-        boost = np.zeros(n)
-    prod = (1.0 + boost) * production(config, areas, pops)
+    base_prod = production(config, areas, pops)
+    serv = np.maximum(0.0, pops - base_prod / sf)
+    boost = (_market_boost(serv, pops, D, config, p_market) if n >= 2
+             else np.zeros(n))
+    prod = (1.0 + boost) * base_prod
     surplus = np.maximum(0.0, prod - pops)
     deficit = np.maximum(0.0, pops - prod)
     if n >= 2:
@@ -394,7 +402,7 @@ def _step_core(towns: list[Town], map_size, config: GameConfig,
     births = b_t * pops * S / np.maximum(S + h * pops, 1e-12)
     deaths = m_t * pops
     if n >= 2:
-        p_need = prod / max(config.farm_workers_yield, 1e-12)
+        p_need = base_prod / sf
         p_surp = np.maximum(0.0, pops - p_need)
         out_people = (config.migration_share * np.maximum(0.0, births - deaths)
                       + nu_t * p_surp)
@@ -402,9 +410,7 @@ def _step_core(towns: list[Town], map_size, config: GameConfig,
     else:
         net_mig = np.zeros(n)
     new_pops = np.maximum(0.0, pops + births - deaths + net_mig)
-    # Non-farm population: people beyond what current production needs.
-    serv_now = np.maximum(0.0, pops - prod / max(config.farm_workers_yield, 1e-12))
-    return new_pops, serv_now
+    return new_pops, serv
 
 
 def base_growth(population: float, config: GameConfig) -> float:
@@ -423,7 +429,7 @@ def nets_for(all_towns: list[Town], config: GameConfig, map_size=None) -> list[f
     if not towns:
         return []
     pops = np.array([t.population for t in towns], dtype=np.float64)
-    new_pops, _ = _step_core(towns, map_size or [1000, 1000], config, None)
+    new_pops, _ = _step_core(towns, map_size or [1000, 1000], config)
     return (new_pops - pops).tolist()
 
 
@@ -445,15 +451,12 @@ def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float
 def apply_growth(world: World, config: GameConfig) -> list[dict]:
     events: list[dict] = []
     if not world.towns:
-        world._last_serv = {}
         return events
     towns = world.towns
     old = [t.population for t in towns]
-    new_pops, serv = _step_core(towns, world.map_size, config,
-                                getattr(world, "_last_serv", None))
+    new_pops, _serv = _step_core(towns, world.map_size, config)
     for t, p in zip(towns, new_pops):
         t.population = float(p)
-    world._last_serv = {t.id: float(v) for t, v in zip(towns, serv)}
     for t, o, p in zip(towns, old, new_pops):
         if abs(p - o) > 1e-9:
             events.append({"kind": "pop_change", "id": t.id,

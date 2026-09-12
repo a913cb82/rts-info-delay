@@ -128,9 +128,11 @@ optimum near 5k; mature countryside (117 × 540 ≈ 63k surplus) supports
 cities of tens of thousands with an optimum near 24k. That is the urban
 transition: towns grow as the countryside matures.
 
-Method note: one turn (two with the market-service lag) gives the
-instantaneous rate and the equilibrium direction; long runs are only
-needed to quantify slow accumulation effects like town growth.
+Method note: one turn gives the exact instantaneous rate and the
+equilibrium direction (`_step_core` is a pure function of the towns —
+services resolve in-turn from unboosted yields, so there is no
+warmup, no window, no oscillation); long runs are only needed to
+quantify slow accumulation effects like town growth.
 
 
 ### Best growth layout for 100,000 people

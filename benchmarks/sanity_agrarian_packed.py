@@ -3,7 +3,7 @@
 Hex lattice spacing 10 km (cell 86.6 km2 > ring 78.5, no crowding),
 sites within 58 km of the centre (inside 60 km carting reach).
 One town at the centre (or none), villages at every other site.
-One-turn rates (turn 2, services primed).
+Single-turn rates (services resolve in-turn).
 """
 import math, sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -50,8 +50,7 @@ def rate(town_pop, village_pop):
     towns=[Town(id=i,faction=0,x=x,y=y,population=p,is_capital=(i==0))
            for i,(x,y,p) in enumerate(spec)]
     total=sum(t.population for t in towns)
-    _n,serv=_step_core(towns,[1000,1000],CFG,None)
-    n2,_s2=_step_core(towns,[1000,1000],CFG,{t.id:float(v) for t,v in zip(towns,serv)})
+    n2,_s2=_step_core(towns,[1000,1000],CFG)
     g=(sum(n2)-total)/total*52.0*100.0
     town_net=(n2[0]-towns[0].population) if town_pop else 0.0
     return g, total, town_net, nv

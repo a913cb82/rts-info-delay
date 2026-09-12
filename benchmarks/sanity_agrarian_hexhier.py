@@ -1,7 +1,7 @@
 """Does the decay model favour a hierarchical settlement layout?
 
 Flat hex village lattice vs town hierarchies at controlled urban
-fractions, 100k people, one/two-turn rates (turn 2 primes services).
+fractions, 100k people, single-turn rates (services resolve in-turn).
 Towns are placed on rings inside the region; villages fill the hex
 lattice at 3.5 km spacing (decay model: c=0.9, p=2).
 """
@@ -37,9 +37,7 @@ def hexpts(rmax, s):
 def rate(spec):
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y, population=p)
              for k, (x, y, p) in enumerate(spec)]
-    _n, serv = _step_core(towns, [2000, 2000], CFG, None)
-    n2, _ = _step_core(towns, [2000, 2000], CFG,
-                       {t.id: float(v) for t, v in zip(towns, serv)})
+    n2, _ = _step_core(towns, [2000, 2000], CFG)
     tot = sum(t.population for t in towns)
     return (sum(n2) - tot) / tot * 52.0 * 100.0
 

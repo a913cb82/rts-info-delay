@@ -160,8 +160,9 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for the agrarian economy (was e7335fed...
-        # on the fitted realism growth model).
-        assert h == "15cd58fe55246382f6cd810a1653e17af8da820ecd9cd05a04934fb59f01211c"
+        # Re-based 2026-09-13 for one-turn economy (serv from unboosted
+        # production; no cross-turn state). Was 15cd58fe... with the
+        # serv lag (e7335fed... before that, on the fitted model).
+        assert h == "1567df727c6c23e693f2c8a10f920dc2b446b95ee892a16553892173f31796f0"
     finally:
         path.unlink(missing_ok=True)

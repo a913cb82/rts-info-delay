@@ -4,10 +4,10 @@ Why this design (see docs/GROWTH_REWORK.md "scale" notes):
 - Whole-world per-capita rates are exact and comparable ACROSS shapes
   built on the same region (same edges). Never compare shapes built on
   different regions or with different urban fractions and call it scale.
-- The market-service feedback has a period-2 transient (flat meshes
-  oscillate ~+-40%); measure the mean over an even window AFTER warmup
-  (warm 4 + span 6 == warm 10 + span 20 to 4 decimals), never a 2-turn
-  snapshot.
+- The economy is a pure function of the towns: one `_step_core` call
+  resolves a whole turn (land -> services -> trade -> births ->
+  migration) with no cross-turn state, so a single turn gives the
+  exact instantaneous rate. No warmup, no windows.
 - Towns on an independent lattice (spacing s_t, size T); villages fill
   the rest. ~600 towns, ~10 turns, ~1-2 s per config, ~1 MB matrices.
 
@@ -29,11 +29,6 @@ BASE_CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0,
 CFG = BASE_CFG
 S_V = 4.0
 P_V = 300.0
-# Warm 2 + span 2 suffices: the serv feedback settles into a period-2
-# cycle by t3 (hierarchies converge; flat meshes ring with constant
-# amplitude), so any even post-warmup window has the identical mean.
-# Verified warm2/span2 == warm4/span6 to 4 decimals on all shapes.
-WARM, SPAN = 2, 2
 
 
 def lattice(rmax, s, ox=0.0, oy=0.0):
@@ -65,19 +60,15 @@ def build(rmax, s_t, T, capital=0.0, s_r=0.0, R=0.0):
     return spec
 
 
-def windowed_rate(spec, warm=WARM, span=SPAN, map_size=(2000, 2000), cfg=None):
+def rate(spec, map_size=(2000, 2000), cfg=None):
+    # Single turn: _step_core is a pure function of (towns, config),
+    # so this is exact (no warmup, no window, no oscillation possible).
     cfg = cfg or CFG
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y, population=p)
              for k, (x, y, p) in enumerate(spec)]
     tot = sum(t.population for t in towns)
-    serv = None
-    rates = []
-    for t in range(1, warm + span + 1):
-        n2, serv_now = eco._step_core(towns, list(map_size), cfg, serv)
-        serv = {tt.id: float(v) for tt, v in zip(towns, serv_now)}
-        if t > warm:
-            rates.append((sum(n2) - tot) / tot * 52.0 * 100.0)
-    return sum(rates) / len(rates), len(towns)
+    n2, _ = eco._step_core(towns, list(map_size), cfg)
+    return (sum(n2) - tot) / tot * 52.0 * 100.0, len(towns)
 
 
 def clear():
@@ -125,7 +116,7 @@ def main(rmax=50.0, gamma=None, premium=None):
         tot = sum(p for (_, _, p) in spec)
         urb = 100.0 * sum(p for (_, _, p) in spec if p > P_V) / tot
         clear()
-        g, n = windowed_rate(spec, cfg=cfg)
+        g, n = rate(spec, cfg=cfg)
         dt = time.perf_counter() - t0
         rows.append((g, label, n, urb, dt))
         print(f"{label:>18} {n:5d} {urb:7.1f} {g:+9.4f}  ({dt:.1f}s)")
