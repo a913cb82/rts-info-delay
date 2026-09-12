@@ -2155,3 +2155,48 @@ Code stays on loop/pro-sprawl2 (main src/ untouched). NEXT (rung 3):
 pack-only-in-bloodbath — parent>>child 27x real game (219k vs 8k same
 field): does solos-hold (child) lose vs intercept (parent) when meeting
 raiders clean? Autopsy that game, then gate the hold on bloodbath context.
+
+### Rung 3: bloodbath pair-up sorties (2026-09-12)
+SPECIMEN (stable, deterministic, real brains): sprawl field (F0 best-pro
+8k 4th, F2 parent 219k 1st, turtle 102k, sprawler 64k). Autopsy: t2302
+parent steals F0 colony (464, mirror race); F0 bleeds capital via
+guard-hoard (8 trains, townless by t5000); parent plays FORWARD (packs
+kill F1 raiders 3v1/2v1 clean at F1's doorstep t4488+, stunting sprawl
+64k) while compounding 6 towns to 212k; F0's 4 field armies freeze 6000t;
+F0's 3 home guards clean-kill F1 singles t3367 (defense works, cedes
+initiative). FIX (pro/brain.py, duel_ctx-gated): multi-foe wars allow
+pair-up sorties (solo + uncommitted partner -> nearest forecast foe, 2v1
+clean, <=300km reach; no partner/no-reach/not-ready -> hold). Duels
+unchanged (D2-safe). Holds keep N+1 (surplus-only: capital never stripped
+below needed defense). Predicts: forward clean kills stunt sprawl pipelines
++ deny repeat raids; flips bloodbath survivals into contention. Bar 58.
+CAUTION (relearned hard): single scratch games are CHAOS lotteries (same
+code reran 0/58k-flip AND byte-identical — micro-timing cascades; only
+ratings+units+inspection are instruments, never single-game stories).
+
+### Rung 3 verdict: FAIL, reverted (2026-09-12)
+Pair-up sorties rated clean 15g -> ord 36.3 (mu 44.6; ~45% wins vs weak-mid,
+competitive losses vs strong (178-190k vs 187-219k), deaths vs 218k-pro).
+FAIL (bar 58). Likely HARMFUL, not neutral: pairs arrive staggered (mutual
+trades, not clean kills) + 2nd-wave takes while pairs away + forward
+heirlooms (no recall) — sitting-home outscores sortying on average.
+LADDER EXHAUSTION (assessment): pro tweaks 0-for-3 this arc (42/43/36, all
+< 57.2); all personalities 0-for-19 vs baselines (excl. two ancient +5s).
+Single-lottery specimens don't generalize (guard-tax neutral, refound/
+unfreeze/sorties backfire). The +5 era is over: remaining gaps are
+systematic (raid initiative, forward staging, colony-race wins) needing
+either coordinated multi-turn machinery (staging+recall+escort package —
+one more9061 coherent rung?) or the search track (never attempted; the
+actual 80-path per scale math). история: tweak ceiling holds (~57 pro).
+Code parked on loop/pro-rung3 (main src/ untouched).
+
+### Rung 3 obituary: fatal early sortie (2026-09-12)
+Scratch probe (workspace rung-3 vs baselines): F0 DIES t3800, emits 0
+orders on 99.8% of turns (6 singles total). Read: normal quiet start,
+then the first pair sorties, donates (2v1 gamble lost vs 185k-expander),
+capital naked -> raided -> poor (<1500 train floor) -> death spiral. The
+"surplus-only" reasoning fails at 2-armies-total (the pair IS the defense;
+holds keep N+1 only vs COUNTED threat, not vs the unknown). Sorties don't
+just underperform — they can suicide the early game. (Single-lottery
+confirmation of the rated 36.3 FAIL; mechanism consistent.)
+Search-spec measurement deferred (bot died; need a healthy game).
