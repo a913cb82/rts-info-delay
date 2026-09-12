@@ -12,12 +12,17 @@ from .economy import *
 
 
 def _live_threat(state: BotState, aid: int, x: float, y: float, foe: int,
-                fresh: int = 20) -> bool:
-    """Threat counts iff live AND (moving/unknown OR mustering).
-    SKIP stale ghosts (probably dead/gone) and SOLO parked loiterers
-    (stuck settlers/scouts, no mates = no pack forming). COUNT movers,
-    first-sightings, AND parked-with-mates (staging packs muster before
-    rushing; 1-turn movement warning is too late for naked sprawl)."""
+                fresh: int = 20, rich: float = 25000.0) -> bool:
+    """Threat counts iff live AND (moving/unknown OR mustering) — unless a
+    RICH foe exists (>=`rich` single known town: prints 20+, sustains 3+
+    packs solo). Rich foes crack thin walls (need 5-8 home via mutuals);
+    precision there loses strong games (4ths/deaths). So blanket-count vs
+    rich (thick wall, old behavior), precision vs weak (save for sprawl).
+    Spread-rich (many thin towns, no single >=rich) stays precision
+    (mutuals handle sequential waves; tune if fails)."""
+    for t in state.world.towns:
+        if t.faction != state.faction and t.population >= rich:
+            return True
     if state.turn - state._last_seen.get(("army", aid), state.turn) > fresh:
         return False
     trail = (state._trails.get(aid) if hasattr(state, "_trails") else None) or ()

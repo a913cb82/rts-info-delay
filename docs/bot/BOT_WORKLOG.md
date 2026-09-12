@@ -2479,3 +2479,11 @@ vs STRONG, thickness survives (mutuals hold, places 2nd-4th). V3 QUEUED
 field 3+ packs), precision vs weak (save for sprawl). Combines v2 weak-wins
 + baseline strong-survivals -> mu 55+ predicted. Falsifiable: 4th/death-rate
 vs strong drops, weak-wins persist. Code parked on loop/turtle-thick2.
+
+### Turtle v3: strength-gated thickness (2026-09-12 20:21 BST)
+V2 thins the wall (precision) -> big packs crack it (4ths/deaths vs 250k+).
+FIX: rich foe (>=25k single known town: prints 20+, sustains 3+ packs)
+-> blanket-count (thick wall, old behavior); weak foes -> precision (save
+for sprawl). 7 unit tests (incl rich-blanket + thin-precision). Predicts:
+weak-wins persist (47%) + strong placements recover (2nd-4th via mutuals).
+Bar 50+.

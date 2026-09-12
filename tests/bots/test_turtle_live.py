@@ -62,3 +62,23 @@ def test_parked_with_mates_counts():
         _feed(b, t, towns=[(1, 500, 500, 0, 20000, True)],
               armies=[(20, 300, 500, 1), (21, 320, 500, 1)])
     assert _live_threat(b, 20, 300, 500, 1) is True
+
+
+def test_rich_foe_blanket_counts_parked():
+    # 25k+ foe town anywhere known: blanket (thick wall vs pack factory)
+    b = _bot()
+    for t in range(100, 110):
+        _feed(b, t, towns=[(1, 500, 500, 0, 20000, True),
+                           (2, 900, 900, 1, 60000, False)],
+              armies=[(20, 300, 500, 1)])
+    assert _live_threat(b, 20, 300, 500, 1) is True
+
+
+def test_thin_foes_keep_precision():
+    # all foes thin (<25k): parked solo still silent
+    b = _bot()
+    for t in range(100, 110):
+        _feed(b, t, towns=[(1, 500, 500, 0, 20000, True),
+                           (2, 900, 900, 1, 8000, False)],
+              armies=[(20, 300, 500, 1)])
+    assert _live_threat(b, 20, 300, 500, 1) is False
