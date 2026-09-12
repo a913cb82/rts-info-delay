@@ -105,18 +105,24 @@ Smoothing: the raw speed profile is passed through a **log-space cone
 filter** (|delta ln speed| <= ln 1.20 per turn). That filter IS the
 transition: it preserves the slow action valley and makes the ramp a
 geometric, perceptually even accelerate/decelerate, so the effective
-multiplier never jumps. Action keeps a floor of **2x preferred**
-(escalating 3x/4x/6x ... only when the target cannot otherwise be met);
-quiet stretches have NO floor and can run to **65536x**. Turns advance
-from a cumulative wall-clock schedule (the total is exact). Observed on
-quad_10000 with the current definition:
+multiplier never jumps, and the ramp is long enough that the floor is
+reached BEFORE the burst (10-50 turns of run-in depending on target).
 
-    target  action  quiet    ramp time (to half-quiet)
-     15s     6x     4179x    1.0s
-     30s     3x     2090x    2.0s
-     60s     2x      452x    3.0s
-    120s     2x      122x    2.9s
-    300s     2x       39x    2.8s
+The intensity full-weight is 2 (a single town build/death), so EVERY
+action event reaches the slow floor (with 3, build-weight events peaked
+at 0.67 and played ~100x). Action speed: **2x preferred, 3x, 4x max**;
+if a target cannot fit even at 4x the replay overruns the target rather
+than hiding the action (the readout's tooltip shows the actual length).
+Quiet has no floor and runs to **65536x**. Turns advance from a
+cumulative wall-clock schedule. Observed on quad_10000:
+
+    target  action  quiet    total   wall<=4x  speed at action turns
+     15s     4x    65536x    38s      5.2s     4x (target overrun)
+     30s     4x    65536x    38s      5.2s     4x (target overrun)
+     60s     3x     1032x    60s     16.4s     3x
+    120s     2x      215x   120s     44.1s     2x
+    300s     2x       43x   300s     53.2s     2x
+    600s     2x       19x   600s     57.7s     2x
 
 Faction-aware: select a faction (fog selector) and the profile is built
 from THAT faction's action only; recomputed on selection/target change.

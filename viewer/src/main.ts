@@ -39,7 +39,9 @@ let lastDrawTs = 0;
    the slowdown lingering after it. */
 const AUTO_LOOKAHEAD = 20;    // raised-cosine ramp length before action
 const AUTO_LINGER = 20;       // after (context turns either side)
-const AUTO_FULL = 3;          // action units for full attention (one battle)
+const AUTO_FULL = 2;          // full attention at a build/death-weight event,
+                              // so EVERY action reaches the slow floor (with
+                              // 3 it peaked at 0.67 -> actions played ~100x)
 const AUTO_SLOW = 2;          // preferred action speed (escalates if infeasible)
 const AUTO_STEP_CAP = 12;     // max turns/frame under auto (reactive mode)
 const AUTO_CONE = 1.20;       // max per-turn speed change (log-cone smoothing)
@@ -54,7 +56,10 @@ let effSpeed = 1;
 let autoTargetSec = 0;
 let schedule: Float64Array | null = null;
 let scheduleFast = 0;
-const AUTO_SLOW_CANDIDATES = [2, 3, 4, 6, 8, 12, 16, 24, 32, 64, 128, 256, 512, 1024, 2048, 4096, 16384, 65536];
+/* Action visibility is a hard constraint: 2x preferred, 3x, 4x max. If a
+   target cannot fit even at 4x, keep 4x and let the total overrun (a
+   replay that hides the action is worse than one that runs long). */
+const AUTO_SLOW_CANDIDATES = [2, 3, 4];
 /* Quiet stretches have no visibility floor: solve the quiet speed as high
    as the target demands (action segments keep their 2x preference). */
 const AUTO_FAST_MAX = 65536;
@@ -326,7 +331,13 @@ function computeSchedule(): void {
     t += 1 / sp[i]!;
   }
   schedule = sch;
-  if (speedLiveEl) speedLiveEl.title = `target ${autoTargetSec}s, action ${slow}x, quiet ${fast.toFixed(0)}x`;
+  if (speedLiveEl) {
+    const over = t > autoTargetSec * 1.02
+      ? ` (${Math.round(t)}s: ${slow}x action floor wins over the target)`
+      : "";
+    speedLiveEl.title =
+      `target ${autoTargetSec}s${over}, action ${slow}x, quiet ${fast.toFixed(0)}x`;
+  }
 }
 
 /* ── Load ── */
