@@ -2436,3 +2436,13 @@ when-seen (bleed drops capital below affordability before raiders visible)
 Unreachable in practice. Deeper: doom-certainty needs unseen-wave-2 counts
 (impossible in fog); hair-trigger on wave-1 gifts capitals intact (worse).
 No rating (inert twin of parent). Code parked on loop/pro-evac.
+
+### Turtle live-threat gate (2026-09-12 18:41 BST)
+STALL AUTOPSY (lower-bar vs strong): 12 guards vs phantoms, town starves
+1415->676, never sprawls (12k) — vs Game A (0 guards, 5 towns, 302k).
+Threat model counts EVERY foe army (parked 300km scout sets ETA 6, drops
+bar 5000->1200, prints thin forever). FIX (turtle/brain.py + tests (4)):
+_live_threat (seen<=20t AND not proven-parked) filters threat_eta +
+town_eta loops. New sightings + movers always count (D2-safe); stale +
+parked silent (self-correct on change). Predicts: no phantom-bleed
+(sprawl instead); real raids still defended. Bar 50+ (clear +3, tie-break).

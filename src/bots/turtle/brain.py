@@ -11,6 +11,32 @@ from .settle import *
 from .economy import *
 
 
+def _live_threat(state: BotState, aid: int, x: float, y: float,
+                fresh: int = 20) -> bool:
+    """Threat counts iff live: seen within `fresh` turns AND not proven
+    parked (fresh trail, ~zero displacement = passive loiterer). Stale
+    ghosts (probably dead/gone) and parked loiterers (never coming) must
+    not open the war chest (phantom-bleed: 12 guards vs nothing, town
+    starves 1415->676). New sightings + movers always count (D2-safe:
+    rushers can't prove parked; stale clears on change (self-correcting))."""
+    if state.turn - state._last_seen.get(("army", aid), state.turn) > fresh:
+        return False
+    trail = (state._trails.get(aid) if hasattr(state, "_trails") else None) or ()
+    if len(trail) >= 2:
+        pts = [(p[1], p[2]) for p in trail]
+        still = True
+        for i in range(len(pts)):
+            for j in range(i + 1, len(pts)):
+                if math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) > 5.0:
+                    still = False
+                    break
+            if not still:
+                break
+        if still:
+            return False
+    return True
+
+
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     faction = state.faction
     out: list[str] = []
@@ -26,6 +52,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for a in state.world.armies:
         if a.faction == faction:
             continue
+        if not _live_threat(state, a.id, a.x, a.y):
+            continue  # stale ghosts + parked loiterers don't open the chest
         for t in own_t:
             d = math.hypot(a.x - t.x, a.y - t.y)
             eta = d / max(1.0, config.army_speed)
@@ -47,6 +75,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         n = 0
         for a in state.world.armies:
             if a.faction == faction:
+                continue
+            if not _live_threat(state, a.id, a.x, a.y):
                 continue
             nearest = min(own_t, key=lambda u: math.hypot(a.x - u.x, a.y - u.y))
             if nearest.id != t.id:
