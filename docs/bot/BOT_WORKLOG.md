@@ -2436,3 +2436,26 @@ when-seen (bleed drops capital below affordability before raiders visible)
 Unreachable in practice. Deeper: doom-certainty needs unseen-wave-2 counts
 (impossible in fog); hair-trigger on wave-1 gifts capitals intact (worse).
 No rating (inert twin of parent). Code parked on loop/pro-evac.
+
+### Turtle live-threat gate (2026-09-12 18:41 BST)
+STALL AUTOPSY (lower-bar vs strong): 12 guards vs phantoms, town starves
+1415->676, never sprawls (12k) — vs Game A (0 guards, 5 towns, 302k).
+Threat model counts EVERY foe army (parked 300km scout sets ETA 6, drops
+bar 5000->1200, prints thin forever). FIX (turtle/brain.py + tests (4)):
+_live_threat (seen<=20t AND not proven-parked) filters threat_eta +
+town_eta loops. New sightings + movers always count (D2-safe); stale +
+parked silent (self-correct on change). Predicts: no phantom-bleed
+(sprawl instead); real raids still defended. Bar 50+ (clear +3, tie-break).
+
+### Live-threat verdict: FAIL (22.6), v2 specified (2026-09-12 19:21 BST)
+Rated clean 15g -> ord 22.6 (mu 31.1): FAIL (bar 50+). 4 dominant wins
+(143-209k!) but 3+ deaths: parked-exclusion removes STAGING defense
+(packs park pre-rush; 1-turn movement warning insufficient for naked
+sprawl (need 3 home early)). Baby+bathwater: old counted everything
+(bled vs loiterers AND defended vs stagers); v1 counts nothing parked
+(saves bleed, dies to stagers). V2 SPEC (next turn): solo-vs-pack —
+SKIP iff stale OR (parked AND solo (no same-faction mate within 100km));
+COUNT fresh-moving, first-sightings, AND parked-with-mates (staging pack).
+Loiterers (solo stuck settlers/scouts) ignored; mustering packs defended.
+Falsifiable units: solo-parked silent / pack-parked counts. Bar 50+.
+Code parked on loop/turtle-thick2 (v1).
