@@ -102,29 +102,31 @@ Run them: `python benchmarks/sanity_agrarian.py [turns]`,
 `sanity_agrarian_struct.py`, `sanity_agrarian_city.py`.
 
 
-### Is a town >2,400 ever good?
+### Town size and the farmland packing limit
 
-Instantaneous rates (turn 2, services primed; one-turn check, no long
-runs), 46,800 people, one town + 300-pop villages:
+A settlement's ring is `πR² ≈ 79 km²`. Within a town's carting reach
+(`3·L_cart ≈ 60 km`) at most `π·60²/79 ≈ 144` villages fit without
+overlapping farmland — 118 at 10 km hex spacing, which is the realistic
+packing. One town replaces one lattice site; one-turn rates (turn 2,
+services primed), 117 villages around it:
 
-| town seed | base | premium 0.5 | gamma 2.0 | mature villages (1,800) |
-|---|---|---|---|---|
-| 0 (villages only) | +0.084 | +0.084 | +0.084 | +0.084 |
-| 2,400 | +0.115 | +0.143 | +0.110 | +0.087 |
-| **4,800** | **+0.118** | **+0.149** | **+0.121** | **+0.095** |
-| 9,600 | +0.109 | +0.139 | +0.112 | +0.095 |
-| 14,400 | +0.096 | +0.123 | +0.098 | +0.086 |
+| town seed | young villages (300 pop, surplus 90) | mature villages (1,800, surplus 540) |
+|---|---|---|
+| 0 | +0.084 | +0.084 |
+| 2,400 | +0.101 | +0.089 |
+| 4,800 | **+0.113** | +0.102 |
+| 9,600 | +0.107 | +0.113 |
+| 14,400 | +0.098 | — |
+| 24,000 | +0.083 | **+0.117** |
+| 48,000 | — | +0.111 |
 
-So >2,400 is not structurally forbidden: it wins instantaneously at
-4,800 even in the baseline (marginally), and clearly when the service
-return is stronger (`market_premium` 0.5 = anchor max, service scaling
-2.0) or the countryside is mature (villages near land capacity, so a
-percentage yield gain is worth more food). Over centuries the ranking
-flattens (10k-turn baseline: 2,400 ends ~0.5% ahead of 4,800) because
-towns do not reproduce (natural growth 0 when fed) and migration keeps
-filling them: the late-game optimum drifts toward the ring scale. The
-model needs stronger agglomeration (or non-food town roles) for large
-cities to win robustly.
+The optimal town is not a fixed 2,400: it scales with the villages'
+**marketable surplus**, because the same service premium is a
+percentage of a much larger harvest once farmland is full. Young
+countryside (117 × 90 ≈ 10k surplus) supports towns up to ~10k with an
+optimum near 5k; mature countryside (117 × 540 ≈ 63k surplus) supports
+cities of tens of thousands with an optimum near 24k. That is the urban
+transition: towns grow as the countryside matures.
 
 Method note: one turn (two with the market-service lag) gives the
 instantaneous rate and the equilibrium direction; long runs are only
