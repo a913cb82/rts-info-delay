@@ -48,6 +48,23 @@ def cmd(spec):
 fh = open("benchmarks/elo_games.jsonl", "a")
 seen_fields = set()
 seen_ckeys = set()
+# Global dedup (methodology): seed from DB history so no grind ever replays
+# ANY historical field (the x27/x21 mirror-repeat epidemic: info-optimal
+# reconverges on played fields across runs; within-run sets don't catch it).
+# Slot-sensitive (slot-swaps are different games); content-keyed too.
+try:
+    _hist = open("benchmarks/elo_games.jsonl").read().splitlines()
+except FileNotFoundError:
+    _hist = []
+for _ln in _hist:
+    try:
+        _g = json.loads(_ln)
+        _f = {int(s): n for s, n in _g["field"].items()}
+        seen_fields.add(tuple(_f[s] for s in range(5)))
+        seen_ckeys.add(tuple((_f[s].rsplit("-", 1)[0], _content_hash(_f[s])) for s in range(5)))
+    except Exception:
+        continue
+print(f"global-dedup: {len(seen_fields)} historical fields banned")
 for i in range(N):
     # fixed-seed propose: MINE + 4 info-optimal full-pool complements.
     # Skip-seen (methodology): info-optimal converges on one best field
