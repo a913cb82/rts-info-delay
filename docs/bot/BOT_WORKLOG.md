@@ -2925,3 +2925,10 @@ spike-batch (F1-zero twice; 53% wins). 300 games banked; oscillation
 Buzzer +15g (320 total) -> ord 63.6 (mu 67.0, was 67.3/305g): -0.2 on
 40% wins (incl 358k) + 1 F1-death + mids. Flat. Failed branches
 (dd9782a etc.) correctly lose as pool opponents (self-correcting).
+
+### Buzzer 335g + mirror-saturation (2026-09-12 23:58 BST)
+Buzzer +15g (335 total) -> ord 63.2 (mu 66.7, was 67.0/320g): -0.4 on
+3W + 12 mids + 0 deaths. Pool top saturates with buzzer-clones (failed
+branches ≈ twins when their mechanism lies dormant; attractor coin-flips,
+all mid). Can't climb vs self (structural saturation); need diverse
+non-clones (dedup descends but info-optimal reconverges on top).
