@@ -2695,3 +2695,15 @@ force beats frozen twins head-to-head (takes snowball late vs static).
 Mechanism confirmed (muster > frozen). NEXT: buzzer volume to 60g+
 (sigma -> ord 62+; needs games for 80-push anyway) + survive spikes
 (muster force doubles as guards: hold 9 vs 240k packs, place 2nd).
+
+### Buzzer 60g + turtle-rewrite spec (2026-09-12 19:41 BST)
+Buzzer +22g (60 total) -> ord 62.0 (mu 66.6, was 67.9): fields escalated
+(all 240k+-capable pros; attractor 188k loses to spikes; 3 deaths). Banked
+honest (sigma 1.5). NEW-BOT AUTHORIZATION used for design (code next turn):
+TURTLE-REWRITE (turtle lineage, fortress-first): Game-A recipe engineered
+— feed schedule (5 towns by t3000 ALWAYS) + guard minimums (3-home before
+t4000 bloodbath) + muster-takes late (strip-mine 60k+ -> take snowball).
+Transitive over parents (300k cap (outgrows pro-200k) + takes (out-takes
+static turtle)). Fixes cap-5 inconsistency (lottery feed timing + no
+guards) with engineered economy (not tweaks). Falsifiable: 5 towns by t3000
+in rated games? guard minimums hold? takes snowball? Bar 50+ then 60+.
