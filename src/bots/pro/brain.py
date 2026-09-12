@@ -3,7 +3,10 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .core import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, should_hold_home
+from .core import BotForecast, BotState, bot_main, can_train_standard, dark_pack, defense_train_ok, demand_trains, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, should_hold_home
+
+DARK_MASS = 2  # unaccounted foe armies that trigger the dark-pack protocol
+DARK_HOME = 2  # home defenders held/recalled while a dark pack exists
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
@@ -70,7 +73,8 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     if not any(t.faction != state.faction for t in state.world.towns) and not any(
             a.faction != state.faction for a in state.world.armies):
         return []
-    out.extend(demand_trains(state, config, can_train_standard))
+    out.extend(demand_trains(state, config, can_train_standard,
+                               block_expand=dark_pack(state, config) >= DARK_MASS))
     return out
 
 
@@ -99,6 +103,16 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # growing pack.
     free_n = sum(1 for a in state.own_armies()
                  if not state.army_has_target(a.id) and a.id not in held)
+    # Dark-pack protocol: foe mass exists but isn't visible (stale) — the
+    # inbound model can't fire, so P6's zero-hold would meet an unseen pack
+    # with a naked, possibly unprintable capital. Recall free armies to
+    # DARK_HOME and veto new far settles until the mass is seen or dead.
+    # Conditional: when the field is seen/empty, pressure as before.
+    dark = dark_pack(state, config) >= DARK_MASS
+    home_n = sum(1 for a in state.own_armies()
+                 if any(math.hypot(a.x - t.x, a.y - t.y) <= 20.0
+                        for t in state.own_towns()))
+    recall_need = [max(0, DARK_HOME - home_n)] if dark else [0]
     pack_building = sel is not None and sel[1] > free_n
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # the first NEARBY free army (recon by fire — bounded risk, gains
@@ -126,6 +140,15 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue
+        # Dark-pack recall: free field armies come home until DARK_HOME.
+        if recall_need[0] > 0 and p.id not in held:
+            home = min(state.own_towns(),
+                       key=lambda t: math.hypot(t.x - p.x, t.y - p.y),
+                       default=None)
+            if home is not None and math.hypot(p.x - home.x, p.y - home.y) > 20.0:
+                out.extend(order_move(state, config, p, home.x, home.y))
+                recall_need[0] -= 1
+                continue
         if pack_building:
             if not probe_armed or probe_sent or probe_tgt is None or \
                     math.hypot(p.x - probe_tgt.x, p.y - probe_tgt.y) > probe_reach:
@@ -175,6 +198,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
             out.extend(order_move(state, config, p, fx, fy))
         else:
+            # Dark-pack: no new far settles while a pack is unaccounted —
+            # marching the reserve out re-creates the naked capital. Hold.
+            if dark:
+                continue
             # G2: settle on demand only (same gate as trains: void merit
             # or contested payback) — else recycle home for +500 pop-add,
             # but ONLY in true peace: marching home under known threat

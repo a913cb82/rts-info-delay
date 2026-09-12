@@ -1010,6 +1010,31 @@ def inbound_force(state: "BotState", config: "GameConfig",
     return out
 
 
+def dark_pack(state: "BotState", config: "GameConfig",
+            window: float = 30.0, stale_after: float = 4.0) -> int:
+    """Unaccounted foe mass: foe armies last seen within `window` turns
+    but not fresh (older than `stale_after`). A pack that exists but
+    isn't visible — the inbound threat model can't see it, so neither
+    muster nor hold fires, and the capital sits naked. Ghosts (seen
+    longer ago than `window`) are ignored: long-dead or irrelevant.
+    Returns the count (0 = the field is empty, seen, or dead)."""
+    now = state.turn
+    n = 0
+    for a in state.world.armies:
+        if a.faction == state.faction:
+            continue
+        seen = state._last_seen.get(("army", a.id))
+        if seen is None:
+            continue
+        age = now - seen
+        if age <= stale_after:
+            continue  # fresh-visible: normal inbound logic owns it
+        if age > window:
+            continue  # ghost
+        n += 1
+    return n
+
+
 def defense_train_ok(population: float, cost: float, floor: float,
                      eta: float, home: int, n: int, window: float = 4.0) -> bool:
     """Defense-train predicate (shared): train iff the marginal army
@@ -1317,7 +1342,8 @@ def can_train_standard(state: "BotState", town) -> bool:
 def demand_trains(state: "BotState", config, can_train,
                   *, depth_extra: float = 0.0, raid_margin: float = 200.0,
                   payback_mult: float = 1.0, threat_window: float = 4.0,
-                  probe_armies: int = 0, void_horizon: int = 500) -> list[str]:
+                  probe_armies: int = 0, void_horizon: int = 500,
+                  block_expand: bool = False) -> list[str]:
     """Demand-gated trains (shared Step 2 core): threat muster by outcome
     rule, raid pipeline (pack deficit for the priced target), expansion
     pipeline (void merit / contested payback), plus the prober pipeline
@@ -1343,7 +1369,8 @@ def demand_trains(state: "BotState", config, can_train,
         deficit = [max(0, need - fieldable)]
     else:
         deficit = [0]
-    expand = expansion_demand(state, config, payback_mult, void_horizon)
+    expand = False if block_expand else expansion_demand(
+        state, config, payback_mult, void_horizon)
     cands = sorted(state.own_towns(),
                    key=lambda t: (0 if state.should_train_for_overcrowding(t) else 1,
                                   state.get_growth(t.id), t.population))

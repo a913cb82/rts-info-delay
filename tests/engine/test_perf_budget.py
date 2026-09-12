@@ -93,10 +93,9 @@ def test_heavy_delivery_budget() -> None:
     for f in range(5):
         c = next(t for t in w.towns if t.faction == f and t.is_capital)
         caps[f] = (c.x, c.y)
-    states = {f: None for f in range(5)}
-    for f in range(5):  # warm send-states (steady state)
-        build_updates(lg, f, states[f], 0, caps[f], 21.0)
-    ms = _med(lambda: [build_updates(lg, f, states[f], 0, caps[f], 21.0)
+    for f in range(5):  # warm (steady state)
+        build_updates(lg, f, 0, caps[f], 21.0)
+    ms = _med(lambda: [build_updates(lg, f, 0, caps[f], 21.0)
                        for f in range(5)])
     print(f"\nheavy delivery x5 warm: {ms:.2f} ms (budget {DELIVERY_BUDGET_MS})")
     assert ms <= DELIVERY_BUDGET_MS

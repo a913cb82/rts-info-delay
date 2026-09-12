@@ -20,6 +20,31 @@ Self-play diffs 0.
 
 ## Log
 
+### GOAL-100, ceiling iteration 1: pro dark-pack protocol (2026-09-12)
+GOAL: >=100 ordinal bot. Scale math (closed-system sim vs top-50 pool):
+P1=0.44 (now) -> ord ~55; P1=0.60 -> ~57; P1=0.80 -> ~62; P1=0.95 -> ~75;
+always-win 50g -> 60, 300g -> 70, 1000g -> 78, 2000g -> 84 (log grind).
+100 needs ~never-lose + thousands of games. Only pro (51.8) is in range,
+so this iteration targets the CEILING (pro), not the README's worst
+(aggressive 42.2) — floor work doesn't move the top. Adapted gate: merge
+iff the new pro brain's ordinal (>=15g) >= incumbent 51.8.
+TARGET DATA: pro dies townless in 30/119 (25%); alive it wins 58%.
+Solo-pro fields: 31% wins. Expander beats pro in 34/67 non-wins.
+DEATH STORY (autopsied, solo pro vs 2xaggr+exp+turtle): capital falls
+t3940 to an UNSEEN 4-pack (expander, intel 818t stale); vanguard
+mutuals the onesie guard, pack walks in. Pro's field armies died in
+1v1 mutuals days earlier / colonized east; capital spent to 1469 (below
+train floor AND evac floor) on a far colonist. P6 holds 0 home in big
+wars; threat model never fired (no detection). ROOT: pro defends on
+contact, not on uncertainty — a massed-but-unseen pack meets a naked,
+unprintable capital.
+IDEA (1, pro-congruent): dark-pack protocol — foe mass last seen within
+30t but not fresh (>4t stale) = unaccounted pack. While >=2 unaccounted:
+(i) veto expansion trains (keep the capital printable/evac-able),
+(ii) recall free field armies to 2 home, (iii) veto new far settler
+marches. Conditional (preserves P6 pressure when the field is seen/empty).
+
+
 ### Pro — best-of-all assembly (2026-09-04)
 Fast: endgame 2245→3249 (counter-punch breaks mirror), opening 3240→4316,
 defense 1109 (holds). Slow: efficiency 59%→100% (P3b empty-field hold =
