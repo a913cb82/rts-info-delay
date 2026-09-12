@@ -909,7 +909,8 @@ function updateChrome(): void {
 
 /* ── Animation ── */
 
-function goToTurn(target: number, animate = true, doDraw = true): void {
+function goToTurn(target: number, animate = true, doDraw = true,
+                   durMs?: number): void {
   if (turns.length === 0) return;
   target = Math.max(0, Math.min(target, turns.length - 1));
   if (target === turn && animProgress >= 1) return;
@@ -922,7 +923,9 @@ function goToTurn(target: number, animate = true, doDraw = true): void {
     return;
   }
   animFromTurn = turn; animToTurn = target; animProgress = 0; animStart = performance.now();
-  animDuration = Math.max(80, 350 / Math.max(0.5, autoSpeed ? effSpeed : speed));
+  // Tween spans the whole turn interval when the caller knows it (schedule
+  // mode): continuous motion instead of move-then-hold.
+  animDuration = durMs ?? Math.max(80, 350 / Math.max(0.5, autoSpeed ? effSpeed : speed));
   turn = target;
   if (animRaf) cancelAnimationFrame(animRaf);
   animRaf = requestAnimationFrame(animateLoop);
@@ -964,10 +967,17 @@ function playLoop(ts: number): void {
       effSpeed = step > 0 && dt > 0 ? step / dt : scheduleFast;
       updateSpeedLabel();
       const tween = step === 1 && effSpeed <= 4;
+      // The new turn lasts until the NEXT turn's schedule time: tween over
+      // exactly that interval so motion is continuous (no hold-then-jump).
+      const nextDtMs = Math.max(
+        50,
+        (((schedule[next + 1] ?? (schedule[next] ?? 0) + 1 / effSpeed))
+          - (schedule[next] ?? 0)) * 1000,
+      );
       const atEnd = next >= turns.length - 1;
       const doDraw = tween || atEnd || ts - lastDrawTs >= TURBO_MS;
       if (doDraw) lastDrawTs = ts;
-      goToTurn(next, tween, doDraw);
+      goToTurn(next, tween, doDraw, tween ? nextDtMs : undefined);
     }
     if (turn >= turns.length - 1) { playing = false; lastPlay = 0; draw(); return; }
     requestAnimationFrame(playLoop);
@@ -999,9 +1009,10 @@ function playLoop(ts: number): void {
 }
 
 /* Manual seek: re-anchor the schedule clock at the new position. */
-function seek(target: number, animate = false): void {
+function seek(target: number, animate?: boolean): void {
   schedAnchor = null;
-  goToTurn(target, animate);
+  // Single-turn steps tween (continuous nudge); jumps don't.
+  goToTurn(target, animate ?? Math.abs(target - turn) === 1);
 }
 
 /* ── Interactions ── */

@@ -127,3 +127,8 @@ cumulative wall-clock schedule. Observed on quad_10000:
 Faction-aware: select a faction (fog selector) and the profile is built
 from THAT faction's action only; recomputed on selection/target change.
 Manual seeks re-anchor the schedule clock.
+
+Interpolation: at 4x and slower turns tween (entities lerp between frames)
+for continuous motion; in target mode the tween spans the turn's own
+schedule interval (dt) so it never moves-then-holds; stepping one turn
+with the arrows/buttons also tweens; jumps (scrub, >4x) render directly.
