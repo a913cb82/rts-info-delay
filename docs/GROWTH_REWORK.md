@@ -101,6 +101,35 @@ the intended urban-graveyard behaviour.
 Run them: `python benchmarks/sanity_agrarian.py [turns]`,
 `sanity_agrarian_struct.py`, `sanity_agrarian_city.py`.
 
+
+### Is a town >2,400 ever good?
+
+Instantaneous rates (turn 2, services primed; one-turn check, no long
+runs), 46,800 people, one town + 300-pop villages:
+
+| town seed | base | premium 0.5 | gamma 2.0 | mature villages (1,800) |
+|---|---|---|---|---|
+| 0 (villages only) | +0.084 | +0.084 | +0.084 | +0.084 |
+| 2,400 | +0.115 | +0.143 | +0.110 | +0.087 |
+| **4,800** | **+0.118** | **+0.149** | **+0.121** | **+0.095** |
+| 9,600 | +0.109 | +0.139 | +0.112 | +0.095 |
+| 14,400 | +0.096 | +0.123 | +0.098 | +0.086 |
+
+So >2,400 is not structurally forbidden: it wins instantaneously at
+4,800 even in the baseline (marginally), and clearly when the service
+return is stronger (`market_premium` 0.5 = anchor max, service scaling
+2.0) or the countryside is mature (villages near land capacity, so a
+percentage yield gain is worth more food). Over centuries the ranking
+flattens (10k-turn baseline: 2,400 ends ~0.5% ahead of 4,800) because
+towns do not reproduce (natural growth 0 when fed) and migration keeps
+filling them: the late-game optimum drifts toward the ring scale. The
+model needs stronger agglomeration (or non-food town roles) for large
+cities to win robustly.
+
+Method note: one turn (two with the market-service lag) gives the
+instantaneous rate and the equilibrium direction; long runs are only
+needed to quantify slow accumulation effects like town growth.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
