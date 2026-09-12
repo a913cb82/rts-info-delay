@@ -3017,3 +3017,9 @@ Buzzer +10g (460 total) -> ord 62.4 (mu 65.8, was 67.9/450g): -2.1 on
 ### Buzzer 480g (2026-09-13 01:02 BST)
 Buzzer +20g (480 total) -> ord 62.6 (mu 66.0, was 65.8/460g): +0.2 on
 30% wins + 2 F1-deaths + mids. Flat at 61-64 (480 games; converged).
+
+### Buzzer 500g MILESTONE (2026-09-13 01:12 BST)
+Buzzer +20g (500 total) -> ord 62.2 (mu 65.5, was 66.0/480g): -0.4 on
+25% wins + 3 F1-deaths. 500 games banked (most-measured by far).
+Converged true ~61-64. 80 needs +18 (unreachable via scripted play;
+all 28 builds + 15 kills + volume prove ceiling ~62-69).
