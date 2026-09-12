@@ -212,8 +212,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # branch (big wars); duels march the priced take at +1.
             nearest, _need, _ = sel
             _cap = state.world.faction_capital(faction)
+            # Range 150km (not 250): foe prints 2-3 during 5-turn marches
+            # (need grows past pack -> donates, 0 takes in canonical); 3-turn
+            # arrivals (<=150km) face 1 print (+1 absorbs) so takes LAND.
+            # Fewer eligible (near only) but landing (wins+style) vs donating.
             _blitz = (_cap is not None
-                      and math.hypot(_cap.x - nearest.x, _cap.y - nearest.y) <= 250.0
+                      and math.hypot(_cap.x - nearest.x, _cap.y - nearest.y) <= 150.0
                       and free_n >= _need + 1
                       and nearest.population >= 2000)
             if not _blitz:

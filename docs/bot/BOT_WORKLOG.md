@@ -1999,3 +1999,12 @@ keeper-packs/takes/staging), not fortress (bases naked, pack raids).
 Takes prove conqueror. Unit-verified (2 peace recalls, guard holds).
 Predicts: raids deflected (fewer inbound -> fewer deaths), packs raid
 (takes up, wins up), ordinal crosses 46.7 (mu 52+ + sigma shrink).
+
+### GOAL-80, worst (aggressive) 11: keeper-range 150 (2026-09-12)
+DETERRENCE (c6b647f) rated 27g -> ord 51.8 (mu 58.0). ORDINAL PASSES but
+STYLE FAILS (canonical 0 takes: +1 packs march <=250km/5 turns, foe prints
+2-3 en route, need grows past pack, donates; 0 landed). Takes must LAND
+(fast) for style+wins. IDEA (1, one number): keeper range 250->150km
+(3-turn arrivals face 1 print (+1 absorbs) so takes land; fewer eligible
+(near only) but landing vs donating). Predicts: takes land (1-3/game,
+style takes+staging+active ✓ + wins ✓), ordinal holds 47+ -> MERGE BOTH.
