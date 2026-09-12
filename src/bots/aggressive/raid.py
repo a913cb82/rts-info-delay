@@ -105,10 +105,10 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                  if t.population * (1.0 - eff) > cost * eff + 200]
     else:
         cands = list(enemy_towns)
-    # Survivor gate (ported): a capture halves pop — below 2x the death
-    # floor the prize is a corpse and the march is a feed (diag game:
-    # aggressive took a 702-pop town t3693, it died t4172). Denial too.
-    cands = [t for t in cands if t.population >= 2 * config.death_threshold]
+    # Survivor gate (viable takes only): captures halve pop — below 4x the
+    # death floor the prize is a hostage (stuck, garrison-drain, often gifts
+    # back). Vulture-compatible: weakened must also clear viability (2000).
+    cands = [t for t in cands if t.population >= 4 * config.death_threshold]
     if not cands:
         return None
     fieldable = [a for a in state.own_armies()
@@ -164,6 +164,20 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
                 / (1.0 + max(0, need - len(fieldable)))
             if u.is_capital:
                 score *= 1.5
+            # Vulture (timing): weakened-viable jumps queue (windows close
+            # as victims regrow). Weakened = pop-drop >=1000 (a train+ lost
+            # to battle/take, NOT prints) AND foe field flat/down (prints
+            # mean arming = stronger, not weaker) AND still viable (>=4x floor: regrowable, not hostage). x3 outranks capitals.
+            prev_pop = state._prev_pop.get(u.id, u.population) \
+                if hasattr(state, "_prev_pop") else u.population
+            cur_n = sum(1 for a in state.world.armies if a.faction == u.faction)
+            prev_n = state._foe_armies_prev.get(u.faction, cur_n) \
+                if hasattr(state, "_foe_armies_prev") else cur_n
+            if hasattr(state, "_foe_armies_prev"):
+                state._foe_armies_prev[u.faction] = cur_n
+            if u.population >= 4 * config.death_threshold and prev_pop - u.population >= 1000 \
+                    and cur_n <= prev_n:
+                score *= 3.0
             ranked.append((score, u, need, s))
             if best is None or score > best[0]:
                 best = (score, u, need, s)

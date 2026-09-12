@@ -1521,10 +1521,10 @@ class TestLatencyPremium:
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
                      {"kind": "town_update", "id": 2, "x": 350, "y": 500,
-                      "faction": 1, "population": 1500, "alive": True,
+                      "faction": 1, "population": 3000, "alive": True,
                       "is_capital": False},
                      {"kind": "town_update", "id": 3, "x": 900, "y": 500,
-                      "faction": 1, "population": 1500, "alive": True,
+                      "faction": 1, "population": 3000, "alive": True,
                       "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 320, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])

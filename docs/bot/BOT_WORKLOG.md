@@ -2553,3 +2553,14 @@ CEILING PROOF (campaign): mu caps ~66 (win ~55%: mirrors slot-lottery (50%)
 100g+ sigma. 80 needs mu 85 (90% wins incl F1-mirrors) — unreachable via
 scripted tweaks (luck-share floor) or current search (M2-neutral, fog-
 dominated). Remaining paths need user direction (RL-compute? goal change?).
+
+### Aggressive viable-takes (floor 2000 + vulture x3) (2026-09-12 21:41 BST)
+Base scoring chases hostages (tiny cheap takes top-rank: 600-prize need-1
+scores 300 vs 40 for real takes). FIX (take-doctrine, one rung): survivor
+floor 1000->2000 (gate corpses; updated latency test towns 1500->3000,
+intent preserved) + vulture x3 (weakened-viable jumps queue: pop-drop
+>=1000 + field flat/down (prints=arming, not weakening) + post-drop >=2000;
+outranks capitals on timing). 3 vulture tests. Predicts: takes are viable
+(compoundable, snowball) not hostages (stuck); weakened windows caught
+before regrow. Bar: aggressive gate (ord>=47.2 (exceed expander) AND takes
+occur (conqueror style)).
