@@ -2459,3 +2459,11 @@ COUNT fresh-moving, first-sightings, AND parked-with-mates (staging pack).
 Loiterers (solo stuck settlers/scouts) ignored; mustering packs defended.
 Falsifiable units: solo-parked silent / pack-parked counts. Bar 50+.
 Code parked on loop/turtle-thick2 (v1).
+
+### Turtle v2: solo-vs-pack (2026-09-12 19:41 BST)
+V1 removed staging defense (packs park pre-rush; 1-turn warning too late).
+V2: SKIP iff stale OR (parked AND solo (no same-faction mate within 100km));
+COUNT movers, first-sightings, parked-with-mates (mustering). 5 unit tests
+(solo-parked silent / pack-parked counts / mover / stale / fresh). Predicts:
+no phantom-bleed (loiterers ignored) + staging defended (packs counted).
+Bar 50+.

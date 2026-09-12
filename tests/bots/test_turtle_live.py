@@ -26,7 +26,7 @@ def test_fresh_sighting_counts():
     b = _bot()
     _feed(b, 100, towns=[(1, 500, 500, 0, 20000, True)],
           armies=[(20, 300, 500, 1)])
-    assert _live_threat(b, 20, 300, 500) is True
+    assert _live_threat(b, 20, 300, 500, 1) is True
 
 
 def test_parked_loiterer_silent():
@@ -34,7 +34,7 @@ def test_parked_loiterer_silent():
     for t in range(100, 110):
         _feed(b, t, towns=[(1, 500, 500, 0, 20000, True)],
               armies=[(20, 300, 500, 1)])
-    assert _live_threat(b, 20, 300, 500) is False
+    assert _live_threat(b, 20, 300, 500, 1) is False
 
 
 def test_mover_counts():
@@ -43,7 +43,7 @@ def test_mover_counts():
         x = 300 + (t - 100) * 50.0
         _feed(b, t, towns=[(1, 500, 500, 0, 20000, True)],
               armies=[(20, x, 500, 1)])
-    assert _live_threat(b, 20, 550, 500) is True
+    assert _live_threat(b, 20, 550, 500, 1) is True
 
 
 def test_stale_ghost_silent():
@@ -52,4 +52,13 @@ def test_stale_ghost_silent():
           armies=[(20, 300, 500, 1)])
     for t in range(101, 131):
         _feed(b, t, towns=[(1, 500, 500, 0, 20000, True)])
-    assert _live_threat(b, 20, 300, 500) is False
+    assert _live_threat(b, 20, 300, 500, 1) is False
+
+
+def test_parked_with_mates_counts():
+    # parked army WITH a same-faction mate nearby: staging pack, defend
+    b = _bot()
+    for t in range(100, 110):
+        _feed(b, t, towns=[(1, 500, 500, 0, 20000, True)],
+              armies=[(20, 300, 500, 1), (21, 320, 500, 1)])
+    assert _live_threat(b, 20, 300, 500, 1) is True
