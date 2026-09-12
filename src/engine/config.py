@@ -26,18 +26,27 @@ class GameConfig:
     army_cost: int = 1000
     interact_radius: float = 10.0
 
-    # Economy — fitted realism growth model (2026-09-12; all 2 s.f.)
-    #   g(P) = aP - (a/K)P^2 - cP^3
-    #   W(i,j) = alpha*Pi*sig((Pj-Pi)/gate)*e^-(d/rho)^2 * win(d)
-    #          + mu*Pi*Pj/(Pi+Pj)*(Pi-Pj)*e^-(d/rho) * win(d)
-    population_growth: float = 8.2e-05   # a: fertility (linear term)
-    land_capacity: float = 300_000.0     # K: saturation, b = a/K
-    urban_sink: float = 1.0e-14          # c: cubic urban mortality
-    access_alpha: float = 1.8e-05        # alpha: market access strength
-    kernel_scale: float = 270.0          # rho: shared kernel decay (km)
-    migration_mu: float = 2.7e-09        # mu: gravity migration strength
-    service_gate: float = 30.0           # sigmoid width of "bigger serves smaller"
-    town_min_population: float = 0.0     # death floor (0 = only at pop <= 0)
+    # Agrarian economy (2026-09-13). Annual rates; the engine converts
+    # to per-turn with `turns_per_year`. Raw materials:
+    #   production  Y_i = (1+boost_i) * min(rural_density*area_i, farm_workers_yield*P_i)
+    #   births      B_i = birth_rate * P_i * S_i/(S_i + h*P_i), h = birth/death - 1
+    #   deaths      D_i = death_rate * P_i
+    #   trade       surplus=Y-P exports to deficits, caps enforced (conservative)
+    #   migration   natural increase share + surplus-labour share move up the hierarchy
+    #   market      boost = market_premium * mkt/(mkt+P_market), mkt from non-farm population
+    turns_per_year: float = 52.0        # weeks per year (1 turn = 1 week)
+    farm_radius_km: float = 5.0          # R: farm walking radius
+    rural_density: float = 30.0          # people/km2 the land feeds (c.1600)
+    cart_distance_km: float = 20.0       # carting doubles grain price
+    farm_workers_yield: float = 1.3      # people fed per farm worker
+    birth_rate: float = 0.035            # crude birth rate, per person per year
+    death_rate: float = 0.031            # crude death rate, per person per year
+    market_premium: float = 0.25         # max farm-output premium from market access
+    market_scaling: float = 1.0          # gamma: urban service scaling exponent
+    migration_share: float = 0.5         # theta: share of natural increase that emigrates
+    surplus_mobility: float = 0.05       # nu: share of surplus labour that emigrates per year
+    migration_scale_km: float = 50.0     # migration distance scale
+    town_min_population: float = 10.0    # minimum settlement size (die at or below)
     build_efficiency: float = 0.9        # BUILD/MOVE_CAPITAL yield: army_cost x this = 900 pop
     capture_loss: float = 0.5            # population fraction lost when a town is captured
 
@@ -60,5 +69,5 @@ class GameConfig:
         """Legacy policy floor (army_cost x build_efficiency, 900).
 
         Kept for the bots' survive-floor heuristics; the ENGINE's death
-        rule is `town_min_population` (0 in the fitted model)."""
+        rule is `town_min_population` (10)."""
         return self.army_cost * self.build_efficiency

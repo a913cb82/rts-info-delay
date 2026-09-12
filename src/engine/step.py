@@ -624,85 +624,8 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
     # Snapshot pops at start for net pop_change at end
     pop_start = {t.id: t.population for t in world.towns}
 
-    # Growth - skip towns that are BUILD targets or MOVE_CAPITAL capitals this turn (to match test expectations of no growth when building/moving capital)
-    # Collect towns to skip growth for
-    skip_growth_ids: set[int] = set()
-    # BUILD targets
-    for so in world.standing_orders:
-        if so.command == CommandType.BUILD and so.target_type == "army":
-            # Find army and its build location
-            army = world.get_army(so.target_id)
-            if army and len(so.args) >= 2:
-                bx, by = so.args[0], so.args[1]
-                for t in world.towns:
-                    if abs(t.x - bx) < config.interact_radius + 1e-9 and abs(t.y - by) < config.interact_radius + 1e-9:
-                        # Actually check distance
-                        if (t.x - bx)**2 + (t.y - by)**2 <= (config.interact_radius + 1e-9)**2:
-                            skip_growth_ids.add(t.id)
-                    # Also check via hypot
-                    # We'll use hypot
-                # Simpler: check via hypot loop
-                for t in world.towns:
-                    if ( (t.x - bx)**2 + (t.y - by)**2 )**0.5 <= config.interact_radius + 1e-9:
-                        skip_growth_ids.add(t.id)
-    # MOVE_CAPITAL capitals (those that had a viceroy spawn via command phase)
-    # Any town that had a MOVE_CAPITAL standing order and is capital should skip
-    for so in list(world.standing_orders):
-        if so.command == CommandType.MOVE_CAPITAL:
-            town = world.get_town(so.target_id)
-            if town and town.is_capital:
-                # This capital will have its pop reduced; skip growth
-                skip_growth_ids.add(town.id)
-            elif town and not town.is_capital:
-                # No capital case - will be handled as ignore later
-                pass
-    # Also include any capital that has a viceroy in flight (spawned via command)
-    for a in world.armies:
-        if a.is_viceroy:
-            # Find its origin capital (the one with same faction and is_capital False now? Hard)
-            # Instead, find capital for that faction (now false) but we can find town that was capital before demotion? We'll just skip all capitals of factions with viceroy
-            cap = world.faction_capital(a.faction)
-            # After viceroy spawn, old capital is_capital False, so faction_capital will be None or new? Actually old capital demoted, so no capital? Hmm
-            # Better to find any town for that faction that had is_capital before and now false - we can search towns for that faction where is_capital False and was previously true? Simpler: add all towns of that faction that are within interact_radius of viceroy start? Not reliable
-            # Instead, we already added via standing order above
-            pass
-    # Apply growth with skipping via custom call
-    # We will call apply_growth but temporarily remove skip towns from world, then restore
-    # Simpler: snapshot and apply manually
-    from engine.economy import crowding_nets_batch
-    # Compute nets via batch (much faster than per-town crowding_net)
-    snapshot = list(world.towns)
-    try:
-        nets_list = crowding_nets_batch(snapshot, config)
-    except Exception:
-        from engine.economy import crowding_net as _crowding_net
-        nets_list = [_crowding_net(t, snapshot, config) for t in snapshot]
-    # zero out skipped
-    nets: dict[int, float] = {}
-    for t, net in zip(snapshot, nets_list):
-        if t.id in skip_growth_ids:
-            nets[t.id] = 0.0
-        else:
-            nets[t.id] = net
-    for t in snapshot:
-        t.population += nets[t.id]
-    # Check deaths for grown towns (skip those already handled)
-    growth_events = []
-    # Check deaths for grown towns (skip those already handled)
-    dead = [t for t in list(world.towns) if t.population <= config.town_min_population and t.id not in skip_growth_ids]
-    # Also need to check skip towns for death after no growth? They might still be below threshold due to previous deduction
-    for t in list(world.towns):
-        if t.id in skip_growth_ids and t.population <= config.town_min_population:
-            dead.append(t)
-    # Deduplicate
-    dead_ids = set()
-    for t in dead:
-        if t.id not in dead_ids:
-            dead_ids.add(t.id)
-            was_capital = t.is_capital
-            world.remove_town(t.id)
-            growth_events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y, "faction": t.faction, "is_capital": was_capital})
-    events.extend(growth_events)
+    # Growth, trade, births/deaths and migration (agrarian economy).
+    events.extend(apply_growth(world, config))
 
     # MOVE_CAPITAL founding: the BUILD-step of the composite. An arrived
     # viceroy (within BUILD tolerance of its target) is consumed and founds
