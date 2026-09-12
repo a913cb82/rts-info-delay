@@ -160,9 +160,8 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-12 for the fitted growth mechanic, again for
-        # the BUILD yield (0.9) + capture_loss split (was 8ce39f1c... on
-        # logistic+crowding, 5f28d76f... before the BUILD rework).
-        assert h == "e7335fed8b3679eaef68823169fe5b46e6260ea15d32458b999426a6ba1b8cb8"
+        # Re-based 2026-09-13 for the agrarian economy (was e7335fed...
+        # on the fitted realism growth model).
+        assert h == "15cd58fe55246382f6cd810a1653e17af8da820ecd9cd05a04934fb59f01211c"
     finally:
         path.unlink(missing_ok=True)

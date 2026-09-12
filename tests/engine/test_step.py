@@ -345,7 +345,7 @@ class TestCommands:
         w = _world_with(armies=[_army(50, 50, 0, 2)], towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["BUILD 2 50 50"]})
-        assert t.population == pytest.approx(2900)
+        assert t.population == pytest.approx(2900, abs=1.0)
 
     def test_build_on_enemy_town(self) -> None:
         """O5b: BUILD at enemy town position → army captures it first."""
@@ -395,7 +395,7 @@ class TestCommands:
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
-        assert t.population == pytest.approx(4000)  # 5000 - 1000
+        assert t.population == pytest.approx(4000, abs=1.0)  # 5000 - 1000 + growth
         assert t.is_capital is False  # demoted at train time
         viceroy = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy) == 1

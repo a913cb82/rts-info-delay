@@ -71,7 +71,7 @@ class TestScoreMedium:
         t = Town(id=1, faction=0, x=500, y=500, population=500)
         w.towns = [t]
         score0 = compute_score(w, faction=0)
-        for _ in range(50):
+        for _ in range(2000):
             apply_growth(w, CFG)
         score50 = compute_score(w, faction=0)
         assert score50 > score0

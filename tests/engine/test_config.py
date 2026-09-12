@@ -20,14 +20,19 @@ class TestConfig:
         assert cfg.army_speed == 50.0
         assert cfg.army_cost == 1000
         assert cfg.interact_radius == 10.0
-        assert cfg.population_growth == 8.2e-05
-        assert cfg.land_capacity == 300_000.0
-        assert cfg.urban_sink == 1.0e-14
-        assert cfg.access_alpha == 1.8e-05
-        assert cfg.kernel_scale == 270.0
-        assert cfg.migration_mu == 2.7e-09
-        assert cfg.service_gate == 30.0
-        assert cfg.town_min_population == 0.0
+        assert cfg.turns_per_year == 52.0
+        assert cfg.farm_radius_km == 5.0
+        assert cfg.rural_density == 30.0
+        assert cfg.cart_distance_km == 20.0
+        assert cfg.farm_workers_yield == 1.3
+        assert cfg.birth_rate == 0.035
+        assert cfg.death_rate == 0.031
+        assert cfg.market_premium == 0.25
+        assert cfg.market_scaling == 1.0
+        assert cfg.migration_share == 0.5
+        assert cfg.surplus_mobility == 0.05
+        assert cfg.migration_scale_km == 50.0
+        assert cfg.town_min_population == 10.0
         assert cfg.build_efficiency == 0.9
         assert cfg.capture_loss == 0.5
 
@@ -39,14 +44,19 @@ class TestConfig:
         assert cfg.info_speed == 150.0
         assert cfg.army_cost == 1000
         assert cfg.interact_radius == 10.0
-        assert cfg.population_growth == 8.2e-05
-        assert cfg.land_capacity == 300_000.0
-        assert cfg.urban_sink == 1.0e-14
-        assert cfg.access_alpha == 1.8e-05
-        assert cfg.kernel_scale == 270.0
-        assert cfg.migration_mu == 2.7e-09
-        assert cfg.service_gate == 30.0
-        assert cfg.town_min_population == 0.0
+        assert cfg.turns_per_year == 52.0
+        assert cfg.farm_radius_km == 5.0
+        assert cfg.rural_density == 30.0
+        assert cfg.cart_distance_km == 20.0
+        assert cfg.farm_workers_yield == 1.3
+        assert cfg.birth_rate == 0.035
+        assert cfg.death_rate == 0.031
+        assert cfg.market_premium == 0.25
+        assert cfg.market_scaling == 1.0
+        assert cfg.migration_share == 0.5
+        assert cfg.surplus_mobility == 0.05
+        assert cfg.migration_scale_km == 50.0
+        assert cfg.town_min_population == 10.0
         assert cfg.build_efficiency == 0.9
         assert cfg.capture_loss == 0.5
         assert cfg.map_size == [1000, 1000]
@@ -56,12 +66,15 @@ class TestConfig:
     def test_field_names_match_plan(self) -> None:
         """X3: Field names use PLAN names, not k/gamma/c."""
         names = {f.name for f in fields(GameConfig)}
-        assert "land_capacity" in names
-        assert "urban_sink" in names
-        assert "access_alpha" in names
-        assert "kernel_scale" in names
-        assert "migration_mu" in names
-        assert "service_gate" in names
+        assert "farm_radius_km" in names
+        assert "rural_density" in names
+        assert "cart_distance_km" in names
+        assert "farm_workers_yield" in names
+        assert "birth_rate" in names
+        assert "death_rate" in names
+        assert "market_premium" in names
+        assert "migration_share" in names
+        assert "surplus_mobility" in names
         assert "town_min_population" in names
         # Old/regression names must NOT exist
         assert "k" not in names

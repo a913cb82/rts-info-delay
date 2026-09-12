@@ -52,7 +52,7 @@ class TestRecord:
             assert "info_speed" in data
             assert "army_speed" in data
             assert "interact_radius" in data
-            assert "land_capacity" in data
+            assert "rural_density" in data
         finally:
             path.unlink(missing_ok=True)
 
@@ -200,10 +200,11 @@ class TestRecord:
             required_keys = [
                 "map_size", "max_turns", "turn_time_ms",
                 "info_speed", "army_speed", "army_cost", "interact_radius",
-                "population_growth", "land_capacity", "urban_sink",
-                "access_alpha", "kernel_scale", "migration_mu",
-                "service_gate", "town_min_population", "build_efficiency",
-                "capture_loss",
+                "turns_per_year", "farm_radius_km", "rural_density",
+                "cart_distance_km", "farm_workers_yield", "birth_rate",
+                "death_rate", "market_premium", "market_scaling",
+                "migration_share", "surplus_mobility", "migration_scale_km",
+                "town_min_population", "build_efficiency", "capture_loss",
             ]
             for key in required_keys:
                 assert key in data, f"Missing config key: {key}"

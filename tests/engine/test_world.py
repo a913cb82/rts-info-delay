@@ -164,7 +164,7 @@ class TestEntities:
         property only backs the bots' survive-floor heuristics."""
         cfg = GameConfig()
         assert cfg.death_threshold == 900  # 1000 × 0.9
-        assert cfg.town_min_population == 0.0
+        assert cfg.town_min_population == 10.0
 
     def test_town_ids_stable(self) -> None:
         """N4: Town that survives keeps the same id."""
