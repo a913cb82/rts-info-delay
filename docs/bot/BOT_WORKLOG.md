@@ -2119,3 +2119,24 @@ FIX (pro/scout.py): stationary-converged (fresh trail + <=5km displacement
 stale keeps status quo (no D1 change). Rung = unfreeze + refound-direction
 (neither works alone; one mechanism). Predicts (rematch): F0 refounds
 ~t3400, 2-town compound, survives; heirlooms re-task generally.
+
+### bot_cmd mirror-lottery catastrophe + excision (2026-09-12)
+CRITICAL (self-found): bot_rundir laid rd/<pkg>/ (not rd/bots/<pkg>/), so
+`bots.<name>` fell through to main-tip src — EVERY bot_cmd game since the
+methodology commit ran main-tip mirrors in all slots. VOID: rung-1 15g +
+h2h 10g (25 games; pro-7970559 42.1 is position-lottery fiction; h2h 5-5
+likewise; g3/g6/g9 triple = same mirrors deterministically, NOT twins;
+194042-attractor + slot-mirror "discoveries" retracted as mirror artifacts;
+twin-shadow diagnosis downgraded: names appeared but twin brains never ran
+— pool() oldest-tie-break + exclusions kept as harmless hygiene).
+EXCISED idx1672-1696 (contiguous 25) + rebuilt elos by replay (4bcc7de base
++ 4 kept games; backups /tmp/elo_games.bak /tmp/elos.bak). KEPT idx1697+
+(4 games logged 14:06-14:10 by an out-of-band writer — concurrent session
+active on this box (load 12, fit_growth 8-worker job, 2 old pi procs);
+treated as valid (real commit names); my elos-rebuild may race their
+end-of-run save — procedure recorded here for redo). FIXED bot_rundir
+(rd/bots/<pkg>/ + legacy flat + .ok2 marker) + bot_cmd resolve self-test
+(file assert; resolve-verified per-sha brains + main-tip engine).
+SURVIVES (analytical, code+unit proven): dispatch-freeze mechanism +
+refound-deadlock analysis (game STORIES retracted as mirror lotteries).
+Rung-2 empirical basis reset: must re-run sprawl field with REAL brains.
