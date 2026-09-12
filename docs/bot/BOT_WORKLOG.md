@@ -2800,3 +2800,12 @@ recall -> pressure bleeds -> takes never fire -> attractor 100-200k,
 lose take-races; 27% wins vs should-win weak fields). Dark-pack mechanism
 is field-dependent (helps mirror-top where stale-mass is rare; hurts
 diverse where chronic). Reverted (main keeps buzzer 69.2). Parked.
+
+### Buzzer 210g + oscillation (volume path dead) (2026-09-12 22:57 BST)
+Buzzer +20g (210 total) -> ord 66.7 (mu 70.3, was 72.8/190g): -2.5 on a
+spike-batch (opponents 240k+ repeatedly; F1-death twice; 55% wins).
+PATTERN (two dips + three recoveries): attractor-batches UP, spike-batches
+DOWN — oscillation around ord ~66-67 (mu ~70), NOT a climb. Volume EV ~0
+(mean-reversion); asymptote is HERE. To climb: survive spike-batches
+(hold attractor under fire; cut F1-deaths). NEXT RUNG (queued): preemption
+(deny-takes: kill spikers' engines before they spike; offense as defense).
