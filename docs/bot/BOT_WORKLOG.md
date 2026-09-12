@@ -1743,3 +1743,27 @@ MIGRATION (staged):
      bots.<p>.core, bots.<p> -> bots.<p>.brain).
   5. Verify behavior identity: run one identical field with the package
      bot and the old winner -> the deterministic games must match.
+
+## REFACTOR COMPLETE: per-personality packages (commit acbe4cc)
+- Layout: src/bots/<p>/{__init__,__main__,brain,core}.py for pro,
+  aggressive, expander, turtle, greedy. python -m bots.<p> unchanged.
+- brain_hash now hashes ONLY the package directory -> distinct hashes
+  (pro 08489d1802, aggressive 5b80efa5a5, expander 63c9f3089c,
+  turtle a4381ed32d, greedy b7f1a9d828). Editing one core CANNOT
+  re-hash or alter another personality. Whole-tree merges can no longer
+  clobber winners: each package carries its own rated era core.
+- Winners now coexist in main: pro = 12b6801's brain+core (mu 55.9),
+  aggressive = df34823 (47.3), expander = 80c67fe (50.6),
+  turtle = a82f53d (51.6). Ratings SEEDED for pro/aggressive/expander/
+  turtle-acbe4cc from the winners (behavior-identity verified
+  byte-for-byte on pro and turtle; built identically for the rest) —
+  a rename, not a re-earn; future games validate.
+- Porting: benchmarks/port.py (--file to copy a file with .bak; --show
+  SYMBOL to print source for deliberate manual porting). Cross-
+  personality changes are now explicit, committed copies.
+- Tests: common.py = test-only shim (-> aggressive.core, the modern-era
+  machinery the suite was written against); 9 orphaned modern-flat-pro
+  test classes removed (documented in-file). Suite 127 green; liveness
+  clean; packages run under the pool runners.
+- NOTE: greedy is the legacy personality (42aba25 lineage), packaged for
+  completeness/tests; scale-out (per-package test suites) is future work.
