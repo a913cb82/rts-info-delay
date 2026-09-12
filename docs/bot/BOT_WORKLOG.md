@@ -2256,3 +2256,16 @@ variance >> openskill sigma; small edges need 30g+ or h2h). Wiring cut
 M1 stepper/prune/tests + rank/candidates modules KEPT (tested, zero
 behavior risk, M3 fuel). Site-search direction closed; tactical search
 (bigger deltas) is the track's remaining hope.
+
+### Rung-2b: unfreeze ALONE (leak, not premium) (2026-09-12)
+TAXONOMY era-split: MID-meta losses = DEAD(expander) (fixed since); NEW
+losses ~90% mirrors. Mirror189 repro EXACT (194042/189559): F1 loses 4.5k
+= 2 guard-taxes vs a 116km parker — a PREMIUM (2-turn-away contact CAN
+strike; parent's 0-print was luck, not skill). Fixing it = luck-dependence
+(dies when parkers rush) — rung-1's deaths explained. LOOP AMENDED
+(premium-vs-leak + stuck-escape, README). RUNG-2b: dispatch-unfreeze ONLY
+(proven bug: per-turn reports freeze every visible stationary; heirlooms/
+re-tasks/refounds never dispatch) WITHOUT refound (which dispatched idle
+into warzones). Ablation suggested unfreeze >= refound-only (5-2 h2h).
+Ex-ante positive (re-tasked follow same doctrine gates; no extra donation
+vs fresh armies). Bar 55+ (beats all failed rungs, approaches parent).
