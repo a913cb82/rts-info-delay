@@ -2601,3 +2601,13 @@ target (whole pack holds, no stagger). Strike path exempt (windows close).
 Scouts active (probe_armies=1 wired) so holds resolve (unlike pro intelgate
 which sat forever scoutless). Predicts: deaths halve, takes persist fresh.
 Bar: aggressive gate (ord>=47.2 AND takes).
+
+### March-gate verdict: FAIL, aggressive PARKED (2026-09-12 18:31 BST)
+Rated clean 15g -> ord 10.0 (mu 18.3): FAIL (bar 47.2+). Same failure as
+pro intelgate (43.3): stale-everywhere holds -> sit -> surrounded -> overrun.
+Scouts insufficient to refresh bloodbaths (die/stuck). Wins bigger when
+fresh (543k!) but deaths dominate. STALE-EVERYWHERE has no good move (hold
+dies, blind-marches donate, scouts die) — poverty-trap variant favoring the
+RICH (mass covers uncertainty). AGGRESSIVE PARKED (stuck-proven: 11 era
+fails + vulture + march-gate; all fail or worse). Code parked on
+loop/aggr-march2 (main keeps 42.2).
