@@ -1986,3 +1986,22 @@ fast identical + canonical match (1-pop timing noise, re-run matched)).
 Ratings preserved via 8046816-style seeding (pro-65a702b <- d658df5 57.2;
 greedy unrated safe). Era 3 (aggressive/expander/turtle, same hardened
 script) next. (Bold rally/ladder/search unblocked by editability.)
+
+### Infra milestone complete: docs reorg + 2/5 modularised, rest as-you-touch (2026-09-12)
+DOCS REORGED (47b65a3): STRATEGY.md (708, GTO+BOTS+BRAINSTORM verbatim) +
+METHODS.md (783, BENCH binding verbatim + suites/clock/viewer/indicators);
+EMPTY_10000 archived; active links clean; history dangling mapped.
+CODE 2/5 (user: rest as-you-touch, not big-bang): greedy (practice) + pro
+(57.2 carries via seed) split to intel/scout/threat/raid/settle/economy/
+protocol (mechanical verbatim + DAG stars; lessons: superset headers,
+decorator-aware slicing, owner-modules for cross-uses (_batch_ids/_hash/
+can_train_safely/PEAK->intel, scout imports expansion_demand), exhaustive
+AST cross-use scan (found 3+2, else whack-a-mole), byte-identical proof
+(battery 8/8 + fast identical + canonical match (1-pop timing noise,
+re-run matched)). Aggressive/expander/turtle monoliths deferred (split
+when touched: aggressive for bold rally (needs modules), expander/turtle
+for tweaks (monolith tolerable)). Pre-aggr-split canonical baseline saved
+(recordings/aggressive_presplit_baseline.jsonl, local ref for future
+aggressive-split verification (must match)). Ratings preserved (seeds).
+Bold rally/ladder/search unblocked (modular pro ready for ladder ports;
+aggressive split just-in-time with rally coding on resume).
