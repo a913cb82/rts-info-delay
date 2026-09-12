@@ -2976,3 +2976,11 @@ Manual-game idling mystery solved (ensure_master_engine first).
 Trace-driven build: rich (force>=10) holds small packs to 8+ (pure hold,
 probes suppressed; Lanchester waves); poor takes now (bird-in-hand).
 Bar (ladder): exceed 61.7 + pack sizes 8+ verified via order-tracing.
+
+### Mass verdict: FAIL (41.6, holding misses windows) (2026-09-13 00:41 BST)
+Rated clean 15g -> ord 41.6 (mu 49.1): FAIL (bar 61.7+). Mass-hold waits
+(packs to 8+) -> misses windows (weak collapse early; mids vs should-win;
+40% wins incl 275k when lands). Bird-in-hand 3rd validation (take now
+beats wait: overmatch, mass both starve). F4's waves were luck+context
+(single trace overgeneralized; trace!=prescription). Reverted (main keeps
+buzzer 61.7). Parked on loop/buzzer-mass.
