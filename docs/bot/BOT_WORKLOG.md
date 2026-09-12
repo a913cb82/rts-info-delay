@@ -2898,3 +2898,7 @@ take later clean). Reverted (main keeps buzzer 65.4). Parked.
 ### Buzzer 260g (spike-batch down) (2026-09-12 23:32 BST)
 Buzzer +15g (260 total) -> ord 64.1 (mu 67.6, was 69.0/245g): -1.3 on a
 spike-batch (240k+ everywhere; F1-zero twice; 53% wins). Oscillation.
+
+### Buzzer 275g (flat, zero deaths) (2026-09-12 23:42 BST)
+Buzzer +15g (275 total) -> ord 64.5 (mu 68.1, was 67.6/260g): +0.4 on
+53% wins + 47% mids + ZERO deaths. Familiar wins pay little. Flat.
