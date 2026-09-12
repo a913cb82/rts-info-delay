@@ -1924,3 +1924,21 @@ don't donate). Leapfrog conquest (take near, stage, blitz next-near).
 Suites: starve_trap 3317->5612 (stops feeding!), pair/viable flat-good.
 Predicts: takes land (near-weak), packs survive (overwhelm), donations
 stop, wins up (vs mid too, not just weak).
+
+### GOAL-80, worst (aggressive) 6: PURE CONQUEST package (2026-09-12)
+BLITZ (on war-chest) rated 15g -> 23.9 (worse than war-chest 37.6; more
+wins but still dies; blitz may hurt by encouraging staging->colonies).
+AUTOPSY (blitz loss: led t2000-3000 w/ 2 towns, lost both thin ~1200 to
+turtle double-tap t3787/3882, 5 spawns, 0 takes): colony SPLIT thin (2
+weak vs 1 strong), takes 0 (packs donate), solos donate. Singles failed
+5x -> PACKAGE (expander precedent): PURE CONQUEST on war-chest base —
+(i) keeper takes only (blitz-land near+overwhelm + stay (pack>=need+1) +
+viable pop>=3000; else hold), (ii) ZERO founding (colonies split/feed;
+staging rides keeper takes; do-or-die), (iii) solos hold home (no 1v1
+donations + garrison). All concentrate force for keepers; none pin/block
+passively (packs still blitz keepers; maps still contested). Conqueror-
+pure (takes/holds/stages via takes; march-active on keepers). Suites:
+pair 5175 / starve 5612 (holds blitz gain) / viable 5324. Predicts: takes
+stick (land+held+viable = net territory, not gifts), no splits (1 thick
++ keepers), no donations (massed), wins up (territory+pop), deaths down
+(held keepers + thick home).

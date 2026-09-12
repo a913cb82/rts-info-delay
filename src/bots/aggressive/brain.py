@@ -47,18 +47,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     free_ids = [a.id for a in state.own_armies()
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
-    # Blitz-gating (take lethality): march the sel pack ONLY for near
-    # fast overwhelm (target <=250km from capital = <=5 turns; free >=
-    # need+2 absorbing foe prints during the march). Far/slow/under-sized
-    # raids arrive to find need grown past them and donate (0 net takes).
-    # Else hold (build/compound, don't feed) — leapfrog conquest takes
-    # near, stages there, blitzes next-near. Patient predator, not passive.
-    if sel is not None:
-        _tgt, _need, _ = sel
-        _cap = state.world.faction_capital(faction)
-        if _cap is None or math.hypot(_cap.x - _tgt.x, _cap.y - _tgt.y) > 250.0 \
-                or free_n < _need + 2:
-            sel = None
+    # Pure conquest (take stewardship): grow ONLY by takes that KEEP
+    # (blitz-land + garrison-hold + viable-grow), NEVER by founding
+    # (colonies split thin: 2x1200 double-tapped dead while 1x3500 holds;
+    # founding is colonist, not conqueror). A take must (i) LAND fast
+    # (<=250km from capital, <=5 turns, before foe prints), (ii) OVERWHELM
+    # (free >= need+1 leaving 1 to STAY as garrison — takes without guards
+    # are gifts retaken), (iii) be VIABLE (pop>=3000 -> after-halve>=1500
+    # regrows to printable; thinner takes starve/stick as hostages).
+    # Else hold (compound war-chest, don't donate/feed/found). Leapfrog:
+    # keeper takes stage further blitzes. Do-or-die conquest (no founding
+    # fallback — take or lose; predators don't farm).
     pack_building = sel is not None and sel[1] > free_n \
         and not jit_ready(state, config, sel[0], sel[1], free_ids,
         sel[0].faction)
@@ -147,12 +146,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if sel is not None:
             # A3: leader-targeting survives inside raid_target's pressure
             # branch (big wars); duels march the priced take at +1.
-            nearest, _, _ = sel
+            nearest, _need, _ = sel
+            _cap = state.world.faction_capital(faction)
+            _blitz = (_cap is not None
+                      and math.hypot(_cap.x - nearest.x, _cap.y - nearest.y) <= 250.0
+                      and free_n >= _need + 1
+                      and nearest.population >= 3000)
+            if not _blitz:
+                continue  # not a keeper (far/thin/unguarded-take = gift) — hold
             out.extend(order_move(state, config, p, nearest.x, nearest.y))
         elif enemy_armies:
-            forecast = [(fc_chase.forecast_army_pos(e), e) for e in enemy_armies]
-            (fx, fy), _ = min(forecast, key=lambda x: math.hypot(x[0][0] - p.x, x[0][1] - p.y))
-            out.extend(order_move(state, config, p, fx, fy))
+            # No solo chases (force concentration for keepers): lone armies
+            # hold home (garrison + preserve) instead of donating 1v1s.
+            # Keeper-packs (sel, above) do the killing; solos feed. (Port
+            # of pack-only principle: mass for takes, don't trickle.)
+            continue
         else:
             # S0: no-contact scout first (Step 2 prereq) — probe deep
             # before founding; falls back to settling below.
@@ -182,6 +190,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # is position, not pop).
             if site is not None and not staged and not war_print_need(state, config) \
                     and not site_pays(state, config, site[0], site[1]):
+                site = None
+            # Zero-founding (pure conquest): colonies split thin and
+            # feed/double-tap (see autopsy); all growth via keeper takes.
+            # Staging rides takes (forward keepers print locally), never
+            # speculative bases. (If takes never land, we lose small — but
+            # founding while losing is just slower death with more mouths.)
+            if site:
                 site = None
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))
