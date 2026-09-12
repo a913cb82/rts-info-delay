@@ -2038,3 +2038,54 @@ compound takes (grow to wins 160k+ vs 150k pros (quality wins -> mu 65+ new
 max?)). Predicts (mechanism, bold 1/3 (not ordinal yet): packs rally
 (cohesive 0-spread), takes land vs MID-mustering (9>=7), takes grow
 (spaced uncrowded 2500->20k+), wins vs mid-strong (150k+ quality).
+
+### GOAL-80, pro ladder rung 1: parked-contact exclusion (2026-09-12)
+LOOP AMENDED (stuck-escape, self-authorized): a personality with >=3 fails
++ structural stuck-proof is PARKED (aggressive 11, expander 3, turtle 2);
+loop proceeds to next-viable (pro, best, responds +5/idea). Worst-first
+stands for viable personalities; stuck-park prevents futile 0-for-16.
+RUNG 1 (fork-max-fix-worst-loss): repro'd blowout field (parent F0 vs mine
+F1) under tip-master: now a NARROW 190k-vs-197k loss (engine drifted).
+Autopsy: zero captures either side, pure compound race; F1 printed 3 idle
+heirloom guards t2000-4000 vs expander scout #18 parked 116km/1300+ turns
+(closed 141->116 once, then sat; harmless, F2 scored 8k). -3k at the steep
+part of logistic = -7k final. FIX (pro/threat.py, package-scoped):
+inbound_force skips foe armies with a FRESH trail proving stationary
+(>=2 pts, max displacement <=5km, sighted <=10t). Closing/unknown/stale
+always count (rushers have no stationary trail; D1-unseen keeps status
+quo — no regression). Predicts: F1 skips phantom guards in rematch (flips
+narrow losses; blowout 56k losses are a separate mechanism, next rung).
+
+### Rung 1 trace verdict (kept narrow, rating decides) (2026-09-12)
+Traced F1 trains (file trace, scratch-reverted): t2301 guard(n=1,home=0)
++ t2304 guard(n=1,home=1) both vs F2 scout first-sighting/closing (correct
+prints — parked-exclusion rightly can't suppress; omniscience would be
+needed, D2 forbids). 3rd print (t3243) is TIMING-DEPENDENT (appears some
+runs: clock/mail wobble shifts intel ±turns -> gates flip; single-game
+±3k unreliable, rating decides). Parked-exclusion suppresses exactly the
+t3243-type + late parked prints (small +0-3k, safe). Bigger lever spotted
+(D==N mutual->clean 2nd print assumes attack=certain; probabilistic gate
+would need closing-velocity) — DEFERRED to rung 2 (one fix per branch).
+Also learned: F0/F1 197062/190216 mirror by SLOT not brain (both pros race
+the same colony pattern; F0's early site compounds 2x). Bar: ord>=58 new
+max (15g+) + compounder style; 55-57 = trajectory judgment call.
+
+### Rung 1 verdict: NEUTRAL, reverted (dark-pack rule) (2026-09-12)
+Rated 15g -> 42.1 (mu 50.4): FAIL (bar 58). Position-controlled h2h vs
+parent (10g, slots alternating, fresh complements): 5-5 raw, 4-4 unique
+(g3=g6=g9 were same-CONTENT twins triple-counting one game — name-based
+dup assert blind). TIED -> REVERT fix (mechanism-correct but rating-
+neutral: saves t3243-type prints, possible rush-lag cost in bloodbaths).
+METHODOLOGY SHIPPED (real wins, main-bound): (1) rate_brain twin exclusion
+(same-content complements measure slots not brains: 4-3 mirror noise);
+(2) pool() unrated-tie newest->OLDEST (newest picked a worklog twin as
+opponent 7x when rating the fresh code commit); (3) content-based dup
+assert (names recur rarely, twins recur deterministically); (4) rate_brain
+tip-of-master plumbing (master_map + central bot_cmd; verified old games
+ran identical rules — no replay needed). Latent: 31 old dup groups (62g)
++ 2 h2h dupes in DB (negligible weight; full rebuild deferred).
+LADDER FUEL (next rung): g12 (mine 5th-0 vs expander-1040c1b 248k sprawl
+overgrowth) — the live "expander beats pro" specimen (34/67 stat); fork it.
+Also: solitaire-attractor 194042 (uncontested pro-family converges EXACT —
+par score; games decided by interaction deltas); F0/F1 slot mirror (same
+numbers swapped with slots).

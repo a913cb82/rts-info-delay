@@ -121,8 +121,12 @@ def pool() -> list[str]:
         by_hash.setdefault(f"{b}@{h}", []).append((b, sha))
     picks = set()
     for key, specs in by_hash.items():
+        # Rated name wins (most games). Unrated/content ties -> OLDEST commit
+        # (the content's origin — usually the code commit; a newer docs-only
+        # successor must not shadow it and mint mirror matches when the fresh
+        # brain is rated: newest-on-tie picked worklog twins as opponents).
         specs.sort(key=lambda bs: (-elo.get(f"{bs[0]}-{bs[1]}", {}).get("games", 0),
-                                   -order.get(bs[1], -1)))
+                                   order.get(bs[1], 10 ** 9)))
         b, sha = specs[0]
         picks.add(f"{b}-{sha}")
     return sorted(picks)
