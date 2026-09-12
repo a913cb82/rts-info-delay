@@ -75,6 +75,8 @@ class BotState:
         self._foe_prints: dict[int, int] = {}  # faction -> fielded-force count seen
         self._scout_id: int | None = None  # S0: probing army (hops in _army_targets)
         self._scout_leg: int = 0
+        self._war_heat: float = 0.0  # siege-mode: recent-fight heat (fights, not presence)
+        self._prev_near: set = set()  # foe ids in-bubble of own units last turn
         self._stale_key = None
         self._standing_orders: tuple | None = None  # idea 4: (orders, fingerprint)
         self._plan: tuple | None = None  # idea 5: (orders, valid_until_turn)
@@ -114,6 +116,8 @@ class BotState:
         self._foe_prints = {}
         self._scout_id = None
         self._scout_leg = 0
+        self._war_heat = 0.0
+        self._prev_near = set()
         self._wave_hold_until = -1
 
     def _apply_update(self, ev: dict) -> None:

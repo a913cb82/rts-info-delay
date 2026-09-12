@@ -89,6 +89,11 @@ def _army_targets(state: BotState, config: GameConfig):
 def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     enemy_towns, enemy_armies = _army_targets(state, config)
+    # War-heat inputs (before note_wave_watch overwrites _wave_ids): own
+    # deaths this turn = last turn's tracked ids gone (minus builds).
+    _cur_ids = {a.id for a in state.own_armies()}
+    _died = bool(state._wave_ids
+                 and (state._wave_ids - _cur_ids - set(state._pending_builds)))
     hold_second = note_wave_watch(state)
     inbound = inbound_eta(state, config)
     force = inbound_force(state, config)
@@ -96,6 +101,35 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # bleeds pressure and loses slowly (endurance 6424->904); there, all-out.
     war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
     duel_ctx = len(war_foes) <= 1
+    # Siege-mode (fight-heat, not contact): blind bots misread bloodbaths as
+    # duels and sit via P2-holds until dead. Fights (own deaths + foe
+    # disappearances from my 10km bubbles = engagements resolved) heat;
+    # quiet loitering never heats (no bubble contact, nothing vanishes).
+    # Heat decays slowly (half-life ~140t): sustained wars stay armed.
+    _IR = config.interact_radius
+    _near = set()
+    for a in state.world.armies:
+        if a.faction == state.faction:
+            continue
+        for u in state.own_towns():
+            if abs(a.x - u.x) <= _IR + 1e-9 and abs(a.y - u.y) <= _IR + 1e-9 \
+                    and (a.x - u.x) ** 2 + (a.y - u.y) ** 2 <= (_IR + 1e-9) ** 2:
+                _near.add(a.id)
+                break
+        else:
+            for q in state.own_armies():
+                if abs(a.x - q.x) <= _IR + 1e-9 and abs(a.y - q.y) <= _IR + 1e-9 \
+                        and (a.x - q.x) ** 2 + (a.y - q.y) ** 2 <= (_IR + 1e-9) ** 2:
+                    _near.add(a.id)
+                    break
+    _resolved = state._prev_near - _near
+    state._prev_near = _near
+    if _died or _resolved:
+        state._war_heat = min(30.0, state._war_heat + (1.0 if _died else 0.0)
+                              + min(3.0, float(len(_resolved))))
+    else:
+        state._war_heat *= 0.995
+    siege = duel_ctx and state._war_heat >= 5.0
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
     sel = raid_target(state, config, priced=duel_ctx)
@@ -162,7 +196,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # (3-pack forced marches re-lost the home race 3249->1647;
             # evac saves the commander, not the score. Rope stays.)
             spent = foe_score < 0.5 * my_score and len(state.own_armies()) >= 2
-            if duel and enemy_armies and not spent:
+            # Siege release: persistent-fight duels are bloodbaths the bot
+            # can't see (intel shows one foe). Hold-everything then dies
+            # slowly; surplus marches via normal gates (held-set keeps N+1).
+            if duel and not siege and enemy_armies and not spent:
                 continue  # rope-a-dope: let them come
             if not duel:
                 # Big wars: pure pressure (old-greedy style). ANY hold here

@@ -2401,3 +2401,17 @@ FIGHTS (own deaths + foe disappearances near my towns), not presence;
 quiet loitering must not advance it. Falsifiable trace criteria: OFF in
 dense-quiet, ON in real wars. Code parked on loop/pro-siege (main keeps
 56.7 line).
+
+### Heat rung KILLED pre-rating (trace-gate failed) (2026-09-12 19:31 BST)
+Fight-heat (fights, not presence): unit tests pass, but live trace FAILS
+the gate. Quiet: heat ~0, siege never fires (PASS). Bloodbath: heat 0.0 at
+t3000, F0 dead ~t3400 (killing blows = undefended takes + approaching (not
+yet fighting) raiders land BEFORE fight-evidence exists). Fight-evidence
+arrives WITH the blows (too late to release the holds that prevent them).
+Catch-22 closed: presence (too noisy, always-on) vs fights (too late).
+SYNTHESIS QUEUED (closing+muster): bloodbath = contacts CLOSING (velocity
+toward my towns, early warning) + staging towns WITH field activity
+(prints seen = mustering; quiet neighboring colonies don't count). Uses
+existing trails + _foe_prints. Falsifiable: arms on approaching raiders
+t3200-style, silent on loiterers/neighbors. Code parked here (reuses
+_prev_near/trail parts); NO rating (inert, would twin parent).
