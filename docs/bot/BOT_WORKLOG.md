@@ -2984,3 +2984,7 @@ Rated clean 15g -> ord 41.6 (mu 49.1): FAIL (bar 61.7+). Mass-hold waits
 beats wait: overmatch, mass both starve). F4's waves were luck+context
 (single trace overgeneralized; trace!=prescription). Reverted (main keeps
 buzzer 61.7). Parked on loop/buzzer-mass.
+
+### Buzzer 400g milestone (2026-09-13 00:25 BST)
+Buzzer +5g (400 total) -> ord 62.2 (mu 65.6, was 65.0/395g): +0.5 on
+3W/1S/1M. 400 games banked (most-measured brain in pool). True ~61-63.
