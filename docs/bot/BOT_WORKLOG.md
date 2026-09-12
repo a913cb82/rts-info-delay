@@ -2200,3 +2200,24 @@ holds keep N+1 only vs COUNTED threat, not vs the unknown). Sorties don't
 just underperform — they can suicide the early game. (Single-lottery
 confirmation of the rated 36.3 FAIL; mechanism consistent.)
 Search-spec measurement deferred (bot died; need a healthy game).
+
+### Search track GREENLIT (distilled-stepper spike) (2026-09-12)
+WHY (structural): pool saturated with pro-family twins; twins produce
+slot-lottery outcomes (proven) so scripted tweaks asymptote ~57 (0-for-19).
+Only reasoning breaks mirrors (better tactics in identical positions).
+SPIKE (/tmp/distill.py, scratch): scalar flat-dict stepper, exact growth
+(<0.5 pop/100t quiet), 6/6 battle/capture cases engine-exact (incl hold/
+standoff/demote). Simplifications S1 instant orders, S2 no blocking, S3
+static foes (margin rule covers), S4 static capitals.
+RANKING VALIDATED: null(45502) > refound(45077) > sortie(43502), stable
+under +-5km jitter (smooth, not knife-edge; residual fragility -> jittered
+worlds per ISMCTS plan). Refound math confirms one-colony (-425/150t).
+BUDGET (measured): small-N 101us/turn; bloodbath-N (21T/39A) 973us/turn,
+hypot-dominated (82k calls/30t). Path: distance matrices (5x) + relevant-
+set prune (2x) + numba pair kernels (10x, already a bot-process import?)
+=> ~10us/turn => 1ms per 100-turn candidate; 2-3 candidates ~= 3-4ms <
+10ms byo-yomi. 1s reservoir funds early deep search (founding strategy).
+ARCH: scripted doctrine proposes 2-4 order-sets on choice-turns; search
+ranks by 100-turn rollout value (+margin for S3); duels keep scripted holds.
+NEXT: M1 fast stepper (10us/turn) in src/bots/pro/search/; M2 choice-turn
+hooks; M3 fog worlds; M4 rating gate (bar 58+, style holds).
