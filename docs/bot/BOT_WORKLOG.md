@@ -2847,3 +2847,10 @@ Initiate machinery wins (66k of takes); pure vulture gets walk-ins only
 (nothing). Pacifist rung killed pre-build. Newborn-take doctrine ALSO
 killed (mechanics: capture halves 500->250 < 500 death threshold (dies)).
 No code change.
+
+### Zero-death value (+3-4) but fog-bound (2026-09-12 23:16 BST)
+Quantified: cutting deaths 7%->0% saves mu +2-3 (16 zeros->mids) + sigma
+1.1->0.7 (ord +1.2) = +3-4 total (67->70-71). BUT fog-bound (F1-unseen
+packs unbeatable; evac-bar dead; nomad blind). Partial cuts unproven.
+Lit recycle (signaling/focal/equilibrium-selection): nothing new (takes
+already opponent-adaptive priced/unpriced). No code change.
