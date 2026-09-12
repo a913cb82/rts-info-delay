@@ -1,5 +1,5 @@
 """python -m bots.expander"""
-from .core import bot_main
+from .protocol import *
 from .brain import decide_orders
 
 if __name__ == "__main__":
