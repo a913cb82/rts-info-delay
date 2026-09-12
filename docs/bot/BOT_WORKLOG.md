@@ -2950,3 +2950,10 @@ bleeds vs diverse (nothing to defend; 47.0). QUEUED: counter-recall
 Buzzer +15g (365 total) -> ord 62.8 (mu 66.2, was 65.2/350g): +1.0 on
 27% wins + quality mids (2nds vs 240k+) + 1 F1-death. dd9782a above
 buzzer 40% this batch (62% regressing to luck; kill validated).
+
+### Buzzer 380g + Red Queen (2026-09-12 23:59 BST)
+Buzzer +15g (380 total) -> ord 61.3 (mu 64.7, was 66.2/365g): -1.5 on
+7% wins (1/15) + 2 F1-deaths. 90-game decline 69->61 (10 sigma, REAL not
+noise): Red Queen (pool top crowds with clones/strong; info-optimal feeds
+tougher; static buzzer declines relatively). Floor ~60 (parity). 80 ever
+further without a passing rung (0-for-27).
