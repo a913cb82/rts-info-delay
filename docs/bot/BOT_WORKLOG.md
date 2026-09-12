@@ -2715,3 +2715,19 @@ ARCH (clean decide flow): compound phase (tall, no raids till force 8+) ->
  1 home stays) -> snowball (takes compound, force grows, repeat). Single
  coherent doctrine (not stacked tweaks). Bar: aggressive gate (>=47.2 AND
  takes occur).
+
+### Aggressive rewrite v1 (2026-09-12 21:15 BST)
+Coherent take-doctrine (not stacked tweaks): compound-gate (raid iff force
+>=6, else tall) + vulture-select (weakened-viable x3, hostage x0.3 fallback,
+savings override) + overmatch margin (need+2 priced only, clean kills;
+unpriced denial stays lean) + covered implicit (force>=6 packs + home).
+Takes profitable + snowball; donations need overmatch to survive. Bar:
+aggressive gate (ord>=47.2 AND takes occur).
+
+### Rewrite verdict: FAIL, take-all wins (2026-09-12 21:26 BST)
+Rated clean 15g -> ord 17.3 (mu 25.2): FAIL (gate 47.2+). Compound-gate
+(force>=6) paralyzes (thin base never reaches; no raids ever; starve-die).
+Take-all (baseline, hostages included) beats every selective/gated variant
+(42.2 > 34.6/26.9/21.1/17.3/15.2/11.1). Gates starve raiders; volume wins.
+Reverted (main keeps 42.2). Aggressive EXHAUSTED + baseline-optimal proven.
+Code parked on loop/aggr-rewrite.
