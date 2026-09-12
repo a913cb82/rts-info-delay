@@ -7,10 +7,12 @@ from .common import BotForecast, BotState, DemandParams, bot_main, demand_trains
 
 
 def _can_train_aggressive(state: BotState, town) -> bool:
-    """Thin cushion (fights): floor only + pending guard. Forward towns
-    must print (raid logistics) — no distance rule, no peak cap."""
+    """Comfort cushion (deep-sleep lesson: the thin floor left towns at
+    ~1000-2000 where every feed costs a tenth of the economy and a single
+    raider converts them to corpses; turtle deep-sleep was +4 ordinal).
+    Raids still print eagerly — just from towns that can afford them."""
     from .common import train_floor
-    return town.population >= train_floor(state, state.config)
+    return town.population >= train_floor(state, state.config) + 1500.0
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
