@@ -1715,3 +1715,31 @@ Gate status: pro/expander/turtle PASSED; aggressive PENDING.
 | aggressive  | df34823     | 43.9 | 42.7 | 7d1517c |
 (Bars = the era-peak holders each bot had to beat; ratings from the
 1321-game unified log. Merged main src == each rated winner.)
+
+## REFACTOR PLAN: per-personality packages (kill shared-common clobbering)
+PROBLEM (mechanism): brain_hash = sha1(bot.py blob + common.py blob).
+Any common.py edit re-hashes ALL personalities -> (a) silent behavior
+change for bots you didn't touch, (b) new unrated names, (c) whole-tree
+merges clobber earlier winners (this session: the expander merge ate the
+pro winner; the aggressive merge re-hashed turtle/expander).
+TARGET: src/bots/<personality>/ packages, each self-contained:
+  pro/{__init__.py,__main__.py,brain.py,core.py}
+  core.py = the personality's OWN copy of the decision machinery (its
+  rated era's common.py), brain.py = its decide_orders.
+  python -m bots.pro keeps working (package __main__).
+  brain_hash = hash of the package directory ONLY.
+  Changing pro/core.py affects ONLY pro. Porting = explicit copy:
+  benchmarks/port.py --from pro --to turtle [--symbol X | --file core.py]
+MIGRATION (staged):
+  1. Seed each package from its RATED winner tree (pro 12b6801,
+     expander 80c67fe, turtle a82f53d, aggressive df34823) so behavior
+     == the rated brain.
+  2. Update brain_hash/bots_at to the package layout; keep flat modules
+     only for stub/greedy (or package them too).
+  3. Seed elos.json for the new package names from the winners' current
+     (mu, sigma, games) — a rename, not a re-earn (documented; the hash
+     changes only because the layout did).
+  4. Split tests per package (script the import rewrite: bots.common ->
+     bots.<p>.core, bots.<p> -> bots.<p>.brain).
+  5. Verify behavior identity: run one identical field with the package
+     bot and the old winner -> the deterministic games must match.
