@@ -2685,3 +2685,13 @@ narrow 2nds vs 240k+ (193k/188k) + 2 deaths. Muster force wins mirrors
 MERGED as unfreeze-line best (sibling rivalry with twins is healthy:
 pool diversity + competition; may the best win). Style holds (compounder:
 tall + late force, no added raids).
+
+### Twin-collapse + buzzer leads (2026-09-12 19:31 BST)
+Twins +16g -> ord 56.6 (mu 61.3, was 65.5): TRUTH softer (1W/16, mostly
+3rd-5th vs diverse-strong). Pool top DIVERSIFIED (not mirror-saturated):
+9e3ad51/7ac3d0f/5ed9e5d/40145e1 spike 240-412k (rung-cousin high-variance
+games). BUZZER LEADS 60.9 (mu 66.1, 38g, +1.4 on opponent-gains): muster
+force beats frozen twins head-to-head (takes snowball late vs static).
+Mechanism confirmed (muster > frozen). NEXT: buzzer volume to 60g+
+(sigma -> ord 62+; needs games for 80-push anyway) + survive spikes
+(muster force doubles as guards: hold 9 vs 240k packs, place 2nd).
