@@ -2593,21 +2593,23 @@ unbuilt): march iff overmatch-confirmed (fresh intel 2v1+), else hold/build.
 written from memory and are unreliable (hours off); all future entries use
 `date` output. Past entry TIMES suspect, entry ORDER/content intact.)
 
-### Aggressive march discipline (2026-09-12 18:23 BST)
-Packs march need-met on stale need (S/W understated) and donate (7+ zeros).
-FIX (brain sel-march + tests (3)): march iff target seen <=30t (need current);
-else hold (pipeline builds, scouts refresh, then march fresh). Uniform per
-target (whole pack holds, no stagger). Strike path exempt (windows close).
-Scouts active (probe_armies=1 wired) so holds resolve (unlike pro intelgate
-which sat forever scoutless). Predicts: deaths halve, takes persist fresh.
-Bar: aggressive gate (ord>=47.2 AND takes).
+### Aggressive take-doctrine v3 (vulture + march-gate) (2026-09-12 18:41 BST)
+LITERATURE FIRST (bold mandate): positional theory (strategy-stealing:
+Second cannot force wins in symmetric Maker-Maker (First wins-or-draws);
+Second's ceiling = draw) + FFA kingmaking (nonparticipant wins gladiator;
+losers decide winners). IMPLICATIONS: (1) don't try to WIN mirrors as F1
+(impossible systematically) — aim PARITY/draws (stop losses!); (2) FFA wins
+go to nonparticipants who eat losers (vulture-takes + survival, not races).
+V3 combines vulture-select (proven direction) + march-gate (complete packs
+march iff target fresh <=30t, else hold intact; scouts refresh; strike
+exempt). 3 march tests + 2 savings tests. Bar: aggressive gate (>=47.2 AND
+takes).
 
-### March-gate verdict: FAIL, aggressive PARKED (2026-09-12 18:31 BST)
-Rated clean 15g -> ord 10.0 (mu 18.3): FAIL (bar 47.2+). Same failure as
-pro intelgate (43.3): stale-everywhere holds -> sit -> surrounded -> overrun.
-Scouts insufficient to refresh bloodbaths (die/stuck). Wins bigger when
-fresh (543k!) but deaths dominate. STALE-EVERYWHERE has no good move (hold
-dies, blind-marches donate, scouts die) — poverty-trap variant favoring the
-RICH (mass covers uncertainty). AGGRESSIVE PARKED (stuck-proven: 11 era
-fails + vulture + march-gate; all fail or worse). Code parked on
-loop/aggr-march2 (main keeps 42.2).
+### Take-doctrine v3 verdict: FAIL (2026-09-12 18:41 BST)
+Rated clean 15g -> ord 26.9 (mu 35.0): FAIL (gate 47.2+). March-gate holds
+in stale bloodbaths (sit-die, 33% deaths) worse than donations it prevents.
+Ordering (baseline-hostages 42.2 > gated 26.9 > v2 21.0 > floor 11.1) says:
+TAKE VOLUME beats take quality (packs must take anything for snowball fuel;
+selectivity starves). NEXT (parallel takes, queued): raid_targets k=3-5
+(simultaneous multi-takes, volume snowball) — brain uses k=1 (serial) now.
+Parked (main keeps 42.2).
