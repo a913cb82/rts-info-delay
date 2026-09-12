@@ -2777,3 +2777,12 @@ Muster tax kills compound (25k strip stunts 25-35k towns; no surplus;
 attractor collapses to 13-58k). Takes don't compensate (rare/small).
 Muster-takes requires pro-scale surplus (60k+; buzzer already does it).
 Reverted (main keeps 47.3). Code parked on loop/turtle-hybrid.
+
+### Buzzer 190g + slot-invariant attractors (2026-09-12 22:42 BST)
+Buzzer +20g (190 total) -> ord 69.2 (mu 72.8, was 70.4/170g): +2.4 on 90%
+wins (18/20). Fixed points hold across slot permutations (239874x4,
+203430x4, 245967x3, 188784x4 — different slot-variants, same mine score):
+attractor dominance is slot-invariant (deterministic, not lottery).
+Losses = disruption games (knocked off attractor by bloodbaths/spikes).
+NEXT RUNG (queued): buzzer-line + threat-survival (dark-pack mechanism
+port: hold attractor under fire, win disrupted games, cut deaths).
