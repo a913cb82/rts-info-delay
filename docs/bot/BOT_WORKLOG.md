@@ -2920,3 +2920,8 @@ partial-only). Oscillation 64-67 persists.
 Buzzer +15g (305 total) -> ord 63.8 (mu 67.3, was 68.3/290g): -1.0 on a
 spike-batch (F1-zero twice; 53% wins). 300 games banked; oscillation
 62-69 persists (sigma shrinks slowly; mu oscillates with batches).
+
+### Buzzer 320g (flat) (2026-09-12 23:49 BST)
+Buzzer +15g (320 total) -> ord 63.6 (mu 67.0, was 67.3/305g): -0.2 on
+40% wins (incl 358k) + 1 F1-death + mids. Flat. Failed branches
+(dd9782a etc.) correctly lose as pool opponents (self-correcting).
