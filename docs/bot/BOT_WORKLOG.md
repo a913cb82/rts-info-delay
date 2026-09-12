@@ -1932,3 +1932,17 @@ founds readily, just big/spaced/paced) + abandon-if-costly (never turtle;
 holds elsewhere). Predicts: 8-12 thick colonies (8k+ -> 30k-60k each,
 spaced) outgrow tall via parallel (12x7 > 2x25) to 300k+ (wins); thicker
 =>guarded (survival up too). Suites: guard 2680->3163 (+18%, holds better).
+
+### GOAL-80, active-worst (expander) 2: count-cap-12 (2026-09-12)
+THICK SPRAWL (8000 thresh + 160 spacing + serial) rated 15g -> 38.7
+(mu 46.3). FAIL (worse than baseline 47.2; deaths 47% vs 19%). It slowed
+fill (2-3 towns by t4000, concentrated target, outscored+overrun) — FEWER
+towns (even thick) LOSES (no redundancy); many-thin SURVIVES (dispersed).
+LESSON: for colonist, COUNT (redundancy+territory) > SIZE (concentration);
+deaths kill ordinal more than wins lift. REVERTED thick (back to baseline
+eager fill). IDEA (1, clean): COUNT-CAP-12 — stop founding at 12 towns
+(maintain 12, refill losses); freed pop compounds EXISTING thin->mid (5k+,
+engines) + guard-or-rich kicks in (thicker=>guarded=>holds). Redundancy
+(12 survive) + territory + growth (fed, not founded). Still colonist
+(most 12 vs 2-3). Predicts: thin->mid via compounding (scores up 60k+),
+holds up (guarded), deaths down (redundant+held), ordinal 49+.

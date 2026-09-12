@@ -2548,14 +2548,7 @@ def demand_trains(state: "BotState", config, can_train,
                         bare = False
         if deficit[0] > 0:
             want = True
-        # Thick sprawl (growth engines, not thin mouths): expansion
-        # trains only from >=8000 (stays >=7000, grows 7+/turn; thin 1500
-        # foundings stuck at 500-2000, outscored 4th). Serial+spacing (brain)
-        # pace/space them; this sizes them. Colonies found big, compound
-        # fast, outgrow tall via parallel engines (12x7 > 2x25). Still
-        # colonist (most foundings); just muscled (abandon-if-costly, never
-        # turtle — holds handled elsewhere, not here).
-        if expand and not drowning and t.population >= 8000.0:
+        if expand and not drowning:
             want = True
         if len(state.own_armies()) < params.probe_armies and not drowning:
             want = True

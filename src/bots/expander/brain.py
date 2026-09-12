@@ -40,7 +40,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # leaves >=1500, survivable vs one raider — the 200 variant
         # created a vulnerable 700-window and died 4/6 games).
         depth_extra=1000.0, raid_margin=300.0, payback_mult=0.3,
-        probe_armies=1, void_horizon=100, rates=False, serial=True)))
+        probe_armies=1, void_horizon=100, rates=False, serial=False)))
     # Standing guard (era-expander weakness, autopsy-verified: a single
     # raider beheads a naked capital while armies settle — pro's army 2
     # turns out, capital 0 defenders, dead t2733). One guard per rich
@@ -120,7 +120,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                     continue
                 if not own_home and state._foe_first_seen and not expansion_demand(
                         state, config, DemandParams(payback_mult=0.3, void_horizon=100,
-                                                  rates=False, serial=True)):
+                                                  rates=False, serial=False)):
                     state._army_targets.pop(p.id, None)
                     continue
                 if not own_home and not tip_safe(state, config, tx, ty):
@@ -166,9 +166,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # decides past clock on long games: empty_10000 lesson). True
         # races override via filed race-sites (no racing rival exists).
         site = None
-        if expansion_demand(state, config, DemandParams(
-                payback_mult=0.3, void_horizon=100, rates=False, serial=True)):
-            site = find_build_site(state, config, p.x, p.y, rmin=160, rmax=350, salt=11, who=p.id)
+        # Count-cap-12 (anti-stunting): stop founding at 12 towns (maintain
+        # 12, refill losses below it). Overextension past 12 spreads thin
+        # (more mouths, same pop -> all stunt 1-3k, outscored 4th). At 12,
+        # freed pop compounds EXISTING (thin->mid 5k+, engines) + guard-or-
+        # rich kicks in (thicker=>guarded=>holds). Redundancy (12 survive) +
+        # territory + growth. Still colonist (most foundings 12 vs 2-3).
+        if len(state.own_towns()) < 12 and expansion_demand(state, config, DemandParams(
+                payback_mult=0.3, void_horizon=100, rates=False, serial=False)):
+            site = find_build_site(state, config, p.x, p.y, rmin=120, rmax=350, salt=11, who=p.id)
         if site is not None and not site_pays(state, config, site[0], site[1]):
             site = None
         if site:
