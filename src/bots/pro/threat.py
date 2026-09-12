@@ -67,7 +67,13 @@ def inbound_force(state: "BotState", config: "GameConfig",
 
     Same assignment as inbound_eta, plus the count: N raiders imputed to
     the town nearest each of them. Stationary foe guards sitting on
-    their own towns are excluded (not inbound)."""
+    their own towns are excluded (not inbound). Parked contacts are also
+    excluded: a foe army with a fresh trail showing ~zero displacement
+    (parked settler/scout, never closing) is not a raid — printing guards
+    vs it locks 1000s as idle heirlooms (ladder: F1 wasted 3k vs a scout
+    parked 116km for 1300+ turns, -7k final). Closing/unknown contacts
+    always count (fresh rushers have no stationary trail; stale intel
+    keeps counting — no D1 regression)."""
     import math as _math
     faction = state.faction
     own_t = state.own_towns()
@@ -82,6 +88,8 @@ def inbound_force(state: "BotState", config: "GameConfig",
             if any(_math.hypot(a.x - u.x, a.y - u.y) <= 15
                     for u in foe_towns if u.faction == a.faction):
                 continue
+            if _trail_parked(state, a.id):
+                continue  # parked contact (fresh trail, ~zero movement)
             if min(own_t, key=lambda u: _math.hypot(a.x - u.x, a.y - u.y)).id != t.id:
                 continue
             eta = _math.hypot(a.x - t.x, a.y - t.y) / max(1.0, config.army_speed)
@@ -91,6 +99,31 @@ def inbound_force(state: "BotState", config: "GameConfig",
         if best <= max_eta:
             out[t.id] = (best, n)
     return out
+
+
+def _trail_parked(state, aid: int, eps: float = 5.0, fresh: int = 10) -> bool:
+    """True iff foe army aid has a fresh trail proving it stationary.
+
+    >=2 trail points, max pairwise displacement <= eps km, last sighting
+    within `fresh` turns. Parked = not closing = not inbound (no guard
+    prints vs it). Stale trails keep counting (conservative: an unseen
+    rusher must never read as parked)."""
+    trail = (state._trails.get(aid) if hasattr(state, "_trails") else None) or ()
+    if len(trail) < 2:
+        return False
+    try:
+        last_t = trail[-1][0]
+    except (IndexError, TypeError):
+        return False
+    if state.turn - last_t > fresh:
+        return False
+    pts = [(p[1], p[2]) for p in trail]
+    import math as _m
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            if _m.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) > eps:
+                return False
+    return True
 
 
 

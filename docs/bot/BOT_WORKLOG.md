@@ -2038,3 +2038,20 @@ compound takes (grow to wins 160k+ vs 150k pros (quality wins -> mu 65+ new
 max?)). Predicts (mechanism, bold 1/3 (not ordinal yet): packs rally
 (cohesive 0-spread), takes land vs MID-mustering (9>=7), takes grow
 (spaced uncrowded 2500->20k+), wins vs mid-strong (150k+ quality).
+
+### GOAL-80, pro ladder rung 1: parked-contact exclusion (2026-09-12)
+LOOP AMENDED (stuck-escape, self-authorized): a personality with >=3 fails
++ structural stuck-proof is PARKED (aggressive 11, expander 3, turtle 2);
+loop proceeds to next-viable (pro, best, responds +5/idea). Worst-first
+stands for viable personalities; stuck-park prevents futile 0-for-16.
+RUNG 1 (fork-max-fix-worst-loss): repro'd blowout field (parent F0 vs mine
+F1) under tip-master: now a NARROW 190k-vs-197k loss (engine drifted).
+Autopsy: zero captures either side, pure compound race; F1 printed 3 idle
+heirloom guards t2000-4000 vs expander scout #18 parked 116km/1300+ turns
+(closed 141->116 once, then sat; harmless, F2 scored 8k). -3k at the steep
+part of logistic = -7k final. FIX (pro/threat.py, package-scoped):
+inbound_force skips foe armies with a FRESH trail proving stationary
+(>=2 pts, max displacement <=5km, sighted <=10t). Closing/unknown/stale
+always count (rushers have no stationary trail; D1-unseen keeps status
+quo — no regression). Predicts: F1 skips phantom guards in rematch (flips
+narrow losses; blowout 56k losses are a separate mechanism, next rung).
