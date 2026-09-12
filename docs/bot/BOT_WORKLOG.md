@@ -2915,3 +2915,8 @@ Buzzer +15g (290 total) -> ord 64.8 (mu 68.3, was 68.1/275g): +0.2 on
 47% wins + 2 F1-deaths. Flat. Vulture-weak killed pre-build (fixes need
 arbitrary staleness-tuning; no tracing infra to verify; stale-probe
 partial-only). Oscillation 64-67 persists.
+
+### Buzzer 305g (300-game milestone, oscillation) (2026-09-12 23:46 BST)
+Buzzer +15g (305 total) -> ord 63.8 (mu 67.3, was 68.3/290g): -1.0 on a
+spike-batch (F1-zero twice; 53% wins). 300 games banked; oscillation
+62-69 persists (sigma shrinks slowly; mu oscillates with batches).
