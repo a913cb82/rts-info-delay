@@ -44,6 +44,20 @@ const AUTO_SLOW = 2;          // effective x while action
 const AUTO_STEP_CAP = 12;     // max turns/frame under auto (so bursts are seen)
 let autoSpeed = false;
 let effSpeed = 1;
+/* Target-duration mode: fit the WHOLE replay into N seconds. Builds a
+   smooth per-turn speed profile from the action intensity (triangular
+   lookahead/linger kernel), then binary-searches the quiet speed so the
+   summed per-turn times hit the target. Action slows to 2x when
+   feasible, escalating (4x, 8x, ...) only when the target cannot
+   otherwise be met. The live multiplier is derived from the profile. */
+let autoTargetSec = 0;
+let schedule: Float64Array | null = null;
+let scheduleFast = 0;
+const AUTO_SLOW_CANDIDATES = [2, 3, 4, 6, 8, 12, 16, 24, 32, 64, 128, 256, 512, 1024, 2048, 4096, 16384, 65536];
+/* Quiet stretches have no visibility floor: solve the quiet speed as high
+   as the target demands (action segments keep their 2x preference). */
+const AUTO_FAST_MAX = 65536;
+let schedAnchor: number | null = null;
 let actionGlobal: Float32Array = new Float32Array(0);
 let actionFaction: Float32Array = new Float32Array(0);
 let speedLiveEl: HTMLSpanElement | null = null;
@@ -226,10 +240,86 @@ function updateAutoSpeed(): void {
   const rate = target < effSpeed ? 0.5 : 0.08;
   effSpeed += (target - effSpeed) * rate;
   if (Math.abs(effSpeed - target) < 0.05) effSpeed = target;
-  if (speedLiveEl) {
-    const shown = effSpeed >= 100 ? String(Math.round(effSpeed)) : effSpeed.toFixed(1);
-    if (speedLiveEl.textContent !== shown) speedLiveEl.textContent = shown;
+  updateSpeedLabel();
+}
+
+function updateSpeedLabel(): void {
+  if (!speedLiveEl) return;
+  const shown = effSpeed >= 100 ? String(Math.round(effSpeed)) : effSpeed.toFixed(1);
+  if (speedLiveEl.textContent !== shown) speedLiveEl.textContent = shown;
+}
+
+/* Smoothed action intensity for the active signal: sum triangular
+   kernels (lookahead left, linger right) of each action turn. */
+function actionIntensity(): Float32Array {
+  const T = turns.length;
+  const F = Math.max(1, factionCount);
+  const I = new Float32Array(T);
+  for (let k = 0; k < T; k++) {
+    const a = selectedFaction === null
+      ? actionGlobal[k]!
+      : actionFaction[k * F + selectedFaction]!;
+    if (a === 0) continue;
+    const w = a / AUTO_FULL;
+    const lo = Math.max(0, k - AUTO_LINGER);
+    const hi = Math.min(T - 1, k + AUTO_LOOKAHEAD);
+    for (let i = lo; i <= hi; i++) {
+      const d = i < k ? (k - i) / AUTO_LINGER : (i - k) / AUTO_LOOKAHEAD;
+      const v = w * Math.max(0, 1 - d);
+      if (v > I[i]!) I[i] = Math.min(1, v);
+    }
   }
+  return I;
+}
+
+/* Per-turn seconds for a given quiet speed + slow floor; total = Σ dt. */
+function profileTotal(I: Float32Array, fast: number, slow: number): number {
+  let total = 0;
+  for (let i = 0; i < I.length; i++) {
+    const sp = slow + (fast - slow) * (1 - I[i]!);
+    total += 1 / Math.max(0.5, sp);
+  }
+  return total;
+}
+
+function computeSchedule(): void {
+  const T = turns.length;
+  schedule = null;
+  if (T === 0 || autoTargetSec <= 0) return;
+  const I = actionIntensity();
+  // Find the slowest action speed (most visible) that still fits.
+  let fast = AUTO_FAST_MAX;
+  let slow = AUTO_SLOW_CANDIDATES[AUTO_SLOW_CANDIDATES.length - 1]!;
+  for (const cand of AUTO_SLOW_CANDIDATES) {
+    if (profileTotal(I, AUTO_FAST_MAX, cand) <= autoTargetSec) {
+      slow = cand;
+      break;
+    }
+  }
+  // Binary-search the quiet speed for the exact target under that floor.
+  let lo = slow, hi = AUTO_FAST_MAX;
+  if (profileTotal(I, hi, slow) > autoTargetSec) {
+    // Cannot fit even at max: everything runs at the fastest uniform rate.
+    lo = hi;
+  } else if (profileTotal(I, lo, slow) <= autoTargetSec) {
+    hi = lo;  // already fits at the slowest uniform rate
+  } else {
+    for (let it = 0; it < 40; it++) {
+      const mid = (lo + hi) / 2;
+      if (profileTotal(I, mid, slow) <= autoTargetSec) hi = mid; else lo = mid;
+    }
+  }
+  fast = hi;
+  scheduleFast = fast;
+  const sch = new Float64Array(T);
+  let t = 0;
+  for (let i = 0; i < T; i++) {
+    sch[i] = t;
+    const sp = Math.max(0.5, slow + (fast - slow) * (1 - I[i]!));
+    t += 1 / sp;
+  }
+  schedule = sch;
+  if (speedLiveEl) speedLiveEl.title = `target ${autoTargetSec}s, action ${slow}x, quiet ${fast.toFixed(0)}x`;
 }
 
 /* ── Load ── */
@@ -260,6 +350,8 @@ function renderFactionNames(): void {
     span.addEventListener("click", () => {
       selectedFaction = toggleFactionSelection(selectedFaction, f);
       renderFactionNames();
+      schedAnchor = null;
+      computeSchedule();
       draw();
     });
     factionNamesEl.appendChild(span);
@@ -284,6 +376,7 @@ function loadRecord(records: GameRecord[]): void {
   scoreCache = null;
   buildScoreCache();
   buildActionCache();
+  computeSchedule();
   fitView();
   draw();
 }
@@ -827,15 +920,45 @@ function animateLoop(now: number): void {
 
 function togglePlay(): void {
   playing = !playing;
-  if (playing) { lastPlay = performance.now(); requestAnimationFrame(playLoop); }
-  else lastPlay = 0;
+  if (playing) {
+    lastPlay = performance.now();
+    schedAnchor = null;  // start the clock from the current turn
+    requestAnimationFrame(playLoop);
+  } else lastPlay = 0;
   draw();
 }
 
 function playLoop(ts: number): void {
   if (!playing || turns.length === 0) return;
   if (!lastPlay) lastPlay = ts;
+
+  // ── Target-duration mode: wall-clock drives the turn via the cumulative
+  //    schedule (total time guaranteed by construction). Slow segments
+  //    tween; fast segments jump and redraw at the turbo cadence. ──
+  if (autoSpeed && autoTargetSec > 0 && schedule) {
+    if (schedAnchor === null) schedAnchor = ts - (schedule[turn] ?? 0) * 1000;
+    const want = (ts - schedAnchor) / 1000;
+    let next = turn;
+    while (next < turns.length - 1 && (schedule[next + 1] ?? Infinity) <= want) next++;
+    if (next !== turn) {
+      const dt = (schedule[next] ?? 0) - (schedule[turn] ?? 0);
+      const step = next - turn;
+      effSpeed = step > 0 && dt > 0 ? step / dt : scheduleFast;
+      updateSpeedLabel();
+      const tween = step === 1 && effSpeed <= 4;
+      const atEnd = next >= turns.length - 1;
+      const doDraw = tween || atEnd || ts - lastDrawTs >= TURBO_MS;
+      if (doDraw) lastDrawTs = ts;
+      goToTurn(next, tween, doDraw);
+    }
+    if (turn >= turns.length - 1) { playing = false; lastPlay = 0; draw(); return; }
+    requestAnimationFrame(playLoop);
+    return;
+  }
+
+  // ── Reactive/manual mode ──
   updateAutoSpeed();
+  updateSpeedLabel();
   const elapsed = ts - lastPlay;
   const turnsToAdvance = (elapsed / 350) * effSpeed;
   if (turnsToAdvance >= 1) {
@@ -855,6 +978,12 @@ function playLoop(ts: number): void {
   }
   if (playing) requestAnimationFrame(playLoop);
   else lastPlay = 0;
+}
+
+/* Manual seek: re-anchor the schedule clock at the new position. */
+function seek(target: number, animate = false): void {
+  schedAnchor = null;
+  goToTurn(target, animate);
 }
 
 /* ── Interactions ── */
@@ -994,6 +1123,15 @@ function boot(): void {
       <label class="auto-speed" title="Adaptive speed: slow for action (selected faction, else any), fast when quiet">
         <input type="checkbox" id="auto-speed"> auto <span id="speed-live">1.0</span>×
       </label>
+      <select id="auto-target" title="Adaptive target: fit the whole replay into this time (action stays visible; context turns included)">
+        <option value="0">reactive</option>
+        <option value="15">15s</option>
+        <option value="30">30s</option>
+        <option value="60" selected>1 min</option>
+        <option value="120">2 min</option>
+        <option value="300">5 min</option>
+        <option value="600">10 min</option>
+      </select>
     </div>
   `;
 
@@ -1014,22 +1152,33 @@ function boot(): void {
   armyBarEl = document.getElementById("army-bar") as HTMLDivElement;
   mapWrap = document.getElementById("map-wrap") as HTMLDivElement;
 
-  document.getElementById("btn-start")!.addEventListener("click", () => goToTurn(0));
-  document.getElementById("btn-prev")!.addEventListener("click", () => goToTurn(Math.max(0, turn - 1)));
+  document.getElementById("btn-start")!.addEventListener("click", () => seek(0));
+  document.getElementById("btn-prev")!.addEventListener("click", () => seek(Math.max(0, turn - 1)));
   playBtn.addEventListener("click", () => togglePlay());
-  document.getElementById("btn-next")!.addEventListener("click", () => goToTurn(Math.min(turns.length - 1, turn + 1)));
-  document.getElementById("btn-end")!.addEventListener("click", () => goToTurn(turns.length - 1));
+  document.getElementById("btn-next")!.addEventListener("click", () => seek(Math.min(turns.length - 1, turn + 1)));
+  document.getElementById("btn-end")!.addEventListener("click", () => seek(turns.length - 1));
   speedSel.addEventListener("change", () => { speed = parseFloat(speedSel.value); lastDrawTs = 0; draw(); });
   const autoCb = document.getElementById("auto-speed") as HTMLInputElement;
+  const autoTargetSel = document.getElementById("auto-target") as HTMLSelectElement;
   speedLiveEl = document.getElementById("speed-live") as HTMLSpanElement;
-  autoCb.checked = new URLSearchParams(location.search).get("auto") === "1";
+  const autoParam = new URLSearchParams(location.search).get("auto");
+  if (autoParam !== null) {
+    autoCb.checked = true;
+    autoTargetSel.value = autoParam === "1" ? "0" : autoParam;
+  }
   autoSpeed = autoCb.checked;
-  autoCb.addEventListener("change", () => {
-    autoSpeed = autoCb.checked;
+  autoTargetSec = parseInt(autoTargetSel.value, 10) || 0;
+  const syncAuto = () => {
+    autoSpeed = autoCb.checked && !(autoTargetSel.value === "0" && !autoCb.checked);
+    autoTargetSec = autoCb.checked ? (parseInt(autoTargetSel.value, 10) || 0) : 0;
+    schedAnchor = null;
+    computeSchedule();
     effSpeed = speed;
     lastDrawTs = 0;
     draw();
-  });
+  };
+  autoCb.addEventListener("change", syncAuto);
+  autoTargetSel.addEventListener("change", () => { autoCb.checked = true; syncAuto(); });
 
 
 
