@@ -1885,3 +1885,13 @@ armies for packs AND home). Still raids march-active with surplus (style
 kept); never suicide-spends to 500. Predicts: force up, deaths down
 (printable+muster), takes up (packs affordable), no catatonia (no pins/
 blocks — only a spend floor).
+
+### Timeout probe verdict: environmental wobble, no fix (2026-09-12)
+War-chest brain timed out 2/15 (both late t8300+, both while big/winning;
+empires held, placements kept). Profiled decide_orders on constructed
+big late-game state (8 towns, 25 own, 15 foe): 1.4ms med / 1.8ms max vs
+16ms budget (10x headroom). NOT systematic slowness — byo-yomi/clock
+wobble under load (16-17ms vs 16ms = 1ms over, within known ±50 wobble).
+No code change (don't fix noise). Noted; merge-blocking only if systematic
+(liveness + profiling gate it). Rating grind for war-chest to 15g delegated
+to subagent (aggr-grind) while designing take-side next idea.
