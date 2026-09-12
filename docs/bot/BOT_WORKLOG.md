@@ -1885,3 +1885,14 @@ armies for packs AND home). Still raids march-active with surplus (style
 kept); never suicide-spends to 500. Predicts: force up, deaths down
 (printable+muster), takes up (packs affordable), no catatonia (no pins/
 blocks — only a spend floor).
+
+### GOAL-80, active-worst (turtle) 2: cap-5 (dominant, not narrow) (2026-09-12)
+CAP-3 rated 8g -> 30.1 (mu 43 rising, 3W/8) but MATH-CAPPED at 180k (3x60k
+max, loses to 200k pros (2nd)). Fail-fast (don't finish doomed grind):
+cap-5 allows 5x60k=300k+ which DOMINATES 200k max (win even minus 50k).
+Abandon cap-3 (8g sunk, documented fail (cap too low)). CAP-5 (one number):
+5 towns (not 3), spaced 180km+ (uncrowded), guarded, fed to 60k+ (300k+
+total beats 200k pros by 100k margin (reliable, not fragile narrow 7k)).
+Predicts: 300k+ wins vs all <300k (dominant 1sts, not narrow 2nds) -> mu
+65+ (quality+quantity wins) -> ordinal 50+ (gate+bar) AND fortress style
+(few (5) spaced guarded, not sprawl (12+) or raiding).

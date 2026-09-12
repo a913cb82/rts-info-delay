@@ -210,13 +210,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # BOTH towns' growth — and growth IS the tall score).
             # Still tall, still calm-only: just far enough to compound
             # independently.
-            # Count-cap-3-maintain (anti-sprawl-stunt): stop founding at 3
-            # towns (maintain 3, refill losses below it). Beyond 3 spreads thin
-            # (more mouths, same pop -> stunt at 10k, outscored 3rd-4th). At 3,
-            # freed pop compounds EXISTING to 60k+ (180k total beats 150k pro;
-            # narrow quality wins -> mu 60+). Still fortress (few spaced guarded).
+            # Count-cap-5-maintain (dominant outgrow, not narrow tie):
+            # cap-3 capped wins at 180k (3x60k, loses to 200k pros). 5x60k=
+            # 300k+ dominates 200k max (win even if lose 50k town). Beyond 5
+            # spreads thin (stunt); at 5, freed pop compounds to 60k+ each
+            # (spaced 180km+ uncrowded, parallel 5x21/turn outgrow 2x18).
+            # Still fortress (few (5 vs 12+) spaced guarded, not sprawl).
             site = None
-            if len(own_t) < 3:
+            if len(own_t) < 5:
                 site = find_build_site(state, config, biggest.x, biggest.y, rmin=180, rmax=320, salt=13, who=p.id)
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
