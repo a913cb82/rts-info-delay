@@ -68,9 +68,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             return 1200
         if e <= 10:
             return 1700
+        # Deep sleep (turtle scored 10-20k because peace-time prints at
+        # 2000/2600 kept towns hovering near the bar — pop IS the tall
+        # score). Rich before printing: compounding towns convert raiders
+        # for free (the compounder's survival trick); poor ones die.
         if any_enemy and not any_threat:
-            return 2000
-        return 2600
+            return 5000
+        return 7000
 
     bar = min((town_bar(t) for t in own_t), default=2600)
 
