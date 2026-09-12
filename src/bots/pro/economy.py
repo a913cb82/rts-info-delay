@@ -91,8 +91,9 @@ def demand_trains(state: "BotState", config, can_train,
             want = True
         if expand:
             want = True
-        if len(state.own_armies()) < probe_armies:
-            want = True
+        if len(state.own_armies()) < probe_armies and len(state.own_towns()) >= 2 \
+                and t.population >= 2500:
+            want = True  # prober: settler-grade print (safe) + colony fallback
         if not want:
             continue
         if bare:

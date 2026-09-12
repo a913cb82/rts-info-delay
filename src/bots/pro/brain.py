@@ -75,7 +75,7 @@ def _stage_trains(state: BotState, config: GameConfig) -> list[str]:
     if not any(t.faction != state.faction for t in state.world.towns) and not any(
             a.faction != state.faction for a in state.world.armies):
         return []
-    out.extend(demand_trains(state, config, can_train_standard))
+    out.extend(demand_trains(state, config, can_train_standard, probe_armies=1))
     return out
 
 
@@ -128,6 +128,17 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             if site is not None:
                 out.extend(order_move(state, config, p, site[0], site[1]))
                 continue
+        # S0 scout (reactivated post-unfreeze): map beyond LOS after first
+        # contact (mode/tactics/doom informed). Assigns only with no
+        # actionable contact (self-gating: safe); converts to raid/guard
+        # on contact (drive returns None -> fall through to normal logic);
+        # unfreeze lets it re-task (recall/home) afterwards, else it would
+        # strand like pre-unfreeze heirlooms.
+        maybe_assign_scout(state, config, p)
+        sc = drive_scout(state, config, p)
+        if sc is not None:
+            out.extend(sc)
+            continue
         # G-defense (duel-only per P6): second-wave watch still holds one.
         if duel_ctx and should_hold_home(state, config, p, inbound, hold_second):
             continue

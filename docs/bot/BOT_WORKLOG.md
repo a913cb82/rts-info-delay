@@ -2508,3 +2508,13 @@ growth offsets tens). Anticipates (packs form at 5-15k, blanket before
 25k+). Zero new state (uses _prev_pop; only fresh-visible prints show;
 blind printers = fog tax). 7 unit tests. Predicts: weak-wins persist +
 strong placements recover (early blanket holds via mutuals). Bar 50+.
+
+### S0 scout reactivation (2026-09-12 20:59 BST)
+FOG IS THE BINDING CONSTRAINT (sim, intel-gates, mode-detection all die on
+it). S0 machinery existed but FULLY UNWIRED (no callers; probe_armies=0).
+Enabled, contact-triggered (P3b void-block intact!) + settler-grade print
+(2500+, safe) + colony fallback (2+ towns, D2-averse) + converts on contact
+(raid/guard owns it; unfreeze re-tasks afterwards). Costs 1 army post-
+contact pre-bloodbath (maps staging/musters/packs beyond LOS: mode, tactics,
+doom informed). Predicts: fewer blind surprises (F1-donations, naked takes,
+misread modes). Bar 56.7+.
