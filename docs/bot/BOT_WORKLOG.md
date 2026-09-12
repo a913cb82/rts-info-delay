@@ -2887,3 +2887,10 @@ Reverted (main keeps buzzer 65.4). Parked on loop/buzzer-picket.
 Clean-takes build: priced/duels need+2 (stale-need donations bleed packs;
 rich buzzer affords the wait; unpriced max-pressure unchanged). 1 line.
 Bar (ladder): exceed 65.4 (donations down, takes clean).
+
+### Overmatch verdict: FAIL (40.1, waiting starves) (2026-09-12 23:36 BST)
+Rated clean 15g -> ord 40.1 (mu 47.7): FAIL (bar 65.4+). Overmatch (+2)
+is a variance amplifier (packs wait -> miss windows -> starve-die 3x;
+clean takes win huge 544k/363k when they land). Deaths punish more than
+huge wins reward (ordinal). Bird-in-hand validated (take now thin beats
+take later clean). Reverted (main keeps buzzer 65.4). Parked.
