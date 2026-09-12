@@ -2738,3 +2738,10 @@ pipeline never completes; starve) while near takes stunt (crowded).
 Affordability dominates spacing (take what you can afford!). Poverty-trap
 again (thin can't take-near (stunt) or far (unaffordable); rich takes both).
 No code change (reverted before commit). Expander stays parked (main 47.2).
+
+### Buzzer 135g + spike-batch variance (2026-09-12 21:53 BST)
+Buzzer +15g fresh-field (global dedup active, no crashes) -> ord 62.0 (mu
+65.7, was 68.8/120g): -3.1 on a spike-heavy batch (opponents 240k+ in 8/15;
+20% wins, 20% deaths incl F1 twice). Variance assessment (not mechanism):
+188k-attractor loses to spikes; next batch may normalize (regression).
+No verdict change (single batch, sigma 1.9). Continue banking.
