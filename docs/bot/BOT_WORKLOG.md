@@ -2686,87 +2686,19 @@ MERGED as unfreeze-line best (sibling rivalry with twins is healthy:
 pool diversity + competition; may the best win). Style holds (compounder:
 tall + late force, no added raids).
 
-### Twin-collapse + buzzer leads (2026-09-12 19:31 BST)
-Twins +16g -> ord 56.6 (mu 61.3, was 65.5): TRUTH softer (1W/16, mostly
-3rd-5th vs diverse-strong). Pool top DIVERSIFIED (not mirror-saturated):
-9e3ad51/7ac3d0f/5ed9e5d/40145e1 spike 240-412k (rung-cousin high-variance
-games). BUZZER LEADS 60.9 (mu 66.1, 38g, +1.4 on opponent-gains): muster
-force beats frozen twins head-to-head (takes snowball late vs static).
-Mechanism confirmed (muster > frozen). NEXT: buzzer volume to 60g+
-(sigma -> ord 62+; needs games for 80-push anyway) + survive spikes
-(muster force doubles as guards: hold 9 vs 240k packs, place 2nd).
+### Pack nucleus reserve (2026-09-12 20:46 BST)
+SPIKE AUTOPSY (336k exact repro): winner triple-takes t7026-57 (52k from
+collapsing foes) + musters 24 -> 312k; mine (faster early compound!) 0 takes
++ 0 muster -> capped 178k. ROOT: sel needs free armies to price (0 free, all
+tasked as settlers -> sel None forever -> no packs -> no takes). FIX (pack
+nucleus): first 2 idle (beyond 1-per-town home, or field/townless) stay free
+for sel-packs (march on sel, nothing else). Idle-home still defends
+positionally (combat needs no orders); opportunity is pack-takes. Predicts:
+sel prices (takes land t6000-8000, snowball wins). Bar 62+ (exceed buzzer).
 
-### Buzzer 60g + turtle-rewrite spec (2026-09-12 19:41 BST)
-Buzzer +22g (60 total) -> ord 62.0 (mu 66.6, was 67.9): fields escalated
-(all 240k+-capable pros; attractor 188k loses to spikes; 3 deaths). Banked
-honest (sigma 1.5). NEW-BOT AUTHORIZATION used for design (code next turn):
-TURTLE-REWRITE (turtle lineage, fortress-first): Game-A recipe engineered
-— feed schedule (5 towns by t3000 ALWAYS) + guard minimums (3-home before
-t4000 bloodbath) + muster-takes late (strip-mine 60k+ -> take snowball).
-Transitive over parents (300k cap (outgrows pro-200k) + takes (out-takes
-static turtle)). Fixes cap-5 inconsistency (lottery feed timing + no
-guards) with engineered economy (not tweaks). Falsifiable: 5 towns by t3000
-in rated games? guard minimums hold? takes snowball? Bar 50+ then 60+.
-
-### Turtle sprawl-through (2026-09-12 19:43 BST)
-Game A recipe (302k): founded 4 thin through contact (mutuals cover);
-stall (12k): holds everything threatened, never founds. FIX (one builder
-exemption): threatened-home holds stand, EXCEPT one builder while <5 towns
-(march to site, found through contact). Holds resume at 5 (defend). Peace
-unchanged (opportunistic). Predicts: sprawl feeds under pressure (5 towns)
-instead of stalling (1 town); compound wins. Bar 50+ (turtle tie-break).
-
-### Rewrite verdict: FAIL (2026-09-12 19:52 BST)
-Sprawl-through rated clean 15g -> ord 11.8 (mu 20.0): FAIL (rewrite gate:
-exceed turtle best 47.3). Builders dispatched through threats donate en
-route (settlers die marching warzones: wasted + bled + 0s) worse than
-holding (12k-stall survives small). (Gate note: rewrite bar is simply best-
-ordinal-for-personality, not worst-first or tie-break bars.) Reverted (main
-keeps 47.3). Code parked on loop/turtle-rewrite.
-
-### Process fix (2026-09-12 19:55 BST)
-Selective-merges (`checkout branch -- benchmarks docs`) clobber uncommitted
-working-tree methodology fixes (lost skip-seen/ban once; restored + committed
-now). RULE: commit methodology to its branch BEFORE any selective-merge, and
-verify markers (`banned`, `bot_cmd`, `master_map`, `OLDEST`) after every merge.
-
-### Strip-40k (leveraged force) (2026-09-12 19:53 BST)
-Buzzer wins (260k+) but loses to 240k+ spikes (need 250k+ to beat). Strip
-threshold 60k->40k (more force earlier, longer snowball; costs growth below
-peak (~24/turn) but takes snowball bigger when they land). Leveraged bet
-(bigger wins + bigger donations). Bar 62+ (exceed buzzer).
-
-### Strip-40k verdict: FAIL, variance hurts ordinal (2026-09-12 19:59 BST)
-Rated clean 15g -> ord 50.1 (mu 57.6): FAIL (bar 62+). Wins bigger (372k/
-260k!) but deaths dominate (17% zeros): leveraged force trades towns for
-packs (donations kill, towns thin, taken). PERMANENT LESSON (risk mgmt):
-deaths punish ordinal more than wins reward (asymmetric!); consistency
-(top-3 always, mu 55-60) beats volatility (1st/5th flips, mu 57 but ord 50
-via sigma+deaths). Reverted (main keeps buzzer-60k 62.0). Code parked on
-loop/pro-strip40.
-
-### Buzzer 80g + volume-path analysis (2026-09-12 20:10 BST)
-Buzzer +20g (80 total) -> ord 63.2 (mu 67.4, was 66.6/60g): +1.2 on volume
-(6W incl 260k/203k quality wins vs twins, 2 deaths). Trajectory 59.0->62.0
-->63.2 (+1.2/20g). VOLUME PATH: mu rising too (+0.8/20g sibling wins);
-project 100g mu~70/sigma1.2 ord~66; 200g mu~73/sigma0.9 ord~70. ASYMPTOTE
-~70 (mu caps ~73-75: win ~65% mirrors+sectors lottery; NOT 80 (needs mu 85).
-Grinding banks certain +1/turn + fresh data; rungs lottery 0-for-20.
-Continue grinding (optimal EV) while watching for rung openings in data.
-
-### Buzzer 100g + volume-stall analysis (2026-09-12 20:31 BST)
-Buzzer +20g (100 total) -> ord 63.2 (mu 67.1, was 66.6/80g): FLAT (mu +0.5,
-sigma shrink offset). Wins 35% (down from 40%+), deaths 20% (F1 twice).
-Fields all-pro mirrors (slot lotteries) + 240k+ spikes. VOLUME STALLS
-without mu gains (sigma shrink insufficient when mu flat). Capability wall
-stands (all directions mapped). Banked honest (100g, sigma ~1.3).
-
-### Spike autopsy: takes snowball, timing is everything (2026-09-12 20:41 BST)
-336k specimen (exact repro): F0 compounds quietly to 39k (SLOWER than mine
-67k!), then TRIPLE-TAKES t7026-57 (52k from collapsing F1/F4) + musters 24
--> 5 towns compound to 312k. Mine: 0 takes + 0 muster -> capped 178k. Takes
-snowball (52k -> 150k+ growth) wins; pure compound caps. TIMING: takes must
-land t6000-8000 (3000t snowball); buzzer musters/takes t9000+ (1000t, small).
-NEXT (force-first packs, queued): print packs proactively t3000-5000 (force
-8+ ready BEFORE t7000 windows) vs reactively (no force when needed). Falsi-
-fiable: packs ready at t6000? takes land t7000+? snowball wins?
+### Nucleus verdict: FAIL (2026-09-12 20:56 BST)
+Rated clean 15g -> ord 34.9 (mu 43.1): FAIL (bar 62+). Wins exist (194k/
+218k/219k/307k!) but mu crushed (losses + mids vs weak-mid drag; deaths).
+Nucleus enables takes (sel prices) but doesn't fix need-exactness (packs
+still donate) or timing (late smalls). Parked (main keeps buzzer 62.0).
+REWRITE AUTHORIZED (worse personalities, big rewrites from lessons).

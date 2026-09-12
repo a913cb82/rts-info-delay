@@ -49,45 +49,30 @@ fh = open("benchmarks/elo_games.jsonl", "a")
 seen_fields = set()
 seen_ckeys = set()
 for i in range(N):
-    # fixed-seed propose: MINE + 4 info-optimal full-pool complements.
-    # Skip-seen (methodology): info-optimal converges on one best field
-    # (deterministic replay = zero info); ban seen complement sets and
-    # descend the info ranking (stays strong). Exhaustion stops gracefully.
-    field = None
-    banned = set()
-    for attempt in range(12):
-        field_names = [MINE]
-        rest = [c for c in cands if c not in field_names and c not in banned]
-        if len(rest) < 4:
-            break
-        while len(field_names) < 5 and rest:
-            scored = sorted(rest, key=lambda k: -info_score(m, field_names + [k], elo))
-            eps = min(0.9, 0.2 + 0.07 * attempt)
-            pick = scored[0] if rng.random() < 1 - eps else rng.choice(scored[:min(3, len(scored))])
-            field_names.append(pick)
-            rest = [c for c in rest if c != pick]
-        # rotate MINE through slots (position control); opponents fill rest in order
-        slot = i % 5
-        opps = [x for x in field_names if x != MINE]
-        field = {}
-        oi = 0
-        for s in range(5):
-            if s == slot:
-                field[s] = MINE
-            else:
-                field[s] = opps[oi]; oi += 1
-        key = tuple(field[s] for s in range(5))
-        # Content-based dup check (methodology): same NAMES twice is rare;
-        # the real recurrence is same-CONTENT twins replaying the identical
-        # deterministic game (h2h triple-count lesson).
-        ckey = tuple((field[s].rsplit("-", 1)[0], _content_hash(field[s])) for s in range(5))
-        if key not in seen_fields and ckey not in seen_ckeys:
-            break
-        banned.update(opps)
-        field = None
-    if field is None:
-        print(f"game {i}: pool exhausted (all top fields seen), stopping early")
-        break
+    # fixed-seed propose: MINE + 4 info-optimal full-pool complements
+    field_names = [MINE]
+    rest = [c for c in cands if c not in field_names]
+    while len(field_names) < 5 and rest:
+        scored = sorted(rest, key=lambda k: -info_score(m, field_names + [k], elo))
+        pick = scored[0] if rng.random() < 0.8 else rng.choice(scored[:min(3, len(scored))])
+        field_names.append(pick)
+        rest = [c for c in rest if c != pick]
+    # rotate MINE through slots (position control); opponents fill rest in order
+    slot = i % 5
+    opps = [x for x in field_names if x != MINE]
+    field = {}
+    oi = 0
+    for s in range(5):
+        if s == slot:
+            field[s] = MINE
+        else:
+            field[s] = opps[oi]; oi += 1
+    key = tuple(field[s] for s in range(5))
+    # Content-based dup assert (methodology): same NAMES twice is rare; the
+    # real recurrence is same-CONTENT twins (renames/reseeds) replaying the
+    # identical deterministic game (h2h g3=g6=g9 triple-counted one game).
+    ckey = tuple((field[s].rsplit("-", 1)[0], _content_hash(field[s])) for s in range(5))
+    assert key not in seen_fields and ckey not in seen_ckeys, f"duplicate field {key}"
     seen_fields.add(key); seen_ckeys.add(ckey)
     cmds = {s: cmd(spec) for s, spec in field.items()}
     scores = run_game(cfg, cmds, None)
