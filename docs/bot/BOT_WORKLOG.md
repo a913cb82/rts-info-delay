@@ -2938,3 +2938,10 @@ Buzzer +15g (350 total) -> ord 61.8 (mu 65.2, was 66.7/335g): -1.4 on
 13% wins (2/15) + 1 F1-death. Pool top in parity (all 60-65, coin flips;
 failed-branch clones tie-or-beat buzzer). Equilibrium (no one climbs;
 80 impossible via scripted play). 350 games banked.
+
+### Nemesis found: dd9782a 62% vs buzzer (2026-09-12 23:56 BST)
+H2H from DB (n>=8): dd9782a places above buzzer 62% (24/39); all others
+<=45% (luck). Mechanism hypothesis: recall defends takes IN MIRRORS
+(takes fail into 2-home; buzzer wastes packs; dd9782a outlasts) but
+bleeds vs diverse (nothing to defend; 47.0). QUEUED: counter-recall
+(fresh-takes race before recall arms, or overmatch 5+ vs 2-home).
