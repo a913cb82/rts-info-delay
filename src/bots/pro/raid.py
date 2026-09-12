@@ -72,6 +72,10 @@ def raid_target(state: "BotState", config, priced: bool = True,
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
+            # Overmatch (priced/duels only): +2 clean-kill margin (stale-need
+            # donations bleed packs; rich buzzer affords the wait, thin bots
+            # don't — unpriced max-pressure unchanged). Flows to pack gate.
+            need = need + 2
             # Bird-in-hand: an executable take now beats a bigger prize
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready.

@@ -2882,3 +2882,8 @@ packs (need-met minus 1 -> takes starve -> attractor capped 150-215k vs
 (+1): pack-membership is knife-edge; premiums must NEVER touch packs.
 Conditional picket = back to field-dependent recall (dead). Picket dead.
 Reverted (main keeps buzzer 65.4). Parked on loop/buzzer-picket.
+
+### Overmatch rung built (2026-09-12 23:26 BST)
+Clean-takes build: priced/duels need+2 (stale-need donations bleed packs;
+rich buzzer affords the wait; unpriced max-pressure unchanged). 1 line.
+Bar (ladder): exceed 65.4 (donations down, takes clean).
