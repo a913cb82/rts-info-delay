@@ -1,7 +1,18 @@
 # Realism benchmark plan — town growth mechanics
 
-Branch: `experiment/realistic-growth` in worktree `/tmp/rl_realism` (from `main` @ `8215445`).
+Branch: `experiment/realistic-growth` in worktree `/tmp/rl_realism`
+(re-based onto `main` @ `f273926`).
 Merge to `main`/`master` only when ready.
+
+**Change policy:** measuring is free; changing mechanics is not.
+No mechanic beyond the benchmark itself lands without explicit user
+approval. Approved queue (NOT implemented — proposals only):
+
+- exempt town-founding (`BUILD` new-town branch) from the 10km
+  `interact_radius` merge check, so villages can pack densely
+  (possibly snapping town locations to a 1km grid);
+- keep army capture taking all towns within 10km in one turn
+  (realistic as zone-of-control, no change needed).
 
 This plan covers **how to measure realism only**. It deliberately does
 **not** propose new mechanics. Any future mechanics proposal must be
@@ -43,34 +54,22 @@ baseline: logistic `r=0.001, K=100k` × `(1-Σcrowding)`, crowding
 - Growth bench must run in seconds like the fast suite (`<5s`), use
   engine-direct calls (no bots, no runner), deterministic (seeded).
 
-## 3. Scale problem (must settle before writing fixtures)
+## 3. Scale (SETTLED 2026-09-12: 1 turn = 1 week, game km = real km)
 
-Game map is `1000×1000km` with interaction radius `150km`. A 1600s
-county is `100×100km` with village spacing `3-4km`. We cannot test
-"villages every 3km" on a map where the minimum meaningful distance
-is ~10km (`interact_radius`) and crowding radius is 150km.
-
-So the bench needs an explicit scale decision, recorded as a fixture
-constant, not hidden:
-
-- Option A (preferred): test `economy.py` functions directly on
-  synthetic layouts in **abstract units**, asserting *ratios and
-  shapes* (Zipf slope, spacing-vs-size slope, small-viability), not
-  absolute km. Separate one "density plausibility" check maps
-  game-units to real km explicitly.
-- Option B: add micro-maps (e.g. `maps/realism/county_100km.json`)
-  with rescaled radii. More faithful, but couples bench to config
-  scaling and risks testing the map, not the formula.
-
-Propose A for v1, with the km↔game-unit mapping written down once in
-the reference file so later mechanics can't quietly rescale to pass.
-
-Also unsettled: **turn ↔ year**. Growth `0.001/turn` has no calendar.
-Bench needs one mapping (e.g. `1 turn = 1 day? 1 season?`) to compare
-against historical annual growth (~0.2-0.5%/yr, doubling 140-350y).
-Without it, "growth rate realism" is untestable. Record the chosen
-mapping as a bench constant; if no mapping fits, that itself is a
-finding (model is strategy-time, not demographic-time).
+- **Time:** 1 turn = 1 week (`TURNS_PER_YEAR = 52`). Annualize any
+  per-turn rate ×52 before comparing to history.
+- **Distance:** game km are real km. Sanity: army 50km/week ≈ 7km/day
+  (foot with baggage — plausible); messenger 150km/week ≈ 21km/day
+  (horse, no relay — plausible order of magnitude). So spacing and
+  density comparisons are direct, not scaled. The 150km crowding
+  radius vs 12–15km historical market spacing is then a genuine
+  finding, not a unit artifact.
+- **Known structural block (noted, not changed):** `BUILD` merges into
+  any town within 10km, so engine-playable layouts cannot pack denser
+  than ~10km — villages at 3–4km are unbuildable today. The harness
+  tests `economy.py` directly on synthetic layouts (bypassing `BUILD`)
+  to score the *growth model* separately from the *build rule*; the
+  build-rule exemption sits in the approved queue above.
 
 ## 4. Reference data (collect first, small file)
 

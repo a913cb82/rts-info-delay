@@ -1,0 +1,19 @@
+{
+  "_note": "Historical anchors c.1600, uniform-terrain lowlands (England/France). Ranges only — bench asserts against ranges, never points. 1 turn = 1 week, game km = real km.",
+  "village_pop": {"lo": 150, "hi": 400, "src": "Wrigley: modal English parish 200-300"},
+  "village_spacing_km": {"lo": 2, "hi": 5, "src": "field-walk limit ~2km; parish spacing 3-4km"},
+  "market_pop": {"lo": 1500, "hi": 4000, "src": "market towns typically 1-3k"},
+  "market_spacing_km": {"lo": 10, "hi": 20, "src": "day return trip; Christaller marketing range"},
+  "regional_pop": {"lo": 8000, "hi": 25000, "src": "Norwich ~15k, Bristol ~12k c.1600"},
+  "regional_spacing_km": {"lo": 40, "hi": 70, "src": "county-town lattice"},
+  "capital_pop_1600": {"lo": 150000, "hi": 350000, "src": "London ~200k, Paris ~300k c.1600"},
+  "rural_density_per_km2": {"lo": 20, "hi": 40, "src": "England ~4M/130k km2; France ~18M/550k km2"},
+  "longrun_growth_pct_per_yr": {"lo": 0.1, "hi": 0.5, "src": "Wrigley-Schofield: ~0.3%/yr 1600-1700; doubling 140-700y"},
+  "plague_halving_recovery_yr": {"lo": 40, "hi": 150, "src": "post-1348 recovery 5-7 generations; lesser shocks decades"},
+  "grain_price_double_km": {"lo": 15, "hi": 25, "src": "overland carting doubles grain price ~20km"},
+  "army_march_km_per_day": {"lo": 10, "hi": 20, "src": "foot with baggage train"},
+  "messenger_km_per_day": {"lo": 15, "hi": 60, "src": "horse, single rider low end, relay high end"},
+  "urban_natural_decrease_pct": {"lo": 10, "hi": 30, "src": "London/Paris burials exceed baptisms pre-1800 (urban graveyard)"},
+  "zipf_top_to_median_ratio": {"lo": 5, "hi": 50, "src": "rank-size q~1: capital 50-100x median town; bar set low at 5x"},
+  "market_penalty_at_spacing_max_frac": 0.25
+}
