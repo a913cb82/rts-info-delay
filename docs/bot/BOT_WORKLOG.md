@@ -1674,3 +1674,20 @@ branch max > that personality's live max.
   `rm -rf /tmp/botwork_*; git worktree prune` and delete recordings
   once analyzed; keep batches <=6 games; check `free -h` first.
   TODO: prune old worktrees automatically in elo_field/matchmake.
+
+## AGGRESSIVE GATE: 5 attempts, no edge found (evidence below)
+Bar: aggressive-ffcfe0e mu 48.0 sig 1.36 ord 43.9 (122g) — stable plateau.
+Attempts (all rated against the bar in-field):
+ 1. survivor gate on its own tree (7f852ed): mu 50.3@10g -> 46.4@20g.
+ 2. survivor gate ported to main (df34823): mu 50.4@10g -> 47.7@20g (ties).
+ 3. comfort cushion floor+1500 (3ab24b5): mu 50.5@8g -> 45.9@16g.
+ 4. forward base + one-colony (181a682): mu 45.0@10g.
+ 5. + capital-compound (a4d5c3d): mu 40.3@10g (starves the raid pipeline).
+READ: the aggressive's era design is a local optimum (mu 47.7-48.1); the
+patterns that won elsewhere (rich core, deep sleep, one colony) all REDUCE
+its raid pipeline and regress it. Every early "+3 mu" reading reverted to
+~47 by 20 games — small-sample noise, not edge.
+NEXT IDEAS (untried): raid_margin sweep (100 -> 200/300: fewer better
+raids), payback_mult 3.0 -> 1.0 (more towns = more score), or a late-game
+"conquest dividend" (convert surplus armies to colonies once rich).
+Gate status: pro/expander/turtle PASSED; aggressive PENDING.
