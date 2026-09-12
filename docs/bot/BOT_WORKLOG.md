@@ -2055,3 +2055,17 @@ inbound_force skips foe armies with a FRESH trail proving stationary
 always count (rushers have no stationary trail; D1-unseen keeps status
 quo — no regression). Predicts: F1 skips phantom guards in rematch (flips
 narrow losses; blowout 56k losses are a separate mechanism, next rung).
+
+### Rung 1 trace verdict (kept narrow, rating decides) (2026-09-12)
+Traced F1 trains (file trace, scratch-reverted): t2301 guard(n=1,home=0)
++ t2304 guard(n=1,home=1) both vs F2 scout first-sighting/closing (correct
+prints — parked-exclusion rightly can't suppress; omniscience would be
+needed, D2 forbids). 3rd print (t3243) is TIMING-DEPENDENT (appears some
+runs: clock/mail wobble shifts intel ±turns -> gates flip; single-game
+±3k unreliable, rating decides). Parked-exclusion suppresses exactly the
+t3243-type + late parked prints (small +0-3k, safe). Bigger lever spotted
+(D==N mutual->clean 2nd print assumes attack=certain; probabilistic gate
+would need closing-velocity) — DEFERRED to rung 2 (one fix per branch).
+Also learned: F0/F1 197062/190216 mirror by SLOT not brain (both pros race
+the same colony pattern; F0's early site compounds 2x). Bar: ord>=58 new
+max (15g+) + compounder style; 55-57 = trajectory judgment call.
