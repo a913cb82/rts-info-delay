@@ -5,6 +5,7 @@ migration, market-access productivity.
 Every parameter is a real-world quantity (see GameConfig):
 
     R    farm_radius_km      farm walking radius (5 km)
+    c,p  farm_decay_*         yield decay within R (0 = flat ring)
     rho  rural_density       subsistence density (30 people/km2 c.1600)
     Lc   cart_distance_km    distance carting doubles grain price (20 km)
     sf   farm_workers_yield  people fed per farm worker (1.3)
@@ -86,6 +87,40 @@ def interaction_window(d2: float, config: GameConfig) -> float:
     return _win_scalar(d2, config.info_speed)
 
 
+def rho0_of(config: GameConfig) -> float:
+    """Near-field yield: rescaled so the full ring's mean yield is rural_density.
+
+    yield(d) = rho0*(1 - c*(d/R)^p); mean over the ring = 1 - 2c/(p+2).
+    """
+    c = config.farm_decay_at_radius
+    if c <= 0.0:
+        return config.rural_density
+    p = max(config.farm_decay_shape, 1e-9)
+    return config.rural_density / max(1.0 - 2.0 * c / (p + 2.0), 1e-6)
+
+
+def production(config: GameConfig, area: np.ndarray, pops: np.ndarray) -> np.ndarray:
+    """Food from a settlement's cell, flat ring or Von Thuenen decay.
+
+    Flat (current): min(rural_density*area, sigma*P).
+    Decay: farmers work the best land first; a worker farms
+    aw = sigma/rho0 km2, yield falls with distance, so output is the
+    integral out to r = min(r_labor, r_cell).
+    """
+    c = config.farm_decay_at_radius
+    sigma = config.farm_workers_yield
+    if c <= 0.0:
+        return np.minimum(config.rural_density * area, sigma * pops)
+    rho0 = rho0_of(config)
+    aw = sigma / rho0
+    R = config.farm_radius_km
+    p = config.farm_decay_shape
+    r2 = np.minimum(area / math.pi, pops * aw / math.pi)
+    r = np.sqrt(np.maximum(r2, 0.0))
+    integral = 0.5 * r2 - c * np.power(r, p + 2.0) / ((p + 2.0) * R ** p)
+    return 2.0 * math.pi * rho0 * np.maximum(integral, 0.0)
+
+
 def derived(config: GameConfig):
     """Return (Y_ring, P_market, h, b_turn, m_turn, nu_turn)."""
     y_ring = config.rural_density * math.pi * config.farm_radius_km ** 2
@@ -151,7 +186,7 @@ try:
         """Voronoi area within R per town, by equal-area sampling.
 
         A sample in town i's ring counts for i iff i is the nearest
-        settlement to it; samples outside the map do not exist."""
+        settlement to it (the map is a window; countryside continues)."""
         n = xs.shape[0]
         k = sx.shape[0]
         wt = math.pi * radius * radius / k
@@ -160,8 +195,6 @@ try:
             for q in range(k):
                 px = xs[i] + sx[q] * radius
                 py = ys[i] + sy[q] * radius
-                if px < 0.0 or px > map_w or py < 0.0 or py > map_h:
-                    continue
                 bd = 1e18
                 bj = -1
                 for j in range(n):
@@ -201,8 +234,6 @@ def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
                 for q in range(len(sx)):
                     px = xs[i] + sx[q] * config.farm_radius_km
                     py = ys[i] + sy[q] * config.farm_radius_km
-                    if px < 0.0 or px > map_w or py < 0.0 or py > map_h:
-                        continue
                     d2 = (xs - px) ** 2 + (ys - py) ** 2
                     if int(np.argmin(d2)) == i:
                         areas[i] += wt
@@ -352,8 +383,7 @@ def _step_core(towns: list[Town], map_size, config: GameConfig,
         boost = _market_boost(serv, pops, D, config, p_market)
     else:
         boost = np.zeros(n)
-    prod = (1.0 + boost) * np.minimum(config.rural_density * areas,
-                                      config.farm_workers_yield * pops)
+    prod = (1.0 + boost) * production(config, areas, pops)
     surplus = np.maximum(0.0, prod - pops)
     deficit = np.maximum(0.0, pops - prod)
     if n >= 2:
@@ -379,8 +409,10 @@ def _step_core(towns: list[Town], map_size, config: GameConfig,
 
 def base_growth(population: float, config: GameConfig) -> float:
     """Net growth per turn of a lone settlement (full ring, no neighbours)."""
-    y_ring, _p_market, h, b_t, m_t, _nu = derived(config)
-    prod = min(y_ring, config.farm_workers_yield * population)
+    _y_ring, _p_market, h, b_t, m_t, _nu = derived(config)
+    area = np.array([math.pi * config.farm_radius_km ** 2])
+    pops = np.array([float(population)])
+    prod = float(production(config, area, pops)[0])
     births = b_t * population * prod / max(prod + h * population, 1e-12)
     return births - m_t * population
 
@@ -394,6 +426,16 @@ def nets_for(all_towns: list[Town], config: GameConfig, map_size=None) -> list[f
     new_pops, _ = _step_core(towns, map_size or [1000, 1000], config, None)
     return (new_pops - pops).tolist()
 
+
+
+def crowding_net(town: Town, all_towns: list[Town], config: GameConfig) -> float:
+    """Net change for one town in a one-turn step (test/bench helper)."""
+    towns = list(all_towns)
+    nets = nets_for(towns, config)
+    for k, t in enumerate(towns):
+        if t is town or t.id == town.id:
+            return nets[k]
+    return 0.0
 
 def crowding_nets_batch(all_towns: list[Town], config: GameConfig) -> list[float]:
     """Compatibility alias for one-turn net changes."""

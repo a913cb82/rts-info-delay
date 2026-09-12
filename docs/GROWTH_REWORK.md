@@ -240,6 +240,49 @@ One-turn rates for a 100k hierarchy (`benchmarks/sanity_agrarian_hier.py`):
   within 60 km of some town); never pay for 5k secondaries unless they
   cover new countryside.
 
+
+### Von Thuenen distance decay (opt-in) — small settlements win
+
+`farm_decay_at_radius` (c) and `farm_decay_shape` (p) replace the flat
+5 km ring with yield `rho0*(1 - c*(d/R)^p)`: workers farm the best land
+first (`a_w = sigma/rho0` km² each), so per-worker output falls with the
+distance a settlement must reach; `rho0` is rescaled so the full ring's
+mean yield still equals `rural_density`. `c=0` is the old flat ring.
+
+Measured (c=0.9, p=2; `benchmarks/sanity_agrarian_decay.py`):
+
+| settlement | Y/P |
+|---|---|
+| 100 | 1.282 |
+| 300 | 1.247 |
+| 800 | 1.158 |
+| 1,500 | 1.034 |
+| 2,400 | 0.874 |
+
+100,000 people split into N equal villages (10 km spacing):
+
+| N | village | system growth |
+|---|---|---|
+| 25 | 4,000 | −0.135%/yr |
+| 42 | 2,381 | +0.020%/yr |
+| 67 | 1,493 | +0.069%/yr |
+| 125 | 800 | +0.096%/yr |
+| **333** | **300** | **+0.105%/yr** |
+| 667 | 150 | +0.102%/yr |
+
+Packing matters: 333×300 at 3.5 km spacing gives +0.124%/yr vs
++0.105%/yr at 10 km — small villages farm only their ~7 km² near-field,
+so they can pack tightly and serve each other through the short-range
+market channel. The optimum village is ~300–500: smaller and the
+non-farm service sector vanishes; bigger and the settlement starts
+farming poor land.
+
+Caveats if adopted as default: there is no minimum territory/fixed cost
+per settlement (wood, pasture, church/mill), so the model keeps
+subdividing until services fade (~150 people); and `rho0` rises to
+`rural_density/(1-2c/(p+2))` (54.5/km² at c=0.9), so realized landscape
+densities can exceed the 20–40/km² anchor unless c is tuned.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
