@@ -2902,3 +2902,10 @@ spike-batch (240k+ everywhere; F1-zero twice; 53% wins). Oscillation.
 ### Buzzer 275g (flat, zero deaths) (2026-09-12 23:42 BST)
 Buzzer +15g (275 total) -> ord 64.5 (mu 68.1, was 67.6/260g): +0.4 on
 53% wins + 47% mids + ZERO deaths. Familiar wins pay little. Flat.
+
+### Watched a spike loss (missed vulture-takes) (2026-09-12 23:47 BST)
+Spike-batch setup (buzzer + 4 spikers), watched via ascii: F4 vultured
+collapsing F1 (3 takes -> 5 towns -> 160k 2nd); F2 compounded to 225k;
+buzzer took 1, ended 1 town 45k LAST. Loss = MISSED vulture-takes vs
+weak-live towns (opportunities existed; buzzer didn't act). QUEUED:
+vulture-weak (find why packs miss collapsing-foe takes).
