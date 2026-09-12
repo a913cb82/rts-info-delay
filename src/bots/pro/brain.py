@@ -105,6 +105,9 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     free_n = sum(1 for a in state.own_armies()
                  if not state.army_has_target(a.id) and a.id not in held)
     pack_building = sel is not None and sel[1] > free_n
+    if state.turn % 500 == 0:
+        open(f"/tmp/pack_trace_{state.faction}.log", "a").write(
+            f"t{state.turn} sel={None if sel is None else (sel[0].id, round(sel[0].population), sel[1])} free={free_n} building={pack_building} duel={duel_ctx} armies={len(state.own_armies())}\n")
     # Probe in force: pack-building vs visibly-empty (S==0) still sends
     # the first NEARBY free army (recon by fire — bounded risk, gains
     # intel + takes vs passive; prints observed calibrate the follow-on).
@@ -113,6 +116,7 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     probe_sent = False
     probe_reach = 6.0 * max(1.0, config.army_speed)
     probe_tgt = sel[0] if probe_armed else None
+    reserve_kept = 0  # pack nucleus (take-enabler): 2 free for sel pricing
     for p in state.own_armies():
         if state.should_yield():
             break
@@ -120,6 +124,19 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             continue  # handled by the builds stage
         if p.id in held:
             continue
+        # Pack nucleus reserve (take-enabler): sel needs free armies to
+        # price takes (no free -> sel None forever -> no packs -> no takes,
+        # proven 0-take games). Keep 1 home per garrisoned town (never-naked
+        # mutuals save), reserve next 2 idle globally as nucleus (stay free
+        # for sel-packs; march on sel below (their purpose), nothing else).
+        if reserve_kept < 2:
+            ht = min(state.own_towns(),
+                      key=lambda t: math.hypot(p.x - t.x, p.y - t.y), default=None)
+            if ht is None or math.hypot(p.x - ht.x, p.y - ht.y) > 20.0 \
+                    or sum(1 for a in state.own_armies()
+                           if a.id != p.id and math.hypot(a.x - ht.x, a.y - ht.y) <= 20.0) >= 1:
+                reserve_kept += 1
+                continue
         # One-colony march: the printed settler founds the second town
         # >=160km out before any raid/pack logic can poach it.
         if _one_colony(state, config):

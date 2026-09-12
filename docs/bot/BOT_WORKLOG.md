@@ -2685,3 +2685,13 @@ narrow 2nds vs 240k+ (193k/188k) + 2 deaths. Muster force wins mirrors
 MERGED as unfreeze-line best (sibling rivalry with twins is healthy:
 pool diversity + competition; may the best win). Style holds (compounder:
 tall + late force, no added raids).
+
+### Pack nucleus reserve (2026-09-12 20:46 BST)
+SPIKE AUTOPSY (336k exact repro): winner triple-takes t7026-57 (52k from
+collapsing foes) + musters 24 -> 312k; mine (faster early compound!) 0 takes
++ 0 muster -> capped 178k. ROOT: sel needs free armies to price (0 free, all
+tasked as settlers -> sel None forever -> no packs -> no takes). FIX (pack
+nucleus): first 2 idle (beyond 1-per-town home, or field/townless) stay free
+for sel-packs (march on sel, nothing else). Idle-home still defends
+positionally (combat needs no orders); opportunity is pack-takes. Predicts:
+sel prices (takes land t6000-8000, snowball wins). Bar 62+ (exceed buzzer).
