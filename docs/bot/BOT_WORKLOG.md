@@ -2996,3 +2996,8 @@ Buzzer +10g (410 total) -> ord 63.0 (mu 66.4, was 65.6/400g): +0.8 on
 ### Buzzer 420g (2026-09-13 00:37 BST)
 Buzzer +10g (420 total) -> ord 62.7 (mu 66.1, was 66.4/410g): -0.3 on
 2W + mids. No rewrite space (all architectures = stuck personalities).
+
+### Buzzer 430g (2026-09-13 00:42 BST)
+Buzzer +10g (430 total) -> ord 63.3 (mu 66.6, was 66.1/420g): +0.6 on
+4W + mids. Fresh concepts all die on inspection (nomad-blind,
+swarm-poor, assassin-donate, banker-taken). Oscillation 61-64.
