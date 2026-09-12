@@ -3001,3 +3001,7 @@ Buzzer +10g (420 total) -> ord 62.7 (mu 66.1, was 66.4/410g): -0.3 on
 Buzzer +10g (430 total) -> ord 63.3 (mu 66.6, was 66.1/420g): +0.6 on
 4W + mids. Fresh concepts all die on inspection (nomad-blind,
 swarm-poor, assassin-donate, banker-taken). Oscillation 61-64.
+
+### Buzzer 440g (2026-09-13 00:47 BST)
+Buzzer +10g (440 total) -> ord 63.8 (mu 67.1, was 66.6/430g): +0.5 on
+4W (incl 343k/297k/288k dominants) + 1 F1-death. Host hygiene done.
