@@ -2833,3 +2833,9 @@ luck swing) — exceeding the buzzer-vs-twins brain edge (40k). Dominance
 needs edge > luck (attractor 330k+, beyond practical 300k). Doom-survival
 exists (evac) but fog-bound in F1 (evac-bar dead). 80 unreachable via
 edge (luck dominates); ceiling ~66-69 stands (6+ proofs).
+
+### Buzzer 225g (flat, oscillation holds) (2026-09-12 23:06 BST)
+Buzzer +15g (225 total) -> ord 67.1 (mu 70.7, was 70.3/210g): +0.4 on
+73% wins (11/15, incl 319k/264k) + 1 F1-death + 3 mids. Wins vs familiar
+pay little (predicted); F1-death costs much. Oscillation confirmed
+(flat). Force-first skipped pre-build (overcrowd-force likely thin).
