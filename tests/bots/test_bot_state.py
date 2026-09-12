@@ -808,6 +808,210 @@ class TestSiteStability:
         assert s7 is not None and s8 is not None and s7 != s8
 
 
+class TestSensibleSites:
+    """Sensible placement (empty_10000 lesson): max-min_dist picked
+    rmax, ratcheted to the edge, clamped and stacked (all four
+    settlers founded at x/y = 20/980). Floor (65km own-spacing) +
+    ceiling (reinforcement reach) + guns + room + hub."""
+
+    def _bot(self, towns):
+        from bots.common import BotState
+        from bots import common as C
+        C._build_site_cache.clear()
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 3, [
+            {"kind": "town_update", "id": i, "x": x, "y": y,
+             "faction": f, "population": p, "alive": True,
+             "is_capital": c}
+            for i, (x, y, f, p, c) in enumerate(towns)
+        ])
+        return b
+
+    def test_floor_rejects_crowded(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        s = find_build_site(b, CFG, 500.0, 500.0, salt=11, who=7)
+        assert s is not None
+        assert math.hypot(s[0] - 500.0, s[1] - 500.0) >= 65.0
+
+    def test_guns_push_away(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot([(500.0, 500.0, 0, 5000, True),
+                       (620.0, 500.0, 1, 20000, False)])
+        s = find_build_site(b, CFG, 500.0, 500.0, salt=11, who=7)
+        assert s is not None
+        assert s[0] < 500.0  # foe at +x: sensible site goes the other way
+
+    def test_respin_finds_interior(self) -> None:
+        from bots.common import BotState, respin_tip
+        from bots import common as C
+        C._build_site_cache.clear()
+        b = BotState()
+        b.init(CFG, 1)
+        _sync_bot(b, None, 3, [
+            {"kind": "town_update", "id": 0, "x": 233.7, "y": 586.5,
+             "faction": 1, "population": 2500, "alive": True,
+             "is_capital": True},
+        ])
+        old_mt, CFG.max_turns = CFG.max_turns, 3000
+        try:
+            s = respin_tip(b, CFG, 388.7, 980.0)
+        finally:
+            CFG.max_turns = old_mt
+        assert s is not None
+        assert min(s[0], 1000 - s[0], s[1], 1000 - s[1]) >= 100.0
+
+    def test_drop_dead_spares_scout_and_grace(self) -> None:
+        from bots.common import drop_dead_notes
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        _sync_bot(b, None, 4, [
+            {"kind": "army_update", "id": 5, "x": 900.0, "y": 900.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b._scout_id = 5
+        b.note_move(5, 950.0, 950.0)
+        # force stale trail (old turn, far off)
+        from collections import deque
+        b._trails[5] = deque([(0, 500.0, 500.0)], maxlen=4)
+        drop_dead_notes(b)
+        assert b.army_target(5) is not None  # scout immune
+        b._scout_id = None
+        b._tip_grace[5] = 99
+        drop_dead_notes(b)
+        assert b.army_target(5) is not None  # grace immune
+        del b._tip_grace[5]
+        drop_dead_notes(b)
+        assert b.army_target(5) is None  # grace lapsed: popped
+
+    def test_queue_schedule_fire_cancel(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 10, [
+            {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+             "faction": 0, "population": 5000, "alive": True,
+             "is_capital": True},
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b.queue_order(12, "MOVE_TO 5 500.0 500.0 600.0 500.0", "patrol5")
+        assert b.pop_due_orders(CFG) == []
+        _sync_bot(b, None, 12, [])
+        assert b.pop_due_orders(CFG) == ["MOVE_TO 5 500.0 500.0 600.0 500.0"]
+        assert b.pop_due_orders(CFG) == []
+        b.queue_order(20, "MOVE_TO 5 500.0 500.0 600.0 500.0", "patrol5")
+        b.cancel_queued("patrol5")
+        _sync_bot(b, None, 25, [])
+        assert b.pop_due_orders(CFG) == []
+
+    def test_queue_retask_drops(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 10, [
+            {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+             "faction": 0, "population": 5000, "alive": True,
+             "is_capital": True},
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b.queue_order(12, "MOVE_TO 5 500.0 500.0 600.0 500.0", "patrol5")
+        b.note_move(5, 100.0, 100.0)
+        _sync_bot(b, None, 12, [])
+        assert b.pop_due_orders(CFG) == []
+
+    def test_queue_build_defers_when_late(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        _sync_bot(b, None, 10, [
+            {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+             "faction": 0, "population": 5000, "alive": True,
+             "is_capital": True},
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        b.queue_order(10, "BUILD 5 900.0 900.0", "settle5")
+        assert b.pop_due_orders(CFG) == []
+        assert len(b.__dict__["_queue"]) == 1
+        _sync_bot(b, None, 13, [
+            {"kind": "army_update", "id": 5, "x": 900.0, "y": 900.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        assert b.pop_due_orders(CFG) == ["BUILD 5 900.0 900.0"]
+
+    def test_ghost_threat_ignored(self) -> None:
+        from bots.common import fresh_foe_armies, inbound_force
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        _sync_bot(b, None, 100, [
+            {"kind": "army_update", "id": 9, "x": 600.0, "y": 500.0,
+             "faction": 1, "alive": True, "is_viceroy": False},
+        ])
+        assert len(fresh_foe_armies(b)) == 1
+        _sync_bot(b, None, 200, [])
+        assert fresh_foe_armies(b) == []
+        assert inbound_force(b, CFG) == {}
+
+    def test_closing_vector(self) -> None:
+        from bots.common import closing_on
+        from collections import deque
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        b._trails[9] = deque([(8, 700.0, 500.0), (9, 650.0, 500.0), (10, 600.0, 500.0)], maxlen=4)
+        assert closing_on(b, 9, 500.0, 500.0)
+        b._trails[9] = deque([(8, 600.0, 500.0), (9, 650.0, 500.0), (10, 700.0, 500.0)], maxlen=4)
+        assert not closing_on(b, 9, 500.0, 500.0)
+
+    def test_bare_needs_closing_raider(self) -> None:
+        from bots.common import demand_trains, can_train_standard, DemandParams
+        from collections import deque
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        old_mt, CFG.max_turns = CFG.max_turns, 3000
+        try:
+            _sync_bot(b, None, 100, [
+                {"kind": "town_update", "id": 1, "x": 500.0, "y": 500.0,
+                 "faction": 0, "population": 1100, "alive": True,
+                 "is_capital": True},
+                {"kind": "army_update", "id": 9, "x": 700.0, "y": 500.0,
+                 "faction": 1, "alive": True, "is_viceroy": False},
+            ])
+            b._trails[9] = deque([(98, 600.0, 500.0), (99, 650.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
+            assert demand_trains(b, CFG, can_train_standard, DemandParams()) == []
+            b._trails[9] = deque([(98, 800.0, 500.0), (99, 750.0, 500.0), (100, 700.0, 500.0)], maxlen=4)
+            assert demand_trains(b, CFG, can_train_standard, DemandParams()) == ["TRAIN 1"]
+        finally:
+            CFG.max_turns = old_mt
+
+    def test_no_reassign_tasked(self) -> None:
+        from bots.common import maybe_assign_scout
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        _sync_bot(b, None, 4, [
+            {"kind": "army_update", "id": 5, "x": 500.0, "y": 500.0,
+             "faction": 0, "alive": True, "is_viceroy": False},
+        ])
+        p = b.world.get_army(5)
+        b.note_move(5, 900.0, 900.0)
+        assert not maybe_assign_scout(b, CFG, p)  # tasked: builds owns it
+
+    def test_tip_foe_gate(self) -> None:
+        from bots.common import tip_safe
+        b = self._bot([(500.0, 500.0, 0, 5000, True)])
+        assert tip_safe(b, CFG, 100.0, 100.0)  # void: far is fine
+        b2 = self._bot([(500.0, 500.0, 0, 5000, True),
+                        (200.0, 100.0, 1, 20000, False)])
+        assert not tip_safe(b2, CFG, 100.0, 100.0)  # guns-hot: recycle
+
+    def test_room_prefers_interior(self) -> None:
+        from bots.common import find_build_site
+        b = self._bot([(900.0, 500.0, 0, 5000, True)])
+        s = find_build_site(b, CFG, 900.0, 500.0, salt=11, who=7)
+        assert s is not None
+        edge = min(s[0], 1000 - s[0], s[1], 1000 - s[1])
+        assert edge >= 150.0  # room bonus beats edge-clamp
+
+
 class TestStagingEta:
     """A known foe town inside striking distance (150km) of an own town
     is staging, i.e. positioning-threat — ETA = dist/army_speed (upper
@@ -965,3 +1169,1290 @@ class TestPrintCalibration:
                       {"kind": "army_update", "id": 9, "x": 600, "y": 500,
                        "faction": 1, "alive": True, "is_viceroy": False}])
         assert foe_print_factor(b, 1) == 1.0
+
+    def test_ancient_drip_decays(self) -> None:
+        # Two prints in 8000 turns is not a remuster threat (r34).
+        from bots.common import foe_print_factor
+        b = self._bot()
+        b.update(1, [self._town(2, 1)])
+        b.update(25, [self._town(2, 1),
+                      {"kind": "army_update", "id": 9, "x": 600, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.update(8000, [self._town(2, 1)])
+        assert foe_print_factor(b, 1) < 0.1
+
+
+class TestProbeSingular:
+    """One probe means one: a probe already en route suppresses duplicates
+    (per-turn flags trickle-donate into garrisoning foes — endgame lesson)."""
+
+    def test_second_probe_holds(self) -> None:
+        from bots.pro import decide_orders
+        b = BotState()
+        b.init(CFG, 0)
+        # Short march (50km, arrival 1 < deficit): JIT cannot complete en
+        # route -> pack holds -> probe singularity holds (no duplicates).
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)  # probe already en route
+        orders = decide_orders(b, CFG)
+        # Staging (foe town 50km) recalls 7 home; 8 re-probes (handoff:
+        # sequential, not duplicate).
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o for o in orders), orders
+        assert any(o.startswith("MOVE_TO 8 ") and "350.0" in o for o in orders), orders
+
+
+class TestGraveMemory:
+    """Anti-onesie: our army dying at a foe town bloodies it — lone
+    probes hold for the pack instead of re-feeding stale s=0."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 349, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        return b
+
+    def test_death_bloodies_probe_gate(self) -> None:
+        from bots.common import probe_ok
+        b = self._bot()
+        tgt = b.world.get_town(2)
+        assert probe_ok(b, (tgt, 5, 0)) is True  # visibly empty: probe away
+        b.update(2, [{"kind": "army_update", "id": 7, "faction": 0,
+                      "alive": False}])
+        assert b._bloodied.get(2) == 2  # grave recorded at the foe town
+        assert probe_ok(b, (tgt, 5, 0)) is False  # onesie suppressed
+        b.turn = 200
+        assert probe_ok(b, (tgt, 5, 0)) is True  # grave fades after 150t
+
+    def test_death_imputes_garrison(self) -> None:
+        from bots.common import foe_garrison
+        b = self._bot()
+        tgt = b.world.get_town(2)
+        assert foe_garrison(b, tgt) == 0
+        b.update(2, [{"kind": "army_update", "id": 7, "faction": 0,
+                      "alive": False}])
+        assert foe_garrison(b, tgt) == 1  # grave imputes (town fresh: no floor)
+        b.update(200, [{"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                        "faction": 1, "population": 8000, "alive": True,
+                        "is_capital": False}])
+        b.turn = 200
+        assert foe_garrison(b, tgt) == 0  # fresh + grave faded
+
+
+class TestSitePays:
+    """Founding veto (fratricide): NET empire growth with the colony
+    minus without must clear amortized founding cost."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _tu(self, tid, x, pop, faction=0, cap=False):
+        return {"kind": "town_update", "id": tid, "x": x, "y": 500,
+                "faction": faction, "population": pop, "alive": True,
+                "is_capital": cap}
+
+    def test_open_pays(self) -> None:
+        from bots.common import site_pays
+        from engine.config import GameConfig
+        long_cfg = GameConfig()
+        long_cfg.max_turns = 3000
+        b = self._bot()
+        b.init(long_cfg, 0)
+        b.update(1, [self._tu(1, 200, 3000, cap=True)])
+        # No neighbors, 3000 turns: NET = colony stream > amortized.
+        assert site_pays(b, long_cfg, 600.0, 500.0) is True
+
+    def test_fratricide_vetoes(self) -> None:
+        from bots.common import site_pays
+        b = self._bot()
+        # Big home (1347) + site 100km out: the colony crowds home
+        # harder than it earns -> veto.
+        b.update(1, [self._tu(1, 200, 1347, cap=True)])
+        assert site_pays(b, CFG, 300.0, 500.0) is False
+
+    def test_short_horizon_vetoes(self) -> None:
+        from bots.common import site_pays
+        b = self._bot()
+        # Open site but only 60 turns left: cannot amortize -500.
+        b.update(2940, [self._tu(1, 200, 3000, cap=True)])
+        assert site_pays(b, CFG, 600.0, 500.0) is False
+
+
+class TestRecallDeficit:
+    """Threatened towns recall noted settlers home — but only the deficit
+    (D < N need bodies); sufficient garrisons let settlers work."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_deficit_recalls(self) -> None:
+        from bots.common import recall_deficit
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 50.0, 500.0)
+        orders = recall_deficit(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o for o in orders)
+
+    def test_sufficient_holds_settlers(self) -> None:
+        from bots.common import recall_deficit
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 50.0, 500.0)
+        assert recall_deficit(b, CFG) == []
+
+
+class TestReinforce:
+    """Cross-town reinforcement (Step 3 meeting v1): surplus guards
+    (D > N+1) march to deficit towns (D < N) in time (arrival <= ETA-1)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_surplus_reinforces_deficit(self) -> None:
+        from bots.common import reinforce_orders
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 500,
+                      "faction": 0, "population": 9000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 300, "y": 500,
+                      "faction": 0, "population": 2000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        orders = reinforce_orders(b, CFG)
+        # Raider at 400: nearest own town is id2 (300, dist 100, ETA 2)
+        # -> deficit (0 < 1); id1 (100) has 2 surplus but 200km = 4 turns
+        # > ETA-1 = 1 -> too late, hold (no donation marches).
+        assert orders == [], orders
+
+    def test_in_time_reinforces(self) -> None:
+        from bots.common import reinforce_orders
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 500,
+                      "faction": 0, "population": 9000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 200, "y": 500,
+                      "faction": 0, "population": 2000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 350, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        # Raider at 350: nearest is id2 (200, dist 150, ETA 3); id1 (100)
+        # has 2 surplus; march 100km = 2 turns <= ETA-1 = 2 -> GO.
+        orders = reinforce_orders(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") or o.startswith("MOVE_TO 8 ")
+                   for o in orders), orders
+
+
+class TestJitMarch:
+    """Just-in-time packs (Step 3 tempo): march iff the pack completes en
+    route (arrival >= print-deficit at own-town print rate), else hold."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def test_long_march_goes_early(self) -> None:
+        from bots.pro import decide_orders
+        # Need-3 (rich printer far) with 1 free army 500km out (arrival 10):
+        # print 2 more in ~2 turns (1 town) < arrival -> march NOW.
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        orders = decide_orders(b, CFG)
+        assert any(o.startswith("MOVE_TO 7 ") for o in orders), orders
+
+    def test_short_march_waits(self) -> None:
+        from bots.pro import decide_orders
+        # Same need, pack short of completion with no time to print
+        # (arrival 1 == deficit 1, strict holds): the free 2nd army holds
+        # while the en-route probe continues (singularity, not pack).
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)  # probe already en route
+        orders = decide_orders(b, CFG)
+        # Staging (foe town 50km) recalls 7 home; 8 re-probes (handoff:
+        # sequential, not duplicate).
+        assert any(o.startswith("MOVE_TO 7 ") and "300.0" in o for o in orders), orders
+        assert any(o.startswith("MOVE_TO 8 ") and "350.0" in o for o in orders), orders
+
+
+class TestConquestGuard:
+    """Step 4: fresh conquests (taken <=25 turns ago) keep one guard
+    through the starvation window."""
+
+    def test_fresh_take_holds_guard(self) -> None:
+        from bots.common import hold_defenders
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 1, "population": 3000, "alive": True,
+                      "is_capital": False}])
+        b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        held = hold_defenders(b, CFG, {})
+        assert held == {7}, held
+
+    def test_old_conquest_releases(self) -> None:
+        from bots.common import hold_defenders
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 1, "population": 3000, "alive": True,
+                      "is_capital": False}])
+        b.update(2, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.update(60, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 1600, "alive": True,
+                       "is_capital": False}])
+        held = hold_defenders(b, CFG, {})
+        assert held == set(), held
+
+
+class TestMergeHorizon:
+    """Home-capital merges are -500 now for compounding later: hold on
+    short horizons (standing armies beat treadmill merges)."""
+
+    def _bot(self, cfg, turn):
+        from bots.common import BotState
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(turn, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                         "faction": 0, "population": 3000, "alive": True,
+                         "is_capital": True},
+                        {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                         "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 300.0, 500.0)
+        return b
+
+    def test_short_holds(self) -> None:
+        from bots.greedy import _stage_builds
+        b = self._bot(CFG, 490)
+        assert _stage_builds(b, CFG) == []
+
+    def test_long_merges(self) -> None:
+        from bots.greedy import _stage_builds
+        from engine.config import GameConfig
+        long_cfg = GameConfig()
+        long_cfg.max_turns = 3000
+        b = self._bot(long_cfg, 1)
+        out = _stage_builds(b, long_cfg)
+        assert any(o.startswith("BUILD 7 ") for o in out), out
+
+
+class TestArrivalRelease:
+    """r17 lesson: field armies arrived >30 turns with nothing resolving
+    drop the note (ghost-note treadmill) instead of haunting rubble."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 600.0, 500.0)  # arrived at void field note
+        return b
+
+    def test_counts_then_releases(self) -> None:
+        from bots.pro import _stage_builds
+        b = self._bot()
+        _stage_builds(b, CFG)
+        assert b.__dict__.get("_arr_hold", {}).get(7) == 1
+        # release path: seeded past threshold on a FRESH note (the void
+        # path below would pop an unresolved note first, so seed first).
+        b2 = self._bot()
+        b2.__dict__.setdefault("_arr_hold", {})[7] = 31
+        _stage_builds(b2, CFG)
+        # mapper release (not bare pop): enrolled with a mapping hop.
+        assert 7 in b2.__dict__.get("_mapper", {})
+        assert b2.army_has_target(7)
+        assert 7 not in b2.__dict__.get("_arr_hold", {})  # hold cleared
+
+
+class TestEvacPlan:
+    """Drain-and-flee (Step 5): hopeless + time drains (strip to husk),
+    hopeless + urgent flies, established endures (pro)."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        return b
+
+    def _doomed(self, turn=1, cap_pop=3000, dist=100.0):
+        b = self._bot()
+        b.update(turn, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                         "faction": 0, "population": cap_pop, "alive": True,
+                         "is_capital": True},
+                        {"kind": "army_update", "id": 9, "x": 300 + dist,
+                         "y": 500, "faction": 1, "alive": True,
+                         "is_viceroy": False}])
+        return b
+
+    def test_drain_first(self) -> None:
+        from bots.common import evac_plan
+        b = self._doomed(turn=1, cap_pop=3000, dist=100.0)  # ETA 2
+        out = evac_plan(b, CFG, hopeless=True, established_stays=True)
+        assert out == ["TRAIN 1"]
+        assert b._draining is True
+
+    def test_fly_when_urgent(self) -> None:
+        from bots.common import evac_plan
+        b = self._doomed(turn=1, cap_pop=3000, dist=40.0)  # ETA <1
+        out = evac_plan(b, CFG, hopeless=True, established_stays=True)
+        assert any(o.startswith("MOVE_CAPITAL") for o in out)
+        assert b._draining is False
+
+    def test_established_endures(self) -> None:
+        from bots.common import evac_plan
+        b = self._bot()
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 40000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 100, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 9, "x": 350, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        out = evac_plan(b, CFG, hopeless=True, established_stays=True)
+        assert out == []
+
+
+class TestPackPrint:
+    """r17 lesson: a pack held short with nothing printing orders its
+    missing member instead of sitting 5000 turns."""
+
+    def test_short_pack_trains(self) -> None:
+        from bots.common import BotState
+        from bots.pro import _stage_moves
+        b = BotState()
+        b.init(CFG, 0)
+        # Rich home, one far rich foe town (need > free: 0 armies out).
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 50000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 310, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 10, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 11, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 12, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 13, "x": 700, "y": 500,
+                      "faction": 1, "alive": True, "is_viceroy": False}])
+        out = _stage_moves(b, CFG)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestUnpricedRaid:
+    """r19 lesson: the unpriced (multi-foe pressure) path set best but
+    never filled ranked — sel None, no packets, stacks sat forever."""
+
+    def test_unpriced_returns_pressure_ranked(self) -> None:
+        from bots.common import BotState, raid_targets
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 300, "y": 800,
+                      "faction": 2, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        r = raid_targets(b, CFG, 3, priced=False)
+        assert r, "unpriced must return pressure-ranked targets"
+        assert {u.id for (u, _n, _s) in r} <= {2, 3}
+
+
+class TestSilenceWatch:
+    """Fog eats tombstones (observers-only): overdue noted raiders are
+    presumed dead — blood the target, drop the note."""
+
+    def test_overdue_ghosts_blood(self) -> None:
+        from bots.common import BotState, silence_watch, probe_ok
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 349, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)
+        b.turn = 500  # far past 2x round-trip + margin, trail silent
+        silence_watch(b, CFG)
+        # RTS FoW: army standing on the ground 499t with zero news
+        # means the town is GONE (send-all reports watched live
+        # towns every turn) — erased to grave, blood moot.
+        assert b.world.get_town(2) is None
+        assert 2 in b.__dict__.get("_grave_pos", {})
+        assert not b.army_has_target(7)
+
+    def test_fresh_notes_spared(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)
+        b.turn = 3  # just dispatched: silence < round-trip
+        silence_watch(b, CFG)
+        assert 2 not in b._bloodied
+        assert b.army_has_target(7)
+
+
+class TestMapper:
+    """Arrival-release enrolls mappers (not bare pops that re-lock);
+    mappers hop toward stalest country, then release."""
+
+    def _bot(self, cfg):
+        from bots.common import BotState
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 800, "y": 800,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        return b
+
+    def test_release_enrolls_mapper(self) -> None:
+        from bots.pro import _stage_builds
+        b = self._bot(CFG)
+        b.note_move(7, 600.0, 500.0)
+        b.__dict__.setdefault("_arr_hold", {})[7] = 31
+        out = _stage_builds(b, CFG)
+        assert 7 in b.__dict__.get("_mapper", {}), out
+        assert b.army_has_target(7)  # enrolled with a hop, not bare-popped
+
+    def test_mapper_hops_stale(self) -> None:
+        from bots.common import drive_mapper, mapper_hop_target
+        b = self._bot(CFG)
+        b.__dict__.setdefault("_mapper", {})[7] = 0
+        p = b.world.get_army(7)
+        tx, ty = mapper_hop_target(b, CFG, p)
+        # only known towns: home (300,500) + foe (800,800); stalest quad
+        # is empty country (no known towns) — hop leaves home area.
+        assert (tx, ty) != (600.0, 500.0)
+        out = drive_mapper(b, CFG, p)
+        assert out and out[0].startswith("MOVE_TO 7 "), out
+
+    def test_mapper_exhausts(self) -> None:
+        from bots.common import drive_mapper
+        from bots.common import MAPPER_HOPS
+        b = self._bot(CFG)
+        b.__dict__.setdefault("_mapper", {})[7] = MAPPER_HOPS
+        p = b.world.get_army(7)
+        assert drive_mapper(b, CFG, p) is None
+        assert 7 not in b.__dict__.get("_mapper", {})
+
+
+class TestGhostClean:
+    """r25 trace: army 17 dead-unseen, mirror-kept + re-noted 2000t (the
+    re-note loop refreshes origin, defeating the age-cap). Overdue-vs-
+    physics ghosts clean out (live ones re-observe back)."""
+
+    def test_ghost_cleans(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        # age the origin + trail deep past physics (re-notes refresh
+        # origin in life; here we simulate long-overdue directly).
+        b.__dict__.setdefault("_march_origin", {})[7] = (600.0, 500.0, 2)
+        b._trails[7].append((2, 600.0, 500.0))
+        b.turn = 900
+        silence_watch(b, CFG)
+        assert b.world.get_army(7) is None  # ghost forgotten
+        assert not b.army_has_target(7)
+
+    def test_live_marcher_spared(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(100, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                        "faction": 0, "population": 20000, "alive": True,
+                        "is_capital": True},
+                       {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                        "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        b.turn = 110  # fresh note, recent trail: leave alone
+        silence_watch(b, CFG)
+        assert b.world.get_army(7) is not None
+        assert b.army_has_target(7)
+
+
+class TestHeartbeatConsume:
+    """Heartbeats (same two events): re-announced snapshots refresh
+    seen-age, so absence past 25t means unseen, not static."""
+
+    def test_reannounce_refreshes_last_seen(self) -> None:
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        upd = {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+               "faction": 0, "alive": True, "is_viceroy": False}
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}, dict(upd)])
+        assert b._last_seen[("army", 7)] == 1
+        b.update(26, [dict(upd, **{})])
+        assert b._last_seen[("army", 7)] == 26  # heartbeat refreshes
+
+    def test_affirmed_army_survives_silence(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        # static holder, heartbeat at 839: NOT a ghost (no clean).
+        b.update(839, [{"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                        "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 840
+        silence_watch(b, CFG)
+        assert b.world.get_army(7) is not None
+
+
+class TestDarkScout:
+    """r31 lesson: post-contact blindness re-arms scouting (fund the eyes)."""
+
+    def test_dark_releases_scout_gate(self) -> None:
+        from bots.common import BotState, maybe_assign_scout, _dark
+        b = BotState()
+        b.init(CFG, 0)
+        # contact (viable foe town) but its intel stale -> dark -> scout anyway
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 500
+        assert _dark(b) is True
+        assert maybe_assign_scout(b, CFG, b.world.get_army(7)) is True
+
+    def test_fresh_blocks_scout_gate(self) -> None:
+        from bots.common import BotState, maybe_assign_scout, _dark
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        assert _dark(b) is False
+
+    def test_dark_prints_eyes(self) -> None:
+        from bots.common import BotState
+        from bots.pro import _stage_trains
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 500  # no foes ever seen: dark
+        out = _stage_trains(b, CFG)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestScheduleScout:
+    """r35 lesson: neighbors-fresh != covered — scheduled mapping scouts."""
+
+    def test_schedule_enrolls_idle(self) -> None:
+        from bots.common import BotState, maybe_schedule_scout
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 1500  # faction 0 phase: 1500 % 1500 == 0
+        out = maybe_schedule_scout(b, CFG)
+        assert out is not None and any("MOVE_TO 7" in o for o in out), out
+        assert b._scout_id == 7 or b._scout_id2 == 7
+
+    def test_schedule_skips_pack(self) -> None:
+        from bots.common import BotState, maybe_schedule_scout
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 20000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 1500
+        # live contact: no mapping dispatched (raid owns the army)
+        out = maybe_schedule_scout(b, CFG)
+        assert out is None or out == []
+
+
+class TestGraveRelease:
+    """r37 trace: 20 armies noted to dead town-4 sat 2000t (mapper cap
+    full). Notes matching fresh graves of dead towns pop."""
+
+    def test_note_to_grave_pops(self) -> None:
+        from bots.common import BotState, silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 350, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 350.0, 500.0)
+        # town 2 dies observed (tombstone) -> grave; note now haunts it.
+        b.update(2, [{"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 0, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 350, "y": 500,
+                      "faction": 0, "alive": False, "is_viceroy": False}])
+        assert 2 in b._bloodied and 2 in b._grave_pos
+        # fresh army, same haunting note -> release pops it.
+        b.update(3, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 8, "x": 350, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(8, 350.0, 500.0)
+        b.turn = 4
+        silence_watch(b, CFG)
+        assert not b.army_has_target(8)
+
+
+class TestBlindFloor:
+    """r38 lesson: 41 onesies into unseen garrisons (stale s=0 approved
+    need-1 raids). GTO rush floor: stale s=0 imputes muster-3."""
+
+    def test_stale_imputes_three(self) -> None:
+        from bots.common import BotState, foe_garrison
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                      "faction": 1, "population": 8000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 500  # town 2 unseen 499t: blind
+        assert foe_garrison(b, b.world.get_town(2)) == 3
+
+    def test_fresh_empty_stays_zero(self) -> None:
+        from bots.common import BotState, foe_garrison
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(500, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                        "faction": 0, "population": 20000, "alive": True,
+                        "is_capital": True},
+                       {"kind": "town_update", "id": 2, "x": 700, "y": 500,
+                        "faction": 1, "population": 8000, "alive": True,
+                        "is_capital": False}])
+        b.turn = 500
+        assert foe_garrison(b, b.world.get_town(2)) == 0
+
+
+class TestBlindRotation:
+    """r41 lesson: 10 prints then 9500t dark peace. Blindness funds
+    probe+2 (eyes + reserve)."""
+
+    def test_dark_funds_two(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000  # never saw anyone: dark
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestLatencyPremium:
+    """Doctrine: wary far from capital (latency) — +1 need per 300km."""
+
+    def _bot(self):
+        from bots.common import BotState
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 350, "y": 500,
+                      "faction": 1, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "town_update", "id": 3, "x": 900, "y": 500,
+                      "faction": 1, "population": 1500, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        return b
+
+    def test_far_costs_more(self) -> None:
+        from bots.common import raid_targets
+        b = self._bot()
+        got = {u.id: n for (u, n, _s) in raid_targets(b, CFG, 3, priced=False)}
+        assert got[3] > got[2], got  # 580km vs 30km: latency premium
+
+
+class TestAmnesty:
+    """r43 lesson: 27 armies noted 6000t+ with nothing wanting them.
+    Field notes older than 300t re-decide."""
+
+    def test_stale_field_note_pops(self) -> None:
+        from bots.common import BotState, amnesty_notes
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        b.__dict__.setdefault("_march_origin", {})[7] = (600.0, 500.0, 100)
+        b.turn = 500
+        amnesty_notes(b)
+        assert not b.army_has_target(7)
+
+    def test_fresh_and_home_spared(self) -> None:
+        from bots.common import BotState, amnesty_notes
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 900.0, 500.0)
+        b.note_move(8, 300.0, 500.0)
+        b.turn = 50
+        amnesty_notes(b)
+        assert b.army_has_target(7)  # fresh field note stays
+        assert b.army_has_target(8)  # home note stays
+
+
+class TestMutualSave:
+    """Convert-deny must yield to mutual-save when a guard is printable
+    in time (convert only when defense impossible)."""
+
+    def test_printable_guard_musters(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        # rich town, 1 raider 2 turns out: print the guard (mutual-save),
+        # don't convert-deny a healthy town.
+        b.update(99, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                       "faction": 0, "population": 5000, "alive": True,
+                       "is_capital": True},
+                      {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                       "faction": 1, "population": 5000, "alive": True,
+                       "is_capital": False},
+                      {"kind": "army_update", "id": 9, "x": 400, "y": 500,
+                       "faction": 1, "alive": True, "is_viceroy": False}])
+        b.turn = 100
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+        assert b.world.get_town(1) is not None  # town survives the decision
+
+
+class TestBlindEyes:
+    """r45 lesson: noted-but-useless bodies aren't eyes. Dark + scoutless
+    prints eyes directly (1/300t)."""
+
+    def test_dark_scoutless_prints(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 8, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False},
+                     {"kind": "army_update", "id": 9, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 2000  # 3 armies, zero foe intel ever: blind, scoutless
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+    def test_cooldown_holds(self) -> None:
+        from bots.common import BotState, demand_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True}])
+        b.turn = 2000
+        b.__dict__["_last_scout_print"] = 1900
+        out = demand_trains(b, cfg, lambda s, t: True)
+        # rotation (0 armies < probe+2) still funds one; eyes capped.
+        assert any(o.startswith("TRAIN 1") for o in out), out
+        b.__dict__["_last_scout_print"] = 1500
+        b._pending_trains.clear()
+        out = demand_trains(b, cfg, lambda s, t: True)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestPovertyBreak:
+    """r47 lesson: pro 500-1400 pop all game, 2500 prober floor, P3b early
+    return — zero prints, blind and poor forever."""
+
+    def test_poor_prober_prints(self) -> None:
+        from bots.common import BotState
+        from bots.pro import _stage_trains
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 1600, "alive": True,
+                      "is_capital": True}])
+        b.turn = 700
+        out = _stage_trains(b, cfg)
+        assert any(o.startswith("TRAIN 1") for o in out), out
+
+
+class TestLandGrab:
+    """r48 lesson: foundings stop t2000+, small towns never expand
+    (rate-arbitrage blocks uncrowded homes forever). Below 20k,
+    throughput beats arbitrage."""
+
+    def test_small_empire_expands(self) -> None:
+        from bots.common import BotState, expansion_demand
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 5000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 4000
+        assert expansion_demand(b, cfg) is True
+
+
+class TestBuzzerZero:
+    """r50 lesson: t9000+ silence (needs exceed everyone). Buzzer zeroes
+    W (no future to defend)."""
+
+    def test_buzzer_zeroes_w(self) -> None:
+        from bots.common import BotState, raid_targets
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        for turn, expect_big in ((5000, True), (9900, False)):
+            b = BotState()
+            b.init(cfg, 0)
+            b.update(turn - 1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                                 "faction": 0, "population": 20000, "alive": True,
+                                 "is_capital": True},
+                                {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                                 "faction": 1, "population": 60000, "alive": True,
+                                 "is_capital": False},
+                                {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                                 "faction": 0, "alive": True, "is_viceroy": False}])
+            b.turn = turn
+            got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
+            if expect_big:
+                assert got[2] > 2, got
+            else:
+                assert got[2] <= 2, got
+
+
+class TestRemusterGuard:
+    """r51 lesson: buzzer W=0 reintroduced onesies (54 vs printers).
+    Printers cost +1; sterile still cheap."""
+
+    def _bot(self, foe_prints):
+        from bots.common import BotState
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                      "faction": 1, "population": 60000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 9900
+        b._foe_first_seen[1] = 100
+        b._foe_prints[1] = foe_prints
+        return b, cfg
+
+    def test_printer_costs_extra(self) -> None:
+        from bots.common import raid_targets
+        b, cfg = self._bot(50)
+        got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
+        assert got[2] >= 3, got  # S0 + buzzer-W0 + dist0 + remuster1 = 2...
+
+    def test_sterile_cheap(self) -> None:
+        from bots.common import raid_targets
+        b, cfg = self._bot(0)
+        b.update(9900, [{"kind": "town_update", "id": 2, "x": 500, "y": 500,
+                         "faction": 1, "population": 60000, "alive": True,
+                         "is_capital": False}])
+        got = {u.id: n for (u, n, _s) in raid_targets(b, cfg, 3, priced=False)}
+        assert got[2] <= 2, got
+
+
+class TestGuardRotation:
+    """r53 lesson: 39 idle, home notes never expire. Rotation pops home
+    notes every 1500t (faction-phased)."""
+
+    def test_rotation_pops_home(self) -> None:
+        from bots.common import BotState, amnesty_notes
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 300.0, 500.0)
+        b.turn = 100
+        amnesty_notes(b)
+        assert b.army_has_target(7)  # off-rotation: holds
+        b.turn = 1500  # (0*311)%1500 == 0: rotation
+        amnesty_notes(b)
+        assert not b.army_has_target(7)
+
+
+class TestPrintCap:
+    """r54 lesson: 120 prints for 9 towns, 101 idle. Drowning skips
+    non-threat prints (threat still musters)."""
+
+    def test_drowning_skips_probe(self) -> None:
+        from bots.common import BotState, demand_trains, DemandParams
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        evs = [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                "faction": 0, "population": 20000, "alive": True,
+                "is_capital": True}]
+        for aid in range(7, 13):
+            evs.append({"kind": "army_update", "id": aid, "x": 300, "y": 500,
+                        "faction": 0, "alive": True, "is_viceroy": False})
+        b.update(1, evs)
+        b.turn = 2000  # 6 free idle > 2x1 town, dark: no probe print
+        b._scout_id = 7  # eyes covered: nothing may print
+        out = demand_trains(b, cfg, lambda s, t: True,
+                            DemandParams(probe_armies=5))
+        assert not any(o.startswith("TRAIN") for o in out), out
+
+
+class TestStalePremium:
+    """r55 lesson: stale floor 3 vs real garrison 8 (43 undersized packs).
+    Unseen towns accumulate: +1 per 500t, cap +3."""
+
+    def test_age_premium(self) -> None:
+        from bots.common import foe_garrison
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 2000
+        assert foe_garrison(b, b.world.get_town(2)) == 3 + 3
+        b.turn = 400
+        assert foe_garrison(b, b.world.get_town(2)) == 3
+
+
+class TestPendulumBreak:
+    """r56 lesson: pro marched 91km for 1 capture. Flip-flop stands down."""
+
+    def test_flip_flop_stands_down(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 300, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        for i, (x, y) in enumerate([(900, 500), (300, 900), (900, 900), (900, 500)]):
+            b.turn = 100 + i * 50
+            b.note_move(7, float(x), float(y))
+        assert b.army_target(7) == (300.0, 500.0)  # stood down home
+
+
+class TestTownForget:
+    """RTS FoW: last-known persists; watched-but-empty ground erases.
+    25 armies sat 4000t on town-4's grave (r59) — observers on the
+    grave must erase it."""
+
+    def test_watched_grave_erases(self) -> None:
+        from bots.common import silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 320, "y": 500,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 7, "x": 320, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        # town 2 seen t1, army watches its ground since; t100: erase.
+        b.turn = 100
+        silence_watch(b, CFG)
+        assert b.world.get_town(2) is None
+        assert b.world.get_town(1) is not None  # own stays
+        assert 2 in b.__dict__.get("_grave_pos", {})  # grave kept
+
+    def test_unwatched_stale_kept(self) -> None:
+        from bots.common import silence_watch
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 2000  # far outside LOS: genuinely unknown, kept
+        silence_watch(b, CFG)
+        assert b.world.get_town(2) is not None
+
+
+class TestCoverage:
+    """Doctrine: idle armies patrol stalest sectors, never sit."""
+
+    def test_idle_sweeps_stale(self) -> None:
+        from bots.common import BotState, coverage_orders
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 100, "y": 100,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 100, "y": 100,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 500  # only home sector stamped; 15 sectors unvisited
+        out = coverage_orders(b, cfg)
+        assert any("MOVE_TO 7" in o for o in out), out
+        assert b.army_has_target(7)
+
+
+class TestSneakySettle:
+    """Doctrine: lots of small settlements = growth. Townless refounds
+    (scout declines); small colonies race homes at 1.2."""
+
+    def test_townless_settles_not_scouts(self) -> None:
+        from bots.common import maybe_assign_scout
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 9, "x": 800, "y": 200,
+                      "faction": 4, "population": 50000, "alive": True,
+                      "is_capital": False},
+                     {"kind": "army_update", "id": 70, "x": 200, "y": 800,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.turn = 6000
+        assert maybe_assign_scout(b, CFG, b.world.get_army(70)) is False
+
+    def test_colony_races_home(self) -> None:
+        from bots.common import expansion_demand
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 30000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 900, "y": 900,
+                      "faction": 1, "population": 5000, "alive": True,
+                      "is_capital": False}])
+        b.update(5, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 30100, "alive": True,
+                      "is_capital": True}])
+        b.update(5, [{"kind": "town_update", "id": 3, "x": 200, "y": 200,
+                      "faction": 0, "population": 40000, "alive": True,
+                      "is_capital": False}])
+        b.turn = 10
+        # single fast home (median still fast): demand correctly False.
+
+
+class TestSafeSettle:
+    """Doctrine: settle away from believed enemies, near home."""
+
+    def test_foe_shadow_repels(self) -> None:
+        from bots.common import find_build_site
+        from engine.config import GameConfig
+        cfg = GameConfig()
+        cfg.max_turns = 10000
+        b = BotState()
+        b.init(cfg, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "town_update", "id": 2, "x": 600, "y": 500,
+                      "faction": 1, "population": 20000, "alive": True,
+                      "is_capital": False}])
+        import math
+        for who in range(5):
+            s = find_build_site(b, cfg, 300, 500, rmin=80, rmax=300,
+                                salt=11, who=who)
+            assert s is not None
+            # site must not sit between home and the foe (shadow side)
+            assert not (s[0] > 450 and abs(s[1] - 500) < 150), s
+
+
+class TestBuildCap:
+    """r62 lesson: 103 armies re-BUILDing failed sites 1500t+. 3 tries
+    then abandon."""
+
+    def test_build_abandons(self) -> None:
+        b = BotState()
+        b.init(CFG, 0)
+        b.update(1, [{"kind": "town_update", "id": 1, "x": 300, "y": 500,
+                      "faction": 0, "population": 20000, "alive": True,
+                      "is_capital": True},
+                     {"kind": "army_update", "id": 7, "x": 600, "y": 500,
+                      "faction": 0, "alive": True, "is_viceroy": False}])
+        b.note_move(7, 600.0, 500.0)
+        for _ in range(3):
+            b.note_build(7)
+        assert b.has_pending_build(7)
+        b.note_build(7)  # 4th: abandon
+        assert not b.has_pending_build(7)
+        assert not b.army_has_target(7)

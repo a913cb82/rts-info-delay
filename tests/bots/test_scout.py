@@ -48,6 +48,21 @@ class TestAssign:
         orders = drive_scout(b, CFG, p)
         assert orders == ["MOVE_TO 7 200.0 500.0 250.0 500.0"]
 
+    def test_second_scout_fans_out(self) -> None:
+        # Two concurrent probes take different rays (fan-out, not one line).
+        from bots.common import maybe_assign_scout, drive_scout
+        b = _scout_bot()
+        _feed(b, 3, towns=[(1, 200, 500, 0, 3000, True)],
+              armies=[(7, 200, 500, 0), (8, 200, 500, 0)])
+        assert maybe_assign_scout(b, CFG, b.world.get_army(7)) is True
+        assert maybe_assign_scout(b, CFG, b.world.get_army(8)) is True
+        assert b._scout_id == 7 and b._scout_id2 == 8
+        o1 = drive_scout(b, CFG, b.world.get_army(7))
+        o2 = drive_scout(b, CFG, b.world.get_army(8))
+        assert o1 == ["MOVE_TO 7 200.0 500.0 250.0 500.0"]  # gen-0 legacy ray
+        assert o2 != o1  # gen-1 golden-angle ray
+        assert maybe_assign_scout(b, CFG, b.world.get_army(7)) is False  # both busy
+
     def test_viable_contact_never_assigns(self) -> None:
         from bots.common import maybe_assign_scout
         b = _scout_bot()
@@ -89,23 +104,24 @@ class TestDrive:
         return b
 
     def test_en_route_holds_silent(self) -> None:
+        # Mid-hop truth lags reckoned arrival: phantom-early hop is
+        # harmless (tip kept, army catches up and founds).
         from bots.common import drive_scout
         b = self._scouted()
         _feed(b, 4, towns=[(1, 200, 500, 0, 3000, True)],
               armies=[(7, 220, 500, 0)])
-        assert drive_scout(b, CFG, b.world.get_army(7)) == []
+        orders = drive_scout(b, CFG, b.world.get_army(7))
+        assert orders and orders[0].startswith("MOVE_TO 7 ")
 
     def test_arrival_advances_hop(self) -> None:
-        # Fresh arrival-intel waits out the delay (quiescence) before the
-        # next hop — the order must come from converged intel.
+        # Fresh intel dispatches the next hop promptly (send-all era).
         from bots.common import drive_scout
         b = self._scouted()
         _feed(b, 8, towns=[(1, 200, 500, 0, 3000, True)],
               armies=[(7, 250, 500, 0)])
-        assert drive_scout(b, CFG, b.world.get_army(7)) == []
-        _feed(b, 9, towns=[(1, 200, 500, 0, 3000, True)])
         orders = drive_scout(b, CFG, b.world.get_army(7))
-        assert orders == ["MOVE_TO 7 250.0 500.0 300.0 500.0"]
+        # fan-out spiral: leg 1 bends +0.35 rad off the faction ray.
+        assert orders == ["MOVE_TO 7 250.0 500.0 297.0 517.1"]
         assert b._scout_id == 7 and b._scout_leg == 1
 
     def test_final_arrival_unmarks_keeps_target(self) -> None:
@@ -117,10 +133,6 @@ class TestDrive:
         b._army_targets[7] = (250.0, 500.0)
         _feed(b, 20, towns=[(1, 200, 500, 0, 3000, True)],
               armies=[(7, 250, 500, 0)])
-        assert drive_scout(b, CFG, b.world.get_army(7)) == []
-        assert b._scout_id == 7  # fresh arrival waits out the delay
-        for t in (21, 22):
-            _feed(b, t, towns=[(1, 200, 500, 0, 3000, True)])
         assert drive_scout(b, CFG, b.world.get_army(7)) == []
         assert b._scout_id is None
         assert b.army_has_target(7) is True
@@ -233,10 +245,10 @@ class TestDeadNotes:
 
 
 class TestReadyToDispatch:
-    """Quiescence gate: order MOVE_TO only from converged intel, or the
-    messenger from-check kills it and the army strands (drunk-walk
-    family). Converged = trail newest age >= 2x expected delay, or noted
-    arrival aged >= delay (truth static at note since before intel)."""
+    """Freshness gate (send-all era): order MOVE_TO when intel is fresh
+    (lag within 3x expected + margin); hold only when ancient. (Was:
+    quiescence — order only on quiet trails. Every-turn delivery keeps
+    trails fresh, so quiescence froze armies on live notes.)"""
 
     def _bot(self):
         from bots.common import BotState
@@ -253,7 +265,7 @@ class TestReadyToDispatch:
             _feed(b, t, towns=[(1, 200, 500, 0, 3000, True)])
         assert ready_to_dispatch(b, CFG, b.world.get_army(7)) is True
 
-    def test_marching_fresh_blocks(self) -> None:
+    def test_marching_fresh_dispatches(self) -> None:
         from bots.common import ready_to_dispatch
         b = self._bot()
         _feed(b, 10, towns=[(1, 200, 500, 0, 3000, True)],
@@ -261,9 +273,9 @@ class TestReadyToDispatch:
         for t, x in ((11, 450), (12, 500), (13, 550)):
             _feed(b, t, towns=[(1, 200, 500, 0, 3000, True)],
                   armies=[(7, x, 500, 0)])
-        assert ready_to_dispatch(b, CFG, b.world.get_army(7)) is False
+        assert ready_to_dispatch(b, CFG, b.world.get_army(7)) is True
 
-    def test_arrival_aged_dispatches(self) -> None:
+    def test_ancient_holds(self) -> None:
         from bots.common import ready_to_dispatch
         b = self._bot()
         _feed(b, 10, towns=[(1, 200, 500, 0, 3000, True)],
@@ -271,22 +283,19 @@ class TestReadyToDispatch:
         b._army_targets[7] = (450.0, 500.0)
         _feed(b, 11, towns=[(1, 200, 500, 0, 3000, True)],
               armies=[(7, 450, 500, 0)])
-        assert ready_to_dispatch(b, CFG, b.world.get_army(7)) is False
-        for t in (12, 13):
-            _feed(b, t, towns=[(1, 200, 500, 0, 3000, True)])
         assert ready_to_dispatch(b, CFG, b.world.get_army(7)) is True
+        for t in range(12, 30):
+            _feed(b, t, towns=[(1, 200, 500, 0, 3000, True)])
+        # trail age 19 > 3d+2 (d=2): mail broken, hold.
+        assert ready_to_dispatch(b, CFG, b.world.get_army(7)) is False
 
-    def test_order_move_gates_and_notes(self) -> None:
+    def test_order_move_emits_when_fresh(self) -> None:
         from bots.common import order_move
         b = self._bot()
         _feed(b, 10, towns=[(1, 200, 500, 0, 3000, True)],
               armies=[(7, 400, 500, 0)])
         _feed(b, 11, towns=[(1, 200, 500, 0, 3000, True)],
               armies=[(7, 450, 500, 0)])
-        assert order_move(b, CFG, b.world.get_army(7), 600, 500) == []
-        assert 7 not in b._army_targets
-        for t in (12, 13, 14, 15):
-            _feed(b, t, towns=[(1, 200, 500, 0, 3000, True)])
         got = order_move(b, CFG, b.world.get_army(7), 600, 500)
         assert got == ["MOVE_TO 7 450.0 500.0 600.0 500.0"]
         assert b._army_targets.get(7) == (600, 500)
