@@ -77,6 +77,27 @@ def _expected_delay(state: "BotState", config, x: float, y: float) -> int:
     return max(1, math.ceil(math.hypot(x - cap.x, y - cap.y) / info))
 
 
+def _sandwiched(state: "BotState") -> bool:
+    """Hemmed both flanks: >=3 foe towns within 250km of any own town.
+    Marching blind in a sandwich donates (1v1 mutuals every direction) and
+    bleeds thin towns to beheading (proven F1 4/4 deaths); sitting survives
+    thin (parent-proven 139k-235k same sandwiches). Selective freeze."""
+    mine = list(state.own_towns())
+    if not mine:
+        return False
+    n = 0
+    for t in state.world.towns:
+        if t.faction == state.faction:
+            continue
+        for u in mine:
+            if math.hypot(t.x - u.x, t.y - u.y) <= 250.0:
+                n += 1
+                break
+        if n >= 3:
+            return True
+    return False
+
+
 def ready_to_dispatch(state: "BotState", config, p) -> bool:
     """Quiescence gate: order MOVE_TO only from converged intel.
 
@@ -91,6 +112,8 @@ def ready_to_dispatch(state: "BotState", config, p) -> bool:
     stationary's age at 0 forever, so EVERY continuously-visible army
     froze: heirloom guards, re-tasks, refounds. Marching-fresh still
     waits; stale keeps status quo.)"""
+    if _sandwiched(state):
+        return False  # sandwich stillness (open sectors re-task freely)
     tr = state._trails.get(p.id)
     if not tr or len(tr) < 2:
         # never (or once) seen: idle/spawn-stationary by construction.

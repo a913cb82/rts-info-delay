@@ -2332,3 +2332,15 @@ ordering. (4) BEHAVIOR-twins with distinct content-hashes (split minted
 duplicates) defeat hash-twin-exclusion — pool needs behavior-level dedup
 (future methodology). NEXT: F1-sandwich autopsy (recorded scratch) + fix
 (don't-dispatch-when-thin? fogward-for-F1?); unfreeze-qualified, not naked.
+
+### Rung F1: sandwich stillness (2026-09-12 16:59 BST)
+KILL CHAIN (F1DEATH exact repro): t1646 settler mutual; t3391 guard mutual;
+t3394 capital (301, bled via 3 donated prints) beheaded by F0; t3919 colony
+taken by F2. Sandwich death = crowding-poverty + blind 1v1 donations +
+bleed-beheading (NOT naked-takes). FIX (pro/scout.py, package-scoped):
+_sandwiched (>=3 foe towns within 250km of any own town) -> ready_to_dispatch
+False (selective freeze: open sectors re-task (unfreeze), sandwiches sit
+(parent-proven survival)). P4 evac unaffected (MOVE_CAPITAL separate path).
+Known-threat sandwiches only (stale counts; never-seen misses documented).
+Predicts: F1-sandwich survival (donations stop, thin compounds); open games
+unchanged. Bar: F1-survival + ord 56.3+.
