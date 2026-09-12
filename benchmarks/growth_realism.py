@@ -222,12 +222,14 @@ def s7_sustain():
 
 
 def s8_urban():
-    """Lone 80k city over 10y: natural change must be <= 0 (graveyard),
-    full marks at -1%/yr or worse."""
-    r = realized_annual(T(500, 500, 80000), 520)
-    s = onesided(-r, 1.0)
-    return ("urban", "10y natural % @80k", f"{r:+.2f}", "<= 0", s,
-            "cities above the sink threshold must not grow on their own")
+    """Lone cities at 20k/40k/80k over 10y: natural change must be <= 0
+    at every size above self-feeding (town growth comes from migration,
+    never from lone increase). Score = mean over sizes."""
+    rates = [realized_annual(T(500, 500, p), 520) for p in (20000, 40000, 80000)]
+    ss = [onesided(-r, 1.0) for r in rates]
+    return ("urban", "10y natural % @20k,@40k,@80k",
+            ",".join(f"{r:+.2f}" for r in rates), "<= 0 each",
+            sum(ss) / 3, "graded graveyard: no size grows on its own")
 
 
 def s9_gapfill():
@@ -289,14 +291,40 @@ def s11_access():
 
 
 def s12_returns():
-    """Center 1500 + 4x300 hinterland vs same sites doubled (3000 +
-    4x600): doubled system must more than double total (threshold scale)."""
-    A = [T(0, 0, 1500), T(15, 0, 300), T(-15, 0, 300), T(0, 15, 300), T(0, -15, 300)]
-    B = [T(0, 0, 3000), T(15, 0, 600), T(-15, 0, 600), T(0, 15, 600), T(0, -15, 600)]
-    ta, tb = sum(G.nets(A)), sum(G.nets(B))
-    r = (tb / ta) / 2 if ta > 0 else 0.0
-    return ("returns", "doubled-system ratio/2", f"{r:.3f}", ">= 1", clamp01(r),
-            f"A={ta:.2f} B={tb:.2f} (coupled: town+hinterland scaled together)")
+    """Town+hinterland systems doubled at fixed sites, swept across
+    sizes (0.5k->1k through 4k->8k centers, villages scaled with): the
+    best scale must more than double total (thresholds live somewhere
+    in 0.5-8k; the sweep finds them without presuming where)."""
+    best, det = 0.0, []
+    for c, v in ((500, 150), (1000, 200), (2000, 400), (4000, 800)):
+        pts = [(0, 0), (15, 0), (-15, 0), (0, 15), (0, -15)]
+        A = [T(x, y, c if i == 0 else v) for i, (x, y) in enumerate(pts)]
+        B = [T(x, y, 2 * c if i == 0 else 2 * v) for i, (x, y) in enumerate(pts)]
+        ta, tb = sum(G.nets(A)), sum(G.nets(B))
+        r = (tb / ta) / 2 if ta > 0 else 0.0
+        best = max(best, r)
+        det.append(f"{c}:{r:.2f}")
+    return ("returns", "best doubled ratio/2", f"{best:.3f}", ">= 1",
+            clamp01(best), ", ".join(det))
+
+
+def s15_region():
+    """6x2500 ring @30km with vs without a central 8500 regional:
+    the access mirror one tier up (markets need regionals like villages
+    need markets). Same ring-vs-ring control as s11. Radius 30km (not
+    20): the control ring must be viable alone (+0.19/turn vs iso 2.44),
+    else the comparison fires into an already-dead regime."""
+    need = REF["market_access_ratio"]["lo"]
+    ring = [(30 * math.cos(i * math.pi / 3), 30 * math.sin(i * math.pi / 3))
+            for i in range(6)]
+    base = [T(x, y, 2500) for x, y in ring]
+    withr = [T(x, y, 2500) for x, y in ring] + [T(0, 0, 8500)]
+    m0 = sum(G.nets(base)) / 6
+    m1 = sum(G.nets(withr)[:6]) / 6
+    r = m1 / m0 if m0 > 0 else 0.0
+    s = clamp01((r - 1) / (need - 1)) if need > 1 else (1.0 if r >= 1 else 0.0)
+    return ("region", "ring w/ vs w/o regional", f"{r:.3f}", f">= {need}", s,
+            f"with {m1:.3f}/turn vs without {m0:.3f}/turn")
 
 
 def s13_macro():
@@ -349,7 +377,7 @@ def p1_perf():
 SCENARIOS = [s1_village_rate, s2_recovery, s3_viability, s4_infill,
              s5_hierarchy, s6_market_penalty, s7_sustain, s8_urban,
              s9_gapfill, s10_sinkflow, s11_access, s12_returns,
-             s13_macro, s14_hinterland, p1_perf]
+             s13_macro, s14_hinterland, s15_region, p1_perf]
 
 
 def main(argv):

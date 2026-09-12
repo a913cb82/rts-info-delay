@@ -8,7 +8,7 @@ Engine: `experiment/realistic-growth` (econ identical to `main`).
 Calendar: 1 turn = 1 week. Runtime ~6s wall (checks ~1s; rest shared
 numpy/numba import + the 15k-turn recovery cap loop).
 
-## Score: composite 22.7/100 (expected-red baseline, suite v3)
+## Score: composite 22.4/100 (expected-red baseline, suite v3.1)
 
 | scenario | value | target | score |
 |---|---|---|---|
@@ -19,13 +19,14 @@ numpy/numba import + the 15k-turn recovery cap loop).
 | hierarchy | 0.900 | 1.0 | 90.0 |
 | market_penalty (@15/@50km) | 0.72 (0.28) | ≤ 0.25 | 5.4 |
 | sustain (vill/mkt/reg) | 0/0/0 | 1/1/1 | 0.0 |
-| urban (@80k 10y) | +0.85 | ≤ 0 | 15.0 |
+| urban (@20k,@40k,@80k 10y) | +4.00,+2.83,+0.85 | ≤ 0 each | 5.0 |
 | gapfill | −90/20 | > 0 | 0.0 |
 | sinkflow (s/f/sh/b) | 0.00/0.42/0.50/0.35 | 1/1/1/1 | 31.8 |
 | access | −4.038 | ≥ 1.05 | 0.0 |
-| returns (coupled) | 0.444 | ≥ 1 | 44.4 |
+| returns (best of 4 sweeps) | 0.715 @500 | ≥ 1 | 71.5 |
 | macro (H,U-b,U-m,V) | H −19k,−1k,−6k,−28k | H first, H≥0 | 16.7 |
 | hinterland (lone/fed) | +4.64%/0.09 | ≤0 / 1 | 4.4 |
+| region (ring w/ vs w/o) | −2.069 | ≥ 1.05 | 0.0 |
 | perf | 0.93ms; 5 | < 10; ≤ 5 | 100.0 |
 
 ## What the numbers say
@@ -43,10 +44,12 @@ numpy/numba import + the 15k-turn recovery cap loop).
   negative at 30/km²; H (−19k) loses to uniform-big (−1k). A cap-lift
   sustains but still ranks uniform first — the discrimination holds.
 - **Partial credit lands where it's honest.** `hierarchy` 90 (uniform
-  wins by 11%, not 11×), `returns` 44 (coupled doubling keeps 44% of
-  parity), `sinkflow` 32 (SHARE/FUEL/BOOKS partial, SINK zero),
-  `urban` 15 (near-zero, wrong sign). The suite's
-  best current behaviors are all "less bad," none good.
+  wins by 11%, not 11×), `returns` 71.5 (best scale keeps 72% of
+  parity — small doublings degrade least), `sinkflow` 32
+  (SHARE/FUEL/BOOKS partial, SINK zero), `urban` 5 (graded over three
+  sizes: smaller cities grow faster, all wrong sign), `region` 0 with
+  a viable control (+0.19 alone, −0.40 with a regional). Best current
+  behaviors are all "less bad," none good.
 - **Perf untouched.** 0.93ms / 5 params — binds every proposal.
 
 ## Standing rules (suite v3 contract)

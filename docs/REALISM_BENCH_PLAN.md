@@ -100,9 +100,12 @@ isolated towns appear only at self-feeding sizes (<= ~1k) — anything
 bigger runs with its hinterland in the World. Checks call ONLY
 `G.isolated` / `G.nets` / `G.step`. New mechanics register a system in
 `growth_systems.py`; this file changes only to ADD scenarios, never to
-pass one. Current roster (15): village_rate, recovery, viability,
-infill, hierarchy, market_penalty, sustain, urban, gapfill, sinkflow,
-access, returns, macro, hinterland, perf. Composite = report table, not a
+pass one. Current roster (16): village_rate, recovery, viability,
+infill, hierarchy, market_penalty, sustain, urban (3 sizes), gapfill,
+sinkflow, access, returns (4-size sweep), macro, hinterland, region
+(tier-2 access mirror), perf. Fixture rule learned twice: comparison
+controls must be viable alone (region ring moved 20→30km; recovery
+company ≥500), else scenarios fire into dead regimes and report noise. Composite = report table, not a
 single number (avoid Goodharting one scalar). Perf guardrail runs
 alongside and fails loud on regression.
 
