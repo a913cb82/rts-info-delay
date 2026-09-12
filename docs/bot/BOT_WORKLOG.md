@@ -2604,3 +2604,12 @@ V3 combines vulture-select (proven direction) + march-gate (complete packs
 march iff target fresh <=30t, else hold intact; scouts refresh; strike
 exempt). 3 march tests + 2 savings tests. Bar: aggressive gate (>=47.2 AND
 takes).
+
+### Take-doctrine v3 verdict: FAIL (2026-09-12 18:41 BST)
+Rated clean 15g -> ord 26.9 (mu 35.0): FAIL (gate 47.2+). March-gate holds
+in stale bloodbaths (sit-die, 33% deaths) worse than donations it prevents.
+Ordering (baseline-hostages 42.2 > gated 26.9 > v2 21.0 > floor 11.1) says:
+TAKE VOLUME beats take quality (packs must take anything for snowball fuel;
+selectivity starves). NEXT (parallel takes, queued): raid_targets k=3-5
+(simultaneous multi-takes, volume snowball) — brain uses k=1 (serial) now.
+Parked (main keeps 42.2).
