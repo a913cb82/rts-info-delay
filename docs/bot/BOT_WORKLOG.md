@@ -2770,3 +2770,10 @@ after guards/settlers) + calm force>=10 packs take fresh-empty viable
 block placed BEFORE founding (shared-built starved takes otherwise);
 take-windows suppress same-turn settlers (cycle: muster-take-regrow).
 Bar: 55+ (clear +8 over 47.3; turtle-style argued at merge iff pass).
+
+### Hybrid verdict: FAIL (33.7, muster needs surplus) (2026-09-12 22:38 BST)
+Rated clean 15g -> ord 33.7 (mu 41.3): FAIL (bar 55+, baseline 47.3).
+Muster tax kills compound (25k strip stunts 25-35k towns; no surplus;
+attractor collapses to 13-58k). Takes don't compensate (rare/small).
+Muster-takes requires pro-scale surplus (60k+; buzzer already does it).
+Reverted (main keeps 47.3). Code parked on loop/turtle-hybrid.
