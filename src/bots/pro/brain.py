@@ -96,6 +96,16 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
     # bleeds pressure and loses slowly (endurance 6424->904); there, all-out.
     war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
     duel_ctx = len(war_foes) <= 1
+    # Siege-mode (war-mode detection): blind bots misread bloodbaths as duels
+    # (<=1 known foe) and sit via P2-holds until dead. Persistent contact
+    # (inbound force or staging, 300+ consecutive turns) proves war even
+    # when intel shows one foe: lone raids resolve faster; sieges don't.
+    # Duel-quiet behavior UNCHANGED (streak resets when clear).
+    if force or staging_eta(state, config):
+        state._threat_streak = state._threat_streak + 1
+    else:
+        state._threat_streak = 0
+    siege = duel_ctx and state._threat_streak >= 300
     # Hold rule (Step 2, shared): per threatened town keep min(home, N+1).
     held: set[int] = hold_defenders(state, config, force) if duel_ctx else set()
     sel = raid_target(state, config, priced=duel_ctx)
@@ -162,7 +172,10 @@ def _stage_moves(state: BotState, config: GameConfig) -> list[str]:
             # (3-pack forced marches re-lost the home race 3249->1647;
             # evac saves the commander, not the score. Rope stays.)
             spent = foe_score < 0.5 * my_score and len(state.own_armies()) >= 2
-            if duel and enemy_armies and not spent:
+            # Siege release: persistent-threat duels are bloodbaths the bot
+            # can't see (intel shows one foe). Hold-everything then dies
+            # slowly; surplus marches via normal gates (held-set keeps N+1).
+            if duel and not siege and enemy_armies and not spent:
                 continue  # rope-a-dope: let them come
             if not duel:
                 # Big wars: pure pressure (old-greedy style). ANY hold here

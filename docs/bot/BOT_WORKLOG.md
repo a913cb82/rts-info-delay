@@ -2379,3 +2379,13 @@ nothing). Correct response is RANKING (fresh targets first, stale demoted
 but actionable), not binary VETO — target ranking with freshness-discounted
 values is now M3's sharpest spec. Fix never merged (main keeps 56.7 line).
 Code parked on loop/pro-intelgate.
+
+### Siege-mode (war-mode detection) (2026-09-12 18:41 BST)
+Blind bots misread bloodbaths as duels (<=1 known foe) -> P2 rope-a-dope
+holds everything -> sit until dead (F0 8k/0 games). FIX (15 lines):
+_threat_streak (contact turns with inbound force or staging; resets when
+clear); siege = duel-intel AND streak>=300 (lone raids resolve faster).
+P2-hold released in siege (surplus marches via normal sel gates; held-set
+keeps N+1 home). Duel-quiet provably UNCHANGED (streak can't reach 300;
+holds/G-defense/pricing untouched). Predicts: persistent-threat blinds
+pressure instead of sitting (F0 t2600+); quiet games identical. Bar 56.7+.
