@@ -14,20 +14,15 @@ W(i,j) = alpha*P_i*sig((P_j-P_i)/30) * e^(-(d/rho)^2) * win(d)   # access
        + mu*P_i*P_j*(P_i-P_j)/(P_i+P_j) * e^(-d/rho) * win(d)   # migration
 net_i  = g(P_i) + sum_j W(i,j);   P <- max(P + net, 0)
 
-win(d) = 1                         d <= 120 km
-       = C-infinity flat blend    120 < d < 150 km  (argument is d^2;
-                                  e^(-1/t) blend, all derivatives
-                                  vanish at both joins)
-       = 0                        d >= 150 km   (HARD BOUND)
+win(d) = sig( D^2/d^2 - D^2/(D^2-d^2) ),   D = 150 km
 ```
 
-`win` is continuous and C-infinity everywhere: the transition
-`s(t) = e^(-1/t) / (e^(-1/t) + e^(-1/(1-t)))` has `s=0`/`s=1` with all
-right/left derivatives zero at `t=0`/`t=1` (verified numerically), so
-there is no kink in value, slope, curvature, or any higher derivative.
-(The double-precision tail underflows ~0.04 km before the bound, so the
-effective transition is [~130, ~150) km; inside 130 km the window is
-exactly 1.)
+`win` is a **single curve with one constant**: exactly 1 at d=0,
+exactly 0 at d=D, C-infinity everywhere (all derivatives vanish at the
+rim), no taper parameter and no piecewise definition (only the bound
+skip for efficiency; pairs at d>=150 km contribute exactly zero).
+Window weights: 1.000 at 30 km, 0.994 at 60, 0.935 at 75, 0.611 at
+100, 0.229 at 120, 0.018 at 135, ~0 at 145+.
 
 The two kernels keep the shapes agreed in the design: **Gaussian on
 access**, **exponential on migration**. At rho = 270 km both are nearly
@@ -96,11 +91,17 @@ zero derivative at the edge — no kink.
   0.9540/0.9540/0.9540/0.9539/0.9539/0.9537/0.9533 (train mean), and
   freeing the centre (`theta` 0-1000) never beat 0.953. Kept 30, now
   with evidence rather than assumption.
-- **Maximal smoothness: smoothstep → C-infinity blend, free.** The
-  first window was C1 (second derivative jumped at 120 and 150 km).
-  Replacing the polynomial with the `e^(-1/t)` flat blend leaves the
-  composite unchanged (0.949) and the 2-s.f. lattice descent lands on
-  exactly the same five values (0.9541 train). Recommended default.
+- **Window: one-constant C-infinity curve, free.** Investigated three
+  forms: two-constant flat blend on [120,150] (two constants), quartic
+  `(1-(d/D)^2)^2` (C1 at rim), and the single-curve
+  `sig(D^2/d^2 - D^2/(D^2-d^2))` (one constant, C-infinity). Scores
+  after refit: 0.9541 / 0.9537 / 0.9541 (train, 14) — the single curve
+  ties the two-constant blend while removing a parameter and every
+  piecewise definition, and the composite and CV are bit-identical
+  (0.949 / 0.792). Adopted. (Mathematical note: compact support plus
+  C-infinity is impossible for analytic elementary functions; the
+  sigmoid-of-rational form is the C-infinity option, and the quartic is
+  the C1 alternative if a plain polynomial is ever preferred.)
 - **2 significant figures cost ~0.0003 and diens recovered it.** Full
   quantisation 0.9537; lattice descent (last-digit steps) 0.9541 vs
   0.9540 continuous. Quantisation is therefore free regularisation

@@ -15,9 +15,9 @@ documented in the fit report:
                                                     (land competition)
                                                     (migration to big)
   K1 = exp(-(d/rho)^2), K2 = exp(-d/delta)
-  all pairwise terms are multiplied by a hard-bound window win(d):
-  exactly 0 for d >= 150 km, C-infinity flat transition over [120,150]
-  (exp(-1/t) blend; all derivatives vanish at both joins)
+  all pairwise terms are multiplied by win(d) = sig(D^2/d^2 -
+  D^2/(D^2-d^2)), D=150 km: one constant, C-infinity, exactly 0 at the
+  bound, all derivatives vanish at the rim
 
   net_i = g(P_i) + sum_j W(i,j);  P <- max(P + net, 0)
 
@@ -34,11 +34,15 @@ import numpy as np
 MIG_LIN, MIG_GRAV = 0, 1
 
 # Hard interaction bound (game requirement + engine efficiency): pairs
-# beyond DCUT contribute exactly zero; a smoothstep taper over
-# [TAPER, DCUT] keeps the decay C1 so there is no kink at the edge.
+# at d >= DCUT contribute exactly zero. One window constant only:
+#
+#   win(d) = sig( D^2/d^2 - D^2/(D^2-d^2) ),  D = DCUT = 150 km
+#
+# a single C-infinity curve: exactly 1 at d=0, exactly 0 at d=D, all
+# derivatives vanish at the rim, no taper parameter and no piecewise
+# definition (only the bound skip needed for efficiency).
 DCUT = 150.0
-TAPER = 120.0
-_DCUT2, _TAPER2 = DCUT * DCUT, TAPER * TAPER
+_DCUT2 = DCUT * DCUT
 try:
     import numba
 
@@ -62,13 +66,8 @@ try:
                 d2 = dx * dx + dy * dy
                 if d2 >= _DCUT2:
                     continue
-                if d2 > _TAPER2:
-                    t = (d2 - _TAPER2) / (_DCUT2 - _TAPER2)
-                    e0 = math.exp(-1.0 / t)
-                    e1 = math.exp(-1.0 / (1.0 - t))
-                    w = 1.0 - e0 / (e0 + e1)
-                else:
-                    w = 1.0
+                xx = _DCUT2 / d2 - _DCUT2 / (_DCUT2 - d2) if d2 > 0.0 else 1e18
+                w = 1.0 / (1.0 + math.exp(-xx)) if xx >= 0.0 else math.exp(xx) / (1.0 + math.exp(xx))
                 k1 = w * math.exp(-d2 / (rho * rho))
                 sig = 1.0 / (1.0 + math.exp(-((P[j] - pi - th) / mm)))
                 k2 = w * math.exp(-math.sqrt(d2) / dl)
@@ -111,6 +110,25 @@ def _sig(x):
         return 1.0 / (1.0 + math.exp(-x))
     e = math.exp(x)
     return e / (1.0 + e)
+
+
+def _win(d2):
+    """Single-curve window: 1 at d=0, 0 at d=DCUT, C-infinity, one constant."""
+    if d2 >= _DCUT2:
+        return 0.0
+    if d2 <= 0.0:
+        return 1.0
+    return _sig(_DCUT2 / d2 - _DCUT2 / (_DCUT2 - d2))
+
+
+def _win_np(d2):
+    with np.errstate(divide="ignore", over="ignore"):
+        x = np.where(d2 > 0.0, _DCUT2 / np.maximum(d2, 1e-300), 1e18)
+        x = x - np.where(d2 < _DCUT2, _DCUT2 / np.maximum(_DCUT2 - d2, 1e-300), 1e18)
+        w = np.where(x >= 0.0, 1.0 / (1.0 + np.exp(-np.minimum(x, 700.0))),
+                     np.exp(np.maximum(x, -700.0)) / (1.0 + np.exp(np.maximum(x, -700.0))))
+    w = np.where(d2 >= _DCUT2, 0.0, w)
+    return w
 
 
 FITTED = {
@@ -178,13 +196,7 @@ class FittedGrowth:
         if d2 >= _DCUT2:
             return 0.0
         p = self.p
-        if d2 > _TAPER2:
-            t = (d2 - _TAPER2) / (_DCUT2 - _TAPER2)
-            e0 = math.exp(-1.0 / t)
-            e1 = math.exp(-1.0 / (1.0 - t))
-            w = 1.0 - e0 / (e0 + e1)
-        else:
-            w = 1.0
+        w = _win(d2)
         th = 0.0 if self.theta0 else p["theta"]
         dl = p["rho"] if self.share else p["delta"]
         mm = self.mfix if self.mfix > 0.0 else p["m"]
@@ -235,13 +247,7 @@ class FittedGrowth:
         dx = x[:, None] - x[None, :]
         dy = y[:, None] - y[None, :]
         d2 = dx * dx + dy * dy
-        w = np.ones_like(d2)
-        mid = (d2 > _TAPER2) & (d2 < _DCUT2)
-        t = (d2[mid] - _TAPER2) / (_DCUT2 - _TAPER2)
-        e0 = np.exp(-1.0 / np.maximum(t, 1e-12))
-        e1 = np.exp(-1.0 / np.maximum(1.0 - t, 1e-12))
-        w[mid] = 1.0 - e0 / (e0 + e1)
-        w[d2 >= _DCUT2] = 0.0
+        w = _win_np(d2)
         k1 = w * np.exp(-d2 / (p["rho"] * p["rho"]))
         sig = 1.0 / (1.0 + np.exp(-((Pn[None, :] - Pn[:, None] - p["theta"]) / p["m"])))
         W = p["alpha"] * Pn[:, None] * sig * k1
