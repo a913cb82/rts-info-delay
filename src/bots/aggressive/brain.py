@@ -166,6 +166,19 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if site is not None and not staged and not war_print_need(state, config) \
                     and not site_pays(state, config, site[0], site[1]):
                 site = None
+            # Naked-town founding veto (anti-overextension): no new town
+            # (staged or economic) while any own town has 0 home AND foe
+            # field armies exist — speculative bases for unready packs
+            # dissipate force into thin naked towns that starve/feed
+            # (F2: 3 founded, 2 starved, 2 retaken, 0 takes). Garrison
+            # first (recall/hold covers it), then stage. Safe-peace
+            # sprawl unaffected (veto needs a live threat). Conqueror
+            # paces conquest; raids/packs untouched.
+            if site is not None and enemy_armies and any(
+                    not any(math.hypot(a.x - t.x, a.y - t.y) <= 20.0
+                            for a in state.own_armies())
+                    for t in own_t):
+                site = None
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))
     return out

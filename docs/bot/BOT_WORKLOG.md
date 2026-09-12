@@ -1865,3 +1865,19 @@ duplicate (pro-d658df5) grinds zero-games. Renamed pro-6f463c9 ->
 pro-d658df5 (byte-identical pro/ content fcc4427f42; 16 records + rating
 moved, verified in pool with 57.2/16g). Grind scripts must resolve MINE
 via code-commit from now on.
+
+### GOAL-80, worst-iter (aggressive): naked-town founding veto (2026-09-12)
+TARGET aggressive 42.2 (47g); gate >46.7 (expander) + conqueror invariants.
+DATA: P1 7% (4/54); dead/townless 63% (34/54); alive wins 4/20; pro beats
+it in 25/50 non-wins. It dies, rarely wins.
+DEATH STORY (canonical F2 t3000-45xx): 4 towns 0 armies t3000; 2 FOUNDED
+staging starved (pop 0); 2 founded thin (1122, 1911) taken naked by
+expander; 0 takes (staging without striking). Root: speculative forward
+staging (3 bases for unready/nonexistent packs) dissipates force into
+naked thin towns that starve/feed — overextension, not conquest.
+Conquest-guard exists but takes-only + needs armies home (0 home here).
+IDEA (1, conqueror-congruent): naked-town founding veto — no new founding
+while any own town has 0 home AND foe field armies exist. Paces conquest
+sustainably (garrison first, then stage); raids/packs untouched; safe-peace
+sprawl unaffected (veto needs a live threat). Predicts: fewer starves/
+retakes, stronger packs (force concentrated), deaths down, takes up.
