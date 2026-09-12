@@ -2992,3 +2992,7 @@ Buzzer +5g (400 total) -> ord 62.2 (mu 65.6, was 65.0/395g): +0.5 on
 ### Buzzer 410g (2026-09-13 00:32 BST)
 Buzzer +10g (410 total) -> ord 63.0 (mu 66.4, was 65.6/400g): +0.8 on
 3W + quality mids. Oscillation 61-64.
+
+### Buzzer 420g (2026-09-13 00:37 BST)
+Buzzer +10g (420 total) -> ord 62.7 (mu 66.1, was 66.4/410g): -0.3 on
+2W + mids. No rewrite space (all architectures = stuck personalities).
