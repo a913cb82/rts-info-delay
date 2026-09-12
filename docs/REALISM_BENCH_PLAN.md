@@ -122,7 +122,11 @@ Suggested groups (names only — thresholds set after red-baseline run):
    measure recovery time in turns → convert via §3 turn↔year mapping
    → compare to historical post-plague recovery (decades). Checks the
    logistic shape near and far from cap, independent of layout.
-6. **Perf + simplicity guardrail.** 500-town batch-growth ms,
+6. **Sink + migration circuit** (`sinkflow`: SINK isolated 80k must
+   shrink; FUEL ringed 60k city must net above its isolated rate;
+   SHARE ring villages below theirs; BOOKS system total within 25% of
+   the isolated sum). API-agnostic: asserts trajectories, not plumbing.
+7. **Perf + simplicity guardrail.** 500-town batch-growth ms,
    heavy-step ms, econ param count, new per-town state fields. Same
    box, paired, min-of-3 like `optimization_log.md`. Fails on >~2×
    slowdown or new O(N²) beyond the existing dist matrix.

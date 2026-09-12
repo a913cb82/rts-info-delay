@@ -4,7 +4,7 @@ Harness: `benchmarks/growth_realism.py` + `benchmarks/realism_ref.json`.
 Engine: `experiment/realistic-growth` @ `a5f47b5` (econ identical to `main`).
 Calendar: 1 turn = 1 week. Runtime: **1.5s** (numba import included).
 
-## Score: 2/10 PASS (expected-red baseline)
+## Score: 2/11 PASS (expected-red baseline)
 
 | check | value | target | verdict |
 |---|---|---|---|
@@ -16,6 +16,7 @@ Calendar: 1 turn = 1 week. Runtime: **1.5s** (numba import included).
 | market_penalty (@15km,@50km) | 0.72, 0.28 | @15 ≤ 0.25 | FAIL |
 | density (pop/km², cap-max) | 1.72 (4.1) | [20, 40] | FAIL |
 | urban (extra big-city penalty) | 0.000 | ≥ 0.10 | FAIL |
+| sinkflow (sink%; city; vill; tot) | +1.04%; 10.1/24.0; 0.15/0.30; 11.0/25.8 | ≤0; cpl>iso; cpl<iso; ±25% | FAIL |
 | gapfill (infill Δ; top/avg) | −89.8; 1.9× | > 0; ≥ 5× | FAIL |
 | perf (500-town ms; params) | 1.16; 5 | < 10; ≤ 5 | PASS |
 
@@ -42,6 +43,15 @@ Calendar: 1 turn = 1 week. Runtime: **1.5s** (numba import included).
   4.1/km², vs 20–40 historical. No parameter tweak inside
   `r/K/crowding` reaches the target while keeping towns ≤100k on a
   1M-km² map — the bottom tier (villages) is missing, not mis-tuned.
+- **The sink has no circuit.** `sinkflow` fails 3 of 4 sub-asserts: an
+  isolated 80k town still grows (+1.04%/yr) instead of shrinking; a
+  ringed 60k city nets 10.1 vs 24.0 isolated (neighbours only hurt —
+  nothing flows in); system total collapses 25.8→11.0 (−57%) instead
+  of redistributing within ±25%. (SHARE passes spuriously: crowding
+  suppresses villages with the same sign as exporting.) The bench
+  demands the full de Vries circuit — sink + fuel + share + books —
+  deliberately API-agnostic: whatever mechanics land, trajectories
+  through the economy phase must show it.
 - **hierarchy 0.900 is a borderline PASS, not a win.** Threshold was set
   pre-run; uniform still beats hierarchical roofs by 11% at fixed sites,
   and gapfill shows the hierarchy that matters (dense smalls) failing

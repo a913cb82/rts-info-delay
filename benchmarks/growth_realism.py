@@ -199,9 +199,45 @@ def p1_perf():
             "< 10.0; <= 5", ok, "numba batch path; hard fail if formula leaves it")
 
 
+def r10_sinkflow():
+    """Great towns are sinks fuelled by migration (urban graveyard +
+    rural-surplus circuit). Four sub-asserts, all must hold:
+    SINK: isolated 80k annual natural growth <= 0 (above the ref sink
+      threshold a town must not grow on its own);
+    FUEL: a 60k city ringed by 6x300 villages (30km) nets ABOVE its
+      isolated rate (fed by inflow);
+    SHARE: ring villages net BELOW their isolated rate (they export);
+    BOOKS: system total within 25% of the isolated sum (migration
+      redistributes; only the urban penalty destroys).
+    Deliberately API-agnostic: whatever mechanics land (flows in the
+    economy phase or elsewhere), trajectories through apply_growth /
+    crowding_nets_batch must show this. Current engine has no flows —
+    crowding only destroys — so it fails."""
+    sink_ann = annual_pct(eco.logistic(80000.0, _cfg), 80000.0)
+    sink_ok = sink_ann <= 0.0
+    city, vill = 60000.0, 300.0
+    ring = [T(500 + 30 * math.cos(i * math.pi / 3),
+              500 + 30 * math.sin(i * math.pi / 3), vill) for i in range(6)]
+    town_c = T(500, 500, city)
+    coupled = eco.crowding_nets_batch([town_c] + ring, _cfg)
+    c_iso, v_iso = eco.logistic(city, _cfg), eco.logistic(vill, _cfg)
+    c_cpl, v_cpl = coupled[0], sum(coupled[1:]) / 6
+    fuel_ok = c_cpl > c_iso
+    share_ok = v_cpl < v_iso
+    tot_iso, tot_cpl = c_iso + 6 * v_iso, sum(coupled)
+    books_ok = abs(tot_cpl - tot_iso) / abs(tot_iso) <= 0.25 if tot_iso else False
+    ok = sink_ok and fuel_ok and share_ok and books_ok
+    val = (f"sink {sink_ann:+.2f}%; city {c_cpl:.1f}/{c_iso:.1f}; "
+           f"vill {v_cpl:.2f}/{v_iso:.2f}; tot {tot_cpl:.1f}/{tot_iso:.1f}")
+    return ("sinkflow", "sink%; city; vill; tot", val,
+            "<=0; cpl>iso; cpl<iso; +-25%", ok,
+            f"SINK {'ok' if sink_ok else 'FAIL'} FUEL {'ok' if fuel_ok else 'FAIL'} "
+            f"SHARE {'ok' if share_ok else 'FAIL'} BOOKS {'ok' if books_ok else 'FAIL'}")
+
+
 CHECKS = [r1_growth_rate, r2_recovery, r3_viability, r4_infill,
           r5_hierarchy, r6_market_penalty, r7_density, r8_urban,
-          r9_gapfill, p1_perf]
+          r9_gapfill, r10_sinkflow, p1_perf]
 
 
 def main(argv):
