@@ -2909,3 +2909,9 @@ collapsing F1 (3 takes -> 5 towns -> 160k 2nd); F2 compounded to 225k;
 buzzer took 1, ended 1 town 45k LAST. Loss = MISSED vulture-takes vs
 weak-live towns (opportunities existed; buzzer didn't act). QUEUED:
 vulture-weak (find why packs miss collapsing-foe takes).
+
+### Buzzer 290g (flat) + vulture-weak killed (2026-09-12 23:52 BST)
+Buzzer +15g (290 total) -> ord 64.8 (mu 68.3, was 68.1/275g): +0.2 on
+47% wins + 2 F1-deaths. Flat. Vulture-weak killed pre-build (fixes need
+arbitrary staleness-tuning; no tracing infra to verify; stale-probe
+partial-only). Oscillation 64-67 persists.
