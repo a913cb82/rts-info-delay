@@ -2675,3 +2675,13 @@ mustering to 60k is FREE (score-neutral now + force for take-snowball over
 900+ turns). Growers (<60k) keep compounding. FIX (economy strip branch +
 3 tests): buzzer + pop>=60k -> want (print). Predicts: free late force
 (10-30 armies) takes snowball (close wins flip). Bar 56.7+.
+
+### Buzzer verdict: PASS (line-best 59.0), merged (2026-09-12 19:31 BST)
+Extended to 30g -> ord 59.0 (mu 64.7): PASS (unfreeze-line best 56.7+).
+40% wins (many vs twins 168-236k: 260k/233k/203k/188k quality wins!) +
+narrow 2nds vs 240k+ (193k/188k) + 2 deaths. Muster force wins mirrors
+(takes snowball late) + 0-death first batch (survival). Exceeds parent
+272977c (56.7) by +2.3; trails frozen twins (60.6, different line).
+MERGED as unfreeze-line best (sibling rivalry with twins is healthy:
+pool diversity + competition; may the best win). Style holds (compounder:
+tall + late force, no added raids).
