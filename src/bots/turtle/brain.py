@@ -72,9 +72,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # 2000/2600 kept towns hovering near the bar — pop IS the tall
         # score). Rich before printing: compounding towns convert raiders
         # for free (the compounder's survival trick); poor ones die.
+        # Lowered 5000/7000->3000/4000 (2nd idea: more force/towns).
+        # Cap-5 allowed 5 towns but starved settlers/guards (bar too high:
+        # waits for 5k+ to train (slow start t2500+, stalls at 2-3 towns by
+        # t4000 bloodbath (threatened holds, no builders)). Lower bar trains
+        # earlier/more (settlers to reach 5 by t3000 + guards to 3-home each
+        # (hold vs 3-packs (mutual/clean, not donate)). Still fortress (few
+        # spaced guarded, trains for defense+settlers (not raids); bar still
+        # blocks thin-spend (3000->2000 safe, printable+holdable (not 500 suicide)).
         if any_enemy and not any_threat:
-            return 5000
-        return 7000
+            return 3000
+        return 4000
 
     bar = min((town_bar(t) for t in own_t), default=2600)
 

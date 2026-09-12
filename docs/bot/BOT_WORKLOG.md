@@ -1896,3 +1896,15 @@ total beats 200k pros by 100k margin (reliable, not fragile narrow 7k)).
 Predicts: 300k+ wins vs all <300k (dominant 1sts, not narrow 2nds) -> mu
 65+ (quality+quantity wins) -> ordinal 50+ (gate+bar) AND fortress style
 (few (5) spaced guarded, not sprawl (12+) or raiding).
+
+### GOAL-80, active-worst (turtle) 2: lower train bar (2026-09-12)
+CAP-5 rated 15g -> 36.2 (mu 45.3). FAIL (worse than baseline 47.3; wins
+33% but mu low (wins vs weak (low gain) + deaths vs strong (mu erosion).
+Cap-5 allows 5 but starves settlers/guards (bar 5000/7000 waits for 5k+
+(slow start t2500+, stalls at 2-3 by t4000 bloodbath (holds, no builders)).
+IDEA (1 number): town_bar 5000/7000->3000/4000 (train earlier/more:
+settlers to reach 5 by t3000 + guards to 3-home (hold vs packs)). Still
+fortress (few spaced guarded; trains for defense+settlers (3000->2000 safe,
+printable+holdable), not raids/thin-suicide). Predicts: 5 towns by t4000
+(early sprawl) + 3-home each (holds) + compound to 60k+ (300k+ dominates
+200k max (wins 60%+ (mu 60+ new max?)).
