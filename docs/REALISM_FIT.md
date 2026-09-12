@@ -35,7 +35,7 @@ over and forces the hard bound (access weight 0.42 at 135 km, 0.07 at
 | param | value | job |
 |---|---|---|
 | `a` | 8.2e-05 | fertility (~0.35-0.4%/yr at village sizes) |
-| `c` | 1.0e-14 | urban sink (net negative past ~30k) |
+| `c` | 1.0e-14 | urban sink (net negative past ~78k; the 20k/40k sizes still grow slowly, which is why `urban` scores 0.78) |
 | `alpha` | 1.8e-05 | market access (per-capita, direction gate at parity, width 30) |
 | `rho` | 2.7e+02 km | shared range: Gaussian access, exponential migration |
 | `mu` | 2.7e-09 | gravity migration toward larger towns |
