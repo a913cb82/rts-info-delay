@@ -3,7 +3,12 @@
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .core import BotForecast, BotState, bot_main, can_train_standard, defense_train_ok, demand_trains, drop_dead_notes, expansion_demand, hold_defenders, inbound_force, order_move, find_build_site, inbound_eta, note_wave_watch, raid_target, should_hold_home
+from .intel import *
+from .scout import *
+from .threat import *
+from .raid import *
+from .settle import *
+from .economy import *
 
 
 def _pro_hopeless(state: BotState, config: GameConfig, bar: float) -> bool:
