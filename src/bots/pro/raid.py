@@ -57,6 +57,11 @@ def raid_target(state: "BotState", config, priced: bool = True,
         arrival_t = min((math.hypot(a.x - u.x, a.y - u.y)
                          for a in fieldable),
                         default=float("inf")) / max(1.0, config.army_speed)
+        # Freshness demotion (M3 v1, ranking not veto): stale target intel
+        # misprices need (donations when S understated). Demote smoothly;
+        # fresh targets score exactly as before (no-op when intel is fresh).
+        stale = state.turn - state._last_seen.get(("town", u.id), state.turn)
+        fresh_w = 1.0 + max(0.0, stale) / 25.0
         # Can't land after the buzzer: pointless march. (W collapses
         # naturally as turns_left -> 0 — retaliation becomes impossible.)
         turns_left = (getattr(config, "max_turns", 3000) or 3000) - state.turn
@@ -68,7 +73,7 @@ def raid_target(state: "BotState", config, priced: bool = True,
         dist = min((math.hypot(a.x - u.x, a.y - u.y) for a in fieldable),
                    default=float("inf"))
         if not priced:
-            score = u.population / (1.0 + dist / 300.0)
+            score = u.population / (1.0 + dist / 300.0) / fresh_w
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
@@ -76,7 +81,7 @@ def raid_target(state: "BotState", config, priced: bool = True,
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready.
             score = prize / (1.0 + dist / 300.0) / (1.0 + s + w) \
-                / (1.0 + max(0, need - len(fieldable)))
+                / (1.0 + max(0, need - len(fieldable))) / fresh_w
             if best is None or score > best[0]:
                 best = (score, u, need, s)
     if best is None:

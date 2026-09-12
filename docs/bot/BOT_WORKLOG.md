@@ -2379,3 +2379,12 @@ nothing). Correct response is RANKING (fresh targets first, stale demoted
 but actionable), not binary VETO — target ranking with freshness-discounted
 values is now M3's sharpest spec. Fix never merged (main keeps 56.7 line).
 Code parked on loop/pro-intelgate.
+
+### M3 v1: freshness-adjusted raid ranking (2026-09-12 18:21 BST)
+EXTENDS existing pricing (bird-in-hand + pipeline + W kept): score /=
+(1 + stale_turns/25) in both branches (priced + max-pressure). Fresh intel
+scores EXACTLY as before (no-op when fresh); stale demoted smoothly, never
+vetoed (ranking-not-veto lesson). 3 unit tests (fresh-beats-stale-equal,
+both-fresh sane, unpriced runs). Negligible clock (<0.5ms, no gate needed).
+Predicts: fewer blind donations (stale marches), fresher takes; bloodbath
+real-time fights continue (contact refreshes). Bar 56.7+.
