@@ -2839,3 +2839,11 @@ Buzzer +15g (225 total) -> ord 67.1 (mu 70.7, was 70.3/210g): +0.4 on
 73% wins (11/15, incl 319k/264k) + 1 F1-death + 3 mids. Wins vs familiar
 pay little (predicted); F1-death costs much. Oscillation confirmed
 (flat). Force-first skipped pre-build (overcrowd-force likely thin).
+
+### Initiate beats vulture (data) + newborn mechanics kill (2026-09-12 23:11 BST)
+Mirror trace take contexts: 1 early newborn walk-in (702-pop) + 2 endgame
+battle-enabled 33k takes (muster-force + battles clear guards, then take).
+Initiate machinery wins (66k of takes); pure vulture gets walk-ins only
+(nothing). Pacifist rung killed pre-build. Newborn-take doctrine ALSO
+killed (mechanics: capture halves 500->250 < 500 death threshold (dies)).
+No code change.
