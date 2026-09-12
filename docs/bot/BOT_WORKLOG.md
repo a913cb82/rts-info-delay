@@ -2744,3 +2744,12 @@ deaths punish ordinal more than wins reward (asymmetric!); consistency
 (top-3 always, mu 55-60) beats volatility (1st/5th flips, mu 57 but ord 50
 via sigma+deaths). Reverted (main keeps buzzer-60k 62.0). Code parked on
 loop/pro-strip40.
+
+### Buzzer 80g + volume-path analysis (2026-09-12 20:10 BST)
+Buzzer +20g (80 total) -> ord 63.2 (mu 67.4, was 66.6/60g): +1.2 on volume
+(6W incl 260k/203k quality wins vs twins, 2 deaths). Trajectory 59.0->62.0
+->63.2 (+1.2/20g). VOLUME PATH: mu rising too (+0.8/20g sibling wins);
+project 100g mu~70/sigma1.2 ord~66; 200g mu~73/sigma0.9 ord~70. ASYMPTOTE
+~70 (mu caps ~73-75: win ~65% mirrors+sectors lottery; NOT 80 (needs mu 85).
+Grinding banks certain +1/turn + fresh data; rungs lottery 0-for-20.
+Continue grinding (optimal EV) while watching for rung openings in data.
