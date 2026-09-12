@@ -77,16 +77,16 @@ def bot_rundir(sha: str) -> Path:
         bd = d / "bots"
         bd.mkdir(parents=True)
         (bd / "__init__.py").touch()
-        for pkg in sorted(src.iterdir()):
-            # __pycache__ is not a package (it hijacked the branch once).
-            if pkg.is_dir() and pkg.name != "__pycache__":
+        pls = [p for p in src.iterdir() if p.is_dir()]
+        if pls:
+            for pkg in pls:
                 _sh.copytree(pkg, bd / pkg.name,
                              ignore=_sh.ignore_patterns("__pycache__"))
-        # Flat files ALWAYS too (covers legacy flat commits AND mixed
-        # layouts; never overwrite the package __init__ we just touched).
-        for f in sorted(src.iterdir()):
-            if f.is_file() and f.suffix == ".py" and f.name != "__init__.py":
-                _sh.copy2(f, bd / f.name)
+        else:
+            # legacy flat layout: <name>.py + common.py straight under bots/
+            for f in src.iterdir():
+                if f.is_file() and f.suffix == ".py":
+                    _sh.copy2(f, bd / f.name)
         marker.touch()
     return d
 
