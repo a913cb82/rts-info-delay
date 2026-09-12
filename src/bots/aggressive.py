@@ -24,7 +24,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # marginal+initiative raids (margin 100), economic expansion rare
     # (payback x3 — foundings are military staging, below), 1 prober.
     out.extend(demand_trains(state, config, _can_train_aggressive, DemandParams(
-        raid_margin=100.0, payback_mult=3.0, probe_armies=1)))
+        # Raid margin 100->300 (conqueror bleeds on marginal marches;
+        # the turtle/expander's 300 margin is why they survive).
+        raid_margin=300.0, payback_mult=3.0, probe_armies=1)))
 
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
     enemy_armies = [a for a in state.world.armies if a.faction != faction]
@@ -38,7 +40,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # for big wars.
     war_foes = {t.faction for t in enemy_towns} | {a.faction for a in enemy_armies}
     duel_ctx = len(war_foes) <= 1
-    sel = raid_target(state, config, priced=duel_ctx, margin=100.0)
+    sel = raid_target(state, config, priced=duel_ctx, margin=300.0)
     free_ids = [a.id for a in state.own_armies()
                 if not state.army_has_target(a.id) and a.id not in held]
     free_n = len(free_ids)
@@ -51,7 +53,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out.extend(recall_deficit(state, config))
     # Meeting (Step 3 v1): surplus reinforces deficits in time.
     out.extend(reinforce_orders(state, config))
-    _sk = strike_target(state, config, margin=100.0)
+    _sk = strike_target(state, config, margin=300.0)
     sk_march = _sk if _sk is not None and not enemy_armies else None
     fc_chase = BotForecast(state, config)
     for p in state.own_armies():
