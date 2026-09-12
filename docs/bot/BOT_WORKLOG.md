@@ -2957,3 +2957,8 @@ Buzzer +15g (380 total) -> ord 61.3 (mu 64.7, was 66.2/365g): -1.5 on
 noise): Red Queen (pool top crowds with clones/strong; info-optimal feeds
 tougher; static buzzer declines relatively). Floor ~60 (parity). 80 ever
 further without a passing rung (0-for-27).
+
+### Buzzer 395g (converged ~61-62) (2026-09-13 00:04 BST)
+Buzzer +15g (395 total) -> ord 61.7 (mu 65.0, was 64.7/380g): +0.3 on
+27% wins + 1 F1-death + mids. Converged (true strength ~61-62; early 69
+was soft-field inflation). 400 games next.
