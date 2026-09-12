@@ -2707,3 +2707,19 @@ Transitive over parents (300k cap (outgrows pro-200k) + takes (out-takes
 static turtle)). Fixes cap-5 inconsistency (lottery feed timing + no
 guards) with engineered economy (not tweaks). Falsifiable: 5 towns by t3000
 in rated games? guard minimums hold? takes snowball? Bar 50+ then 60+.
+
+### Turtle sprawl-through (2026-09-12 19:43 BST)
+Game A recipe (302k): founded 4 thin through contact (mutuals cover);
+stall (12k): holds everything threatened, never founds. FIX (one builder
+exemption): threatened-home holds stand, EXCEPT one builder while <5 towns
+(march to site, found through contact). Holds resume at 5 (defend). Peace
+unchanged (opportunistic). Predicts: sprawl feeds under pressure (5 towns)
+instead of stalling (1 town); compound wins. Bar 50+ (turtle tie-break).
+
+### Rewrite verdict: FAIL (2026-09-12 19:52 BST)
+Sprawl-through rated clean 15g -> ord 11.8 (mu 20.0): FAIL (rewrite gate:
+exceed turtle best 47.3). Builders dispatched through threats donate en
+route (settlers die marching warzones: wasted + bled + 0s) worse than
+holding (12k-stall survives small). (Gate note: rewrite bar is simply best-
+ordinal-for-personality, not worst-first or tie-break bars.) Reverted (main
+keeps 47.3). Code parked on loop/turtle-rewrite.
