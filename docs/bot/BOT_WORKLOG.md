@@ -2459,3 +2459,23 @@ COUNT fresh-moving, first-sightings, AND parked-with-mates (staging pack).
 Loiterers (solo stuck settlers/scouts) ignored; mustering packs defended.
 Falsifiable units: solo-parked silent / pack-parked counts. Bar 50+.
 Code parked on loop/turtle-thick2 (v1).
+
+### Turtle v2: solo-vs-pack (2026-09-12 19:41 BST)
+V1 removed staging defense (packs park pre-rush; 1-turn warning too late).
+V2: SKIP iff stale OR (parked AND solo (no same-faction mate within 100km));
+COUNT movers, first-sightings, parked-with-mates (mustering). 5 unit tests
+(solo-parked silent / pack-parked counts / mover / stale / fresh). Predicts:
+no phantom-bleed (loiterers ignored) + staging defended (packs counted).
+Bar 50+.
+
+### Turtle v2 verdict: FAIL (2026-09-12 20:03 BST)
+Rated clean 15g -> ord 39.3 (mu 47.2): FAIL (bar 50+). SPLIT OUTCOME:
+wins DOUBLE baseline (47% vs 24%, incl 224-272k dominants) BUT placements
+vs strong collapse (4ths + deaths vs 250k+ (344k aggressive!)). Mechanism:
+precision thins the wall (2-3 home); big packs crack thin walls (need 5-8
+home (blanket prints!). vs WEAK, precision wins (sprawl feeds, wins big);
+vs STRONG, thickness survives (mutuals hold, places 2nd-4th). V3 QUEUED
+(strength-gated thickness): blanket prints vs strong foes (rich enough to
+field 3+ packs), precision vs weak (save for sprawl). Combines v2 weak-wins
++ baseline strong-survivals -> mu 55+ predicted. Falsifiable: 4th/death-rate
+vs strong drops, weak-wins persist. Code parked on loop/turtle-thick2.
