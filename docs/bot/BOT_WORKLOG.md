@@ -3030,3 +3030,7 @@ aggressive 42.2 WORST (parked, baseline-optimal), expander 47.2
 (parked), turtle 47.3 (parked). Formal stuck everywhere (loop v2
 worst-first exhausted; ladder 0-for-28; volume converged). 80 needs
 compute (RL/search) unavailable here.
+
+### Buzzer 510g (2026-09-13 01:00 BST)
+Buzzer +10g (510 total) -> ord 62.7 (mu 66.0, was 65.5/500g): +0.5 on
+50% wins + 1 F1-death. 510 games.
