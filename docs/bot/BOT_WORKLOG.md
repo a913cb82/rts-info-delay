@@ -2305,3 +2305,30 @@ insurance can be -EV when its premium exceeds expected saves — price
 premiums from rates (death-rate x save-value vs premium x games), not
 from single specimens (t3376 was lottery-representative). Reverted (main
 keeps unfreeze-alone 57.3). Code parked on loop/pro-fogward.
+
+### Escort DECLINED (timing-impossible early + blind-gap + lottery-rates) (2026-09-12 16:21 BST)
+Theft-rate CONFIRMED high (mirror newborn take in 5/8 scratch games, 11 takes
+total). BUT escort unimplementable early (1-train/turn serializes: escort
+arrives late+merges (useless) or double-print suicides to 500-floor; only
+delayed-pair works (regrow between prints, march together, builds-stage
+self-regulates guard-iff-known-threat) — fragile (id-order-dependent,
+blind-threat gap, tempo cost) on lottery-grade rates (37% from 8 games).
+Premium-pricing lesson: DECLINE (rates too soft for a 60-line fragile).
+-instead: accumulation grind (best-pro +20g: sigma-shrink + fresh losses +
+banks games toward the hundreds 80 needs; pre-registered as measurement).
+
+### Accumulation grind: truth ~62, F1-death bug, mirror saturation (2026-09-12 16:47 BST)
+Best-pro +20g (35g total) -> ord 56.3 (mu 61.9, was 65.0/15g). Truth softer
+(62 not 65.6) but intact (no collapse). FINDINGS: (1) MINE DIES F1 4/4
+(0s) while ALL other pros survive F1 16/16 (100k+) — mine-specific bug
+(unfreeze dispatches needed guards in F1-sandwich (crowded thin both
+flanks) -> naked -> taken; parent-frozen keeps guards home, survives).
+Unfreeze reassessed NEUTRAL (not positive; keep merged as infra). (2)
+MIRROR SATURATION: info-optimal feeds ONLY all-pro fields now (closest
+skill = twins) — rating progress = mirror lottery. (3) ATTRACTOR DYNAMICS:
+scores slot-lock per (brain,slot,context) (247911x4, 260663x3...) — games
+mostly parallel solitaire (interaction rare); placements = attractor
+ordering. (4) BEHAVIOR-twins with distinct content-hashes (split minted
+duplicates) defeat hash-twin-exclusion — pool needs behavior-level dedup
+(future methodology). NEXT: F1-sandwich autopsy (recorded scratch) + fix
+(don't-dispatch-when-thin? fogward-for-F1?); unfreeze-qualified, not naked.
