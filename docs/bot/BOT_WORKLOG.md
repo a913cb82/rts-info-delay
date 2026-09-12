@@ -2640,3 +2640,11 @@ march covered (clean kills, snowball). Hybrid timing (pro-early tall +
 aggressive-late raid), untested class. Predicts: deaths drop (no thin
 donations) + wins persist/grow (rich takes snowball). Bar: aggressive gate
 (ord>=47.2 AND takes).
+
+### Two-phase verdict: FAIL, timing-sweep complete (2026-09-12 18:58 BST)
+Rated clean 15g -> ord 36.4 (mu 44.0): FAIL (gate 47.2+). Delayed snowball
+(tempo loss: wins max 166k vs baseline 572k) + counter-take deaths (packs
+leave home thin-ish, raided back). TIMING SWEEP COMPLETE: early+thin (donate,
+die) / mid-baseline (42.2, balanced) / late+rich (small wins, counter-takes).
+Baseline timing OPTIMAL among timings. Aggressive EXHAUSTED (selection,
+gating, need, march, timing all fail or worse). PARKED (main keeps 42.2).
