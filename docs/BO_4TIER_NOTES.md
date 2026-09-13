@@ -458,3 +458,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   s64/T2400 (+1.362, urb 3.7%); hand 4-tier shapes beat it (+1.381).
   Runner-up degenerate tiny-village mush (P0=171, urb 99.8% — p0min flag
   exists for exactly this). Full budget again confirms assay over search.
+- Inversion resolved by hand rematch (identical protocol, combo knobs):
+  4-tier +1.381 vs s64t +1.367. The search crown was noise (protocol wobble
+  ~0.005 < gap 0.014). 4-tier leads at combo knobs by assay AND search.
