@@ -405,3 +405,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - All 3 searches spent. Every full-budget winner is 4-tier with urb
   4–9%; every share gain (dense bourgs → 19–27% urban) comes from hand
   shapes within 0.01–0.03 behind.
+- Pricing#2 verdict: seed wins 6th time (+1.156, 14 model evals).
+  Pricing#3 (running): district prem.75 tiebreak (incumbent +1.217 vs
+  dense-bourg +1.159 vs sparse +1.217) — can search break a three-way
+  tie? 3/3 pricing committed.
