@@ -3487,3 +3487,7 @@ Buzzer +10g (1710 total) -> ord 61.9 (mu 65.3, was 67.1/1700g): -1.8 on
 Buzzer +10g (1720 total) -> ord 61.0 (mu 64.4, was 65.3/1710g): -0.9 on
 10% wins (1/10) + 2 F1-deaths + fifths (21a74a6 393k). Declining edge.
 1720 games.
+
+### Buzzer 1730g (2026-09-13 06:27 BST)
+Buzzer +10g (1730 total) -> ord 61.1 (mu 64.5, was 64.4/1720g): +0.1 on
+3W + F1-death + fifths. Flat at low (~61). 1730 games.
