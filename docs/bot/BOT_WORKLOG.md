@@ -3993,3 +3993,14 @@ Loop alive.
 
 ### Heartbeat (2026-09-13 13:21 BST)
 Loop alive.
+
+### Crowding-bomb built (2026-09-13 12:16 BST)
+Spite-founding (no-constraints imaginative): no economic site? Found
+within ~100km of biggest foe to stunt it (crowding taxes growth).
+Sacrificial settlers. Bar: exceed 37.0 AND takes (style).
+
+### Crowding-bomb verdict: FAIL (23.7, spite costs more) (2026-09-13 12:26 BST)
+Rated clean 15g (3x5) -> ord 23.7 (mu 31.7): FAIL (gate 37.0+). Spite-
+foundings donate settlers (die en route) + stunt minor (foes outgrow).
+Spite costs more than it denies. Reverted (main keeps aggressive 37.0).
+Parked on loop/aggr-crowd.
