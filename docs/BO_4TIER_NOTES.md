@@ -604,3 +604,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   s32 (+1.331); runner-up dense 3-tier (+1.184). Constrained search drops
   the bourg tier (min jumps price it out); hand dense-bourg (+1.396) beats
   both. District 3-tier optimum stands on hand shapes only.
+- G-S3 (running): full-constraint reseed (combo + min_ratio + p0min),
+  seed 91 — robustness of the sparse-big family. 3/3 searches spent;
+  pricing 0/3.
