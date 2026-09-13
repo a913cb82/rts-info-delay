@@ -518,3 +518,10 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   this round, by ASSEMBLING known goods (dense villages + dense bourgs +
   small chef) rather than discovering. Runner-up dense-bourg (+1.431,
   urb 20%). Rate-vs-shares frontier: +1.45/9% ↔ +1.43/20%.
+- Pricing#3 verdict: identical +1.4528 (same shape). Reseed reproduces
+  exactly — the dense district 3-tier is robust, not seed luck.
+- Round final (budget 3+3 spent): 4-tier optimal @1M and 3-tier @100k held
+  everywhere tested; shares best 77/14/2/3 (1M) and 78/17.5/4.7 (100k);
+  density via ratchet (33.1 @1M, 30–33 district); all gaps structural
+  (founding costs, urban income, terrain). Search record: 2 genuine
+  assemblies (P2 district, S2 tiny-mush rejected), 10+ stamps.
