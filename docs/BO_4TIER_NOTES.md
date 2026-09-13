@@ -317,3 +317,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   bounds, refit every 10): seeds no longer eat init, EI explores early.
 - F-S1 (running): 1M prem.75, init 32 + iter 64 (96 total), 3 light seeds
   (flat/s64/s32), xi 0.05 — first full-budget search. 1/3 searches spent.
+- Sharp hunger (prem.75+starv1.6): 4-tier +1.343 vs s64t +1.180 (gap +0.16,
+  widest measured). sf1.4 similar (+0.14). Rescue bonus + services both
+  favor tiers — but chef sizes still won't scale (3k +1.343 > 8k +1.311).
+- F-S2 (running): 1M prem.75+starv1.6, 3 light seeds, xi 0.05, 96 evals —
+  search where the 4-tier gradient is steepest. 2/3 searches spent.
