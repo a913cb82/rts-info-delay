@@ -51,7 +51,7 @@ Turn-based. Each turn consists of phases:
 - An army dies if any enemy in range has weakness <= its own
 - Towns are taken by the lowest-weakness nearby army's faction
     - Tie across factions leads to no capture
-    - Population halves on capture and capitals demoted to normal towns
+    - Population and market know-how halve on capture and capitals demoted to normal towns
 
 #### Economy
 - Farms feed people from the land within 5km and from the farm labour available

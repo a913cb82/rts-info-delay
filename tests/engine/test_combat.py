@@ -303,6 +303,19 @@ class TestCaptureCapitals:
         t = w.get_town(0)
         assert t is not None and t.faction == 1 and not t.is_capital
 
+    def test_capture_halves_population_and_improvement(self) -> None:
+        # The sack loots workshops as well as people: both halve.
+        from engine.combat import resolve_captures
+        w = self._world()
+        w.towns.append(Town(id=0, faction=0, x=100, y=100, population=4000,
+                            last_improvement=0.4))
+        w.armies.append(Army(id=1, faction=1, x=100, y=100))
+        resolve_captures(w, CFG)
+        t = w.get_town(0)
+        assert t is not None and t.faction == 1
+        assert t.population == 2000.0
+        assert t.last_improvement == 0.2
+
     def test_headless_captor_gains_no_capital(self) -> None:
         from engine.combat import resolve_captures
         w = self._world()

@@ -352,6 +352,7 @@ def _apply_capture(world: World, town, new_faction: int, config: GameConfig, boo
             del capitals[old_faction]
     town.faction = new_faction
     town.population *= (1.0 - config.capture_loss)
+    town.last_improvement *= (1.0 - config.capture_loss)  # sack loots workshops too
     return {
         "kind": "town_capture",
         "id": town.id,
