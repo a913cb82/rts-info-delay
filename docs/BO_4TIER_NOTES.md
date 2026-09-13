@@ -542,3 +542,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   dense@11+2500 (+0.927) inside 0.005. District top is a three-way
   plateau (2500–3000 chefs, dense bourgs optional); search cannot separate
   them, only assay maps the flat.
+- Pricing#2 (running): 1M BASE adjudication (small-chef hand +0.909 vs
+  seed +0.885) — can search close a 0.024 hand lead? 2/3 pricing spent.
