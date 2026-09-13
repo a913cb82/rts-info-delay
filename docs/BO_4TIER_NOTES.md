@@ -663,3 +663,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District BASE dense+2500 (@13): +0.924, urb 20% — joins the plateau
   (@11+2500 +0.927, lean +0.922, all within 0.005). District top is flat
   across bourg spacing AND chef size; only shares move.
+- H-S2 mid-run (14 model evals, constrained BASE): s64-family leads
+  (+0.841, urb 4.6%); hand c1000-shape (+0.909) and seed (+0.885) both
+  ahead of everything searched. Search trails hand by 0.02–0.07 at the
+  standard too — assay leads, search follows, both scales.
