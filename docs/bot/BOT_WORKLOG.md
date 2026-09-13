@@ -3585,3 +3585,8 @@ from 66.1). Riding.
 ### Overmatch 315g (diverse-batch dip) (2026-09-13 07:52 BST)
 21a74a6 +15g (315 total) -> ord 68.8 (mu 72.5, was 74.1/300g): -1.7 on
 7W (weak-diverse wins pay ~0; mids cost) + fourths. Oscillation. 315g.
+
+### Overmatch 330g (stuck at 73?) (2026-09-13 07:57 BST)
+21a74a6 +15g (330 total) -> ord 68.1 (mu 71.8, was 72.5/315g): -0.7 on
+47% wins + ZERO deaths + fourths. Oscillation 68-71 (mu 72-74 plateau?).
+80 needs +9 (win-rate jump, luck-bound). 330 games.
