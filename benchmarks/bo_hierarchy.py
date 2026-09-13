@@ -161,7 +161,7 @@ def evaluate(u):
 def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
         require=0, footprint=True, melt=None, premium=None, gamma=None,
         starv=None, decay=None, cart=None, rmax=None, target=None, rural=None,
-        p0min=None, noseeds=False):
+        p0min=None, noseeds=False, nseeds=None, xi=0.01):
     global RMIN, REQUIRE, LO, FOOTPRINT, CFG, RMAX, AREA, TARGET, BAND, NOSEEDS
     NOSEEDS = bool(noseeds)
     RMIN = float(min_ratio)
@@ -256,16 +256,17 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
              seed_for(3.5, 300.0, 13.0, 5.0 / 3.0, 80.0, 6.0, 150.0, 20.0 / 3.0),  # dense-combo 4-tier
              seed_for(4.0, 300.0, 13.0, 5.0 / 3.0, 80.0, 6.0, 150.0, 20.0 / 3.0),  # dense-bourg 4-tier
              seed_for(4.0, 300.0, 13.0, 2.0, 70.0, 4.0)]  # dense-bourg 3-tier (district)
+    seed_list = seeds if nseeds is None else seeds[:max(0, int(nseeds))]
     if not noseeds:
-        for u in seeds:
+        for u in seed_list:
             ask_evaluate(u)
 
     sampler = qmc.LatinHypercube(d=D, seed=seed)
-    for u in sampler.random(max(0, n_init - len(seeds))):
+    for u in sampler.random(max(0, n_init - (0 if noseeds else len(seed_list)))):
         ask_evaluate(u.tolist())
 
     kern = (ConstantKernel(1.0, (1e-3, 1e3)) *
-            Matern(length_scale=np.ones(D), length_scale_bounds=(1e-2, 10.0), nu=2.5) +
+            Matern(length_scale=np.ones(D), length_scale_bounds=(1e-3, 50.0), nu=2.5) +
             WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-8, 1e-1)))
     gpr = GaussianProcessRegressor(kernel=kern, normalize_y=True,
                                    n_restarts_optimizer=2, random_state=seed)
@@ -276,7 +277,7 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
     it = 0
     while len(Xs) < n_init + n_iter:
         it += 1
-        if it % 25 == 0:  # ...re-optimized occasionally, frozen otherwise
+        if it % 10 == 0:  # ...re-optimized regularly, frozen otherwise
             gpr = GaussianProcessRegressor(kernel=frozen, normalize_y=True,
                                            n_restarts_optimizer=2,
                                            random_state=seed + it)
@@ -291,7 +292,7 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
         mu, sigma = gpr.predict(C, return_std=True)
         best = float(np.max(y))
         with np.errstate(divide="ignore", invalid="ignore"):
-            imp = mu - best - 0.01
+            imp = mu - best - xi
             z = np.where(sigma > 0, imp / np.maximum(sigma, 1e-12), 0.0)
             val = np.where(sigma > 0, imp * norm.cdf(z) + sigma * norm.pdf(z), 0.0)
         u = C[int(np.argmax(val))].tolist()
@@ -328,6 +329,8 @@ if __name__ == "__main__":
     ap.add_argument("--rural", type=float, default=None)
     ap.add_argument("--p0min", type=float, default=None)
     ap.add_argument("--noseeds", action="store_true")
+    ap.add_argument("--nseeds", type=int, default=None)
+    ap.add_argument("--xi", type=float, default=0.01)
     ap.add_argument("--rmax", type=float, default=None)
     ap.add_argument("--target", type=float, default=None)
     args = ap.parse_args()
@@ -336,4 +339,4 @@ if __name__ == "__main__":
         footprint=args.footprint, melt=args.melt, premium=args.premium,
         gamma=args.gamma, starv=args.starv, decay=args.decay, cart=args.cart,
         rmax=args.rmax, target=args.target, rural=args.rural, p0min=args.p0min,
-        noseeds=args.noseeds)
+        noseeds=args.noseeds, nseeds=args.nseeds, xi=args.xi)

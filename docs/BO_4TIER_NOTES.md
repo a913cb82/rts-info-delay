@@ -313,3 +313,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - r3-BO#5 (running): seedless district (--noseeds, prem.75) — the fair
   discovery test. If it finds the dense 3-tier (+1.217) unaided, 16-eval
   BO can discover; if not, seeds are load-bearing. 5/5 spent.
+- Search fixes implemented (--nseeds/--xi flags, wider length-scale
+  bounds, refit every 10): seeds no longer eat init, EI explores early.
+- F-S1 (running): 1M prem.75, init 32 + iter 64 (96 total), 3 light seeds
+  (flat/s64/s32), xi 0.05 — first full-budget search. 1/3 searches spent.
