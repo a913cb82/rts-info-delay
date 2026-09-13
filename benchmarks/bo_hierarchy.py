@@ -160,7 +160,8 @@ def evaluate(u):
 
 def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
         require=0, footprint=True, melt=None, premium=None, gamma=None,
-        starv=None, decay=None, cart=None, rmax=None, target=None, rural=None):
+        starv=None, decay=None, cart=None, rmax=None, target=None, rural=None,
+        p0min=None):
     global RMIN, REQUIRE, LO, FOOTPRINT, CFG, RMAX, AREA, TARGET, BAND
     RMIN = float(min_ratio)
     REQUIRE = int(require)
@@ -186,6 +187,8 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
           f"footprint={FOOTPRINT}", flush=True)
     LO = LO.copy()
     LO[3] = LO[5] = LO[7] = math.log(RMIN)
+    if p0min is not None:
+        LO[1] = math.log(float(p0min))
     from scipy.stats import norm, qmc
     from sklearn.gaussian_process import GaussianProcessRegressor
     from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
@@ -318,6 +321,7 @@ if __name__ == "__main__":
     ap.add_argument("--decay", type=float, default=None)
     ap.add_argument("--cart", type=float, default=None)
     ap.add_argument("--rural", type=float, default=None)
+    ap.add_argument("--p0min", type=float, default=None)
     ap.add_argument("--rmax", type=float, default=None)
     ap.add_argument("--target", type=float, default=None)
     args = ap.parse_args()
@@ -325,4 +329,4 @@ if __name__ == "__main__":
         log_path=args.log, min_ratio=args.min_ratio, require=args.require,
         footprint=args.footprint, melt=args.melt, premium=args.premium,
         gamma=args.gamma, starv=args.starv, decay=args.decay, cart=args.cart,
-        rmax=args.rmax, target=args.target, rural=args.rural)
+        rmax=args.rmax, target=args.target, rural=args.rural, p0min=args.p0min)

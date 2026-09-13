@@ -177,6 +177,18 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - share-BO#4 (running): extend BO#3 log to 32 evals — can the search
   find the dense-bourg region itself? 4/5 spent.
 
+## share-BO#4 verdict: search finds tiny villages (+1.197, shares worse)
+
+- BO#4 (32 evals): best = 4-tier with P0=148 @2.92km (N=5916!):
+  148/773@37/3784@83/4176@156, urb 6.4%, +1.197. Pure growth subdivides
+  to the service floor — shares move AWAY from reality (villages smaller,
+  urban down). Missing fixed costs confirmed as the binding gap.
+- Dense-bourg hand shape (77/14/2/2, +1.164) keeps the share lead among
+  realistic-village layouts; no-chefs variant hits +1.183 (3-tier).
+- share-BO#5 (running): prem.75 + `--p0min 300` (new flag flooring
+  village size at the parish-center lower bound) — best shares under a
+  realistic-village constraint? 5/5 spent.
+
 ## Tier-earning audit (dense-bourg shape, prem.75, settled)
 
 - Full (vill+bourgs@13+chefs+reg): +1.164. No-regional: +1.062 (regional
