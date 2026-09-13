@@ -3706,3 +3706,7 @@ Converged ~66-70.
 ### Overmatch 650g (2026-09-13 09:22 BST)
 21a74a6 +10g (650 total) -> ord 66.6 (mu 70.1, was 70.5/640g): -0.4 on
 60% wins (offset by F1-death + fourths). 650 games.
+
+### Overmatch 660g (70% batch, no deaths) (2026-09-13 09:27 BST)
+21a74a6 +10g (660 total) -> ord 67.6 (mu 71.1, was 70.1/650g): +1.0 on
+70% wins + 2nds/3rd + ZERO deaths. 660 games.
