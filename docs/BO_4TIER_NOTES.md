@@ -551,3 +551,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   costs 0.008 (430s: +0.914) — but village SHARE won't fall either way
   (84–88%): sparser count and bigger size both add village mass faster
   than towns absorb. Count ✓, size ~$, share ✗ without town-side income.
+- Pricing#2 verdict (BASE adjudication): 4-tier seed wins 8th time
+  (+0.885); dense-combo 2nd (+0.876); dense-bourg 3rd (+0.868). The hand
+  small-chef lead (+0.909) stands untested by search — none of its exact
+  geometry fell in 12 model evals. Next pricing should seed FROM it.
