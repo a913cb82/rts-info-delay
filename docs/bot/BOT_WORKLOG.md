@@ -3562,3 +3562,8 @@ Climbing again. Riding.
 21a74a6 +15g (240 total) -> ord 69.4 (mu 73.1, was 74.6/225g): -1.5 on
 60% wins (offset by F1-death + fifths). Oscillation (trend still up
 from 66.1). Riding.
+
+### Overmatch 255g (plateau at 73?) (2026-09-13 07:32 BST)
+21a74a6 +15g (255 total) -> ord 68.9 (mu 72.6, was 73.1/240g): -0.5 on
+47% wins + ZERO deaths + fourth. Oscillation 69-71 (mu 72-75 plateau?).
+80 needs mu 81+ (+8; win-rate 60%->85%, luck-bound). 255 games.
