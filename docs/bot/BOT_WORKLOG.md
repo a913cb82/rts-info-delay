@@ -3491,3 +3491,7 @@ Buzzer +10g (1720 total) -> ord 61.0 (mu 64.4, was 65.3/1710g): -0.9 on
 ### Buzzer 1730g (2026-09-13 06:27 BST)
 Buzzer +10g (1730 total) -> ord 61.1 (mu 64.5, was 64.4/1720g): +0.1 on
 3W + F1-death + fifths. Flat at low (~61). 1730 games.
+
+### Buzzer 1740g (50% recovery) (2026-09-13 06:32 BST)
+Buzzer +10g (1740 total) -> ord 62.2 (mu 65.6, was 64.5/1730g): +1.1 on
+50% wins + fourths. Recovery. 1740 games.
