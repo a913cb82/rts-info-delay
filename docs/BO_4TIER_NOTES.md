@@ -687,3 +687,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   dense-bourg, small-chef, combo) — first run where the seeds contain
   every hand finding. Tests whether search with full knowledge beats the
   seed. 3/3 searches spent.
+- H-S3 seeds phase (13 model evals): 4-tier seed +0.885 leads; dense-combo
+  2nd (+0.876); dense-bourg 3rd (+0.868); small-chef seed only 6th (+0.846
+  vs +0.909 hand — seed approximation costs 0.06: 1500-chefs/15k-regional
+  ≠ 1000/20k-center). Seed fidelity matters at the second decimal.
