@@ -381,3 +381,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Bourg-spacing peak at BASE too (@13 +0.889 > @11 +0.887 > @10 +0.880):
   plateau 11–13km, gentle falloff both sides. Spacing optimum is
   knob-stable; only levels shift with knobs.
+- Chef-spacing plateau confirmed at prem.75 (@64/@80/@96 all +1.105–1.11
+  cold): spacings knob-stable 64–96km, levels carry all knob response.
