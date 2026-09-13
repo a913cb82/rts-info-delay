@@ -696,3 +696,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District BASE s64t (mid tops, no bourgs): +0.642 vs +0.92 dense/lean.
   Bourgs earn +0.28 at district BASE — the middle tier's biggest receipt
   anywhere (sparse tops can't cover alone at the standard).
+- Pricing#2 verdict: old seed wins 11th time (+0.885); hand-lead seed
+  loses with the pack — center-placed 20k regional (hand +0.909) vs
+  lattice 10k (seed) differs by 0.02+. Center placement itself is worth
+  hundredths: unseedable geometry decides the lead.
