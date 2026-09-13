@@ -394,3 +394,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   Bourgs land (13.7% ✓) but villages stay 83% — sparser lattice thins
   coverage faster than bigger villages add share. Deadlock holds from
   the spacing side too.
+- Regional 20k vs 25k (dense-bourg shape, prem.75): +1.164 vs +1.160 —
+  flat top, 20–30k all tie. Regional size free within the anchor band.
