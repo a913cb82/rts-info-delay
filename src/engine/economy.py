@@ -134,33 +134,73 @@ def derived(config: GameConfig):
 
 
 # ---------------------------------------------------------------------------
-# Distance matrix cache (shared across turns; validated by element identity)
+# Spatial index: cached 60 km neighbor lists (ascending indices + exact
+# distances) replace the dense N x N distance matrix, which only ever
+# served neighbor discovery. Built on a CSR cell grid (combat.py pattern)
+# so no N x N array is ever materialized; pair sets match the old matrix
+# thresholding bit-for-bit (same sqrt expression, same comparison), and
+# every consumer below visits pairs in ascending index order — so the
+# whole economy is bit-identical to the matrix version (tripwire-stable).
 
-_dist_cache: dict = {}
-
-
-def _same_towns(ref: list[Town] | None, all_towns: list[Town]) -> bool:
-    if ref is None or len(ref) != len(all_towns):
-        return False
-    for a, b in zip(ref, all_towns):
-        if a is not b:
-            return False
-    return True
+_GRID_CELL_KM = 20.0
+_geo_cache = {"key": None, "geo": None}
 
 
-def _get_dist_matrix(all_towns: list[Town]) -> np.ndarray:
-    e = _dist_cache.get(id(all_towns))
-    if e is not None and _same_towns(e[0], all_towns):
-        return e[1]
-    xs = np.array([t.x for t in all_towns], dtype=np.float64)
-    ys = np.array([t.y for t in all_towns], dtype=np.float64)
-    dx = xs[:, None] - xs[None, :]
-    dy = ys[:, None] - ys[None, :]
-    D = np.sqrt(dx * dx + dy * dy)
-    _dist_cache[id(all_towns)] = [list(all_towns), D]
-    if len(_dist_cache) > 20:
-        del _dist_cache[next(iter(_dist_cache))]
-    return D
+def _geo(towns: list[Town], config: GameConfig):
+    """(nidx, ndist, ndeg, xs, ys): neighbors within trade reach.
+
+    nidx[i] lists town indices within max_km (self included) ascending,
+    ndist their exact distances, ndeg the counts. One entry cached per
+    town set (positions only move when the set changes, like land);
+    the reach is part of the key so mid-run factor sweeps rebuild."""
+    max_km = _TRADE_REACH_FACTOR * config.cart_distance_km
+    key = (tuple((t.id, t.x, t.y) for t in towns), float(max_km))
+    if _geo_cache["key"] == key:
+        return _geo_cache["geo"]
+    n = len(towns)
+    xs = np.array([t.x for t in towns], dtype=np.float64)
+    ys = np.array([t.y for t in towns], dtype=np.float64)
+    if n == 0:
+        geo = (np.zeros((0, 0), np.int64), np.zeros((0, 0)),
+               np.zeros(0, np.int64), xs, ys)
+    else:
+        cell = _GRID_CELL_KM
+        cells: dict = {}
+        for j in range(n):
+            ck = (math.floor(xs[j] / cell), math.floor(ys[j] / cell))
+            cells.setdefault(ck, []).append(j)
+        rows_i, rows_d = [], []
+        for i in range(n):
+            # Cells overlapped by the reach disc (1e-7 slop dwarfs fp
+            # noise; the exact-distance filter below is the arbiter).
+            ix0 = math.floor((xs[i] - max_km - 1e-7) / cell)
+            ix1 = math.floor((xs[i] + max_km + 1e-7) / cell)
+            iy0 = math.floor((ys[i] - max_km - 1e-7) / cell)
+            iy1 = math.floor((ys[i] + max_km + 1e-7) / cell)
+            cand = []
+            for ax in range(ix0, ix1 + 1):
+                for ay in range(iy0, iy1 + 1):
+                    cand.extend(cells.get((ax, ay), ()))
+            cand = np.unique(np.array(cand, dtype=np.int64))
+            dx = xs[i] - xs[cand]
+            dy = ys[i] - ys[cand]
+            d = np.sqrt(dx * dx + dy * dy)
+            keep = d <= max_km
+            rows_i.append(cand[keep])
+            rows_d.append(d[keep])
+        md = max((len(r) for r in rows_i), default=0)
+        nidx = np.zeros((n, md), dtype=np.int64)
+        ndist = np.zeros((n, md), dtype=np.float64)
+        ndeg = np.zeros(n, dtype=np.int64)
+        for i in range(n):
+            m = len(rows_i[i])
+            ndeg[i] = m
+            nidx[i, :m] = rows_i[i]
+            ndist[i, :m] = rows_d[i]
+        geo = (nidx, ndist, ndeg, xs, ys)
+    _geo_cache["key"] = key
+    _geo_cache["geo"] = geo
+    return geo
 
 
 # ---------------------------------------------------------------------------
@@ -237,21 +277,25 @@ def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
     n = len(towns)
     areas = np.zeros(n, dtype=np.float64)
     if n:
-        xs = np.array([t.x for t in towns], dtype=np.float64)
-        ys = np.array([t.y for t in towns], dtype=np.float64)
+        _g = _geo(towns, config)
+        xs, ys = _g[3], _g[4]
+        nidx, ndist, ndeg = _g[0], _g[1], _g[2]
         sx, sy = _sample_offsets(_SAMPLE_K)
         # Candidate towns within 2R of each town (ascending index).
         # Triangle inequality: the nearest town to any sample in i's
         # ring is at most 2R from i, so restricting to candidates is
         # exact; the 1e-9 slack dwarfs float noise at the boundary.
-        D = _get_dist_matrix(towns)
+        # The 60 km lists below already hold exact distances — filtering
+        # preserves their ascending order, so these match the old
+        # matrix-thresholded candidates bit-for-bit.
         reach = 2.0 * config.farm_radius_km * (1.0 + 1e-9)
         degs = np.zeros(n, dtype=np.int64)
         for i in range(n):
-            degs[i] = int(np.count_nonzero(D[i] <= reach))
+            degs[i] = int(np.count_nonzero(ndist[i, :ndeg[i]] <= reach))
         nbrs = np.zeros((n, int(degs.max())), dtype=np.int64)
         for i in range(n):
-            nbrs[i, :degs[i]] = np.flatnonzero(D[i] <= reach)
+            m = ndist[i, :ndeg[i]] <= reach
+            nbrs[i, :degs[i]] = nidx[i, :ndeg[i]][m]
         if _has_numba:
             _land_kernel(xs, ys, sx, sy, config.farm_radius_km, nbrs, degs, areas)
         else:
@@ -276,14 +320,18 @@ try:
     import numba as _numba
 
     @_numba.njit(cache=True)
-    def _trade_kernel(D, surplus, deficit, max_km, imports, exports):
-        n = D.shape[0]
+    def _trade_kernel(nidx, ndist, ndeg, surplus, deficit, imports, exports):
+        # Same enumeration as the old matrix scan (i ascending, stored
+        # neighbors ascending = the in-reach set), same distance values
+        # — the (ds, ii, jj) arrays below are bit-identical to before.
+        n = nidx.shape[0]
         m = 0
         for i in range(n):
             if deficit[i] <= 0.0:
                 continue
-            for j in range(n):
-                if j != i and surplus[j] > 0.0 and D[i, j] <= max_km:
+            for mm in range(ndeg[i]):
+                j = nidx[i, mm]
+                if j != i and surplus[j] > 0.0:
                     m += 1
         ds = np.empty(m, dtype=np.float64)
         ii = np.empty(m, dtype=np.int64)
@@ -292,9 +340,10 @@ try:
         for i in range(n):
             if deficit[i] <= 0.0:
                 continue
-            for j in range(n):
-                if j != i and surplus[j] > 0.0 and D[i, j] <= max_km:
-                    ds[k] = D[i, j]
+            for mm in range(ndeg[i]):
+                j = nidx[i, mm]
+                if j != i and surplus[j] > 0.0:
+                    ds[k] = ndist[i, mm]
                     ii[k] = i
                     jj[k] = j
                     k += 1
@@ -320,24 +369,26 @@ except Exception:  # pragma: no cover
     _trade_kernel = None  # type: ignore
 
 
-def _trade(surplus: np.ndarray, deficit: np.ndarray, D: np.ndarray,
+def _trade(surplus: np.ndarray, deficit: np.ndarray, geo,
            config: GameConfig):
+    """geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
     n = len(surplus)
     imports = np.zeros(n, dtype=np.float64)
     exports = np.zeros(n, dtype=np.float64)
     if n < 2:
         return imports, exports
-    max_km = _TRADE_REACH_FACTOR * config.cart_distance_km
+    nidx, ndist, ndeg = geo[0], geo[1], geo[2]
     if _has_trade_numba:
-        _trade_kernel(D, surplus, deficit, max_km, imports, exports)
+        _trade_kernel(nidx, ndist, ndeg, surplus, deficit, imports, exports)
         return imports, exports
     pairs = []
     for i in range(n):
         if deficit[i] <= 0.0:
             continue
-        for j in range(n):
-            if i != j and surplus[j] > 0.0 and D[i, j] <= max_km:
-                pairs.append((D[i, j], i, j))
+        for mm in range(ndeg[i]):
+            j = nidx[i, mm]
+            if i != j and surplus[j] > 0.0:
+                pairs.append((ndist[i, mm], i, j))
     pairs.sort()
     rem_s = surplus.copy()
     rem_d = deficit.copy()
@@ -355,22 +406,19 @@ try:
     import numba as _numba2
 
     @_numba2.njit(cache=True)
-    def _market_kernel(D, contrib, cart_km, max_km, ln2, out):
-        """Sparse market accumulation: only in-reach, contributing pairs.
+    def _market_kernel(nidx, ndist, ndeg, contrib, cart_km, ln2, out):
+        """Market accumulation over stored in-reach pairs (ascending).
 
-        Pairs beyond max_km or with zero contribution are exactly 0.0
-        in the dense form, so skipping them only regroups the sum
-        (fp noise at ~1e-16 relative, verified on the suite).
-        """
-        n = D.shape[0]
+        Same pairs in the same order with the same distances as the old
+        matrix scan — bit-identical sums."""
+        n = nidx.shape[0]
         for i in range(n):
             s = 0.0
-            for j in range(n):
-                d = D[i, j]
-                if d <= max_km:
-                    c = contrib[j]
-                    if c != 0.0:
-                        s += math.exp(-d * ln2 / cart_km) * c
+            for mm in range(ndeg[i]):
+                j = nidx[i, mm]
+                c = contrib[j]
+                if c != 0.0:
+                    s += math.exp(-ndist[i, mm] * ln2 / cart_km) * c
             out[i] = s
 
     _has_market_numba = True
@@ -379,17 +427,17 @@ except Exception:  # pragma: no cover
     _market_kernel = None  # type: ignore
 
 
-def _market_boost(serv: np.ndarray, pops: np.ndarray, D: np.ndarray,
+def _market_boost(serv: np.ndarray, pops: np.ndarray, geo,
                   config: GameConfig, p_market: float) -> np.ndarray:
     """Farm-output premium = services per head served.
 
     mkt is the reachable non-farm population; the denominator is the
     population it serves, so the premium is a service ratio (0 remote,
-    -> market_premium where services are abundant)."""
+    -> market_premium where services are abundant).
+    geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
     n = len(serv)
     if n == 0:
         return np.zeros(0)
-    max_km = _TRADE_REACH_FACTOR * config.cart_distance_km
     ln2 = math.log(2.0)
     contrib = np.where(
         serv > 0.0,
@@ -397,16 +445,20 @@ def _market_boost(serv: np.ndarray, pops: np.ndarray, D: np.ndarray,
                             config.market_scaling),
         0.0,
     )
+    nidx, ndist, ndeg = geo[0], geo[1], geo[2]
     mkt = np.zeros(n, dtype=np.float64)
     if _has_market_numba:
-        _market_kernel(D, contrib, config.cart_distance_km, max_km, ln2, mkt)
+        _market_kernel(nidx, ndist, ndeg, contrib,
+                       config.cart_distance_km, ln2, mkt)
     else:
         for i in range(n):
-            row = D[i]
-            m = (row <= max_km) & (contrib != 0.0)
+            deg = ndeg[i]
+            jj = nidx[i, :deg]
+            dd = ndist[i, :deg]
+            m = contrib[jj] != 0.0
             if np.any(m):
-                mkt[i] = np.sum(np.exp(-row[m] * ln2 / config.cart_distance_km)
-                                * contrib[m])
+                mkt[i] = np.sum(np.exp(-dd[m] * ln2 / config.cart_distance_km)
+                                * contrib[jj[m]])
     return config.market_premium * mkt / (mkt + np.maximum(pops, 1e-12))
 
 
@@ -417,7 +469,7 @@ _MIG_BLOCK = 256
 
 
 def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
-               D: np.ndarray, config: GameConfig) -> np.ndarray:
+               xs: np.ndarray, ys: np.ndarray, config: GameConfig) -> np.ndarray:
     n = len(pops)
     if n < 2:
         return np.zeros(n)
@@ -429,7 +481,11 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
     outflow = np.zeros(n, dtype=np.float64)
     for r0 in range(0, n, _MIG_BLOCK):
         B = slice(r0, min(r0 + _MIG_BLOCK, n))
-        Db = D[B, :]
+        # Distances computed on the fly with the same expression the old
+        # matrix used — bit-identical values, no N x N storage.
+        dx = xs[B, None] - xs[None, :]
+        dy = ys[B, None] - ys[None, :]
+        Db = np.sqrt(dx * dx + dy * dy)
         gap_b = np.maximum(0.0, pops[None, :] - pops[B, None])
         mig_b = np.exp(-Db / scale) * _win_np(Db, config.info_speed)
         A_b = gap_b * feed[None, :] * mig_b
@@ -461,16 +517,16 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
     y_ring, p_market, h, b_t, m_t, nu_t = derived(config)
     sf = max(config.farm_workers_yield, 1e-12)
     areas = land_areas(towns, map_size, config)
-    D = _get_dist_matrix(towns) if n >= 2 else None
+    geo = _geo(towns, config) if n >= 2 else None
     base_prod = production(config, areas, pops)
     serv = np.maximum(0.0, pops - base_prod / sf)
-    boost = (_market_boost(serv, pops, D, config, p_market) if n >= 2
+    boost = (_market_boost(serv, pops, geo, config, p_market) if n >= 2
              else np.zeros(n))
     prod = (1.0 + boost) * base_prod
     surplus = np.maximum(0.0, prod - pops)
     deficit = np.maximum(0.0, pops - prod)
     if n >= 2:
-        imports, _exports = _trade(surplus, deficit, D, config)
+        imports, _exports = _trade(surplus, deficit, geo, config)
     else:
         imports = np.zeros(n)
     S = prod + imports
@@ -481,7 +537,7 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
         p_surp = np.maximum(0.0, pops - p_need)
         out_people = (config.migration_share * np.maximum(0.0, births - deaths)
                       + nu_t * p_surp)
-        net_mig = _migration(pops, S, out_people, D, config)
+        net_mig = _migration(pops, S, out_people, geo[3], geo[4], config)
     else:
         net_mig = np.zeros(n)
     new_pops = np.maximum(0.0, pops + births - deaths + net_mig)

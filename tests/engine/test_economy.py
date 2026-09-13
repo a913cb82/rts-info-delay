@@ -22,6 +22,7 @@ import pytest
 
 from engine.config import GameConfig
 from engine.economy import (
+    _geo,
     _market_boost,
     _migration,
     _step_core,
@@ -53,6 +54,12 @@ def _world(*towns: Town) -> World:
     w.map_size = [1000, 1000]
     w.towns = list(towns)
     return w
+
+
+def _geo_xs(*xs: float):
+    """Neighbor structure for towns on a line (replaces hand-made D)."""
+    towns = [_town(float(x), 0.0, 300.0, tid=k) for k, x in enumerate(xs)]
+    return _geo(towns, CFG)
 
 
 class TestLand:
@@ -105,8 +112,7 @@ class TestTrade:
     def test_conserves_and_caps(self) -> None:
         surplus = np.array([0.0, 100.0])
         deficit = np.array([40.0, 0.0])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        imports, exports = _trade(surplus, deficit, D, CFG)
+        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 30.0), CFG)
         assert imports[0] == pytest.approx(40.0)
         assert exports[1] == pytest.approx(40.0)
         assert imports.sum() == pytest.approx(exports.sum())
@@ -114,23 +120,20 @@ class TestTrade:
     def test_caps_at_surplus(self) -> None:
         surplus = np.array([0.0, 100.0])
         deficit = np.array([500.0, 0.0])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        imports, exports = _trade(surplus, deficit, D, CFG)
+        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 30.0), CFG)
         assert imports[0] == pytest.approx(100.0)
         assert exports[1] == pytest.approx(100.0)
 
     def test_beyond_carting_reach_no_trade(self) -> None:
         surplus = np.array([0.0, 100.0])
         deficit = np.array([40.0, 0.0])
-        D = np.array([[0.0, 100.0], [100.0, 0.0]])
-        imports, exports = _trade(surplus, deficit, D, CFG)
+        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 100.0), CFG)
         assert imports[0] == 0.0 and exports[1] == 0.0
 
     def test_nearest_served_first(self) -> None:
         surplus = np.array([0.0, 100.0, 100.0])
         deficit = np.array([60.0, 0.0, 0.0])
-        D = np.array([[0.0, 10.0, 40.0], [10.0, 0.0, 30.0], [40.0, 30.0, 0.0]])
-        imports, exports = _trade(surplus, deficit, D, CFG)
+        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 10.0, 40.0), CFG)
         assert exports[1] == pytest.approx(60.0)  # nearest seller pays
         assert exports[2] == 0.0
 
@@ -141,24 +144,25 @@ class TestMigration:
         pops = np.array([300.0, 2400.0])
         S = np.array([390.0, 2356.0])
         out = np.array([0.1, 0.0])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        net = _migration(pops, S, out, D, CFG)
+        net = _migration(pops, S, out,
+                         np.array([0.0, 30.0]), np.array([0.0, 0.0]), CFG)
         assert net.sum() == pytest.approx(0.0, abs=1e-12)
 
     def test_people_move_upward(self) -> None:
         pops = np.array([300.0, 2400.0])
         S = np.array([390.0, 2356.0])
         out = np.array([0.5, 0.0])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        net = _migration(pops, S, out, D, CFG)
+        net = _migration(pops, S, out,
+                         np.array([0.0, 30.0]), np.array([0.0, 0.0]), CFG)
         assert net[0] < 0 < net[1]
 
     def test_no_flow_between_equal_towns(self) -> None:
         pops = np.array([300.0, 300.0])
         S = np.array([390.0, 390.0])
         out = np.array([0.5, 0.5])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        assert np.allclose(_migration(pops, S, out, D, CFG), 0.0)
+        assert np.allclose(_migration(pops, S, out,
+                                      np.array([0.0, 30.0]),
+                                      np.array([0.0, 0.0]), CFG), 0.0)
 
 
 class TestMarketAccess:
@@ -166,15 +170,15 @@ class TestMarketAccess:
     def test_non_farm_population_provides_services(self) -> None:
         serv = np.array([588.0, 0.0])
         pops = np.array([2400.0, 300.0])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        boost = _market_boost(serv, pops, D, CFG, derived(CFG)[1])
+        boost = _market_boost(serv, pops, _geo_xs(0.0, 30.0),
+                              CFG, derived(CFG)[1])
         assert boost[1] > 0.02
 
     def test_no_market_no_boost(self) -> None:
         serv = np.array([0.0, 0.0])
         pops = np.array([300.0, 300.0])
-        D = np.array([[0.0, 30.0], [30.0, 0.0]])
-        boost = _market_boost(serv, pops, D, CFG, derived(CFG)[1])
+        boost = _market_boost(serv, pops, _geo_xs(0.0, 30.0),
+                              CFG, derived(CFG)[1])
         assert np.allclose(boost, 0.0)
 
     def test_market_yield_reaches_the_village(self) -> None:

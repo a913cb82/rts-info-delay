@@ -72,7 +72,8 @@ def rate(spec, map_size=(2000, 2000), cfg=None):
 
 
 def clear():
-    eco._dist_cache.clear()
+    eco._geo_cache["key"] = None
+    eco._geo_cache["geo"] = None
     eco._land_cache["key"] = None
     eco._land_cache["areas"] = None
 
