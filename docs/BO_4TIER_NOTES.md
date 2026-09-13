@@ -630,3 +630,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   villages rebound to 78. Frontier mapped: @13 gives 72.8/21.5/5.8, @16
   gives 77.7/15.5/6.8. Reality (72/15) sits just outside the attainable
   corner — both need tops to absorb mass neither spacing frees.
+- G-S3 final (96 evals, 34 model, full constraints): winner s64-family
+  (+1.347, urb 4.6%); runner-up degenerate-urban (+1.346, urb 100% —
+  constraints don't stop urban extremes, only phantoms and tiny P0).
+  Constrained search crowns minimal-urban for the third time running.
