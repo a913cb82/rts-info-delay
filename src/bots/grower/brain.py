@@ -10,7 +10,7 @@ Playbook (all numbers experimental, BOT_WORKLOG early-game series):
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from bots.expander.intel import BotState, silence_watch
+from .intel import GrowerState as BotState
 
 LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
 MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
@@ -44,15 +44,21 @@ def _anchor(state) -> tuple[float, float]:
     return _ANCHOR
 
 
-def _all_sites(state, config) -> list[tuple[float, float]]:
-    """Free-site list by distance, cached by town signature (16k scan)."""
+def _site_key(state, config):
     ax, ay = _anchor(state)
     mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
     own = state.own_towns()
-    key = (ax, ay, mw, mh, tuple(sorted((t.id, round(t.x, 1), round(t.y, 1)) for t in own)))
+    return (ax, ay, mw, mh, tuple(sorted((t.id, round(t.x, 1), round(t.y, 1)) for t in own)))
+
+
+def _all_sites(state, config) -> list[tuple[float, float]]:
+    """Free-site list by distance, cached by town signature (16k scan)."""
+    key = _site_key(state, config)
     hit = _SITE_CACHE.get(key)
     if hit is not None:
         return hit
+    ax, ay, mw, mh, _ = key
+    own = state.own_towns()
     foes = [t for t in state.world.towns
             if t.faction != state.faction and t.faction is not None]
     for R in (int(SCAN_R / LATTICE) + 2, int(max(mw, mh) / LATTICE) + 2):
@@ -129,7 +135,6 @@ def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
-    silence_watch(state, config)  # every turn: JIT notes must release same-turn
     turn = state.turn
     own_t = state.own_towns()
     if not own_t:
@@ -164,13 +169,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 state.note_train(t.id)
                 mustered.add(t.id)
 
-    # arrival release: noted armies sitting on their target are functionally
-    # idle (engine keeps has_target after landing; notes persist while observed).
+    # arrival release (belt-and-braces: update() already clears on sight).
     for a in state.own_armies():
         tgt = state.army_target(a.id)
         if tgt is not None and math.hypot(a.x - tgt[0], a.y - tgt[1]) <= ARRIVED:
             state._army_targets.pop(a.id, None)
-            state.__dict__.get("_march_origin", {}).pop(a.id, None)
     # en-route coverage: armies already marching count toward missions.
     enroute: list[tuple[float, float]] = []
     for a in state.own_armies():
@@ -196,8 +199,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if not a.is_viceroy and not state.army_has_target(a.id)
             and not state.has_pending_build(a.id) and a.size >= MIN_ARMY]
     # site lists computed ONCE (per-army rescans killed the clock: 0.9s/turn).
-    psites = [s for s in _all_sites(state, config)
-              if not any(math.hypot(s[0] - ex, s[1] - ey) < MIN_DIST for ex, ey in enroute)]
+    _esig = tuple(sorted((round(ex, 1), round(ey, 1)) for ex, ey in enroute))
+    _pkey = (_site_key(state, config), _esig)
+    _pcache = _SITE_CACHE.get(_pkey)
+    if _pcache is None:
+        _pcache = [s for s in _all_sites(state, config)
+                   if not any(math.hypot(s[0] - ex, s[1] - ey) < MIN_DIST for ex, ey in enroute)]
+        _SITE_CACHE[_pkey] = _pcache
+        if len(_SITE_CACHE) > 12:
+            _SITE_CACHE.pop(next(iter(_SITE_CACHE)))
+    psites = _pcache
     dsites = _densify_list(state, config, enroute)
     pidx = didx = 0
     used_sites: list[tuple[float, float]] = []

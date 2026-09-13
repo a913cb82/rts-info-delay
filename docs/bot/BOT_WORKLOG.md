@@ -4314,3 +4314,10 @@ Flood autopsy: want-mouths trained 5x in 7 turns (mother pinned 350) +
 10, MIN_TRAIN 20, SCAN_R 400 (t1 clock). Scales: 500->714, 1k->1342,
 10k->3418 (t1435 marginal death), 50k->2071 (t149 death), 100k running.
 Remaining: silence_watch cost at 50-100 armies (~44ms) — throttle when big.
+
+### v7 minimal intel (2026-09-13, loop/grower)
+Tracker update() cost ~10ms/turn at 100 entities (bank overdraft deaths).
+GrowerState: towns/armies/targets/pending/growth only (~120 lines, no
+fog-reasoning; arrival cleared on update). + psites cache (16k filter/turn
+was 2-4ms). Scales: 500->682, 1k->1302, 10k->2861 (t1808 overdraft),
+50k->8920 (triage dispersal 6x idle!), 100k running. No expander dep.

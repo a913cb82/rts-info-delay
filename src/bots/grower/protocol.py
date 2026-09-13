@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from engine.config import GameConfig
 from engine.world import World, Town, Army
-from bots.expander.intel import *  # tracker reuse (strategy-free)
+from .intel import *  # minimal grower mirror
 
 def _read_startup():
     cfg = GameConfig()
