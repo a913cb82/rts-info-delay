@@ -4096,3 +4096,9 @@ overestimated; weakens defense; die). Costs exceed gains. Reverted
 ### Bypass-starve built (2026-09-13 13:11 BST)
 Research-driven (v2): skip sub-1000 takes (halve to death; save packs
 for viable). Bar: exceed 37.0 AND takes (style).
+
+### Bypass verdict: FAIL (19.6, fuel beats efficiency) (2026-09-13 13:21 BST)
+Rated clean 15g (3x5) -> ord 19.6 (mu 27.5): FAIL (gate 37.0+). Viable
+takes land (3W/15: 236k/165k/183k) but skipping small loses fuel
+(starve when no viable). Hostage-fuel matters (volume beats quality).
+Reverted (main keeps aggressive 37.0). Parked on loop/aggr-bypass.
