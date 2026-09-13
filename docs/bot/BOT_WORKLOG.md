@@ -3814,3 +3814,8 @@ Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
 ### Overmatch 717g (2026-09-13 11:02 BST)
 21a74a6 +10g (717 total) -> ord 68.2 (mu 71.7, was 71.1/707g): +0.6 on
 60% wins (374k/393k) + 3rds + fourth. 717 games.
+
+### Overmatch 727g (clone-parity) (2026-09-13 11:07 BST)
+21a74a6 +10g (727 total) -> ord 67.8 (mu 71.2, was 71.7/717g): -0.4 on
+4W (390k) + fifths + 2nds/3rds (clones above half the time; parity).
+727 games.
