@@ -105,6 +105,29 @@ def build_goal_lean(rmax, footprint=True):
     return vill + bpts + cpts
 
 
+def build_province(rmax, footprint=True):
+    # 1M province stack: villages 300@4km + bourgs 600@18km +
+    # chefs 5000@64km (60km fame sheds just touch) + one 20000 regional.
+    # Top-down: regional, then chefs, then bourgs, villages fill the rest.
+    fr = 0.6 * S_V if footprint else 1e-9
+    taken = [(0.0, 0.0)]
+    chefs = []
+    for (x, y) in lattice(rmax, 64.0):
+        xx = x + 32.0
+        if all(math.hypot(xx - cx, y - cy) > fr for (cx, cy) in taken):
+            chefs.append((xx, y, 5000.0))
+            taken.append((xx, y))
+    bourgs = []
+    for (x, y) in lattice(rmax, 18.0):
+        xx = x + 9.0
+        if all(math.hypot(xx - cx, y - cy) > fr for (cx, cy) in taken):
+            bourgs.append((xx, y, 600.0))
+            taken.append((xx, y))
+    vill = [(x, y, P_V) for (x, y) in lattice(rmax, S_V)
+            if all(math.hypot(x - tx, y - ty) > fr for (tx, ty) in taken)]
+    return vill + bourgs + chefs + [(0.0, 0.0, 20000.0)]
+
+
 def build_regional(rmax, footprint=True):
     # 2.4k towns every 32 km + 9.6k regionals every 96 km + villages elsewhere
     fr = 0.6 * S_V if footprint else 1e-9
@@ -127,6 +150,7 @@ SHAPES = [
     ("+regional 9.6k", 0.0, 0.0),
     ("+goal 3-tier", 0.0, 0.0),
     ("+goal lean", 0.0, 0.0),
+    ("+province", 0.0, 0.0),
 ]
 
 
@@ -145,8 +169,8 @@ def main(rmax=50.0, gamma=None, premium=None, footprint=True,
         t0 = time.perf_counter()
         if label.startswith("+regional"):
             spec = build_regional(rmax, footprint)
-        elif label.startswith("+goal lean"):
-            spec = build_goal_lean(rmax, footprint)
+        elif label.startswith("+province"):
+            spec = build_province(rmax, footprint)
         elif label.startswith("+goal"):
             spec = build_goal(rmax, footprint)
         else:
