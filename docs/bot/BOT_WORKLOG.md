@@ -3414,3 +3414,8 @@ Buzzer +10g (1520 total) -> ord 64.5 (mu 67.9, was 67.3/1510g): +0.6 on
 Buzzer +10g (1530 total) -> ord 63.7 (mu 67.1, was 67.9/1520g): -0.8 on
 2W + 2 F1-deaths + fifth. Note: failed-branch 21a74a6 spikes 329k/293k
 (variance; overmatch wins big sometimes, dies others). 1530 games.
+
+### Buzzer 1540g (2026-09-13 05:37 BST)
+Buzzer +10g (1540 total) -> ord 62.8 (mu 66.2, was 67.1/1530g): -0.9 on
+2W + 2 F1-deaths + fourths/fifths (clones spike: 21a74a6/dd9782a 291k).
+1540 games.
