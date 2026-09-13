@@ -454,3 +454,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (+0.195→+0.226, cliff at 800). In the 4-tier stack, 500-villages cost
   0.01 (density 36 vs 23) — size nearly free, count still sets share.
   Decay shape is a real village-size knob; p=3 keeps 4-tier winning.
+- Density-BO#1 verdict (96 evals, 45 model, combo knobs): winner 2-tier
+  s64/T2400 (+1.362, urb 3.7%); hand 4-tier shapes beat it (+1.381).
+  Runner-up degenerate tiny-village mush (P0=171, urb 99.8% — p0min flag
+  exists for exactly this). Full budget again confirms assay over search.
