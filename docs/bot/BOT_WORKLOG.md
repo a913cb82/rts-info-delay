@@ -3864,3 +3864,9 @@ surplus (split), hybrid (tax), thick (thin), caps (territory),
 live-threat (lag/timing), rewrite (donate), overmatch-counter
 (rarer). Triple-bind (survive+take+compound need force; force needs
 compound) holds everywhere. No +EV build exists. Parked (8 fails).
+
+### Expander attempt-exhaustion (2026-09-13 11:46 BST)
+Re-examined: takes-first (halved take-engines worse than foundings),
+guards (defense-offense tradeoff, thin can't both; style-conflict).
+6 fails stand. Parked. All three non-pro personalities parked
+stuck-proven (turtle 8, expander 6, aggressive 13+ fails).
