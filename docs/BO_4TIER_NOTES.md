@@ -287,3 +287,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   settled. Levels differ (premium lifts all), ranking within config is
   what matters. Promotion case for prem.75 rests on shares (27% urban
   achievable, dense bourgs win), not pace (both hot vs 0–0.3 history).
+- Big chefs + dense bourgs (5000@80 + 419 bourgs): +1.141 vs +1.161 with
+  3000-chefs. Bigger chefs lose everywhere, even with dense-bourg cover.
+  Chef size ~3k is a ceiling under all knobs, not a tunable.
