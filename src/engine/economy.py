@@ -168,11 +168,19 @@ def _get_dist_matrix(all_towns: list[Town]) -> np.ndarray:
 
 _land_cache = {"key": None, "areas": None}
 
+# Quadrature points per town. Isolated towns are exact at any K;
+# shared boundaries need K >>= boundary cells: K=8 errs up to 40% on
+# small cells (a point outweighs a village's whole farm), K=16/32 a few
+# %, K=64/128 ~1-2%. Growth rankings are unchanged down to K=16
+# (labor-limited towns never touch their area); K=32 is the safe
+# screening choice (4x kernel speedup). Default stays 128 (engine-exact).
 _SAMPLE_K = 128
 
 
-def _sample_offsets(k: int = _SAMPLE_K):
+def _sample_offsets(k: int | None = None):
     """Equal-area (Vogel spiral) sample points in the unit disc."""
+    if k is None:
+        k = _SAMPLE_K
     idx = np.arange(k, dtype=np.float64) + 0.5
     r = np.sqrt(idx / k)
     theta = idx * math.pi * (3.0 - math.sqrt(5.0))
@@ -231,7 +239,7 @@ def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
     if n:
         xs = np.array([t.x for t in towns], dtype=np.float64)
         ys = np.array([t.y for t in towns], dtype=np.float64)
-        sx, sy = _sample_offsets()
+        sx, sy = _sample_offsets(_SAMPLE_K)
         # Candidate towns within 2R of each town (ascending index).
         # Triangle inequality: the nearest town to any sample in i's
         # ring is at most 2R from i, so restricting to candidates is

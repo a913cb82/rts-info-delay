@@ -420,7 +420,14 @@ The land kernel is no longer O(n^2): per-town neighbor lists (towns
 within 2R, from the cached distance matrix) prune the inner loop from
 N to ~20 candidates. Exact — bit-identical on twin towns at exactly
 2R, exact stacks, ties, negative coords, and all benchmark shapes
-(tripwire unchanged). Same idea as combat/movement's SpatialHash grids,
+(tripwire unchanged). Quadrature points (`_SAMPLE_K`, default 128):
+isolated towns are exact at any K; shared boundaries need K large
+enough that one point (pi*R^2/K km2) stays small next to the smallest
+farmed area (~7 km2 for a 300-pop village). Measured: K=8 errs up to
+40% on small cells, K=16/32 a few %, K=64/128 ~1-2% — while growth
+rankings are unchanged down to K=16 (labor-limited towns never touch
+their area). K=32 is the safe screening choice (4x kernel speedup);
+the default stays 128. Same idea as combat/movement's SpatialHash grids,
 but reusing the already-cached D matrix instead of a dict (numba
 can't do dict cells, and D is needed downstream anyway).
 Guidance: screen at N ~= 500-600; keep 1M validations rare, one at a
