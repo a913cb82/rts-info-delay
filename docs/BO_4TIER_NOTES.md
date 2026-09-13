@@ -75,3 +75,16 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   beats coverage efficiency. Small+dense or nothing.
 - BO#5 (running): 1M mid knobs + 4-tier seed — can 4-tier WIN off
   max-push? Decides whether the claim is knob-robust.
+
+## BO#5 verdict + interpolation (4-tier needs max-push)
+
+- BO#5 (1M, γ1.2/prem.35/melt.01, 4-tier seed present): s64/T2400 wins
+  again (+0.647), 4-tier second. Seed presence doesn't save it — mid
+  knobs genuinely prefer sparse small tops.
+- Interpolation (γ1.18/prem.3/melt.012): s64t +0.566 wins; prov4 +0.476
+  second; lean +0.480. Same story between base and mid.
+- Persistent rival across gentle→mid: sparse small tops (13×2400@64,
+  urb ~3%), minimal mouths, no bourgs needed. 4-tier wins ONLY at
+  max-push (γ1.3/prem.5/melt.005), where food is cheap and headroom high.
+- BO#6 (running): between mid and max-push (γ1.25/prem.4/melt.008) +
+  4-tier seed — mapping the boundary where 4-tier takes over.
