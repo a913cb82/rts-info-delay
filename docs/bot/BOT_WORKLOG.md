@@ -3793,3 +3793,9 @@ expander 44.2 (7% wins), aggressive 37.0 (60% deaths). All stuck-proven
 (turtle 8 fails triple-bind; expander 6 fails; aggressive 12 fails
 double-bind). Bold-rewrite ideas die on inspection (poor/mechanics).
 Goal (all >=60) blocked on mechanisms, not volume. Parked all three.
+
+### Overmatch 697g (combine-fail spikes in mirrors) (2026-09-13 10:47 BST)
+21a74a6 +10g (697 total w/ opponent-games) -> ord 68.0 (mu 71.5, was
+71.1/610g): +0.4 on 4W + F1-death + fifths. Note: combine-fail 2691ae0
+spikes 329k in mirrors (failed branches spike as opponents; variance).
+697 games.
