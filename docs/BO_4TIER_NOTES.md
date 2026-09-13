@@ -583,3 +583,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District combo s32 (no bourgs): +1.331 vs dense-bourg +1.430. Bourgs
   earn +0.06–0.10 at district under every knob regime — the middle tier
   has a clean receipt at 100k even where it garnishes at 1M.
+- District prem.75 flat baseline: +0.439 vs tiered +1.16–1.22. Hierarchy
+  margin +0.7 at district under prem.75 — towns earn enormously there.
