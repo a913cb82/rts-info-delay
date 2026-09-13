@@ -469,3 +469,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   ties lean (+1.395) with far better shares: 78/17.5/4.7 vs reality
   72/15/5–10. District shares land the same way 1M did: dense small
   towns, free.
+- District ratchet (lean ×1.3): density 30.3 at settled +1.347 (cost 0.05
+  vs +1.395 unscaled). Same density-for-rate trade at both scales; the
+  ratchet is scale-free, as the uniform-scaling argument demands.
