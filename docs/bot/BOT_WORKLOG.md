@@ -4199,3 +4199,18 @@ agrarian equilibrium ~500s, capacity ~2.3k). Old-engine ratings VOID
 (different game). Guard-lock rebased clean (suites+liveness green) but
 unrated new-engine. NEXT: archive old DB, fresh re-baseline, recalibrate
 all bars to agrarian scale (loop v3 engine-reset), re-prove binds.
+
+### Early-growth experiments (2026-09-13, loop/turtle-v2r)
+Lab: benchmarks/exp_growth.py (structured orders, no fog). From 500:
+E1 idle 500->536@3k (->608@10k); E2 one 45-colony@20km: 540 total
+(+4 vs idle; colony bleeds 45->35 via migration<50km); E3 dist sweep:
+all colonies decline (~35) except 60km holds 47 (beyond migration
+range; longer march forages mother); E5 size sweep MOOT (TRAIN capped
+10%: 500-town max army 50); E8 4x500: linear (4x536, no superlinearity
+at 500-scale); E9 2000->1552@3k (->1114@10k: overshoot starves to ~600
+equilibrium); F3 crowding 6km vs 200km: identical (land doesn't bind at
+500-scale; workers cap harvest). Frame: mouths conserved (births-deaths
+only); founding redistributes at 10% BUILD tax. THEN READ THE ENGINE
+DOCS: optimal = 4-tier hierarchy (villages 300@4km, markets 500@13-18km,
+centers 3-5k@50-80km, regional 30k; +1.38-1.40/yr vs flat +0.69).
+Bot strategy = BUILD THE HIERARCHY (tools: hierarchy_opt.py).
