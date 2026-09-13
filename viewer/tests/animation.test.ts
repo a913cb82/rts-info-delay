@@ -93,8 +93,8 @@ describe("easeInOut", () => {
 
 describe("buildArmyAnim — basic movement", () => {
   it("army moves from N to N+1 position", () => {
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0 }];
-    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 50, y: 0 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0, size: 1000 }];
+    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 50, y: 0, size: 1000 }];
     const anim = buildArmyAnim(n, n1, []);
     expect(anim).toHaveLength(1);
     expect(anim[0].fromX).toBe(0);
@@ -103,8 +103,8 @@ describe("buildArmyAnim — basic movement", () => {
   });
 
   it("stationary army has same from/to", () => {
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 100, y: 100 }];
-    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 100, y: 100 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 100, y: 100, size: 1000 }];
+    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 100, y: 100, size: 1000 }];
     const anim = buildArmyAnim(n, n1, []);
     expect(anim[0].fromX).toBe(100);
     expect(anim[0].toX).toBe(100);
@@ -113,7 +113,7 @@ describe("buildArmyAnim — basic movement", () => {
 
 describe("buildArmyAnim — move→death (V12b)", () => {
   it("army that dies lerps to death position from event", () => {
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0, size: 1000 }];
     const n1: ArmyState[] = []; // army 1 dead, absent from N+1
     const events: GameEvent[] = [
       { kind: "army_death", id: 1, x: 50, y: 0 },
@@ -126,7 +126,7 @@ describe("buildArmyAnim — move→death (V12b)", () => {
   });
 
   it("lerp to death position — at t=0.5 army at 25km", () => {
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0, size: 1000 }];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
       { kind: "army_death", id: 1, x: 50, y: 0 },
@@ -138,7 +138,7 @@ describe("buildArmyAnim — move→death (V12b)", () => {
   });
 
   it("dead army endpoint must not be (0,0) or NaN", () => {
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 10, y: 20 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 10, y: 20, size: 1000 }];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
       { kind: "army_death", id: 1, x: 100, y: 200 },
@@ -152,7 +152,7 @@ describe("buildArmyAnim — move→death (V12b)", () => {
 
 describe("buildArmyAnim — stationary→death (V12c)", () => {
   it("no transit, shrink-fade at same pos", () => {
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 30, y: 30 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 30, y: 30, size: 1000 }];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
       { kind: "army_death", id: 1, x: 30, y: 30 },
@@ -167,7 +167,7 @@ describe("buildArmyAnim — stationary→death (V12c)", () => {
 describe("buildArmyAnim — blocked move→death (V12d)", () => {
   it("lerps to blocked position, not intended target", () => {
     // Army was heading to (100,0) but blocked at (20,0), dies there
-    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0 }];
+    const n: ArmyState[] = [{ id: 1, faction: 0, x: 0, y: 0, size: 1000 }];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
       { kind: "army_death", id: 1, x: 20, y: 0 }, // death pos = blocked pos
@@ -180,8 +180,8 @@ describe("buildArmyAnim — blocked move→death (V12d)", () => {
 describe("buildArmyAnim — two armies fight and die", () => {
   it("two armies at different positions both die — each lerps to its death pos", () => {
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 10, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 10, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = []; // both dead
     const events: GameEvent[] = [
@@ -204,8 +204,8 @@ describe("buildArmyAnim — two armies fight and die", () => {
 
   it("two armies die in battle event — each lerps to battle position", () => {
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 10, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 10, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
@@ -226,8 +226,8 @@ describe("buildArmyAnim — two armies fight and die", () => {
     // A was heading to (100,0), B was heading to (-100,0)
     // Both blocked at (25,0) and died there
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 50, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 50, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
@@ -246,10 +246,10 @@ describe("buildArmyAnim — two armies fight and die", () => {
 
   it("one survives, one dies — survivor stays, dead fades at death pos", () => {
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 10, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 10, y: 0, size: 1000 },
     ];
-    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 5, y: 0 }]; // A survived, moved
+    const n1: ArmyState[] = [{ id: 1, faction: 0, x: 5, y: 0, size: 1000 }]; // A survived, moved
     const events: GameEvent[] = [
       { kind: "army_death", id: 2, x: 5, y: 0 }, // B died at midpoint
     ];
@@ -269,7 +269,7 @@ describe("buildArmyAnim — two armies fight and die", () => {
 describe("buildArmyAnim — spawn (V13)", () => {
   it("spawned army grows in at source", () => {
     const n: ArmyState[] = [];
-    const n1: ArmyState[] = [{ id: 5, faction: 0, x: 100, y: 100 }];
+    const n1: ArmyState[] = [{ id: 5, faction: 0, x: 100, y: 100, size: 1000 }];
     const events: GameEvent[] = [
       { kind: "army_spawn", id: 5, faction: 0, x: 100, y: 100, is_viceroy: false },
     ];
@@ -284,7 +284,7 @@ describe("buildArmyAnim — spawn (V13)", () => {
 describe("buildArmyAnim — viceroy (V13d)", () => {
   it("viceroy spawns at capital then moves toward target", () => {
     const n: ArmyState[] = [];
-    const n1: ArmyState[] = [{ id: 5, faction: 0, x: 150, y: 150 }];
+    const n1: ArmyState[] = [{ id: 5, faction: 0, x: 150, y: 150, size: 1000 }];
     const events: GameEvent[] = [
       { kind: "army_spawn", id: 5, faction: 0, x: 100, y: 100, is_viceroy: true },
     ];
@@ -295,7 +295,7 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
   });
 
   it("viceroy arrival — lerps to destination then fades", () => {
-    const n: ArmyState[] = [{ id: 5, faction: 0, x: 180, y: 180 }];
+    const n: ArmyState[] = [{ id: 5, faction: 0, x: 180, y: 180, size: 1000 }];
     const n1: ArmyState[] = []; // viceroy gone
     const events: GameEvent[] = [
       { kind: "army_death", id: 5, x: 200, y: 200 },
@@ -310,7 +310,7 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
     // Turn 1→2: viceroy spawns at (100,100), moves to (150,150)
     let anim = buildArmyAnim(
       [],
-      [{ id: 5, faction: 0, x: 150, y: 150 }],
+      [{ id: 5, faction: 0, x: 150, y: 150, size: 1000 }],
       [{ kind: "army_spawn", id: 5, faction: 0, x: 100, y: 100, is_viceroy: true }],
     );
     expect(anim[0].spawns).toBe(true);
@@ -320,7 +320,7 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
 
     // Turn 2→3: viceroy moves from (150,150) to (200,200), arrives, town spawns
     anim = buildArmyAnim(
-      [{ id: 5, faction: 0, x: 150, y: 150 }],
+      [{ id: 5, faction: 0, x: 150, y: 150, size: 1000 }],
       [],
       [
         { kind: "army_death", id: 5, x: 200, y: 200 },
@@ -343,7 +343,7 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
 
   it("viceroy moves and builds capital in same turn", () => {
     // Viceroy at (100,100) moves 25 km to (125,100) and founds town there
-    const n: ArmyState[] = [{ id: 5, faction: 0, x: 100, y: 100 }];
+    const n: ArmyState[] = [{ id: 5, faction: 0, x: 100, y: 100, size: 1000 }];
     const n1: ArmyState[] = []; // viceroy gone
     const events: GameEvent[] = [
       { kind: "army_death", id: 5, x: 125, y: 100 },
@@ -387,7 +387,7 @@ describe("buildArmyAnim — viceroy (V13d)", () => {
 
   it("viceroy and town overlap at arrival — army fades while town grows", () => {
     // At the arrival position, army shrinks-fades and town grow-in happen simultaneously
-    const n: ArmyState[] = [{ id: 5, faction: 0, x: 180, y: 180 }];
+    const n: ArmyState[] = [{ id: 5, faction: 0, x: 180, y: 180, size: 1000 }];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
       { kind: "army_death", id: 5, x: 200, y: 200 },
@@ -415,8 +415,8 @@ describe("battle visualization — lerp", () => {
   it("battle at midpoint where armies converged", () => {
     // Two armies from (0,0) and (10,0) both lerped to (5,0) and died
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 10, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 10, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
@@ -438,8 +438,8 @@ describe("battle visualization — lerp", () => {
 
   it("battle lines connect lerped positions, shrink as armies converge", () => {
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 10, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 10, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
@@ -462,8 +462,8 @@ describe("battle visualization — lerp", () => {
   it("moving armies block and battle — lerp to blocked midpoint", () => {
     // A at (0,0)→(100,0), B at (10,0)→(-90,0), blocked at (5,0), battle there
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 1, x: 10, y: 0 },
+      { id: 1, faction: 0, x: 0, y: 0, size: 1000 },
+      { id: 2, faction: 1, x: 10, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = [];
     const events: GameEvent[] = [
@@ -487,7 +487,7 @@ describe("battle visualization — lerp", () => {
     };
     // N→N+1 with battle
     const animWithBattle = buildArmyAnim(
-      [{ id: 1, faction: 0, x: 0, y: 0 }, { id: 2, faction: 1, x: 10, y: 0 }],
+      [{ id: 1, faction: 0, x: 0, y: 0, size: 1000 }, { id: 2, faction: 1, x: 10, y: 0, size: 1000 }],
       [], [battleEvent],
     );
     expect(animWithBattle).toHaveLength(2);
@@ -503,11 +503,11 @@ describe("battle visualization — lerp", () => {
 describe("buildArmyAnim — stacked armies (V5)", () => {
   it("two armies at same pos both get anim state", () => {
     const n: ArmyState[] = [
-      { id: 1, faction: 0, x: 50, y: 0 },
-      { id: 2, faction: 0, x: 50, y: 0 },
+      { id: 1, faction: 0, x: 50, y: 0, size: 1000 },
+      { id: 2, faction: 0, x: 50, y: 0, size: 1000 },
     ];
     const n1: ArmyState[] = [
-      { id: 1, faction: 0, x: 50, y: 0 },
+      { id: 1, faction: 0, x: 50, y: 0, size: 1000 },
     ];
     const events: GameEvent[] = [
       { kind: "army_death", id: 2, x: 50, y: 0 },

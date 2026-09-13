@@ -49,10 +49,10 @@ export function buildArmyAnim(
   }
 
   // Index spawn positions
-  const spawnMap = new Map<number, { x: number; y: number }>();
+  const spawnMap = new Map<number, { x: number; y: number; size: number }>();
   for (const e of events) {
     if (e.kind === "army_spawn") {
-      spawnMap.set((e as any).id, { x: (e as any).x, y: (e as any).y });
+      spawnMap.set((e as any).id, { x: (e as any).x, y: (e as any).y, size: (e as any).size ?? 1000 });
     }
   }
 
@@ -66,6 +66,7 @@ export function buildArmyAnim(
       result.push({
         id,
         faction: aN.faction,
+        size: aN1.size ?? aN.size ?? 1000,
         fromX: aN.x,
         fromY: aN.y,
         toX: aN1.x,
@@ -85,6 +86,7 @@ export function buildArmyAnim(
       result.push({
         id,
         faction: aN.faction,
+        size: aN.size ?? 1000,
         fromX: aN.x,
         fromY: aN.y,
         toX,
@@ -113,6 +115,7 @@ export function buildArmyAnim(
         result.push({
           id,
           faction: aN1.faction,
+          size: aN1.size ?? 1000,
           fromX: death.x,
           fromY: death.y,
           toX: aN1.x,
@@ -132,6 +135,7 @@ export function buildArmyAnim(
         result.push({
           id,
           faction: aN1.faction,
+          size: aN1.size ?? 1000,
           fromX: spawnX,
           fromY: spawnY,
           toX: aN1.x,
@@ -156,6 +160,7 @@ export function buildArmyAnim(
     result.push({
       id,
       faction: 0, // faction not available from events alone; use 0 as default
+      size: spawnPos.size ?? 1000,
       fromX: spawnPos.x,
       fromY: spawnPos.y,
       toX: deathPos.x,

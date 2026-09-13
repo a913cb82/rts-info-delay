@@ -7,47 +7,17 @@ export function townRadius(pop: number, cap = 100_000): number {
   return 8 + 12 * Math.sqrt(pop / cap);
 }
 
-/** Group armies by position (toFixed 3) for stacking. */
-export function groupArmies(armies: ArmyState[]): Map<string, ArmyState[]> {
-  const groups = new Map<string, ArmyState[]>();
-  for (const a of armies) {
-    const key = `${a.x.toFixed(3)},${a.y.toFixed(3)}`;
-    const g = groups.get(key) ?? [];
-    g.push(a);
-    groups.set(key, g);
-  }
-  return groups;
+/** Armies scale by size exactly like towns scale by population. */
+export function armyRadius(size: number, cap = 10_000): number {
+  if (cap <= 0) return 8;
+  if (!size || size <= 0) return 8;
+  return 8 + 12 * Math.sqrt(size / cap);
 }
 
-/** Cluster same-faction armies within radius (world units) for stacked
-rendering (reference: rl_game viewer — up to 3 offset triangles + count).
-Returns clusters with centroid + members. */
-export function clusterArmies<T extends { x: number; y: number; faction: number }>(
-  armies: T[],
-  radius = 9,
-): { x: number; y: number; faction: number; members: T[] }[] {
-  const out: { x: number; y: number; faction: number; members: T[] }[] = [];
-  for (const a of armies) {
-    const hit = out.find(
-      (s) => s.faction === a.faction && Math.hypot(s.x - a.x, s.y - a.y) <= radius,
-    );
-    if (hit) {
-      hit.members.push(a);
-      const n = hit.members.length;
-      hit.x = (hit.x * (n - 1) + a.x) / n;
-      hit.y = (hit.y * (n - 1) + a.y) / n;
-    } else {
-      out.push({ x: a.x, y: a.y, faction: a.faction, members: [a] });
-    }
-  }
-  return out;
-}
-
-/** Compute sidebar per-faction counts and score. */
+/** Compute sidebar per-faction counts and score (armies count by size). */
 export function computeSidebar(
   towns: TownState[],
   armies: ArmyState[],
-  armyCost = 1000,
 ): Record<number, { towns: number; armies: number; score: number }> {
   const factions = new Set<number>([
     ...towns.map((t) => t.faction),
@@ -60,7 +30,8 @@ export function computeSidebar(
     result[f] = {
       towns: fTowns.length,
       armies: fArmies.length,
-      score: fTowns.reduce((s, t) => s + t.population, 0) + fArmies.length * armyCost,
+      score: fTowns.reduce((s, t) => s + t.population, 0)
+        + fArmies.reduce((s, a) => s + (a.size ?? 1000), 0),
     };
   }
   return result;

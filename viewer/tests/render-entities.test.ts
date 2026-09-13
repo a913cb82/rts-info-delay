@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import type { TownState, ArmyState, AnimBattle } from "../src/types";
 import { factionColor, factionColors } from "../src/color";
-import { clusterArmies } from "../src/render-entities";
+import { armyRadius } from "../src/render-entities";
 
 /* ── Town radius (V2) ── */
 
@@ -55,69 +55,27 @@ describe("capital marker", () => {
   });
 });
 
-/* ── Army stacking (V5) ── */
+/* ── Army radius: scales by size like towns scale by population ── */
 
-function groupArmies(armies: ArmyState[]): Map<string, ArmyState[]> {
-  const groups = new Map<string, ArmyState[]>();
-  for (const a of armies) {
-    const key = `${a.x.toFixed(3)},${a.y.toFixed(3)}`;
-    const g = groups.get(key) ?? [];
-    g.push(a);
-    groups.set(key, g);
-  }
-  return groups;
-}
-
-describe("army stacking", () => {
-  it("V5 — detects co-located armies", () => {
-    const armies: ArmyState[] = [
-      { id: 1, faction: 0, x: 50, y: 50 },
-      { id: 2, faction: 0, x: 50, y: 50 },
-      { id: 3, faction: 0, x: 50, y: 50 },
-    ];
-    const groups = groupArmies(armies);
-    const stack = groups.get("50.000,50.000")!;
-    expect(stack.length).toBe(3);
+describe("armyRadius", () => {
+  it("size=1000 → ~11.8 px", () => {
+    expect(armyRadius(1000)).toBeCloseTo(11.8, 1);
   });
 
-  it("V5 — count badge ×N", () => {
-    const count = 3;
-    expect(`×${count}`).toBe("×3");
+  it("size=10000 → 20 px maximum", () => {
+    expect(armyRadius(10_000)).toBe(20);
   });
 
-  it("separated armies not stacked", () => {
-    const armies: ArmyState[] = [
-      { id: 1, faction: 0, x: 0, y: 0 },
-      { id: 2, faction: 0, x: 100, y: 100 },
-    ];
-    const groups = groupArmies(armies);
-    expect(groups.size).toBe(2);
+  it("missing/zero size → 8 px minimum", () => {
+    expect(armyRadius(0)).toBe(8);
   });
-});
 
-describe("clusterArmies (radius stacking)", () => {
-  it("clusters same-faction armies within radius", () => {
-    const out = clusterArmies([
-      { x: 50, y: 50, faction: 0 },
-      { x: 55, y: 52, faction: 0 },
-      { x: 200, y: 200, faction: 0 },
-    ]);
-    expect(out).toHaveLength(2);
-    expect(out[0].members).toHaveLength(2);
-  });
-  it("splits different factions at same point", () => {
-    const out = clusterArmies([
-      { x: 50, y: 50, faction: 0 },
-      { x: 50, y: 50, faction: 1 },
-    ]);
-    expect(out).toHaveLength(2);
-  });
-  it("centroid tracks members", () => {
-    const out = clusterArmies([
-      { x: 0, y: 0, faction: 2 },
-      { x: 6, y: 0, faction: 2 },
-    ]);
-    expect(out[0].x).toBeCloseTo(3);
+  it("monotonically increasing", () => {
+    const sizes = [0, 100, 500, 1000, 5000, 10_000];
+    const radii = sizes.map((s) => armyRadius(s));
+    for (let i = 1; i < radii.length; i++) {
+      expect(radii[i]).toBeGreaterThan(radii[i - 1]);
+    }
   });
 });
 
@@ -178,7 +136,7 @@ function computeSidebar(towns: TownState[], armies: ArmyState[]) {
     result[f] = {
       towns: fTowns.length,
       armies: fArmies.length,
-      score: fTowns.reduce((s, t) => s + t.population, 0) + fArmies.length * 1000,
+      score: fTowns.reduce((s, t) => s + t.population, 0) + fArmies.reduce((s, a) => s + a.size, 0),
     };
   }
   return result;
@@ -191,23 +149,23 @@ describe("sidebar", () => {
       { id: 2, faction: 0, x: 100, y: 100, population: 1000, is_capital: false },
     ];
     const armies: ArmyState[] = [
-      { id: 3, faction: 0, x: 50, y: 50 },
-      { id: 4, faction: 0, x: 60, y: 60 },
-      { id: 5, faction: 0, x: 70, y: 70 },
+      { id: 3, faction: 0, x: 50, y: 50, size: 1000 },
+      { id: 4, faction: 0, x: 60, y: 60, size: 1000 },
+      { id: 5, faction: 0, x: 70, y: 70, size: 1000 },
     ];
     const sidebar = computeSidebar(towns, armies);
     expect(sidebar[0].towns).toBe(2);
     expect(sidebar[0].armies).toBe(3);
   });
 
-  it("V9 — score = sum(pop) + armies × cost", () => {
+  it("V9 — score = sum(pop) + sum(sizes)", () => {
     const towns: TownState[] = [
       { id: 1, faction: 0, x: 0, y: 0, population: 1000, is_capital: false },
       { id: 2, faction: 0, x: 100, y: 100, population: 2000, is_capital: false },
     ];
     const armies: ArmyState[] = [
-      { id: 3, faction: 0, x: 50, y: 50 },
-      { id: 4, faction: 0, x: 60, y: 60 },
+      { id: 3, faction: 0, x: 50, y: 50, size: 1500 },
+      { id: 4, faction: 0, x: 60, y: 60, size: 500 },
     ];
     const sidebar = computeSidebar(towns, armies);
     expect(sidebar[0].score).toBe(5000);

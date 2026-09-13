@@ -24,6 +24,7 @@ export interface ArmyState {
   faction: number;
   x: number;
   y: number;
+  size: number;
 }
 
 export interface TownState {
@@ -70,6 +71,7 @@ export type GameRecord = Config | TurnRecord;
 export interface AnimArmy {
   id: number;
   faction: number;
+  size: number;
   fromX: number;
   fromY: number;
   toX: number;
