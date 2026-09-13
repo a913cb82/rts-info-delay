@@ -443,3 +443,10 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Ratchet tuned to exact density (k=1.78): 33.1/km² at settled +1.291
   (cost 0.006 vs 31.9). Density dials continuously via uniform scale;
   composition frozen by footprint choice. S1 back to full speed (40/96).
+- info_speed (never varied; caps fame + market tail + migration window):
+  100 → 4-tier wins by +0.046; 200 → wins by +0.115. Longer sight/mail
+  range strongly favors tiers (regional shed widens). Gameplay-coupled
+  (bot intel delay) — flag before touching.
+- Decay shape (never varied): p=1 starves flat-300 villages (−0.02);
+  p=3 feeds them (+0.20). Steeper decay favors villages; P0 sweep at p=3
+  next (village-size knob candidate).
