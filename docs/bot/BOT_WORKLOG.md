@@ -4018,3 +4018,6 @@ Parked on loop/turtle-tribute.
 ### Heartbeat (imaginative sweep dead) (2026-09-13 12:36 BST)
 Seed-bank (poor), pioneer-escort (settler dies anyway), bloodlust
 (donate), cannibal (no mechanic). Loop alive.
+
+### Heartbeat (2026-09-13 12:41 BST)
+Engine/map/matchmaking/rating/opening/endgame all fixed or exhausted. Loop alive.
