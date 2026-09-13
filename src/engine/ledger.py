@@ -297,7 +297,7 @@ class Ledger:
             positions[key] = (a.x, a.y, a.faction)
             vis = vis_of(nt + j, a.faction)
             payload = {"id": a.id, "faction": a.faction, "alive": True,
-                       "is_viceroy": bool(a.is_viceroy)}
+                       "size": a.size, "is_viceroy": bool(a.is_viceroy)}
             ev = Event(turn=turn, x=a.x, y=a.y, kind=EventKind.ARMY_UPDATE,
                        payload=payload, visible_to=vis)
             self.log(ev)

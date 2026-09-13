@@ -27,11 +27,12 @@ def apply_events(world: World, events: list[dict], config=None) -> None:
                     y=ev.get("y", 0),
                 )
                 a.is_viceroy = ev.get("is_viceroy", False)
+                a.size = ev.get("size", config.army_cost if config is not None else 1000.0)
                 world.armies.append(a)
-            # TRAIN spawn — reduce matching town pop by army_cost
+            # TRAIN spawn — reduce matching town pop by army size
             if not ev.get("is_viceroy", False) and config is not None:
                 ex, ey = ev.get("x", 0), ev.get("y", 0)
-                cost = config.army_cost
+                cost = ev.get("size", config.army_cost)
                 for tw in world.towns:
                     if abs(tw.x - ex) < 1 and abs(tw.y - ey) < 1:
                         tw.population -= cost

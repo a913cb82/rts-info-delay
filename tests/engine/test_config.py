@@ -19,6 +19,7 @@ class TestConfig:
         assert cfg.info_speed == 150.0
         assert cfg.army_speed == 50.0
         assert cfg.army_cost == 1000
+        assert cfg.max_train_frac == 0.1
         assert cfg.interact_radius == 10.0
         assert cfg.turns_per_year == 52.0
         assert cfg.farm_radius_km == 5.0
@@ -46,6 +47,7 @@ class TestConfig:
         # All other defaults preserved
         assert cfg.info_speed == 150.0
         assert cfg.army_cost == 1000
+        assert cfg.max_train_frac == 0.1
         assert cfg.interact_radius == 10.0
         assert cfg.turns_per_year == 52.0
         assert cfg.farm_radius_km == 5.0

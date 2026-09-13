@@ -47,9 +47,9 @@ def world_to_dict(world: World) -> dict:
 
 
 def army_to_dict(army) -> dict:
-    """Serialise army: {id, faction, x, y}."""
+    """Serialise army: {id, faction, x, y, size}."""
     # Include is_viceroy? But spec says army has id,faction,x,y; viewer needs is_viceroy in events not world. World serialisation is minimal.
-    return {"id": army.id, "faction": army.faction, "x": army.x, "y": army.y}
+    return {"id": army.id, "faction": army.faction, "x": army.x, "y": army.y, "size": army.size}
 
 
 def town_to_dict(town) -> dict:

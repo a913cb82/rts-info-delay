@@ -23,6 +23,7 @@ class Army:
     target_y: float = 0.0
     has_target: bool = False
     is_viceroy: bool = False
+    size: float = 1000.0
 
 
 @dataclass

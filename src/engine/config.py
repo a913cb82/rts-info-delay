@@ -24,6 +24,7 @@ class GameConfig:
     line_of_sight: float = 150.0
     army_speed: float = 50.0
     army_cost: int = 1000
+    max_train_frac: float = 0.1          # TRAIN capped to this share of town pop
     interact_radius: float = 10.0
 
     # Agrarian economy (2026-09-13). Annual rates; the engine converts
