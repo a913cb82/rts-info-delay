@@ -3557,3 +3557,8 @@ Climbing again. Riding.
 ### Overmatch 225g (70.9, mu 74.6) (2026-09-13 07:22 BST)
 21a74a6 +15g (225 total) -> ord 70.9 (mu 74.6, was 74.0/210g): +0.5 on
 ~10W (incl 388k) + 2nds/3rds + ZERO deaths. Climbing (mu 74+). Riding.
+
+### Overmatch 240g (dip to 69.4, oscillation) (2026-09-13 07:27 BST)
+21a74a6 +15g (240 total) -> ord 69.4 (mu 73.1, was 74.6/225g): -1.5 on
+60% wins (offset by F1-death + fifths). Oscillation (trend still up
+from 66.1). Riding.
