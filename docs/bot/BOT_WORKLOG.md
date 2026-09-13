@@ -3067,3 +3067,7 @@ Buzzer +10g (580 total) -> ord 63.1 (mu 66.4, was 66.8/570g): -0.4 on
 Buzzer +20g (600 total) -> ord 62.3 (mu 65.6, was 66.4/580g): -0.8 on
 25% wins (incl 358k/262k/258k) + fifths. 600 games banked (definitive).
 Converged true ~61-64. 80 needs +18 (unreachable; ceiling proven).
+
+### Buzzer 610g (2026-09-13 01:27 BST)
+Buzzer +10g (610 total) -> ord 62.3 (mu 65.6, was 65.6/600g): flat on
+3W (233k/358k/203k) + mids + fifths. 610 games.
