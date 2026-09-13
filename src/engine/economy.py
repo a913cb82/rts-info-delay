@@ -169,12 +169,12 @@ def _get_dist_matrix(all_towns: list[Town]) -> np.ndarray:
 _land_cache = {"key": None, "areas": None}
 
 # Quadrature points per town. Isolated towns are exact at any K;
-# shared boundaries need K >>= boundary cells: K=8 errs up to 40% on
-# small cells (a point outweighs a village's whole farm), K=16/32 a few
-# %, K=64/128 ~1-2%. Growth rankings are unchanged down to K=16
-# (labor-limited towns never touch their area); K=32 is the safe
-# screening choice (4x kernel speedup). Default stays 128 (engine-exact).
-_SAMPLE_K = 128
+# shared boundaries need K large enough that one point (pi*R^2/K km2)
+# stays small next to the smallest farmed area (~7 km2 for a 300-pop
+# village). Measured: K=8 errs up to 40% on small cells, K=16/32 a few
+# %, K=64/128 ~1-2%. Growth rankings are unchanged down to K=16, so
+# the default is 32 (4x kernel speedup over 128 at no ranking cost).
+_SAMPLE_K = 32
 
 
 def _sample_offsets(k: int | None = None):
