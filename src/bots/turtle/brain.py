@@ -168,6 +168,31 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         out.append(f"TRAIN {t.id}")
         state.note_train(t.id)
         break  # one train per turn as per turtle doctrine
+    # Liquidate (scorched-earth deny): doomed non-capitals (inbound
+    # overwhelming vs home+printable) drain 1/turn in parallel (deny foe
+    # capture + gain tempo armies; towns die anyway).
+    try:
+        _force = inbound_force(state, config)
+    except Exception:
+        _force = {}
+    _cap = state.world.faction_capital(state.faction)
+    for t in own_t:
+        if state.should_yield():
+            break
+        if _cap is not None and t.id == _cap.id:
+            continue  # never liquidate the capital (evac covers it)
+        if t.id in state._pending_trains:
+            continue
+        _fn = _force.get(t.id)
+        if _fn is None:
+            continue
+        _eta, _n = _fn
+        _home = sum(1 for a in state.own_armies()
+                    if math.hypot(a.x - t.x, a.y - t.y) <= 20.0)
+        _printable = max(0.0, (t.population - config.army_cost - config.death_threshold) / config.army_cost)
+        if _n > _home + _printable and t.population >= config.army_cost + config.death_threshold:
+            out.append(f"TRAIN {t.id}")
+            state.note_train(t.id)
 
     # cap-concentration: outlying towns are delay, not fortresses. Split
     # garrisons measured 1635 vs 2180 concentrated (2v1 wins, 1v1s trade).

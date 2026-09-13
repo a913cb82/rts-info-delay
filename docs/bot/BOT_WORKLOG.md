@@ -4082,3 +4082,7 @@ EDGE1 agree: TRAIN 1000-1499-pop towns into armies — deny foe capture +
 gain tempo). Queued FIRST (turtle deny when behind). Others: wall-towns
 (expensive), viceroy-hunt (fog-hard), bypass-starve (marginal),
 mission-orders (already implicit), rest complex/killed.
+
+### Liquidate built (2026-09-13 13:11 BST)
+Research-driven convergent (scorched-earth + EDGE1): doomed non-capitals
+drain in parallel (deny capture + tempo). Bar: exceed 47.2 AND guards.
