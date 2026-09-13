@@ -4129,3 +4129,6 @@ D-certain marginal, floor-first/home-garrison/phase-gate dead, compound-pro irre
 raids) but redundant (P6/wealth-adaptive cover it). Scoring quirks
 marginal (BUILD-halt saves ~500s; viceroy micro 1k). Rest built/complex.
 No build. Queue exhausted again.
+
+### Heartbeat (research v1-v4 exhausted) (2026-09-13 13:51 BST)
+60+ ideas -> 5 builds (all fail). v5 would yield ~0. Loop alive.
