@@ -657,3 +657,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   big-size excursion (+1.303, urb 11%: 508/1507/3212/17939).
 - H-S2 (running): same constraints at BASE (adopted standard) — clean
   tiers by search at the standard, first attempt. 2/3 searches spent.
+- 1M BASE s64t (no bourgs/regional): settled +0.866 — third behind hand
+  small-chef (+0.909) and seed (+0.885), all within 0.045. At the standard
+  the top three are 4-tier, 4-tier, 2-tier: tiers win, count varies.
