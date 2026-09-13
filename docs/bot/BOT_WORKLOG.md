@@ -3729,3 +3729,14 @@ Rated clean 15g (3x5 batches) -> ord 24.7 (mu 32.6): FAIL (gate 47.2+).
 Takes occur (style TRUE: 232k/114k take-snowball wins) but waiting starves
 thin packs (zeros dominate). Affordability dominates (thin can't wait for
 clean). Reverted (main keeps aggressive 42.2). Parked.
+
+### Turtle counter-takes built (2026-09-13 09:41 BST)
+Worst-first rung 2 (new goal: all >=60): storm debt retaliates next calm
+(repel-then-retaliate 1-2 punch; natural force, no muster-tax; positional
+guards stay when threatened). Bar (gate): ord>=47.3 AND guards hold.
+
+### Turtle-counter verdict: FAIL (35.9, retaliation too rare) (2026-09-13 09:56 BST)
+Rated clean 15g (3x5) -> ord 35.9 (mu 43.6): FAIL (gate 47.3+). Wins
+occur (198k/116k/30k retaliations, style TRUE) but too rare (needs big
+repels + freed packs) to move ordinal; weak-diverse gate punishes rest.
+Reverted (main keeps turtle 47.3). Parked on loop/turtle-counter.
