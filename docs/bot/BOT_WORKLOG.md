@@ -3302,3 +3302,7 @@ Buzzer +10g (1220 total) -> ord 63.6 (mu 67.0, was 67.4/1210g): -0.5 on
 ### Buzzer 1230g (2026-09-13 04:17 BST)
 Buzzer +10g (1230 total) -> ord 63.5 (mu 66.8, was 67.0/1220g): -0.1 on
 4W + fifth. Flat. 1230 games.
+
+### Buzzer 1240g (2026-09-13 04:22 BST)
+Buzzer +10g (1240 total) -> ord 64.1 (mu 67.4, was 66.8/1230g): +0.6 on
+4W (203k/358k/239k/258k) + fourths. 1240 games.
