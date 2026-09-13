@@ -383,3 +383,10 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   knob-stable; only levels shift with knobs.
 - Chef-spacing plateau confirmed at prem.75 (@64/@80/@96 all +1.105–1.11
   cold): spacings knob-stable 64–96km, levels carry all knob response.
+- Village size is free (prem.75): 430-villages tie 300-villages (+1.1644
+  vs +1.1639) in the dense-bourg shape. Size costs nothing; COUNT sets
+  share. Parish size needs fewer villages (sparser lattice), not richer
+  ones — but sparser lattices lose (tested). Count/size deadlock stands.
+- Pricing#1 verdict (combo knobs, 16 model evals): 4-tier seed +1.392 >
+  dense-combo +1.386 > dense-bourg +1.379. Search ranks seed-family first
+  everywhere; hand dense variants trail by 0.006–0.013.
