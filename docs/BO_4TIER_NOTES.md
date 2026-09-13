@@ -390,3 +390,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Pricing#1 verdict (combo knobs, 16 model evals): 4-tier seed +1.392 >
   dense-combo +1.386 > dense-bourg +1.379. Search ranks seed-family first
   everywhere; hand dense variants trail by 0.006–0.013.
+- Big-sparse villages (2104×430 @4.5km): +1.148 vs +1.164 dense-bourg@13.
+  Bourgs land (13.7% ✓) but villages stay 83% — sparser lattice thins
+  coverage faster than bigger villages add share. Deadlock holds from
+  the spacing side too.
