@@ -4242,3 +4242,12 @@ OPTIMAL SKETCH: raid early (steal grown stocks, min-size armies) ->
 boost captives (hold+grow) -> feeder ratios (boot center) -> ride spike
 (time it; base dies). Personalities: aggressive=raider, expander=breeder,
 pro=ratio-timing, turtle=fed-fortress.
+
+### T6 conquest-vs-muster: user right, T4 was vs-idle (2026-09-13)
+Harness fix: structured orders are faction-0-only; string orders work
+both factions. Raid-60 vs mustering 600-town: attacker 60 DIES on
+defender's merged 162 (3 turns x 10%/turn); attacker net -65, defender
+-6 (muster is score-neutral pop->army conversion!). Conquest pays ONLY
+vs unprepared/depleted. Redesign: INTEL-GATED raids (scout muster-state;
+attack the drained/post-spam); candidate T7 siege-by-forage (camp on
+their farmland, eat harvest first). Turtle muster-response validated.
