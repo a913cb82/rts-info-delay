@@ -3567,3 +3567,7 @@ from 66.1). Riding.
 21a74a6 +15g (255 total) -> ord 68.9 (mu 72.6, was 73.1/240g): -0.5 on
 47% wins + ZERO deaths + fourth. Oscillation 69-71 (mu 72-75 plateau?).
 80 needs mu 81+ (+8; win-rate 60%->85%, luck-bound). 255 games.
+
+### Overmatch 270g (69.8, mu 73.4) (2026-09-13 07:37 BST)
+21a74a6 +15g (270 total) -> ord 69.8 (mu 73.4, was 72.6/255g): +0.9 on
+60% wins (incl 388k/334k/293k) + 2nds/3rds + ZERO deaths. 270 games.
