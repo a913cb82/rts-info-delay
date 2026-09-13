@@ -12,7 +12,7 @@ Every parameter is a real-world quantity (see GameConfig):
     b    birth_rate          crude births / person / year (35/1000)
     m    death_rate          crude deaths / person / year (31/1000)
     sm   market_premium      max farm-output premium from market access
-    th   migration_share     share of natural increase that emigrates
+    th   migration_share     share of total population emigrating/year
     nu   surplus_mobility    share of surplus labour leaving per year
     Lm   migration_scale_km  migration distance scale
 
@@ -26,7 +26,7 @@ Per turn (TURNS_PER_YEAR = config.turns_per_year):
     S_i     = Y_i + imports_i                             food commanded
     B_i     = b*P_i * S_i/(S_i + h*P_i),  h = b/m - 1
     D_i     = m*P_i
-    out_i   = th*max(0,B_i-D_i) + nu*max(0,P_i - Y0_i/sf)
+    out_i   = th*P_i + nu*max(0,P_i - Y0_i/sf)
     mig_ij  = out_i * attr_ij / sum_k attr_ik
     attr_ij = max(0,P_j-P_i) * min(1,S_j/P_j) * e^(-d/Lm) * win(d)
 
@@ -103,8 +103,8 @@ def rho0_of(config: GameConfig) -> float:
 def production(config: GameConfig, area: np.ndarray, pops: np.ndarray) -> np.ndarray:
     """Food from a settlement's cell, flat ring or Von Thuenen decay.
 
-    Flat (current): min(rural_density*area, sigma*P).
-    Decay: farmers work the best land first; a worker farms
+    Flat (c = 0): min(rural_density*area, sigma*P).
+    Decay (current): farmers work the best land first; a worker farms
     aw = sigma/rho0 km2, yield falls with distance, so output is the
     integral out to r = min(r_labor, r_cell).
     """
@@ -123,14 +123,14 @@ def production(config: GameConfig, area: np.ndarray, pops: np.ndarray) -> np.nda
 
 
 def derived(config: GameConfig):
-    """Return (Y_ring, P_market, h, b_turn, m_turn, nu_turn)."""
+    """Return (Y_ring, P_market, h, b_turn, m_turn, th_turn, nu_turn)."""
     y_ring = config.rural_density * math.pi * config.farm_radius_km ** 2
     p_market = y_ring
     h = max(config.birth_rate / max(config.death_rate, 1e-12) - 1.0, 1e-9)
     tpy = max(config.turns_per_year, 1.0)
     return (y_ring, p_market, h,
             config.birth_rate / tpy, config.death_rate / tpy,
-            config.surplus_mobility / tpy)
+            config.migration_share / tpy, config.surplus_mobility / tpy)
 
 
 # ---------------------------------------------------------------------------
@@ -514,39 +514,35 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
     if n == 0:
         return np.zeros(0), np.zeros(0)
     pops = np.array([t.population for t in towns], dtype=np.float64)
-    y_ring, p_market, h, b_t, m_t, nu_t = derived(config)
+    y_ring, p_market, h, b_t, m_t, th_t, nu_t = derived(config)
     sf = max(config.farm_workers_yield, 1e-12)
     areas = land_areas(towns, map_size, config)
-    geo = _geo(towns, config) if n >= 2 else None
+    # No n>=2 shortcuts: a lone town earns its own-services boost too.
+    # (Skipping it would make founding a faraway town boost everyone —
+    # action at a distance. _trade/_migration still no-op below n=2.)
+    geo = _geo(towns, config)
     base_prod = production(config, areas, pops)
     serv = np.maximum(0.0, pops - base_prod / sf)
-    boost = (_market_boost(serv, pops, geo, config, p_market) if n >= 2
-             else np.zeros(n))
+    boost = _market_boost(serv, pops, geo, config, p_market)
     prod = (1.0 + boost) * base_prod
     surplus = np.maximum(0.0, prod - pops)
     deficit = np.maximum(0.0, pops - prod)
-    if n >= 2:
-        imports, _exports = _trade(surplus, deficit, geo, config)
-    else:
-        imports = np.zeros(n)
+    imports, _exports = _trade(surplus, deficit, geo, config)
     S = prod + imports
     births = b_t * pops * S / np.maximum(S + h * pops, 1e-12)
     deaths = m_t * pops
-    if n >= 2:
-        p_need = base_prod / sf
-        p_surp = np.maximum(0.0, pops - p_need)
-        out_people = (config.migration_share * np.maximum(0.0, births - deaths)
-                      + nu_t * p_surp)
-        net_mig = _migration(pops, S, out_people, geo[3], geo[4], config)
-    else:
-        net_mig = np.zeros(n)
+    p_surp = np.maximum(0.0, pops - base_prod / sf)
+    out_people = th_t * pops + nu_t * p_surp
+    net_mig = _migration(pops, S, out_people, geo[3], geo[4], config)
     new_pops = np.maximum(0.0, pops + births - deaths + net_mig)
     return new_pops, serv
 
 
 def base_growth(population: float, config: GameConfig) -> float:
-    """Net growth per turn of a lone settlement (full ring, no neighbours)."""
-    _y_ring, _p_market, h, b_t, m_t, _nu = derived(config)
+    """Net growth per turn of a lone settlement (full ring, no neighbours,
+    no market boost) — the no-services analytic baseline. A real lone
+    town still earns its own-services boost via _step_core."""
+    _y_ring, _p_market, h, b_t, m_t, _th, _nu = derived(config)
     area = np.array([math.pi * config.farm_radius_km ** 2])
     pops = np.array([float(population)])
     prod = float(production(config, area, pops)[0])

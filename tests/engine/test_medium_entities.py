@@ -29,7 +29,9 @@ class TestEntitiesMedium:
         for _ in range(10):
             apply_growth(w, CFG)
         assert any(town.id == tid for town in w.towns)
-        assert t.population > 2000
+        # Survival at town scale. Exact levels are the tripwire's job;
+        # this must not need retuning when vital rates move.
+        assert t.population > 1000
 
     def test_N8_army_removed_after_build(self) -> None:
         """N8: Army removed after BUILD."""

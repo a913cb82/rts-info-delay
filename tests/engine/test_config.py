@@ -25,11 +25,12 @@ class TestConfig:
         assert cfg.rural_density == 30.0
         assert cfg.cart_distance_km == 20.0
         assert cfg.farm_workers_yield == 1.3
+        assert cfg.farm_decay_at_radius == 0.9
         assert cfg.birth_rate == 0.035
         assert cfg.death_rate == 0.031
         assert cfg.market_premium == 0.25
         assert cfg.market_scaling == 1.0
-        assert cfg.migration_share == 0.5
+        assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
         assert cfg.migration_scale_km == 50.0
         assert cfg.town_min_population == 10.0
@@ -49,11 +50,12 @@ class TestConfig:
         assert cfg.rural_density == 30.0
         assert cfg.cart_distance_km == 20.0
         assert cfg.farm_workers_yield == 1.3
+        assert cfg.farm_decay_at_radius == 0.9
         assert cfg.birth_rate == 0.035
         assert cfg.death_rate == 0.031
         assert cfg.market_premium == 0.25
         assert cfg.market_scaling == 1.0
-        assert cfg.migration_share == 0.5
+        assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
         assert cfg.migration_scale_km == 50.0
         assert cfg.town_min_population == 10.0

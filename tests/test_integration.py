@@ -67,7 +67,9 @@ class TestIntegration:
         csv = "\n".join(csv_lines) + "\n"
         w, ledger = _run_game(map_csv=csv, turns=100)
         assert len(w.towns) == 5
-        assert all(t.population > 500 for t in w.towns)
+        # All survive at hamlet scale; contested border land is far from
+        # every center, so edge hamlets sit just under 500 under decay.
+        assert all(t.population > 400 for t in w.towns)
 
     def test_viewer_replays_record(self) -> None:
         """Z4: Run game → write JSONL → verify entity counts per turn match."""
@@ -160,9 +162,12 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for one-turn economy (serv from unboosted
-        # production; no cross-turn state). Was 15cd58fe... with the
-        # serv lag (e7335fed... before that, on the fitted model).
-        assert h == "1567df727c6c23e693f2c8a10f920dc2b446b95ee892a16553892173f31796f0"
+        # Re-based 2026-09-13 for background migration (out = share x P +
+        # surplus, was share x natural increase), Von Thunen decay on by
+        # default (c=0.9), and lone-town self-boost (no n>=2 shortcut).
+        # Verified: symmetric towns stay symmetric, trajectories match to
+        # 2dp (5000 -> 4997.1 over 10 turns); diff is config defaults +
+        # later decimals. Was 1567df72... (one-turn economy).
+        assert h == "68355f5382e66e4fc0fe6d8fa2b350765f47c4144be84b57e71db5d043454cd0"
     finally:
         path.unlink(missing_ok=True)

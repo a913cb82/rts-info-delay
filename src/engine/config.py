@@ -39,13 +39,13 @@ class GameConfig:
     rural_density: float = 30.0          # people/km2 the land feeds (c.1600)
     cart_distance_km: float = 20.0       # carting doubles grain price
     farm_workers_yield: float = 1.3      # people fed per farm worker (near-field)
-    farm_decay_at_radius: float = 0.0    # yield lost at the farm radius (0 = flat ring)
+    farm_decay_at_radius: float = 0.9    # yield lost at the farm radius (Von Thunen: near land best)
     farm_decay_shape: float = 2.0        # distance-decay exponent p
     birth_rate: float = 0.035            # crude birth rate, per person per year
     death_rate: float = 0.031            # crude death rate, per person per year
     market_premium: float = 0.25         # max farm-output premium from market access
     market_scaling: float = 1.0          # gamma: urban service scaling exponent
-    migration_share: float = 0.5         # theta: share of natural increase that emigrates
+    migration_share: float = 0.005        # theta: share of total population emigrating per year
     surplus_mobility: float = 0.05       # nu: share of surplus labour that emigrates per year
     migration_scale_km: float = 50.0     # migration distance scale
     town_min_population: float = 10.0    # minimum settlement size (die at or below)

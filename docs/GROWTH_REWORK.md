@@ -21,7 +21,7 @@ access/migration kernels) is superseded; its suite still runs via
 | `b` | `birth_rate` | 35 /1000/yr | crude birth rate |
 | `m` | `death_rate` | 31 /1000/yr | crude death rate (`b−m` = 0.4%/yr) |
 | `sm` | `market_premium` | 0.25 | max farm-output premium from market services |
-| `th` | `migration_share` | 0.5 | share of natural increase that emigrates |
+| `th` | `migration_share` | 0.005 /yr | share of total population that emigrates |
 | `nu` | `surplus_mobility` | 0.05 /yr | share of surplus labour that emigrates |
 | `Lm` | `migration_scale_km` | 50 | migration distance scale |
 | — | `town_min_population` | **10** | minimum settlement size (die at or below) |
@@ -47,7 +47,7 @@ trade       surplus_j = max(0, Y_j - P_j); deficit_i = max(0, P_i - Y_i)
 births      B_i = b*P_i * S_i/(S_i + h*P_i)             f=1 -> births=deaths
 deaths      D_i = m*P_i
 
-migration   out_i   = th*max(0,B_i-D_i) + nu*max(0, P_i - Y_i/sf)
+migration   out_i   = th*P_i + nu*max(0, P_i - Y_i/sf)
             attr_ij = max(0,P_j-P_i) * min(1,S_j/P_j) * e^(-d/Lm) * win(d)
             flow_ij = out_i * attr_ij / sum_k attr_ik
             net_ij  = flow_ij - flow_ji
@@ -243,10 +243,11 @@ One-turn rates for a 100k hierarchy (`benchmarks/sanity_agrarian_hier.py`):
   cover new countryside.
 
 
-### Von Thuenen distance decay (opt-in) — small settlements win
+### Von Thuenen distance decay (default on) — small settlements win
 
-`farm_decay_at_radius` (c) and `farm_decay_shape` (p) replace the flat
-5 km ring with yield `rho0*(1 - c*(d/R)^p)`: workers farm the best land
+`farm_decay_at_radius` (c = 0.9) and `farm_decay_shape` (p = 2) replace
+the flat 5 km ring with yield `rho0*(1 - c*(d/R)^p)`: workers farm the
+best land
 first (`a_w = sigma/rho0` km² each), so per-worker output falls with the
 distance a settlement must reach; `rho0` is rescaled so the full ring's
 mean yield still equals `rural_density`. `c=0` is the old flat ring.
@@ -487,3 +488,11 @@ non-growth reasons: administration, defence — out of scope here).
 - Calibration knobs with priors: `market_premium` (0.05–0.5, anchor
   `market_access_ratio`), `farm_workers_yield` (1.2–1.5),
   `surplus_mobility` and `migration_share`.
+- Migration budget is background + surplus: `out = th*P + nu*serv`
+  (was `th*max(0,B-D) + nu*serv`). At th = 0.005/yr a village next to
+  a town drains ~0.5%/yr gross (~-26% over a 58-year game) while the
+  town grows ~+25% — steady urbanization, no boom-bust (all trajectories
+  monotone). th = 0.01 halves villages in a game length (too hot);
+  th = 0.002 is barely visible. Single-turn *total* growth tables are
+  blind to this (migration is conservative — it reshuffles, and the
+  table measures one turn from fixed populations).

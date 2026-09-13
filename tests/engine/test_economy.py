@@ -90,9 +90,12 @@ class TestBirthsDeaths:
         g = base_growth(300.0, CFG)
         assert 0 < g < 0.2
 
-    def test_equilibrium_at_food_supply(self) -> None:
-        y_ring, _pm, _h, _b, _m, _nu = derived(CFG)
-        assert abs(base_growth(y_ring, CFG)) < 0.01
+    def test_equilibrium_below_flat_capacity(self) -> None:
+        """Malthusian equilibrium exists; Von Thunen travel costs put it
+        below the flat-ring yield (a lone town cannot work the far ring
+        hard enough to feed flat capacity)."""
+        y_ring, _pm, _h, _b, _m, _th, _nu = derived(CFG)
+        assert base_growth(300.0, CFG) > 0 > base_growth(y_ring, CFG)
 
     def test_lone_city_declines(self) -> None:
         w = _world(_town(500, 500, 20000.0, tid=1))
@@ -223,9 +226,14 @@ class TestBatch:
             assert b == pytest.approx(p, abs=1e-9)
 
     def test_equal_towns_do_not_interact(self) -> None:
-        towns = [_town(500, 500, 300, tid=0), _town(530, 500, 300, tid=1)]
+        # Beyond service reach (60 km) equal towns are fully independent:
+        # no shared boost, no trade, no migration between equals.
+        # (Within reach they share services through the market boost —
+        # that is the agglomeration mechanism, not extraction.)
+        towns = [_town(500, 500, 300, tid=0), _town(600, 500, 300, tid=1)]
         total = sum(nets_for(towns, CFG))
-        assert total == pytest.approx(2.0 * base_growth(300.0, CFG), rel=1e-6)
+        lone, _ = _step_core([_town(500, 500, 300, tid=0)], [1000, 1000], CFG)
+        assert total == pytest.approx(2.0 * (lone[0] - 300.0), rel=1e-9)
 
 
 class TestEconomyCommands:
