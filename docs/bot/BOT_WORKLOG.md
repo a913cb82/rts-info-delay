@@ -3602,3 +3602,7 @@ from 66.1). Riding.
 ### Overmatch 375g (2026-09-13 08:12 BST)
 21a74a6 +15g (375 total) -> ord 67.6 (mu 71.3, was 71.4/360g): -0.2 on
 67% wins (offset by 2 F1-deaths). Flat. 375 games.
+
+### Overmatch 390g (2026-09-13 08:17 BST)
+21a74a6 +15g (390 total) -> ord 67.5 (mu 71.2, was 71.3/375g): -0.1 on
+73% wins (offset by F1-death + fourths). Flat. 390 games.
