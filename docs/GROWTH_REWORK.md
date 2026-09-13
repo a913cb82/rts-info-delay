@@ -90,6 +90,15 @@ total number of people.
 ### 7. Death floor
 Towns at 10 or fewer people vanish — too few hands to hold the fields.
 
+### 8. Forage — armies eat first
+Every soldier eats 1 unit of food a turn, the civilian rate, taken from
+towns within 10km of the ground the army actually marched that turn
+(a camped army forages its disc). Armies eat off the harvest before trade:
+whatever is left sets births and deaths. Shared ground splits by hunger
+(each town feeds its visitors in proportion to their need) and every army
+taxes its whole path evenly — contested breadbaskets suffer first, and a
+column marching through wasteland arrives ravenous.
+
 ## Settings (every one a real-world quantity)
 
 | setting | value | what it controls |
