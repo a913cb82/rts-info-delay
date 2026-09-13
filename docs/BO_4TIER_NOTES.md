@@ -626,3 +626,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   vs 27.3). Shares 72.8/21.5/5.8 vs reality 72/15/5–10 — villages EXACT,
   chef lands, only bourgs overshoot (21.5 vs 15). Sizes 519/1038/8650 all
   inside anchors except villages (519 vs ~450, close).
+- Thinner bourgs (@16, 19 towns): shares 77.7/15.5/6.8 — bourgs EXACT,
+  villages rebound to 78. Frontier mapped: @13 gives 72.8/21.5/5.8, @16
+  gives 77.7/15.5/6.8. Reality (72/15) sits just outside the attainable
+  corner — both need tops to absorb mass neither spacing frees.
