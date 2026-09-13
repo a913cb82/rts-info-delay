@@ -495,3 +495,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District dense-bourgs@13 + 2500-chef at adopted standard (max-push):
   settled +0.924, urb 20% — ties lean-2500 (+0.922, urb 11%) with double
   the urban share. Dense shares ride free at the standard too, both scales.
+- District dense-bourg@11 + 2500-chef at adopted standard: settled +0.927
+  (new district best), urb 24%, shares 76/21.5/2.4 vs reality 72/15/5–10.
+  Villages land, urban total lands; bourgs overshoot, center small. Same
+  numbers-lever as 1M, same squeeze one level up.
