@@ -3938,3 +3938,7 @@ Q (scouting efficient/continuous pre-timed?): NO continuous — STRUCTURALLY
 DEAD (2-turn intel lag vs 1-step messenger + 10km tolerance; messenger
 delay 150km/turn). Discrete hops + probes + JIT/departure-sync instead;
 scouting paradox (needs surplus, never has it early).
+
+### Wealth-v2 built (ratio 0.8) (2026-09-13 12:01 BST)
+Marginal tune on closest rung (45.6): crusade at near-peer 0.8x (more
+rich-windows). Bar: exceed 47.2 AND guards (style).
