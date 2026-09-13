@@ -3889,3 +3889,7 @@ pop-efficiency, steal-growth): all sealed/circular. Poverty-trap absolute
 ### Heartbeat (2026-09-13 12:06 BST)
 Infra/modeling options marginal (mechanisms fog-bound regardless).
 Nothing +EV. Loop alive.
+
+### Heartbeat (2026-09-13 12:11 BST)
+Build EV rechecked (thin 0/25, <-0.3/turn). No terminal goal payoff
+(persists infinitely); per-turn EV rules. Loop alive.
