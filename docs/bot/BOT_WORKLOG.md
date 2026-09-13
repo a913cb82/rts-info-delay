@@ -3799,3 +3799,8 @@ Goal (all >=60) blocked on mechanisms, not volume. Parked all three.
 71.1/610g): +0.4 on 4W + F1-death + fifths. Note: combine-fail 2691ae0
 spikes 329k in mirrors (failed branches spike as opponents; variance).
 697 games.
+
+### Combine fairly dead (25% mirrors) (2026-09-13 10:52 BST)
+Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
+(25%, 272k) + 1 death + mids. Interferes even in mirrors (recall-bleed
++ overmatch-wait). Dead both gates. Parked permanently.
