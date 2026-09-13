@@ -634,3 +634,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (+1.347, urb 4.6%); runner-up degenerate-urban (+1.346, urb 100% —
   constraints don't stop urban extremes, only phantoms and tiny P0).
   Constrained search crowns minimal-urban for the third time running.
+- District 12k-chef + dense bourgs: +1.267 vs +1.396 (5k-chef). Bigger
+  chef loses 0.13 — district chef ceiling ~5k, hard. Chef ceilings at
+  both scales (3k province, 5k district) scale slower than region size.
