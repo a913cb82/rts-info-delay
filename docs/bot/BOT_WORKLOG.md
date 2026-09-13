@@ -3537,3 +3537,9 @@ identical code (rating transfers; grind this ID).
 21a74a6 +15g (165 total) -> ord 68.2 (mu 71.8, was 69.8/150g): +2.1 on
 73% wins (incl 393k/294k/291k) + ZERO deaths. Mu climbing (71.8).
 Pool lead extends.
+
+### Overmatch 180g (mu 73.0, climbing!) (2026-09-13 07:07 BST)
+21a74a6 +15g (180 total) -> ord 69.4 (mu 73.0, was 71.8/165g): +1.2 on
+60% wins (incl 329k/357k) + ZERO deaths + fourth. TREND UP (mu 69.8->
+71.8->73.0): clean-take snowballs may break the ceiling (dominance, not
+luck). Riding.
