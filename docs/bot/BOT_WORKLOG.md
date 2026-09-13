@@ -4014,3 +4014,7 @@ Rated clean 15g (3x5) -> ord 23.8 (mu 31.7): FAIL (gate 47.2+). One
 232k mega-capital win but guards-to-pop loses defense (raided, die).
 Guards beat growth (defense first). Reverted (main keeps turtle 47.2).
 Parked on loop/turtle-tribute.
+
+### Heartbeat (imaginative sweep dead) (2026-09-13 12:36 BST)
+Seed-bank (poor), pioneer-escort (settler dies anyway), bloodlust
+(donate), cannibal (no mechanic). Loop alive.
