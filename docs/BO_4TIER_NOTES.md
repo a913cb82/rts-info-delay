@@ -260,3 +260,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Regional sweep (dense-bourg shape, prem.75, settled): 20k +1.164 >
   25k +1.160 > 40k +1.113. Peak at ~20k; bigger tops lose on mouths.
   Top sizes refuse to scale under any knob — the squeeze's upper half.
+- both-BO#3 verdict: seed wins again (+1.156, 3rd time). Search never
+  tries dense bourgs unaided (density fractions unexplored at 13–21
+  evals). Added dense-bourg 4-tier seed (500@13/3000@80/20000@150).
+- r2-BO#1 (running): prem.75 + dense-bourg seed, seed 63. 1/5 spent.
