@@ -3150,3 +3150,7 @@ Buzzer +10g (810 total) -> ord 63.3 (mu 66.6, was 66.5/800g): +0.1 on
 ### Buzzer 820g (2026-09-13 02:17 BST)
 Buzzer +10g (820 total) -> ord 62.7 (mu 66.0, was 66.6/810g): -0.6 on
 10% wins (1/10) + mids. Bad batch. 820 games.
+
+### Buzzer 830g (2026-09-13 02:22 BST)
+Buzzer +10g (830 total) -> ord 63.3 (mu 66.6, was 66.0/820g): +0.6 on
+4W (260k/239k/233k/297k) + F1-death + mids. 830 games.
