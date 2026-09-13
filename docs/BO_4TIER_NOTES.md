@@ -14,6 +14,7 @@ these; engine `GameConfig` defaults untouched.
 |---|---|---|---|---|
 | BO#1 | `bo_win_b1` (16 evals) | max-push, old seeds | +0.859, 2-tier s64/T2400 | hand 4-tier (+0.875) unbeaten; no regional seed |
 | BO#2 | `bo_win_b2` (16 evals) | max-push + 4-tier seed | **+0.885, 4-tier** 300/600@18/3000@80/12000@150, urb 12% | 4-tier confirmed by search |
+| BO#3 | `bo_win_b3` (16 evals) | reseed of BO#2 | identical +0.885, same shape | robust, not seed luck |
 
 BO#2 top-4: 4-tier +0.885 > 2-tier +0.859 > 3-tier +0.854 > 2-tier +0.806.
 Used 2/10 BO runs.
@@ -24,10 +25,11 @@ Geometry grid (chef size × spacing × regional), 18 cells: fewer/smaller
 chefs win monotonically; 8k-chefs starve; regional 20k > 12k always.
 Best cell: 7×3000@80 + 20k (+0.833 cold, +0.875 settled).
 
-Refinements: bourgs 500 (+0.844) > 600 (+0.833) > 750 (+0.801) >
-1000 (+0.739) — monotone smaller; chefs flat 72–88km; regional peaks
-~20–25k (15k falls to +0.790); bourg spacing 16/18/20 flat; bourg 400
-(+0.849) best-tested, still falling — floor not yet found.
+Refinements: bourgs flat 200–500 (~+0.848 all sizes — no floor; 1000 falls
+to +0.739); chefs flat 72–88km; regional peaks ~20–25k (15k falls to
++0.790); bourg spacing 16/18/20 flat. Settled: bourgs-400 +0.897 vs
+no-bourgs +0.894 — the bourg tier adds +0.003: garnish, not structure.
+At max-push the working tiers are villages + chefs + regional.
 
 Knob spot-checks on winner (all keep 4-tier ahead of s32): melt .002,
 hunger 1.6, carts 25km, workers 1.4, premium .6, gamma 1.4.
@@ -51,9 +53,11 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - 100k keeps 3-tier lean (600@18 + 5000, +0.88 settled); tops appear only
   with countryside big enough to feed them.
 
+| BO#3 | `bo_win_b3` (16 evals) | reseed of BO#2 | identical +0.885, same shape | robust, not seed luck |
+
 ## Next
 
-- BO#3: reseed around BO#2 winner (bourgs 400–600, chefs 2.5–3.5k@70–90,
-  regional 12–25k) to find the bourg floor and chef size.
+- Bourg-size gap is structural: growth flat across 200–500 and +0.003
+  with vs without bourgs at max-push, while reality staffs 900s at 13%.
+  Needs non-food bourg income or a service only small towns give.
 - 100k transfer check of any new sizes.
-- Longer extend of the winning log if B3 agrees.
