@@ -3958,3 +3958,7 @@ Loop alive. All blocked.
 
 ### Heartbeat (2026-09-13 12:26 BST)
 Loop alive.
+
+### Heartbeat (expander ports dead on arrival) (2026-09-13 12:31 BST)
+Wealth/overmatch/guards ports to expander all die pre-build (thin.
+Loop alive.
