@@ -3661,3 +3661,7 @@ fresh = weak (asymmetric: wins pay ~0, mids cost). Floor ~63-65 parity.
 ### Overmatch 530g (2026-09-13 08:42 BST)
 21a74a6 +10g (530 total) -> ord 67.1 (mu 70.7, was 71.2/520g): -0.6 on
 4W + F1-death + fifths. 530 games.
+
+### Overmatch 540g (2026-09-13 08:47 BST)
+21a74a6 +10g (540 total) -> ord 67.3 (mu 70.8, was 70.7/530g): +0.2 on
+60% wins + F1-death + fourth. Flat. 540 games.
