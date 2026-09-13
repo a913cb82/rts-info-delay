@@ -79,7 +79,7 @@ def rate(spec):
     towns = [Town(id=i, faction=0, x=x, y=y, population=p, is_capital=(i == 0))
              for i, (x, y, p) in enumerate(spec)]
     total = sum(t.population for t in towns)
-    n2, _s = _step_core(towns, [1000, 1000], CFG)
+    n2, _s, _ = _step_core(towns, [1000, 1000], CFG)
     return (sum(n2) - total) / total * 52.0 * 100.0
 
 

@@ -52,7 +52,7 @@ def rate(n_t,T,P_target,reach):
     towns_l=[Town(id=i,faction=0,x=x,y=y,population=p,is_capital=(i==0))
              for i,(x,y,p) in enumerate(spec)]
     tot=sum(t.population for t in towns_l)
-    n2,_=eco._step_core(towns_l,[1000,1000],CFG)
+    n2,_, _ = eco._step_core(towns_l,[1000,1000],CFG)
     return (sum(n2)-tot)/tot*52*100, P
 
 for reach,label in [(3.0,"60 km (current)"),(1.0,"20 km (1600s shed)")]:

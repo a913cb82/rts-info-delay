@@ -163,12 +163,12 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for army sizes (Army.size, max_train_frac;
-        # the scenario has no armies so trajectories are byte-identical —
-        # only the config line grew a field).
+        # Re-based 2026-09-13 for army hunger deaths (town hunger curve on
+        # rations + baggage; the scenario's lone army attrits ~2.4%/turn
+        # in the wilderness, 1000->787 — towns byte-identical).
         # Verified: symmetric towns stay symmetric (both 4995.85->4965.16,
-        # monotone gentle decline), trajectories sane. Was d0988167...
-        # (calibration promotion).
-        assert h == "136481afb9ff0d24b131bd1f094095ebb00e996908021849f879787836544cc8"
+        # monotone gentle decline), trajectories sane. Was d431796f...
+        # (zero-cliff hunger).
+        assert h == "e8908d6d8c98e5d4d1cf8355f5dcf49b15c03bea3103756781da206b5c95699e"
     finally:
         path.unlink(missing_ok=True)

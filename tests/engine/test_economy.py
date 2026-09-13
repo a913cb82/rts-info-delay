@@ -337,11 +337,11 @@ class TestMarketAccess:
         # Zero-sum: the village feeds the town (its own net may fall) but
         # the system total rises (steep-curve mouths eat first). Trade
         # gains from allocation, not from nothing.
-        alone, _ = _step_core([_town(500, 500, 300.0, tid=1)],
+        alone, _, _ = _step_core([_town(500, 500, 300.0, tid=1)],
                                [1000, 1000], NO_MIG)
-        town_alone, _ = _step_core([_town(530, 500, 2400.0, tid=2)],
+        town_alone, _, _ = _step_core([_town(530, 500, 2400.0, tid=2)],
                                     [1000, 1000], NO_MIG)
-        together, _ = _step_core([_town(500, 500, 300.0, tid=1),
+        together, _, _ = _step_core([_town(500, 500, 300.0, tid=1),
                                   _town(530, 500, 2400.0, tid=2)],
                                  [1000, 1000], NO_MIG)
         assert together.sum() > alone[0] + town_alone[0]
@@ -350,10 +350,10 @@ class TestMarketAccess:
         """Deterministic given state; cold start needs no priming turn."""
         towns = [_town(500, 500, 300.0, tid=1),
                  _town(530, 500, 2400.0, tid=2)]
-        first, _ = _step_core(towns, [1000, 1000], CFG)
+        first, _, _ = _step_core(towns, [1000, 1000], CFG)
         for t in towns:
             t.last_improvement = 0.0
-        second, _ = _step_core(towns, [1000, 1000], CFG)
+        second, _, _ = _step_core(towns, [1000, 1000], CFG)
         assert list(first) == list(second)
 
 
@@ -389,7 +389,7 @@ class TestBatch:
         # improvement — that is the agglomeration mechanism, not extraction.)
         towns = [_town(500, 500, 300, tid=0), _town(660, 500, 300, tid=1)]
         total = sum(nets_for(towns, CFG))
-        lone, _ = _step_core([_town(500, 500, 300, tid=0)], [1000, 1000], CFG)
+        lone, _, _ = _step_core([_town(500, 500, 300, tid=0)], [1000, 1000], CFG)
         assert total == pytest.approx(2.0 * (lone[0] - 300.0), rel=1e-9)
 
 
@@ -712,6 +712,17 @@ class TestForage:
         assert S[0] < 700  # ...but the shared breadbasket is stripped ~half,
         assert S[1] > 4500  # while the fed army's rich land is barely touched
 
+    def test_hunger_curve_matches_towns(self) -> None:
+        # Same elasticity on (rations + baggage): full belly pays baseline,
+        # half rations ~3x, barren land attrits ~40x baseline (~2.4%/turn).
+        from engine.economy import _hunger_deaths, derived
+        m_t = derived(CFG)[4]
+        assert _hunger_deaths(1000.0, 1000.0, m_t, 1.6) == pytest.approx(m_t * 1000.0)
+        assert _hunger_deaths(1000.0, 500.0, m_t, 1.6) == pytest.approx(
+            m_t * 1000.0 * 0.6 ** -1.6)
+        assert _hunger_deaths(1000.0, 0.0, m_t, 1.6) == pytest.approx(
+            m_t * 1000.0 * 0.1 ** -1.6)
+
     def test_pipeline_army_starves_village(self) -> None:
         # Full turn: parked army strips its village vs an untouched control.
         from engine.step import step
@@ -728,6 +739,24 @@ class TestForage:
         c = w.get_town(2).population
         # Foraged village dead or collapsed; control thrives.
         assert (v is None or v.population < c - 50) and c > 290
+
+    def test_pipeline_starved_army_attrits_fed_army_baseline(self) -> None:
+        # Wilderness army (~2.4%/turn on baggage); camped army on a rich
+        # town pays only the baseline rate.
+        from engine.step import step
+        from engine.ledger import Ledger
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns.append(Town(id=1, faction=0, x=100, y=100, population=20000))
+        w.armies.append(Army(id=2, faction=1, x=100, y=100, size=500.0))
+        w.armies.append(Army(id=3, faction=1, x=800, y=800, size=500.0))
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={})
+        wild = w.get_army(3)
+        assert wild is not None and wild.size == pytest.approx(488.0, abs=2.0)
+        fed = w.get_army(2)
+        assert fed is not None
+        assert fed.size == pytest.approx(500.0, abs=1.0)
 
 
 class TestTrainCap:

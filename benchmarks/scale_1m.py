@@ -65,7 +65,7 @@ def run(label, spec):
     urb = 100.0 * sum(p for (_, _, p) in spec if p > 300) / tot0
     rate = None
     for _ in range(TURNS):
-        n2, _ = eco._step_core(towns, MAP, CFG)
+        n2, _, _ = eco._step_core(towns, MAP, CFG)
         tot1 = sum(t.population for t in towns)
         rate = (sum(n2) - tot1) / tot1 * 52.0 * 100.0
         for t, p in zip(towns, n2):

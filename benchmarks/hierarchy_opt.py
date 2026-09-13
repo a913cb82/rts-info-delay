@@ -68,7 +68,7 @@ def rate(spec, map_size=(2000, 2000), cfg=None):
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y, population=p)
              for k, (x, y, p) in enumerate(spec)]
     tot = sum(t.population for t in towns)
-    n2, _ = eco._step_core(towns, list(map_size), cfg)
+    n2, _, _ = eco._step_core(towns, list(map_size), cfg)
     return (sum(n2) - tot) / tot * 52.0 * 100.0, len(towns)
 
 

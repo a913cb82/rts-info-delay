@@ -1091,6 +1091,9 @@ def _step_core(towns: list[Town], map_size, config: GameConfig, forage=None):
 
     forage: optional list of (x0, y0, x1, y1, need) army march segments;
     armies eat first from the harvest, before trade. None skips it.
+
+    Returns (new_pops, services, forage_eaten): forage_eaten aligns with
+    the forage input (None when no forage ran).
     """
     n = len(towns)
     if n == 0:
@@ -1114,14 +1117,16 @@ def _step_core(towns: list[Town], map_size, config: GameConfig, forage=None):
     prod = (1.0 + improvement) * base_prod
     S = prod.copy()
     foraged = 0.0
+    forage_eaten = None
     if forage:
         segs = [(f[0], f[1], f[2], f[3]) for f in forage]
         needs = np.array([f[4] for f in forage], dtype=np.float64)
         ftx = np.array([t.x for t in towns], dtype=np.float64)
         fty = np.array([t.y for t in towns], dtype=np.float64)
-        takes, _ = _forage_takes(ftx, fty, S, segs, needs, FORAGE_RADIUS_KM,
-                                 cell=FORAGE_CELL_KM)
+        takes, eaten = _forage_takes(ftx, fty, S, segs, needs, FORAGE_RADIUS_KM,
+                                     cell=FORAGE_CELL_KM)
         foraged = float(takes.sum())
+        forage_eaten = np.asarray(eaten, dtype=np.float64)
         S -= takes
     imports, exports, melted = _trade(S, pops, geo, config)
     assert abs(S.sum() - (prod.sum() - melted - foraged)) < 1e-6 * max(prod.sum(), 1.0)
@@ -1133,7 +1138,7 @@ def _step_core(towns: list[Town], map_size, config: GameConfig, forage=None):
     out_people = th_t * pops + nu_t * p_surp
     net_mig = _migration(pops, S, out_people, geo, config)
     new_pops = np.maximum(0.0, pops + births - deaths + net_mig)
-    return new_pops, serv
+    return new_pops, serv, forage_eaten
 
 
 def base_growth(population: float, config: GameConfig) -> float:
@@ -1161,7 +1166,7 @@ def nets_for(all_towns: list[Town], config: GameConfig, map_size=None) -> list[f
     saved = [t.last_improvement for t in towns]
     try:
         pops = np.array([t.population for t in towns], dtype=np.float64)
-        new_pops, _ = _step_core(towns, map_size or [1000, 1000], config)
+        new_pops, _, _ = _step_core(towns, map_size or [1000, 1000], config)
         return (new_pops - pops).tolist()
     finally:
         for t, v in zip(towns, saved):
@@ -1189,15 +1194,28 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
         return events
     towns = world.towns
     old = [t.population for t in towns]
-    segs = []
+    seg_armies = []
+    seg_in = []
     for a in world.armies:
         if a.size <= 0.0 or a.sx is None or a.sy is None:
             continue
-        segs.append((a.sx, a.sy, a.x, a.y, a.size * FORAGE_PER_MOUTH))
-    new_pops, _serv = _step_core(towns, world.map_size, config,
-                                 forage=segs or None)
+        seg_armies.append(a)
+        seg_in.append((a.sx, a.sy, a.x, a.y, a.size * FORAGE_PER_MOUTH))
+    new_pops, _serv, forage_eaten = _step_core(towns, world.map_size, config,
+                                              forage=seg_in or None)
     for t, p in zip(towns, new_pops):
         t.population = float(p)
+    if forage_eaten is not None:
+        m_t = derived(config)[4]  # per-turn baseline death rate
+        p = config.starvation_elasticity
+        for a, E in zip(seg_armies, forage_eaten):
+            if world.get_army(a.id) is None:
+                continue
+            a.size -= _hunger_deaths(a.size, float(E), m_t, p)
+            if a.size <= 1e-9:
+                world.remove_army(a.id)
+                events.append({"kind": "army_death", "id": a.id,
+                               "x": a.x, "y": a.y})
     for t, o, p in zip(towns, old, new_pops):
         if abs(p - o) > 1e-9:
             events.append({"kind": "pop_change", "id": t.id,
@@ -1218,6 +1236,8 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
 FORAGE_PER_MOUTH = 1.0  # soldiers eat at the civilian rate (1 food/mouth/turn)
 FORAGE_RADIUS_KM = 10.0  # stadium half-width around the traversed segment
 FORAGE_CELL_KM = 20.0  # town-grid cell (perf only: 20 beats 5/10/40 on bench)
+FORAGE_RESERVE = 0.1  # baggage train: armies carry a tenth of need, so
+                       # empty land attrits (~2.4%/turn) instead of killing
 
 
 def _seg_dist2(px, py, x0, y0, x1, y1):
@@ -1314,6 +1334,20 @@ def _forage_takes(tx, ty, S, segs, needs, radius, cell=None):
             np.add.at(takes, ex, f * S[ex])
         eaten[i] = f * claimable
     return takes, eaten
+
+
+def _hunger_deaths(size, eaten, m_t, p, reserve=FORAGE_RESERVE):
+    """Hunger deaths for one army — the town curve, mouth for mouth.
+
+    food per mouth (eaten/size) plays the role of S/P, topped up by what
+    the baggage train carried (reserve): a full belly pays the baseline
+    rate, half rations kill ~3x (p=1.6), barren land attrits instead of
+    annihilating.
+    """
+    if size <= 0.0:
+        return 0.0
+    ratio = min(eaten / size + reserve, 1.0)
+    return m_t * size * max(ratio, 1e-9) ** -p
 
 
 def apply_forage(world, S, segments, config) -> dict[int, float]:

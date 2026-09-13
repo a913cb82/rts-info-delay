@@ -37,7 +37,7 @@ def hexpts(rmax, s):
 def rate(spec):
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y, population=p)
              for k, (x, y, p) in enumerate(spec)]
-    n2, _ = _step_core(towns, [2000, 2000], CFG)
+    n2, _, _ = _step_core(towns, [2000, 2000], CFG)
     tot = sum(t.population for t in towns)
     return (sum(n2) - tot) / tot * 52.0 * 100.0
 

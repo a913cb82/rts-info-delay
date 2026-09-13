@@ -50,7 +50,7 @@ def rate(town_pop, village_pop):
     towns=[Town(id=i,faction=0,x=x,y=y,population=p,is_capital=(i==0))
            for i,(x,y,p) in enumerate(spec)]
     total=sum(t.population for t in towns)
-    n2,_s2=_step_core(towns,[1000,1000],CFG)
+    n2,_s2, _ = _step_core(towns,[1000,1000],CFG)
     g=(sum(n2)-total)/total*52.0*100.0
     town_net=(n2[0]-towns[0].population) if town_pop else 0.0
     return g, total, town_net, nv

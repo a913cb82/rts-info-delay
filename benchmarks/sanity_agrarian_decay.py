@@ -37,7 +37,7 @@ def grid(n, step):
 def system_rate(pts, pop, cfg, map_size=(2000, 2000)):
     towns = [Town(id=i, faction=0, x=x, y=y, population=pop)
              for i, (x, y) in enumerate(pts)]
-    n2, _ = _step_core(towns, list(map_size), cfg)
+    n2, _, _ = _step_core(towns, list(map_size), cfg)
     total = pop * len(towns)
     return (sum(n2) - total) / total * 52.0 * 100.0
 

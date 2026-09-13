@@ -112,16 +112,16 @@ def settled(spec, warm=3):
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y, population=p)
              for k, (x, y, p) in enumerate(spec)]
     tot0 = sum(t.population for t in towns)
-    n2, _ = eco._step_core(towns, [2000, 2000], CFG)
+    n2, _, _ = eco._step_core(towns, [2000, 2000], CFG)
     cold = (sum(n2) - tot0) / tot0 * 52.0 * 100.0
     for t, p in zip(towns, n2):
         t.population = float(p)
     for _ in range(warm - 1):
-        n2, _ = eco._step_core(towns, [2000, 2000], CFG)
+        n2, _, _ = eco._step_core(towns, [2000, 2000], CFG)
         for t, p in zip(towns, n2):
             t.population = float(p)
     tot1 = sum(t.population for t in towns)
-    n2, _ = eco._step_core(towns, [2000, 2000], CFG)
+    n2, _, _ = eco._step_core(towns, [2000, 2000], CFG)
     settled = (sum(n2) - tot1) / tot1 * 52.0 * 100.0
     return cold, settled, len(towns), tot0
 

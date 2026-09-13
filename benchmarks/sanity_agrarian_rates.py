@@ -21,7 +21,7 @@ def rate(cfg, spec):
     towns = [Town(id=i, faction=0, x=float(x), y=float(y), population=float(p),
                   is_capital=(i == 0)) for i, (x, y, p) in enumerate(spec)]
     pops = sum(t.population for t in towns)
-    n2, _serv2 = _step_core(towns, [1000, 1000], cfg)   # single turn: services live
+    n2, _serv2, _ = _step_core(towns, [1000, 1000], cfg)   # single turn: services live
     tot2 = sum(n2)
     growth = (tot2 - pops) / pops * 52.0 * 100.0
     town_net = n2[0] - towns[0].population

@@ -60,7 +60,7 @@ def evaluate(s_v, qs, mults, n_target=300):
     towns = [Town(id=k, faction=0, x=500 + x, y=500 + y,
                   population=size_mult[tiers[k]] * pv)
              for k, (i, j, x, y) in enumerate(pts)]
-    n2, _ = _step_core(towns, [2000, 2000], CFG)
+    n2, _, _ = _step_core(towns, [2000, 2000], CFG)
     g = (sum(n2) - TOTAL) / TOTAL * 52.0 * 100.0
     urban = 100.0 * (1.0 - n[0] * pv / TOTAL)
     return g, urban, pv, n
