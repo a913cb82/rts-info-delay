@@ -3543,3 +3543,8 @@ Pool lead extends.
 60% wins (incl 329k/357k) + ZERO deaths + fourth. TREND UP (mu 69.8->
 71.8->73.0): clean-take snowballs may break the ceiling (dominance, not
 luck). Riding.
+
+### Overmatch 195g (flat at peak 69.5) (2026-09-13 07:12 BST)
+21a74a6 +15g (195 total) -> ord 69.5 (mu 73.1, was 73.0/180g): +0.1 on
+57% wins + ZERO deaths + fourth. Climb slowing (73 plateau?); wins
+continue. 195 games.
