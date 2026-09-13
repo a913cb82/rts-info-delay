@@ -3058,3 +3058,7 @@ Buzzer +10g (560 total) -> ord 62.5 (mu 65.9, was 65.2/550g): +0.6 on
 ### Buzzer 570g (2026-09-13 01:30 BST)
 Buzzer +10g (570 total) -> ord 63.5 (mu 66.8, was 65.9/560g): +1.0 on
 4W (212k/258k/297k/188k) + quality mids + ZERO deaths. 570 games.
+
+### Buzzer 580g (2026-09-13 01:35 BST)
+Buzzer +10g (580 total) -> ord 63.1 (mu 66.4, was 66.8/570g): -0.4 on
+3W (245k/203k/262k) + mids + fifths. Flat 61-64. 580 games.
