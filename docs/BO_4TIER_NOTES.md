@@ -660,3 +660,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - 1M BASE s64t (no bourgs/regional): settled +0.866 — third behind hand
   small-chef (+0.909) and seed (+0.885), all within 0.045. At the standard
   the top three are 4-tier, 4-tier, 2-tier: tiers win, count varies.
+- District BASE dense+2500 (@13): +0.924, urb 20% — joins the plateau
+  (@11+2500 +0.927, lean +0.922, all within 0.005). District top is flat
+  across bourg spacing AND chef size; only shares move.
