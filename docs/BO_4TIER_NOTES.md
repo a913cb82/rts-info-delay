@@ -422,3 +422,11 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Left open: founding costs (village size), urban income (top sizes),
   terrain/waste (density 24→33). No further BO recommended until a
   mechanism lands — search has priced everything on the table.
+- UNIFORM SCALING (the density answer): ×1.43 all pops, same lattice →
+  density 23.4→33.5 (≈33 ✓) at cold cost 0.05, settled +1.319. Shares
+  EXACTLY preserved (80/15/2/3); sizes land: villages 429 ✓, bourgs 715,
+  chefs 4290, regional 42.9k ✓-edge. Density was never about spacing OR
+  size — it is total mouths per fixed area, and surplus S/P≈2 absorbs
+  +43% mouths. Only chefs (2 vs 7%) still short.
+- density-BO#1 (running): 1M prem.75+starv1.6, 3 light seeds, 96 evals —
+  can search find the scaled corner itself? 1/3 searches spent.
