@@ -691,3 +691,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   2nd (+0.876); dense-bourg 3rd (+0.868); small-chef seed only 6th (+0.846
   vs +0.909 hand — seed approximation costs 0.06: 1500-chefs/15k-regional
   ≠ 1000/20k-center). Seed fidelity matters at the second decimal.
+- Pricing#2 (running): BASE seed (+0.885) vs dense-bourg@13 (+0.889 hand)
+  tiebreak — 0.004 gap, ideal pricing case. 2/3 pricing spent.
