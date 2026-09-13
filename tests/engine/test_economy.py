@@ -222,33 +222,38 @@ class TestBirthsDeaths:
 
 class TestTrade:
 
-    def test_conserves_and_caps(self) -> None:
-        surplus = np.array([0.0, 100.0])
-        deficit = np.array([40.0, 0.0])
-        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 30.0), CFG)
-        assert imports[0] == pytest.approx(40.0)
-        assert exports[1] == pytest.approx(40.0)
-        assert imports.sum() == pytest.approx(exports.sum())
+    def test_equalizes_and_conserves(self) -> None:
+        # S/P 0.867 vs 1.333 -> both end at 1.1 (overfeeds past deficit).
+        pops = np.array([300.0, 300.0])
+        S = np.array([260.0, 400.0])
+        imports, exports = _trade(S, pops, _geo_xs(0.0, 30.0), CFG)
+        assert imports[0] == pytest.approx(70.0)
+        assert exports[1] == pytest.approx(70.0)
+        assert S.sum() == pytest.approx(660.0)  # zero-sum exact
+        assert S[0] / pops[0] == pytest.approx(S[1] / pops[1])
 
-    def test_caps_at_surplus(self) -> None:
-        surplus = np.array([0.0, 100.0])
-        deficit = np.array([500.0, 0.0])
-        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 30.0), CFG)
-        assert imports[0] == pytest.approx(100.0)
-        assert exports[1] == pytest.approx(100.0)
+    def test_never_inverts(self) -> None:
+        # Starving town meets sated donor halfway; donor never drained below.
+        pops = np.array([300.0, 300.0])
+        S = np.array([0.0, 400.0])
+        imports, exports = _trade(S, pops, _geo_xs(0.0, 30.0), CFG)
+        assert imports[0] == pytest.approx(200.0)
+        assert S[0] == pytest.approx(S[1])
+        assert (S >= 0.0).all()
 
     def test_beyond_carting_reach_no_trade(self) -> None:
-        surplus = np.array([0.0, 100.0])
-        deficit = np.array([40.0, 0.0])
-        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 100.0), CFG)
+        pops = np.array([300.0, 300.0])
+        S = np.array([260.0, 400.0])
+        imports, exports = _trade(S, pops, _geo_xs(0.0, 100.0), CFG)
         assert imports[0] == 0.0 and exports[1] == 0.0
 
     def test_nearest_served_first(self) -> None:
-        surplus = np.array([0.0, 100.0, 100.0])
-        deficit = np.array([60.0, 0.0, 0.0])
-        imports, exports = _trade(surplus, deficit, _geo_xs(0.0, 10.0, 40.0), CFG)
-        assert exports[1] == pytest.approx(60.0)  # nearest seller pays
-        assert exports[2] == 0.0
+        pops = np.array([300.0, 300.0, 300.0])
+        S = np.array([240.0, 400.0, 400.0])
+        imports, exports = _trade(S, pops, _geo_xs(0.0, 10.0, 40.0), CFG)
+        assert exports[1] == pytest.approx(80.0)  # nearest pays most
+        assert exports[2] == pytest.approx(60.0)  # farther splits the rest
+        assert S.sum() == pytest.approx(1040.0)
 
 
 class TestMigration:
@@ -313,12 +318,18 @@ class TestMarketAccess:
         assert fed[1] > cold[1]
         assert np.all(fed <= CFG.max_improvement + 1e-12)
 
-    def test_market_yield_reaches_the_village(self) -> None:
-        village = _town(500, 500, 300.0, tid=1)
-        town = _town(530, 500, 2400.0, tid=2)
-        alone, _ = _step_core([village], [1000, 1000], NO_MIG)
-        together, _ = _step_core([village, town], [1000, 1000], NO_MIG)
-        assert together[0] > alone[0]
+    def test_trade_is_efficient(self) -> None:
+        # Zero-sum: the village feeds the town (its own net may fall) but
+        # the system total rises (steep-curve mouths eat first). Trade
+        # gains from allocation, not from nothing.
+        alone, _ = _step_core([_town(500, 500, 300.0, tid=1)],
+                               [1000, 1000], NO_MIG)
+        town_alone, _ = _step_core([_town(530, 500, 2400.0, tid=2)],
+                                    [1000, 1000], NO_MIG)
+        together, _ = _step_core([_town(500, 500, 300.0, tid=1),
+                                  _town(530, 500, 2400.0, tid=2)],
+                                 [1000, 1000], NO_MIG)
+        assert together.sum() > alone[0] + town_alone[0]
 
     def test_same_state_same_outputs(self) -> None:
         """Deterministic given state; cold start needs no priming turn."""

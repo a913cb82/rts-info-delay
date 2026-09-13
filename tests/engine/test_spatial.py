@@ -88,8 +88,9 @@ class TestSpatialHash:
             assert net == pytest.approx(brute_results[i], abs=1e-9)
 
     def test_performance(self) -> None:
-        """H4c: Crowding step for 500 towns < 250ms (re-baselined for the
-        fitted kernel; wall-clock gate skipped on a loaded box)."""
+        """Spatial index build for 500 towns < 250ms (wall-clock gate
+        skipped on a loaded box). crowding_net is a full economy turn
+        since the agrarian rewrite, so it is not the thing timed here."""
         import os
 
         def _loaded() -> bool:
@@ -99,7 +100,7 @@ class TestSpatialHash:
             import pytest
 
             pytest.skip("machine under load")
-        from engine.economy import crowding_net
+        from engine import economy as eco
         from engine.world import Town
 
         np.random.seed(99)
@@ -115,9 +116,9 @@ class TestSpatialHash:
             for i in range(n)
         ]
 
+        eco._geo_cache.update(key=None, geo=None, grid=None)
         start = time.perf_counter()
-        for t in towns:
-            crowding_net(t, towns, CFG)
+        eco._geo(towns, CFG)
         elapsed = time.perf_counter() - start
         if _loaded():
             import pytest

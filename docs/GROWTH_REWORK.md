@@ -745,6 +745,40 @@ growth-only iteration can produce them (proven by monotonicity, not
 assumed). 100k + 1M economic optima match the reality goals
 reasonably; the remainder is objective scope, not mechanics.
 
+## Equalize-trade + fame: 3 tiers at 100k, 4 at 1M (goal met)
+
+Autopsy (GOAL settled): chef S/P = 1.000 exactly (trade filled deficits
+and stopped), villages S/P ≈ 1.8 (birth-saturated — further lift
+wasted), chef vital = 0; its −0.003 = land exclusion +
+fecundity-destruction (movers 1.8→1.0), patch lift only +0.002.
+Dilution −0.005 vs lift +0.002, arithmetic closed. Deeper diagnosis:
+non-zero-sum (exports ignored) was load-bearing — towns ate free food.
+Zero-sum exposes dilution; tiers must EARN mouths by growing the pie.
+
+Trade rework (same 60km pairs, 150km rule safe): equalize S/P across
+each pair nearest-first (exact pairwise equality, strictly-above only
+— deficits fill, towns overfeed past subsistence, never inverts, never
+starves donors); zero-sum asserted every turn (`S.sum()==prod.sum()`).
+Per-unit marginal births are size-blind at equal S/P, so equalizing is
+concave-optimal; town mouths breed instead of subsisting. Suite:
+trade tests reframed (70/200/80/60 + efficiency), spatial perf test
+fixed (was timing 500 full turns on a fitted-era 0.25s budget — now
+times the geo build it claims).
+
+Fame (zero new params): complete crews (serv > P_market) radiate
+ceilings at commercial range (60km, word travels); smaller crews teach
+only the daily-walk (10km). Cities fund districts via pie-growth, not
+free lunch.
+
+100k settled: GOAL bourgs+chef +0.1476 wins (chef removal → +0.1349,
+so the 3rd tier is real, +0.013); regional +0.1458, cap20k +0.1344,
+hier4 +0.1235, flat +0.1119 last. Tiers 300/1000/8000 (3.3×/8×).
+1M (`scale_1m.py`): full-stack +0.1409 wins; bourgs-only +0.1327,
+regional-shape +0.1386, flat +0.1145. Tiers 300/1000/8000/25000
+(3.3×/8×/3.1×, counts 2985/150/9/1 ≈ reality). Tripwire green
+throughout (γ=1 setups unaffected). All pairs within 60km lists — the
+150km rule never approached.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode

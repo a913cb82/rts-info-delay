@@ -575,48 +575,51 @@ try:
     import numba as _numba
 
     @_numba.njit(cache=True)
-    def _trade_kernel(nidx, ndist, ndeg, surplus, deficit, imports, exports):
-        # Same enumeration as the old matrix scan (i ascending, stored
-        # neighbors ascending = the in-reach set), same distance values
-        # — the (ds, ii, jj) arrays below are bit-identical to before.
+    def _trade_kernel(nidx, ndist, ndeg, S, pops, imports, exports):
+        # Equalize S/P across each pair, nearest-first: while the donor is
+        # better fed, move food to exact pairwise equality. Deficit-fill
+        # emerges (hungry below, sated above); overfeed too (towns above
+        # subsistence); never inverts (strictly-above only). Zero-sum:
+        # S[i] += f, S[j] -= f conserves food exactly.
         n = nidx.shape[0]
         m = 0
         for i in range(n):
-            if deficit[i] <= 0.0:
+            if pops[i] <= 0.0:
                 continue
             for mm in range(ndeg[i]):
                 j = nidx[i, mm]
-                if j != i and surplus[j] > 0.0:
+                if j != i and pops[j] > 0.0:
                     m += 1
         ds = np.empty(m, dtype=np.float64)
         ii = np.empty(m, dtype=np.int64)
         jj = np.empty(m, dtype=np.int64)
         k = 0
         for i in range(n):
-            if deficit[i] <= 0.0:
+            if pops[i] <= 0.0:
                 continue
             for mm in range(ndeg[i]):
                 j = nidx[i, mm]
-                if j != i and surplus[j] > 0.0:
+                if j != i and pops[j] > 0.0:
                     ds[k] = ndist[i, mm]
                     ii[k] = i
                     jj[k] = j
                     k += 1
         order = np.argsort(ds)
-        rem_s = surplus.copy()
-        rem_d = deficit.copy()
         for oi in range(m):
             idx = order[oi]
             i = ii[idx]
             j = jj[idx]
-            f = rem_d[i]
-            if rem_s[j] < f:
-                f = rem_s[j]
-            if f > 0.0:
-                imports[i] += f
-                exports[j] += f
-                rem_d[i] -= f
-                rem_s[j] -= f
+            spi = S[i] / pops[i]
+            spj = S[j] / pops[j]
+            if spj > spi:
+                f = (spj - spi) * pops[i] * pops[j] / (pops[i] + pops[j])
+                if f > S[j]:
+                    f = S[j]
+                if f > 0.0:
+                    S[i] += f
+                    S[j] -= f
+                    imports[i] += f
+                    exports[j] += f
 
     _has_trade_numba = True
 except Exception:  # pragma: no cover
@@ -624,36 +627,45 @@ except Exception:  # pragma: no cover
     _trade_kernel = None  # type: ignore
 
 
-def _trade(surplus: np.ndarray, deficit: np.ndarray, geo,
+def _trade(S: np.ndarray, pops: np.ndarray, geo,
            config: GameConfig):
-    """geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
-    n = len(surplus)
+    """Equalize food per head within reach (S mutated in place).
+
+    Nearest pair first; while the donor is better fed, move food to exact
+    pairwise equality. Hungry mouths eat first regardless of size (per-unit
+    marginal births are size-blind at equal S/P, so equalizing is optimal
+    for concave births); donors never fall below recipients (no inversion,
+    no starvation by trade). Zero-sum: every unit imported is exported.
+    geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
+    n = len(S)
     imports = np.zeros(n, dtype=np.float64)
     exports = np.zeros(n, dtype=np.float64)
     if n < 2:
         return imports, exports
     nidx, ndist, ndeg = geo[0], geo[1], geo[2]
     if _has_trade_numba:
-        _trade_kernel(nidx, ndist, ndeg, surplus, deficit, imports, exports)
+        _trade_kernel(nidx, ndist, ndeg, S, pops, imports, exports)
         return imports, exports
     pairs = []
     for i in range(n):
-        if deficit[i] <= 0.0:
+        if pops[i] <= 0.0:
             continue
         for mm in range(ndeg[i]):
             j = nidx[i, mm]
-            if i != j and surplus[j] > 0.0:
+            if i != j and pops[j] > 0.0:
                 pairs.append((ndist[i, mm], i, j))
     pairs.sort()
-    rem_s = surplus.copy()
-    rem_d = deficit.copy()
     for _, i, j in pairs:
-        f = min(rem_d[i], rem_s[j])
-        if f > 0.0:
-            imports[i] += f
-            exports[j] += f
-            rem_d[i] -= f
-            rem_s[j] -= f
+        spi = S[i] / pops[i]
+        spj = S[j] / pops[j]
+        if spj > spi:
+            f = (spj - spi) * pops[i] * pops[j] / (pops[i] + pops[j])
+            f = min(f, S[j])
+            if f > 0.0:
+                S[i] += f
+                S[j] -= f
+                imports[i] += f
+                exports[j] += f
     return imports, exports
 
 
@@ -705,14 +717,14 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
     )
     offer = contrib * (1.0 + last)
     nidx, ndist, ndeg = geo[0], geo[1], geo[2]
-    # Technique frontier: the best specialist crew in the daily-walk
-    # neighborhood (twice the farm radius) sets the methods available —
-    # skills need daily face-to-face (apprenticeship), goods need only a
-    # weekly cart (market decay) or a commercial trip (trade cap): three
-    # nested travel rhythms, no new scale. Isolated places cap lower;
-    # best practice (max_improvement) only where specialists cluster.
-    # Same curvature as generation (gamma-1): one agglomeration
-    # exponent. At gamma=1 the frontier is off (x**0 == 1); capped at mi.
+    # Technique frontier: the best specialist crew you can learn from sets
+    # the methods available. Small crews teach only the daily-walk
+    # neighborhood (twice the farm radius: apprenticeship needs
+    # face-to-face); complete crews (services past P_market) are FAMOUS —
+    # word of their methods travels the commercial range (3 cart doublings).
+    # Isolated places cap lower; best practice (max_improvement) only
+    # where specialists cluster. Same curvature as generation (gamma-1):
+    # one agglomeration exponent. At gamma=1 the frontier is off (x**0==1).
     mx = np.zeros(n, dtype=np.float64)
     learn = 2.0 * config.farm_radius_km
     for i in range(n):
@@ -721,6 +733,11 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
         near = jj[dd <= learn]
         if near.size:
             mx[i] = np.max(offer[near])
+        far = jj[(dd > learn) & (serv[jj] > p_market)]
+        if far.size:
+            mf = np.max(offer[far])
+            if mf > mx[i]:
+                mx[i] = mf
     gm1 = config.market_scaling - 1.0
     frontier = np.minimum(1.0, np.power(mx / p_market, gm1))
     mkt = np.zeros(n, dtype=np.float64)
@@ -863,10 +880,9 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
     for t, v in zip(towns, improvement):
         t.last_improvement = float(v)
     prod = (1.0 + improvement) * base_prod
-    surplus = np.maximum(0.0, prod - pops)
-    deficit = np.maximum(0.0, pops - prod)
-    imports, _exports = _trade(surplus, deficit, geo, config)
-    S = prod + imports
+    S = prod.copy()
+    imports, exports = _trade(S, pops, geo, config)
+    assert abs(S.sum() - prod.sum()) < 1e-6 * max(prod.sum(), 1.0)  # zero-sum
     births = b_t * pops * S / np.maximum(S + h * pops, 1e-12)
     deaths = m_t * pops
     p_surp = np.maximum(0.0, pops - base_prod / sf)
