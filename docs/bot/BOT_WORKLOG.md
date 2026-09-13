@@ -3576,3 +3576,8 @@ from 66.1). Riding.
 21a74a6 +15g (285 total) -> ord 70.5 (mu 74.1, was 73.4/270g): +0.7 on
 67% wins + 2nds/3rds + ZERO deaths. BROKE 70 (new high). 80 needs +9.5
 (mu 81+). Riding.
+
+### Overmatch 300g MILESTONE (flat at 70.5) (2026-09-13 07:47 BST)
+21a74a6 +15g (300 total) -> ord 70.5 (mu 74.1, was 74.1/285g): flat on
+60% wins + 2nds/3rds + ZERO deaths + fifth. 300 games banked. Converged
+~69-71?
