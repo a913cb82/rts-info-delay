@@ -61,3 +61,17 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   with vs without bourgs at max-push, while reality staffs 900s at 13%.
   Needs non-food bourg income or a service only small towns give.
 - 100k transfer check of any new sizes.
+
+## Mid-knob round (BO#4, removal tests, base-knob checks)
+
+- BO#4 (1M, γ1.2/prem.35/melt.01): best 2-tier s64/T2400 +0.647, 4-tier
+  shape second +0.631 (−0.016). Knob-sensitive, not robust there.
+- Removal at mid knobs: no-bourgs +0.614 BEATS with-bourgs +0.598 —
+  bourgs hurt when tops are mid-priced too.
+- Few small chefs at R12 base: +0.389, loses to s16 (+0.424) and lean
+  (+0.437). New 7-chef geometry at base: +0.336, loses to s64t (+0.468)
+  and flat. Tops only pay under pushy knobs.
+- Big sparse bourgs (1500@25, 2000@30) lose (+0.75–0.77): mouth burden
+  beats coverage efficiency. Small+dense or nothing.
+- BO#5 (running): 1M mid knobs + 4-tier seed — can 4-tier WIN off
+  max-push? Decides whether the claim is knob-robust.
