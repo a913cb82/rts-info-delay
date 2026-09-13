@@ -563,3 +563,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (mid-chef shapes +0.88–0.92). Chef size scales with region: one shed must
   span the district (2500), while provinces cover by numbers (7×1000–3000).
   Small-chefs are a province-only pattern.
+- District chef sweep @BASE: 1000 (+0.40) < 2000 (+0.82) < 2500 (+0.92) ≈
+  3500 (+0.93) > 5000 (+0.88). Peak 2500–3500, steep rise, gentle fall —
+  coverage threshold then mouth burden. District chef ≈ province regional
+  in miniature (one shed must span the region).
