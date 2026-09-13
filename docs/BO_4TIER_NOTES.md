@@ -609,3 +609,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   pricing 0/3.
 - Pricing#1 (running): district combo tiebreak (dense-bourg +1.396 vs
   lean +1.395 — true tie). 1/3 pricing spent.
+- Pricing#1 verdict: dense 3-tier wins (+1.453, urb 8.8%) over dense-bourg
+  seed (+1.431, urb 20%) — gap 0.022, decisive, not the hand tie. Search
+  breaks ties toward minimal-urban consistently (4th instance). Hand ties
+  (+0.001) do not survive search geometry (s0=3.5 dense villages change
+  the board).
