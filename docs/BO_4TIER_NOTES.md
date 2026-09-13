@@ -360,3 +360,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Load discipline: killed a third concurrent 1M job (pricing#1) — 3×1M
   jobs contend the shared box ~3×. Pricing waits for S2. Rule: max two
   heavy jobs; pricing runs ride along one search, never two.
+- District prem.75+starv1.6: lean 3-tier +1.395 vs s64t +1.122. Combined
+  knobs keep 3-tier optimal at 100k with a wide margin — district leg
+  holds under every knob regime tested.
