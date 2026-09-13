@@ -3507,3 +3507,12 @@ Buzzer +10g (1760 total) -> ord 61.1 (mu 64.5, was 66.0/1750g): -1.6 on
 ### Buzzer 1770g (2026-09-13 06:47 BST)
 Buzzer +10g (1770 total) -> ord 60.7 (mu 64.1, was 64.5/1760g): -0.4 on
 4W + fifths. Low (~61). 1770 games.
+
+### Overmatch MERGED (pool leader 66.1; fail verdict wrong) (2026-09-13 06:42 BST)
+Status check revealed failed branches OUTRANK buzzer (21a74a6 65.6/120g,
+dd9782a 64.0/705g; buzzer 5th at 60.7). Grind-confirmed 21a74a6 66.1/135g
+(60% wins, beats buzzer H2H 8/10 shared). FAIL verdict was WRONG
+(weak-diverse gate fields punish unfairly via asymmetry; mechanisms WORK
+in mirrors). Merged overmatch to main (1-line port, suites+liveness green;
+gate: best-ordinal-for-personality + pro style intact). LESSON: gate fields
+must be mirrors (fair), not weak-diverse descents (asymmetric punishment).
