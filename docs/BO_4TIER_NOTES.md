@@ -344,3 +344,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   bonus strongly favors the full stack at district scale too.
 - Combined pro-tier knobs stack (district prem.75+starv1.6): lean +1.395
   vs flat +0.635 (gap +0.76). Headroom + rescue bonus compound.
+- Knob saturation: prem.75+starv1.6 combined (+1.381) equals starv1.6 alone
+  (+1.381) — premium adds nothing once hunger is sharp. Both knobs target
+  the same saturation; headroom beyond ~0.5 premium is unused.
+- S1 nearing done (90/96, best +1.157): full-budget search confirms the
+  seed corner without improving it. Sparser villages appearing (s0 4.72).
