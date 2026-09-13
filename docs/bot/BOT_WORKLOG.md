@@ -3752,3 +3752,16 @@ marches; sacrificial stones; style-perfect colonist).
 Expander +15g (143 total) -> ord 44.2 (mu 48.0, was 51.1/128g): -2.9 on
 1W/15 (7%). Can't beat WEAK (0-7% vs should-win 80%+). Volume futile;
 MECHANISM needed (takes vs weak + survive thin). Queued next.
+
+### Expander hyperactive built (2026-09-13 10:01 BST)
+Trace-driven (182k win via 162 trains/1384 moves/290 builds/19 towns):
+depth_extra 1000->0 + contact-floor to void-floor (print at floor;
+found+feed relentlessly). Field-dependent (dominates weak; strong
+punish per prior 700-window lesson, noted). Bar: exceed 44.2 AND
+most-foundings (style).
+
+### Hyperactive verdict: FAIL (20.5, variance) (2026-09-13 10:06 BST)
+Rated clean 15g (3x5) -> ord 20.5 (mu 28.5): FAIL (gate 44.2+). Wins HUGE
+(710k/302k/289k/210k/64k; 33% wins) but dies often (thin; ~40% zeros).
+Variance kills ordinal (deaths punish more than huge wins reward).
+Reverted (main keeps expander 44.2). Parked on loop/exp-hyper.
