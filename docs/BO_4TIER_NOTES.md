@@ -370,3 +370,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District combo (dense-bourgs@13 + 5000-chef, prem.75+starv1.6): settled
   +1.396, urb 22% — ties lean (+1.395) with far better shares: 78/17.5/4.7
   vs reality 72/15/5–10. Best district on rate AND shares together.
+- F-S2 verdict (96 evals, 48 model): winner +1.393, 4-tier
+  (236@3.48/596@40/2480@75/3327@87, urb 5.7%); runner-up +1.391 with
+  dense bourgs (431@13, urb 18.7%). Search crowns low-urban by 0.002 —
+  shares cost little but never pay. 4-tier optimal confirmed at full
+  budget; all three searches agree on structure, differ on urban mass.
