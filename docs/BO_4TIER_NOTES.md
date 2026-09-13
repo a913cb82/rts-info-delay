@@ -525,3 +525,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   density via ratchet (33.1 @1M, 30–33 district); all gaps structural
   (founding costs, urban income, terrain). Search record: 2 genuine
   assemblies (P2 district, S2 tiny-mush rejected), 10+ stamps.
+- Density-S3 verdict (96 evals, 40 model, min_ratio 2 + p0min 300): winner
+  +1.354 = CLEAN REALISTIC 4-tier (346@4.6/1099@14/2777@94/6493@129,
+  urb 33%) — villages ~67%, sizes near anchors at every rung. First
+  search result that matches on shares AND sizes together (decode needs
+  run-time bounds; pristine-LO decode misreads P0 346→132).
