@@ -3087,3 +3087,8 @@ Buzzer +10g (640 total) -> ord 62.6 (mu 65.9, was 66.1/630g): -0.2 on
 ### Buzzer 650g (F1 epidemic) (2026-09-13 01:47 BST)
 Buzzer +10g (650 total) -> ord 61.5 (mu 64.8, was 65.9/640g): -1.1 on
 2W + 3 F1-deaths + fourths. F1 epidemic batch. 650 games.
+
+### Buzzer 660g (2026-09-13 01:52 BST)
+Buzzer +10g (660 total) -> ord 62.0 (mu 65.3, was 64.8/650g): +0.5 on
+2W (345k/188k) + quality 2nds (245k/256k/239k narrow to spikes) + 2
+F1-deaths. 660 games.
