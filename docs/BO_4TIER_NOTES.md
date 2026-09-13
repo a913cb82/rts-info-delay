@@ -489,3 +489,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   P0=141, urb 83% — degeneracy without the floor); S3 (min_ratio 2)
   holds a phantom-tied shape (+1.347) with the duplicate harmlessly
   deduped by footprint. Constraints doing their jobs, final ranks pending.
+- District combo s32 (7×2400, no bourgs): +1.331 vs lean +1.395 vs
+  dense-bourg +1.396. Bourgs earn at district (+0.06); mid-only towns
+  trail. District ranking stable: dense-bourg ≈ lean > s32 > s64t > flat.
