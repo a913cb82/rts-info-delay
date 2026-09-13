@@ -22,7 +22,8 @@ DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
 DENSE_HOLE_R = 30.0  # no densify near 800+ towns (feeds black holes -> crash)
 DENSE_HOLE_POP = 800.0
 TRAIN_SIZE = 30.0     # v3: small-fast trains beat big-slow (CAD 718)
-TRAIN_FLOOR = 350.0   # train iff pop >= this (CAD winner)
+TRAIN_FLOOR = 420.0   # normal trains iff pop >= this (burst-cap + recovery)
+TRAIN_COOLDOWN = 300    # per-town normal-train spacing (recovery; triage exempt)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 210.0   # colonies below this get boosted (T2 track)
 FOUND_SIZE = 450.0    # legacy founding target (superseded by tier spends)
@@ -150,10 +151,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     cap_id = cap.id if cap is not None else None
 
     def cooled(t) -> bool:
-        # floor governs; triage: dying towns shed regardless (mouths die otherwise)
+        # pending (delivery) gates re-train; floor+cooldown gate normal;
+        # triage bypasses floor/cooldown (shed-max: 10%/turn every turn)
         if t.id in state._pending_trains:
             return False
-        if t.population >= TRAIN_FLOOR:
+        if t.population >= TRAIN_FLOOR \
+                and _LAST_TRAIN.get(t.id, -10 ** 9) + TRAIN_COOLDOWN <= turn:
             return True
         try:
             g = state.get_growth(t.id)

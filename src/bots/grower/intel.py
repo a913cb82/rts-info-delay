@@ -63,7 +63,17 @@ class GrowerState:
         return max(0.0, (self.deadline - time.time()) * 1000) < 5.0
 
     def note_train(self, tid: int) -> None:
-        self._pending_trains[tid] = self.turn + 50
+        # pending = delivery estimate (capital->town mail + 1); honest cadence governor
+        try:
+            cap = self.world.faction_capital(self.faction)
+            t = self.world.get_town(tid)
+            if cap is not None and t is not None:
+                import math as _m
+                self._pending_trains[tid] = self.turn + max(1, int(_m.ceil(_m.hypot(cap.x - t.x, cap.y - t.y) / 150.0)) + 1)
+                return
+        except Exception:
+            pass
+        self._pending_trains[tid] = self.turn + 5
 
     def cached_or_decide(self, decide_fn, cfg, events=None):
         return decide_fn(self, cfg)
