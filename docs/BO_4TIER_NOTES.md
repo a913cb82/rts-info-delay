@@ -510,3 +510,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   for 4-tier sits ~0.1–0.25); sf 1.2/1.5 → 4-tier wins both (+0.59/+1.02);
   birth .02 → 4-tier wins (+0.36). 4-tier robust to yields and births;
   premium has a hard floor, death rate sets town cheapness directly.
+- F-S3 final (96 evals): best UNCHANGED +1.1384 (clean 4-tier). 32 extra
+  evals, zero improvement for the third time running — extends confirm,
+  never discover. Box free; pricing#2 (district combo tiebreak) launched.
