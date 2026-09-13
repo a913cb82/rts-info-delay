@@ -378,3 +378,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Pricing#1 (running): combo knobs (prem.75+starv1.6), seed 81 — search
   adjudication of the +1.38–1.41 cluster (reg30k shape, dense-bourg,
   no-chefs variant). 1/3 pricing spent.
+- Bourg-spacing peak at BASE too (@13 +0.889 > @11 +0.887 > @10 +0.880):
+  plateau 11–13km, gentle falloff both sides. Spacing optimum is
+  knob-stable; only levels shift with knobs.
