@@ -3419,3 +3419,7 @@ Buzzer +10g (1530 total) -> ord 63.7 (mu 67.1, was 67.9/1520g): -0.8 on
 Buzzer +10g (1540 total) -> ord 62.8 (mu 66.2, was 67.1/1530g): -0.9 on
 2W + 2 F1-deaths + fourths/fifths (clones spike: 21a74a6/dd9782a 291k).
 1540 games.
+
+### Buzzer 1550g (2026-09-13 05:42 BST)
+Buzzer +10g (1550 total) -> ord 62.7 (mu 66.1, was 66.2/1540g): -0.1 on
+3W + F1-death + fourths/fifths. Flat. 1550 games.
