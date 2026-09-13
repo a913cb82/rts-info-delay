@@ -205,6 +205,24 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             need_garrison = False
             built = True
             continue
+        if not built and own_t and getattr(state, "_retaliate_owed", False):
+            free = [a for a in state.own_armies() if not state.army_has_target(a.id)]
+            if threatened:
+                # Positional guard protection (no held-set): home guards stay.
+                free = [a for a in free if not any(math.hypot(a.x - t.x, a.y - t.y) <= 20 for t in own_t)]
+            cand = None
+            for u in state.world.towns:
+                if u.faction != faction and u.faction is not None and u.population >= 4000:
+                    if min((math.hypot(u.x - t.x, u.y - t.y) for t in own_t), default=float("inf")) >= 150.0:
+                        if not any(math.hypot(a.x - u.x, a.y - u.y) <= 10.0 for a in state.world.armies if a.faction == u.faction):
+                            w = max(0.0, (u.population - config.army_cost - config.death_threshold) / config.army_cost)
+                            if int(w + 1) <= len(free) and (cand is None or u.population > cand.population):
+                                cand = u
+            if cand is not None:
+                for a in free:
+                    out.extend(order_move(state, config, a, cand.x, cand.y))
+                built = True
+                state._retaliate_owed = False
         if not built and own_t:
             # threatened home armies hold position — never dispatch them out
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
@@ -226,6 +244,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             nearest = min(own_t, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
             if math.hypot(p.x - nearest.x, p.y - nearest.y) > 20:
                 out.extend(order_move(state, config, p, nearest.x, nearest.y))
+    if threatened:
+        state._retaliate_owed = True  # storm debt: retaliate next calm
     return out
 
 
