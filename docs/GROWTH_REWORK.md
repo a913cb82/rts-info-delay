@@ -671,7 +671,30 @@ sizes small, spacings as-wide-as-possible. Real settlement (villages
 at 2–5 km *with* towns) is unrepresentable. That gap is what the
 rework fills.
 
-## BO hierarchy optimum (settled, 100k regime)
+## BO optimum, unconstrained (250 evals; family unified with build())
+
+BO rewritten to `build()` conventions (tiers on own offset lattices,
+0.6·s0 exclusion, top-down claiming, absent-gate at expected<1 town;
+bit-exact vs `build()` on GOAL: N=575, pop=201900, +0.1477 both).
+Absolute spacings, 8-D continuous, settled evals, total band only
+([50k,300k] scope — tiered stacks carry chef mouths). No size/gap/
+presence constraints: degenerate optima are model diagnoses, not
+search failures.
+
+250 evals (150 model): peak +0.1636 (villages 222@3.7 + 383@39 +
+2817@83; gaps 1.7×/7.4×), still creeping (+0.151 at 110). No
+structural consolidation across runs/seeds — the objective is a
+plateau (~+0.15–0.164) with spikes, not a basin. Robust
+basin-level claims: villages push small (P0 100–280, below the 300
+assumption — no fixed costs means no lower bound except the death
+floor; reality's 150–400 needs collective-goods scale the model
+lacks); tops always present (2.8–24k, fame confirmed); mid tier
+flat (200–2400 all tie). Hand GOAL sits in BO's log at +0.1477.
+Tiered-constrained run (r≥2, T1+T2 required): +0.1579 (415@4 +
+2435@59 + 6996@62, duplicate spacing — needs spacing-gap rule, not
+ pursued: constraints would launder model prefs into priors).
+
+## BO hierarchy optimum (settled, 100k regime; SUPERSEDED — see above)
 
 Bayesian optimization over continuous densities/sizes (8-D: base
 spacing/size + 3× (density-fraction, size-ratio); tiers vanish by

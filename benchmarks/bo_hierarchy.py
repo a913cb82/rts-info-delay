@@ -26,24 +26,32 @@ from hierarchy_opt import BASE_CFG as CFG, lattice
 RMAX = 50.0
 AREA = math.pi * RMAX * RMAX
 TARGET = 100000.0
-BAND = (0.5 * TARGET, 2.0 * TARGET)
+BAND = (0.5 * TARGET, 3.0 * TARGET)  # tiered stacks carry chef mouths
 HEX = math.sqrt(3.0) / 2.0
 LOG = "benchmarks/bo_hierarchy.jsonl"
 
 # bounds in transformed coords: [ln s0, ln P0, ln f1, ln r1, ln f2, ln r2, ln f3, ln r3]
 LO = np.array([math.log(2.5), math.log(100.0),
-               math.log(1e-4), 0.0, math.log(1e-4), 0.0, math.log(1e-4), 0.0])
+               math.log(2.5), 0.0, math.log(2.5), 0.0, math.log(2.5), 0.0])
 HI = np.array([math.log(10.0), math.log(1000.0),
-               0.0, math.log(10.0), 0.0, math.log(10.0), 0.0, math.log(10.0)])
+               math.log(200.0), math.log(10.0), math.log(200.0),
+               math.log(10.0), math.log(200.0), math.log(10.0)])
+RMIN = 1.0  # min size ratio (2.0 for gap-constrained runs; set in run())
 
 
 def decode(u):
     x = LO + np.asarray(u, dtype=float) * (HI - LO)
     s0, P0 = math.exp(x[0]), math.exp(x[1])
+    # Absolute spacings, densest-first; upstairs clipped to village grid.
+    pairs = sorted((math.exp(x[2 + 2 * k]), math.exp(x[3 + 2 * k]))
+                   for k in range(3))
     tiers = []
-    for k in range(3):
-        tiers.append((math.exp(x[2 + 2 * k]), math.exp(x[3 + 2 * k])))
-    return s0, P0, tiers  # tiers: [(f1,r1),(f2,r2),(f3,r3)]
+    P_prev = P0
+    for (s, r) in pairs:
+        s = max(s, s0)
+        P_prev = P_prev * max(r, RMIN)
+        tiers.append((s, P_prev))
+    return s0, P0, tiers  # tiers densest-first: [(s1,P1),(s2,P2),(s3,P3)]
 
 
 def fps_subset(pts, n):
@@ -67,26 +75,25 @@ def fps_subset(pts, n):
 
 
 def layout(s0, P0, tiers):
-    """Deterministic (s0,P0,tiers) -> spec [(x,y,pop)]; top-down upgrade."""
-    pts = np.array(sorted(lattice(RMAX, s0)), dtype=float)
-    m = len(pts)
-    pops = np.full(m, P0)
-    d_prev = 1.0 / (HEX * s0 * s0)
-    P_prev = P0
-    taken = np.zeros(m, dtype=bool)
-    for f, r in tiers:
-        d = d_prev * f
-        P = P_prev * r
-        cnt = int(round(d * AREA))
-        if cnt > 0:
-            avail = np.nonzero(~taken)[0]
-            if len(avail):
-                sub = fps_subset(pts[avail], min(cnt, len(avail)))
-                idx = avail[np.array(sub, dtype=int)]
-                pops[idx] = P
-                taken[idx] = True
-        d_prev, P_prev = d, P
-    return [(float(pts[k, 0]), float(pts[k, 1]), float(pops[k])) for k in range(m)]
+    """Deterministic (s0,P0,tiers) -> spec; build() conventions mirrored:
+    tiers on own offset lattices (densest +s/2 like towns, middle plain
+    like regionals, sparsest +s/2), claimed top-down (sparsest first),
+    each site clearing 0.6*s0 around it; villages fill the rest."""
+    offs = [tiers[0][0] / 2.0, 0.0, tiers[2][0] / 2.0]
+    claimed = []  # (x, y, pop), sparsest tier first
+    for k in (2, 1, 0):
+        s, P = tiers[k]
+        if AREA / (HEX * s * s) < 1.0:
+            continue  # absent tier (expected < 1 town)
+        for (x, y) in lattice(RMAX, s):
+            xx = x + offs[k]  # no disc refilter: exact build() mirror
+            if all(math.hypot(xx - cx, y - cy) > 0.6 * s0
+                   for (cx, cy, _) in claimed):
+                claimed.append((xx, y, P))
+    vill = [(x, y, P0) for (x, y) in lattice(RMAX, s0)
+            if all(math.hypot(x - cx, y - cy) > 0.6 * s0
+                   for (cx, cy, _) in claimed)]
+    return vill + [(x, y, p) for (x, y, p) in claimed]
 
 
 def settled(spec, warm=3):
@@ -107,9 +114,22 @@ def settled(spec, warm=3):
     return cold, settled, len(towns), tot0
 
 
+REQUIRE = 0  # up-tiers that must be present (expected count >= 1); set in run()
+
+
 def evaluate(u):
     t0 = time.perf_counter()
     s0, P0, tiers = decode(u)
+    if REQUIRE:
+        pen = 0.0
+        for (s, _) in tiers[:REQUIRE]:
+            exp = AREA / (HEX * s * s)
+            if exp < 1.0:
+                pen += 5.0 * (1.0 - exp)
+        if pen > 0.0:
+            return {"s0": s0, "P0": P0, "tiers": tiers, "N": 0,
+                    "total": 0.0, "rate": -pen, "cold": None,
+                    "model": False, "dt": time.perf_counter() - t0}
     spec = layout(s0, P0, tiers)
     tot = sum(p for (_, _, p) in spec)
     info = {"s0": s0, "P0": P0, "tiers": tiers, "N": len(spec), "total": tot}
@@ -133,7 +153,13 @@ def evaluate(u):
     return info
 
 
-def run(n_init=24, n_iter=86, seed=0, log_path=LOG):
+def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
+        require=0):
+    global RMIN, REQUIRE, LO
+    RMIN = float(min_ratio)
+    REQUIRE = int(require)
+    LO = LO.copy()
+    LO[3] = LO[5] = LO[7] = math.log(RMIN)
     from scipy.stats import norm, qmc
     from sklearn.gaussian_process import GaussianProcessRegressor
     from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
@@ -174,16 +200,21 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG):
         return info
 
     # seeds: known-good skeletons first (never regress reporting)
-    def seed_for(s0, P0, f1, r1):
+    def seed_for(s0, P0, s1, r1, s2=200.0, r2=None):
+        if r2 is None:
+            r2 = RMIN
         u = [(math.log(s0) - LO[0]) / (HI[0] - LO[0]),
              (math.log(P0) - LO[1]) / (HI[1] - LO[1]),
-             (math.log(f1) - LO[2]) / (HI[2] - LO[2]),
+             (math.log(s1) - LO[2]) / (HI[2] - LO[2]),
              (math.log(r1) - LO[3]) / (HI[3] - LO[3]),
-             0.0, 0.0, 0.0, 0.0]
+             (math.log(s2) - LO[4]) / (HI[4] - LO[4]),
+             (math.log(r2) - LO[5]) / (HI[5] - LO[5]),
+             1.0, 0.0]
         return [min(1.0, max(0.0, v)) for v in u]
-    seeds = [seed_for(4.0, 300.0, 0.0123, 8.0),   # ~= s64/T2400
-             seed_for(4.0, 300.0, 1e-4, 1.0),      # flat
-             seed_for(4.0, 300.0, 0.02, 8.0)]      # ~= s32/T2400
+    seeds = [seed_for(4.0, 300.0, 64.0, 8.0),            # ~= s64/T2400
+             seed_for(4.0, 300.0, 200.0, RMIN),           # flat
+             seed_for(4.0, 300.0, 32.0, 8.0),             # ~= s32/T2400
+             seed_for(4.0, 300.0, 18.0, 1000.0 / 300.0, 82.0, 8.0)]  # GOAL
     for u in seeds:
         ask_evaluate(u)
 
@@ -242,5 +273,8 @@ if __name__ == "__main__":
     ap.add_argument("--iter", type=int, default=86)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--log", type=str, default=LOG)
+    ap.add_argument("--min-ratio", type=float, default=1.0)
+    ap.add_argument("--require", type=int, default=0)
     args = ap.parse_args()
-    run(n_init=args.init, n_iter=args.iter, seed=args.seed, log_path=args.log)
+    run(n_init=args.init, n_iter=args.iter, seed=args.seed,
+        log_path=args.log, min_ratio=args.min_ratio, require=args.require)
