@@ -3294,3 +3294,7 @@ Converged true ~61-64.
 ### Buzzer 1210g (60% batch, no deaths) (2026-09-13 04:07 BST)
 Buzzer +10g (1210 total) -> ord 64.1 (mu 67.4, was 66.1/1200g): +1.3 on
 60% wins + ZERO deaths + fifth. 1210 games.
+
+### Buzzer 1220g (2026-09-13 04:12 BST)
+Buzzer +10g (1220 total) -> ord 63.6 (mu 67.0, was 67.4/1210g): -0.5 on
+2W + F1-death + fifths. 1220 games.
