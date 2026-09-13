@@ -513,3 +513,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - F-S3 final (96 evals): best UNCHANGED +1.1384 (clean 4-tier). 32 extra
   evals, zero improvement for the third time running — extends confirm,
   never discover. Box free; pricing#2 (district combo tiebreak) launched.
+- Pricing#2 verdict (district combo): winner +1.453 (dense 300@3.5 +
+  500@16 + 2500@70, urb 8.8%) — first search improvement over hand in
+  this round, by ASSEMBLING known goods (dense villages + dense bourgs +
+  small chef) rather than discovering. Runner-up dense-bourg (+1.431,
+  urb 20%). Rate-vs-shares frontier: +1.45/9% ↔ +1.43/20%.
