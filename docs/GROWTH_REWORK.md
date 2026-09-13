@@ -883,6 +883,16 @@ Footprint verdict (same ground, R12 cfg): ON crowns the 3-tier stack
 higher (+.49 > +.42) because deleting an overlap always raises food per
 head; OFF can at best tie by learning avoidance. Keep ON.
 
+1M four-tier hunt (5 BO campaigns at r118, logs `bo_1m4_b1–b4.jsonl`):
+max-push (γ1.3/prem.5/melt.005), control, mid-push (γ1.25/prem.35/melt.01),
+reseed, extend-to-32 — no setting yields 4 tiers. Winners are 3-tier
+(300/600@18/4800@64, urb ~15%) or, at control knobs, flat (hierarchy margin
+narrows with scale). Genuine 4-tier candidates trail by 0.17–0.25; BO spends
+spare tiers as phantoms (same top size filed twice) or shrinks the top /
+blows urban past any cap. Verdict: the 4th tier needs a different objective
+(score tops/urban directly) or mechanism (size-scaled fame, non-food urban
+income), not stronger knobs.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode

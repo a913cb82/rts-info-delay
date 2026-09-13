@@ -160,11 +160,17 @@ def evaluate(u):
 
 def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
         require=0, footprint=True, melt=None, premium=None, gamma=None,
-        starv=None, decay=None, cart=None):
-    global RMIN, REQUIRE, LO, FOOTPRINT, CFG
+        starv=None, decay=None, cart=None, rmax=None, target=None):
+    global RMIN, REQUIRE, LO, FOOTPRINT, CFG, RMAX, AREA, TARGET, BAND
     RMIN = float(min_ratio)
     REQUIRE = int(require)
     FOOTPRINT = bool(footprint)
+    if rmax is not None:
+        RMAX = float(rmax)
+        AREA = math.pi * RMAX * RMAX
+    if target is not None:
+        TARGET = float(target)
+        BAND = (0.5 * TARGET, 3.0 * TARGET)
     if melt is not None or premium is not None or gamma is not None or starv is not None or decay is not None or cart is not None:
         CFG = replace(BASE_CFG,
                       market_scaling=BASE_CFG.market_scaling if gamma is None else gamma,
@@ -233,7 +239,8 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
     seeds = [seed_for(4.0, 300.0, 64.0, 8.0),            # ~= s64/T2400
              seed_for(4.0, 300.0, 200.0, RMIN),           # flat
              seed_for(4.0, 300.0, 32.0, 8.0),             # ~= s32/T2400
-             seed_for(4.0, 300.0, 18.0, 1000.0 / 300.0, 82.0, 8.0)]  # GOAL
+             seed_for(4.0, 300.0, 18.0, 1000.0 / 300.0, 82.0, 8.0),  # GOAL
+             seed_for(4.0, 300.0, 18.0, 2.0, 64.0, 8.0)]  # province (bourgs+chefs)
     for u in seeds:
         ask_evaluate(u)
 
@@ -302,8 +309,11 @@ if __name__ == "__main__":
     ap.add_argument("--starv", type=float, default=None)
     ap.add_argument("--decay", type=float, default=None)
     ap.add_argument("--cart", type=float, default=None)
+    ap.add_argument("--rmax", type=float, default=None)
+    ap.add_argument("--target", type=float, default=None)
     args = ap.parse_args()
     run(n_init=args.init, n_iter=args.iter, seed=args.seed,
         log_path=args.log, min_ratio=args.min_ratio, require=args.require,
         footprint=args.footprint, melt=args.melt, premium=args.premium,
-        gamma=args.gamma, starv=args.starv, decay=args.decay, cart=args.cart)
+        gamma=args.gamma, starv=args.starv, decay=args.decay, cart=args.cart,
+        rmax=args.rmax, target=args.target)
