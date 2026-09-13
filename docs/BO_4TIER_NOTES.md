@@ -535,3 +535,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   rebuild with refilter drops the 129-tier entirely). Hand-verifying BO
   shapes needs BO's exact builder — same-lattice-different-edges is not
   the same shape. BO-internal rates stand on their own geometry.
+- District combo dense-bourg@13 + 3000-chef (instead of 5000): +1.430 vs
+  +1.396. Smaller chefs win at district under combo knobs too — the
+  ~3k chef ceiling holds at both scales (2500–3000 district peak).
