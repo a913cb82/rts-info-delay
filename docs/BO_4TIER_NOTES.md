@@ -165,3 +165,14 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   +1.156 seed — also loses settled. Sparser wins settled everywhere.
 - share-BO#3 (running): prem.75 + maxi-dense seed (500@14/5000@80/50000
   @150, s0 3.5) — joint density+shares+rate optimum by search? 3/5 spent.
+
+## share-BO#3 verdict + dense bourgs take the share lead
+
+- BO#3 (20 model evals): best still the 4-tier seed (+1.156, twice).
+  Search never tries dense bourgs on its own.
+- Dense-bourg sweep (prem.75, settled): @11 +1.161 (urb 24%), @12 +1.157,
+  @13 +1.164 (urb 19%), @14 +1.101, @16–18 +1.11. Peak ~11–13km.
+  Best (@13): 2742×300 + 301×500 + 7×3000 + 20k → shares 77/14/2/2
+  vs reality 72/13/7/3 — villages and bourgs both land, chefs still small.
+- share-BO#4 (running): extend BO#3 log to 32 evals — can the search
+  find the dense-bourg region itself? 4/5 spent.
