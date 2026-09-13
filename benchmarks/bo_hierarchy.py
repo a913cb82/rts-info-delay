@@ -85,10 +85,18 @@ def layout(s0, P0, tiers, footprint=True):
     fr = 0.6 * s0 if footprint else 1e-9
     offs = [tiers[0][0] / 2.0, 0.0, tiers[2][0] / 2.0]
     claimed = []  # (x, y, pop), sparsest tier first
+    # Center-first: the sparsest present tier seats its hub at the disc
+    # center (symmetric hubs cover best, +0.014–0.02 measured) before the
+    # lattice fills around it. Geometric convention, not a special case:
+    # every tier still claims purely by spacing afterwards.
     for k in (2, 1, 0):
         s, P = tiers[k]
         if AREA / (HEX * s * s) < 1.0:
             continue  # absent tier (expected < 1 town)
+        if k == 2:
+            claimed.append((0.0, 0.0, P))
+            # fall through: lattice fills around the hub (nearby sites
+            # inside fr are excluded by the check below)
         for (x, y) in lattice(RMAX, s):
             xx = x + offs[k]  # no disc refilter: exact build() mirror
             if all(math.hypot(xx - cx, y - cy) > fr

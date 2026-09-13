@@ -707,3 +707,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   wins 12th time (+0.885); dense-combo 2nd (+0.876); dense-bourg 3rd
   (+0.868). Every seed loses to the incumbent INCLUDING the hand-derived
   ones — the +0.909 hand lead needs center placement no seed expresses.
+- Center-first claiming (layout): sparsest present tier seats its hub at
+  the disc center before lattice fill (symmetric hubs cover best). Verified:
+  12000-tier claims (0,0) + lattice remainder. Geometric convention —
+  every tier still claims by spacing after.
+- Pricing#2 (running): BASE + center-capable layouts — does search find
+  center-hub shapes itself now? 2/3 pricing spent.
