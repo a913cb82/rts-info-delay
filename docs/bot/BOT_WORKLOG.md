@@ -3503,3 +3503,7 @@ Buzzer +10g (1750 total) -> ord 62.7 (mu 66.0, was 65.6/1740g): +0.5 on
 ### Buzzer 1760g (spike-batch down) (2026-09-13 06:42 BST)
 Buzzer +10g (1760 total) -> ord 61.1 (mu 64.5, was 66.0/1750g): -1.6 on
 2W + 2 F1-deaths + fifths. Spike-batch. 1760 games.
+
+### Buzzer 1770g (2026-09-13 06:47 BST)
+Buzzer +10g (1770 total) -> ord 60.7 (mu 64.1, was 64.5/1760g): -0.4 on
+4W + fifths. Low (~61). 1770 games.
