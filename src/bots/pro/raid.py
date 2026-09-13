@@ -34,7 +34,7 @@ def raid_target(state: "BotState", config, priced: bool = True,
     PIPELINE (trains build the pack over turns); callers gate the MARCH
     on need <= free. Unpriced (big-war denial) returns max-pressure."""
     faction = state.faction
-    eff = config.build_efficiency
+    eff = config.capture_loss
     cost = config.army_cost
     floor = config.death_threshold
     enemy_towns = [t for t in state.world.towns if t.faction != faction]

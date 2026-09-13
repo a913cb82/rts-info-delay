@@ -74,14 +74,14 @@ def test_initial_state_matches():
 
 def test_town_death_removes_from_bot():
     """Town dying in engine → removed from BotState after event."""
-    t = _town(fid=0, pop=400, tid=1)
+    t = _town(fid=0, pop=5, tid=1)  # below the death floor (10)
     engine = _make_world(towns=[t])
     ledger = Ledger(CFG.info_speed, 1414)
 
     bot = BotState()
     bot.init(CFG, 0)
-    # Force pop below threshold by manually setting
-    t.population = 400
+    # Force pop below the death floor by manually setting
+    t.population = 5
 
     events = step(engine, CFG, ledger, turn=1, orders={})
     # Find town_death event
@@ -165,7 +165,7 @@ def test_train_one_shot():
 
 
 def test_train_survives_low_pop():
-    """TRAIN on town with pop < army_cost → army not spawned, order consumed."""
+    """TRAIN on town with pop < army_cost → capped army spawned, order consumed."""
     t = _town(fid=0, pop=800, tid=1)
     engine = _make_world(towns=[t])
     ledger = Ledger(CFG.info_speed, 1414)
@@ -174,7 +174,7 @@ def test_train_survives_low_pop():
     )
 
     step(engine, CFG, ledger, turn=1, orders={})
-    assert len(engine.armies) == 0  # too low to spawn
+    assert len(engine.armies) == 1  # capped 10% spawn
     assert len(engine.standing_orders) == 0  # consumed
 
 
@@ -383,7 +383,7 @@ def test_train_delivery_delayed_for_distant_town():
 
 def test_capital_death_no_events():
     """After capital dies, bot receives no events (is_in_flight=False, no capital)."""
-    t = _town(fid=0, pop=400, tid=1)  # below death threshold
+    t = _town(fid=0, pop=5, tid=1)  # below the death floor (10)
     engine = _make_world(towns=[t])
     ledger = Ledger(CFG.info_speed, 1414)
 
@@ -509,8 +509,8 @@ def test_move_capital_old_capital_demoted():
 
 
 def test_move_capital_near_home_repromotes():
-    """Landing within 10km of the (demoted) old capital re-promotes it:
-    first match in world order wins, mirroring apply_build — no new town."""
+    """Landing exactly on the exclave promotes it (exact landing:
+    the exclave at the target tile wins, mirroring apply_build)."""
     cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
     exclave = _town(fid=0, x=105, y=105, pop=2000, cap=False, tid=2)
     engine = _make_world(towns=[cap, exclave])
@@ -521,13 +521,13 @@ def test_move_capital_near_home_repromotes():
         if any(e.get("kind") == "town_spawn" for e in events):
             break
     assert len(engine.towns) == 2  # no fresh founding
+    new = next(x for x in engine.towns if x.id == 2)
+    assert new.is_capital
     old = next(x for x in engine.towns if x.id == 1)
-    assert old.is_capital
-    other = next(x for x in engine.towns if x.id == 2)
-    assert not other.is_capital
+    assert not old.is_capital
     assert not [a for a in engine.armies if a.is_viceroy]
     spawn = next(e for e in events if e.get("kind") == "town_spawn")
-    assert spawn["id"] == 1 and spawn["is_capital"] is True  # landing-detectable
+    assert spawn["id"] == 2 and spawn["is_capital"] is True  # landing-detectable
 
 
 def test_move_capital_far_exclave_promotes():
@@ -537,14 +537,14 @@ def test_move_capital_far_exclave_promotes():
     engine = _make_world(towns=[cap, exclave])
     events = []
     for turn in range(1, 18):
-        orders = {0: ["MOVE_CAPITAL 505 505"]} if turn == 1 else {}
+        orders = {0: ["MOVE_CAPITAL 500 500"]} if turn == 1 else {}
         events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
         if any(e.get("kind") == "town_spawn" for e in events):
             break
     assert len(engine.towns) == 2
     dest = next(x for x in engine.towns if x.id == 2)
     assert dest.is_capital
-    assert 2500 <= dest.population < 2700  # merge promotes AND pop-adds (+500) (+500)
+    assert 2200 <= dest.population < 2500  # merge promotes AND pop-adds (sized viceroy)
     old = next(x for x in engine.towns if x.id == 1)
     assert not old.is_capital
     assert not [a for a in engine.armies if a.is_viceroy]
@@ -553,16 +553,19 @@ def test_move_capital_far_exclave_promotes():
 
 
 def test_move_capital_exact_stack_no_new_town():
-    """Exact same-tile pair: the exclave crowding-dies turn 1, the viceroy
-    merges back into the old capital — never a second town on the tile."""
+    """Exact same-tile pair: the viceroy lands exactly and re-promotes
+    the old capital — never a second town on the tile."""
     cap = _town(fid=0, x=100, y=100, pop=5000, tid=1)
     exclave = _town(fid=0, x=100, y=100, pop=2000, cap=False, tid=2)
     engine = _make_world(towns=[cap, exclave])
     for turn in range(1, 6):
         orders = {0: ["MOVE_CAPITAL 100 100"]} if turn == 1 else {}
         step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders=orders)
-    assert len(engine.towns) == 1
-    assert engine.towns[0].is_capital
+    assert len(engine.towns) == 2
+    old = next(x for x in engine.towns if x.id == 1)
+    assert old.is_capital
+    other = next(x for x in engine.towns if x.id == 2)
+    assert not other.is_capital
     assert not [a for a in engine.armies if a.is_viceroy]
 
 
@@ -644,13 +647,14 @@ def test_town_death_cleans_build_orders():
 
 
 def test_train_rejects_low_pop():
-    """TRAIN on town with pop < army_cost → no army spawned."""
+    """TRAIN on town with pop < army_cost → capped small army spawned."""
     t = _town(fid=0, pop=800, tid=1)
     engine = _make_world(towns=[t])
 
     events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={0: ["TRAIN 1"]})
     spawn = [e for e in (events or []) if e.get("kind") == "army_spawn"]
-    assert len(spawn) == 0
+    assert len(spawn) == 1
+    assert spawn[0]["size"] == pytest.approx(80, abs=2)
 
 
 def test_train_accepts_healthy_pop():
@@ -710,30 +714,33 @@ def _viceroy(fid, x, y, tx, ty, aid=50):
     return a
 
 
-def test_move_capital_onto_guarded_foe_waits():
-    """Viceroy at a guard-held foe town: no founding, no consumption —
-    holds until the town is captured or gone. Geometry: T=(200,100),
-    foe town 9N, guard 9N of it (viceroy 18 off, guard 27 off: no combat,
-    no capture, stable wait)."""
+def test_move_capital_onto_guarded_foe_dies():
+    """Small viceroy lands on a guard-held foe town: the guard kills it —
+    no founding, no consumption. Geometry: target=(200,100), foe town
+exactly on target, guard 8N of it (contests the town and reaches
+    the viceroy: no stable wait exists under exact landing)."""
     old = _town(fid=0, x=0, y=0, pop=5000, cap=False, tid=1)
-    foe = _town(fid=1, x=200, y=109, pop=2000, cap=False, tid=2)
+    foe = _town(fid=1, x=200, y=100, pop=2000, cap=False, tid=2)
     engine = _make_world(towns=[old, foe])
-    engine.armies.append(_viceroy(0, 200, 91, 200, 100))
-    engine.armies.append(_army(fid=1, x=200, y=118, aid=51))
+    vic = _viceroy(0, 200, 91, 200, 100)
+    vic.size = 400.0
+    engine.armies.append(vic)
+    engine.armies.append(_army(fid=1, x=200, y=108, aid=51))
     for turn in range(1, 5):
         events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders={})
         assert not [e for e in events if e.get("kind") == "town_spawn"]
-    assert engine.get_army(50) is not None  # viceroy alive, waiting
+    assert engine.get_army(50) is None  # viceroy died on arrival
+    assert engine.get_army(51) is not None  # guard lives
     assert engine.get_town(2) is not None and engine.get_town(2).faction == 1
 
 
 def test_waiting_viceroy_merges_after_capture():
-    """Guard removed -> unopposed capture fires, then merge+promote."""
+    """Guard out of range -> unopposed capture fires, then merge+promote."""
     old = _town(fid=0, x=0, y=0, pop=5000, cap=False, tid=1)
-    foe = _town(fid=1, x=200, y=109, pop=2000, cap=False, tid=2)
+    foe = _town(fid=1, x=200, y=100, pop=2000, cap=False, tid=2)
     engine = _make_world(towns=[old, foe])
     engine.armies.append(_viceroy(0, 200, 91, 200, 100))
-    engine.armies.append(_army(fid=1, x=200, y=118, aid=51))
+    engine.armies.append(_army(fid=1, x=200, y=150, aid=51))
     step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={})
     engine.remove_army(51)  # guard dies elsewhere
     step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=2, orders={})
@@ -742,11 +749,12 @@ def test_waiting_viceroy_merges_after_capture():
 
 
 def test_waiting_viceroy_founds_after_town_gone():
-    """Foe town destroyed -> fresh founding at target."""
+    """Foe town destroyed while the viceroy still marches -> fresh
+    founding at target on arrival."""
     old = _town(fid=0, x=0, y=0, pop=5000, cap=False, tid=1)
-    foe = _town(fid=1, x=200, y=109, pop=2000, cap=False, tid=2)
+    foe = _town(fid=1, x=200, y=100, pop=2000, cap=False, tid=2)
     engine = _make_world(towns=[old, foe])
-    engine.armies.append(_viceroy(0, 200, 91, 200, 100))
+    engine.armies.append(_viceroy(0, 200, 0, 200, 100))
     engine.armies.append(_army(fid=1, x=200, y=118, aid=51))
     step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=1, orders={})
     engine.remove_town(2)
@@ -755,25 +763,6 @@ def test_waiting_viceroy_founds_after_town_gone():
     assert len(engine.towns) == 2
     new = next(x for x in engine.towns if x.id != 1)
     assert new.is_capital and (new.x, new.y) == (200, 100)
-
-
-def test_wait_is_indefinite_until_someone_moves():
-    """Guard-held landing is a stable equilibrium: viceroy at (0,0), foe
-    town at (9,0), guard at (18,0) — no combat (18 apart), no capture
-    (guard matches), no founding (blocked). Nothing in the engine breaks
-    it; only movement does. This is intentional."""
-    old = _town(fid=0, x=500, y=500, pop=5000, cap=False, tid=1)
-    foe = _town(fid=1, x=9, y=0, pop=2000, cap=False, tid=2)
-    engine = _make_world(towns=[old, foe])
-    engine.armies.append(_viceroy(0, 0, 0, 0, 0))
-    engine.armies.append(_army(fid=1, x=18, y=0, aid=51))
-    for turn in range(1, 8):
-        events = step(engine, CFG, Ledger(CFG.info_speed, 1414), turn=turn, orders={})
-        assert not [e for e in events if e.get("kind") == "town_spawn"]
-    assert engine.get_army(50) is not None
-    assert engine.get_army(51) is not None
-    t = engine.get_town(2)
-    assert t is not None and t.faction == 1 and not t.is_capital
 
 
 class TestSiteStability:
@@ -1521,10 +1510,10 @@ class TestLatencyPremium:
                       "faction": 0, "population": 20000, "alive": True,
                       "is_capital": True},
                      {"kind": "town_update", "id": 2, "x": 350, "y": 500,
-                      "faction": 1, "population": 1500, "alive": True,
+                      "faction": 1, "population": 2000, "alive": True,
                       "is_capital": False},
                      {"kind": "town_update", "id": 3, "x": 900, "y": 500,
-                      "faction": 1, "population": 1500, "alive": True,
+                      "faction": 1, "population": 2000, "alive": True,
                       "is_capital": False},
                      {"kind": "army_update", "id": 7, "x": 320, "y": 500,
                       "faction": 0, "alive": True, "is_viceroy": False}])

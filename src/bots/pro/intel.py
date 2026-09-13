@@ -265,7 +265,7 @@ class BotState:
             if tid in prev_faction and prev_faction[tid] != t.faction:
                 # captured: strip the halve, keep the growth (chunk-proof:
                 # same result whether the flip shares a batch or not).
-                eff = getattr(getattr(self, "config", None), "build_efficiency", 0.5) or 0.5
+                eff = getattr(getattr(self, "config", None), "capture_loss", 0.5) or 0.5
                 self._growth[tid] = self._growth.get(tid, 0.0) + (t.population - prev[tid] * (1.0 - eff))
                 continue
             self._growth[tid] = self._growth.get(tid, 0.0) + (t.population - prev[tid])

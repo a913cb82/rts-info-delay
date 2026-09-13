@@ -132,7 +132,7 @@ def _dispatch_leg(state: "BotState", config, p, tx: float, ty: float) -> list[st
 
 def scout_viable(state: "BotState", config, t) -> bool:
     """Duel-core viability: captured half must clear floor + margin."""
-    eff = config.build_efficiency if config is not None else 0.5
+    eff = config.capture_loss if config is not None else 0.5
     cost = config.army_cost if config is not None else 1000
     return t.population * (1.0 - eff) > cost * eff + 200
 

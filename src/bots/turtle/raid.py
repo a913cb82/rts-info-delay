@@ -89,7 +89,7 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
     PIPELINE (trains build the pack over turns); callers gate the MARCH
     on need <= free. Unpriced (big-war denial) returns max-pressure."""
     faction = state.faction
-    eff = config.build_efficiency
+    eff = config.capture_loss
     cost = config.army_cost
     floor = config.death_threshold
     enemy_towns = [t for t in state.world.towns if t.faction != faction]
@@ -219,7 +219,7 @@ def strike_target(state: "BotState", config, buzzer_window: int = 30,
     free) and clear prize>margin. Returns (target, need) or None.
     Breaks peaceful equilibria (the only breaker when all-credible)."""
     faction = state.faction
-    eff = config.build_efficiency
+    eff = config.capture_loss
     cost = config.army_cost
     speed = max(1.0, config.army_speed)
     turns_left = (getattr(config, "max_turns", 3000) or 3000) - state.turn
