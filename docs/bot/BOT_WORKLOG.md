@@ -3175,3 +3175,8 @@ Buzzer +10g (870 total) -> ord 62.9 (mu 66.2, was 66.2/860g): flat on
 ### Buzzer 880g (2026-09-13 02:47 BST)
 Buzzer +10g (880 total) -> ord 63.0 (mu 66.3, was 66.2/870g): +0.1 on
 4W + F1-death + fifth. Flat. 880 games.
+
+### Buzzer 900g MILESTONE (2026-09-13 02:37 BST)
+Buzzer +20g (900 total) -> ord 61.6 (mu 64.9, was 66.3/880g): -1.4 on
+35% wins (incl 358k x2/291k/260k/245k) + 3 F1-deaths + fifths. 900 games
+banked (definitive). Converged true ~61-64.
