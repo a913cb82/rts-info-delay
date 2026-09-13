@@ -3920,3 +3920,8 @@ Rated clean 15g (3x5) -> ord 31.9 (mu 39.6): FAIL (bar 60+). Wins decent
 (5/15: 260k+ takes!) but loses to weak (P1 naked sprawl raided; P2 takes
 strip guards). Temporal separation avoids interference but NOT poverty.
 Cool architecture, same thin fate. Parked on loop/apex.
+
+### Turtle wealth-adaptive built (2026-09-13 11:56 BST)
+Poor-fortress / rich-crusade (fscore-ahead takes with 2 home kept;
+behind pure fortress). Rich-press / poor-survive. Bar: exceed 47.2
+AND guards hold (style).

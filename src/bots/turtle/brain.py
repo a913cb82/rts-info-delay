@@ -205,6 +205,32 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             need_garrison = False
             built = True
             continue
+        # Wealth-adaptive crusade (poor-fortress / rich-crusade): takes fire
+        # ONLY when fscore-ahead (rich; afford packs+guards); behind = pure
+        # fortress (survive, minimize loss). Rich-press / poor-survive.
+        _fs: dict = {}
+        for t in state.world.towns:
+            _fs[t.faction] = _fs.get(t.faction, 0.0) + t.population
+        for a in state.world.armies:
+            _fs[a.faction] = _fs.get(a.faction, 0.0) + 1000.0
+        _foe_best = max((v for f, v in _fs.items() if f != faction), default=0.0)
+        if not built and own_t and _fs.get(faction, 0.0) >= _foe_best:
+            free = [a for a in state.own_armies() if not state.army_has_target(a.id)]
+            cand = None
+            for u in state.world.towns:
+                if u.faction != faction and u.faction is not None and u.population >= 4000:
+                    if min((math.hypot(u.x - t.x, u.y - t.y) for t in own_t), default=float("inf")) >= 150.0:
+                        if not any(math.hypot(a.x - u.x, a.y - u.y) <= 10.0 for a in state.world.armies if a.faction == u.faction):
+                            w = max(0.0, (u.population - config.army_cost - config.death_threshold) / config.army_cost)
+                            if int(w + 1) <= len(free) and (cand is None or u.population > cand.population):
+                                cand = u
+            if cand is not None:
+                # Keep 2 home (rich affords guards+takes; naked-rich dies).
+                home2 = sorted(free, key=lambda a: min((math.hypot(a.x - t.x, a.y - t.y) for t in own_t), default=0.0))[:2]
+                for a in free:
+                    if a.id not in {h.id for h in home2}:
+                        out.extend(order_move(state, config, a, cand.x, cand.y))
+                built = True
         if not built and own_t:
             # threatened home armies hold position — never dispatch them out
             if threatened and any(math.hypot(p.x - t.x, p.y - t.y) <= 20 for t in own_t):
