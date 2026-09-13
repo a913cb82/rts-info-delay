@@ -3444,3 +3444,7 @@ Converged true ~61-65.
 ### Buzzer 1610g (2026-09-13 06:07 BST)
 Buzzer +10g (1610 total) -> ord 65.4 (mu 68.8, was 68.3/1600g): +0.5 on
 50% wins + fifth. 1610 games.
+
+### Buzzer 1620g (2026-09-13 06:12 BST)
+Buzzer +10g (1620 total) -> ord 65.6 (mu 68.9, was 68.8/1610g): +0.2 on
+4W + mids + fifth. Flat. 1620 games.
