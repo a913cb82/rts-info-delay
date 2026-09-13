@@ -3747,3 +3747,8 @@ stunts to 14k (crowded); F3 efficient (20/109/5/4 small takes) compounds
 to 117k (uncrowded). SPACE (not takes) decides. QUEUED (cool rewrite per
 user): LEAPFROG chain-founding (150km staging hops to far voids; no long
 marches; sacrificial stones; style-perfect colonist).
+
+### Expander volume verdict: can't beat weak (44.2) (2026-09-13 09:51 BST)
+Expander +15g (143 total) -> ord 44.2 (mu 48.0, was 51.1/128g): -2.9 on
+1W/15 (7%). Can't beat WEAK (0-7% vs should-win 80%+). Volume futile;
+MECHANISM needed (takes vs weak + survive thin). Queued next.
