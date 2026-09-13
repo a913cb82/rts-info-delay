@@ -68,6 +68,76 @@ unreached surplus simply not eaten); migration is origin-budgeted and
 antisymmetric (people only move). Only births and deaths change the
 total. Exact stacks keep the engine rule (smaller dies, larger ignores).
 
+## Mechanics, in words and equations
+
+ 1. Claim land. Your town farms everything within 5 km that's closer to it than to any rival.
+    Crowded neighborhoods split the ring; lonely towns get the full ~79 km².
+
+        area_i = |{ p : |p − x_i| ≤ R and i = argmin_j |p − x_j| }|
+
+    where `R = 5` km farm radius; `x_i` town position.
+
+ 2. Grow food — near land first. Nearby soil is rich; distant soil is poor (a field at the 5 km
+    edge yields a tenth of one next door, since walking eats the workday). Each town works its
+    best land first until it runs out of farmers or land. Small villages farm only the sweet
+    inner disc; big towns stretch into thin outer soil.
+
+        rho(d) = rho0·(1 − c·(d/R)^p),    Y0_i = ∫_0^r 2πd·rho(d) dd,
+        r = min( √(P_i·a_w/π), r_cell )
+
+    where `c = 0.9` yield lost at radius R; `p = 2` decay shape; `rho0` rescaled so a full
+    ring still yields `rho·πR²` (`rho = 30`/km²); `a_w = sf/rho0` km² each worker farms;
+    `r_cell` the town's cell radius.
+
+ 3. Count spare hands. People not needed on the farms become the service sector — smiths,
+    traders, millers, priests. Rich near-land frees hands early, so even small villages have a
+    few.
+
+        serv_i = max(0, P_i − Y0_i/sf)
+
+    where `sf = 1.3` people fed per farm worker.
+
+ 4. Get improved — and pass it on. Services within carting distance (≈60 km, fading with
+    distance) make your farms more productive: better tools, seed, know-how. That lift is called
+    improvement — 0.2 means 20% extra yield — and it saturates (first smith matters most,
+    hundredth barely registers, never past the ceiling). Here's the network part: every town
+    offers its services scaled by the improvement it received last turn. So a market town fed by
+    a city resells city richness to its villages — city → town → village, one hop per week, like
+    carts actually move. Each hop keeps only a fraction (echoes fade), so nearby conduits matter
+    most and nothing ever explodes.
+
+        offer_j = serv_j·(1 + last_j),    mkt_i = Σ_j offer_j·2^(−d_ij/Lc)  (d_ij ≤ 3·Lc)
+        improvement_i = mi·mkt_i/(mkt_i + P_i),    Y_i = (1 + improvement_i)·Y0_i
+
+    where `Lc = 20` km (carting doubles grain price; reach `3·Lc = 60` km); `mi = 0.25`
+    ceiling; `last_j` = town j's received improvement last turn (0 at cold start). Large
+    service pools scale superlinearly: `contrib ∝ (serv/P_market)^γ`, `γ = 1.0`.
+
+ 5. Trade food. Surplus towns ship to hungry towns within 60 km, nearest first. Food is moved,
+    never created.
+
+        S_i = Y_i + imports_i,    surplus = max(0, Y − P) → deficit = max(0, P − Y),
+        nearest first with hard caps.
+
+ 6. Babies and deaths. Deaths are a flat rate; births rise with food per head but saturate (a
+    feast doesn't mean infinite babies).
+
+        B_i = b·P_i·S_i/(S_i + h·P_i), h = b/m − 1;    D_i = m·P_i
+
+    where `b = 35/1000`/yr, `m = 31/1000`/yr (per-turn rates divide by `turns_per_year = 52`).
+
+ 7. Migrate. Every town constantly leaks a small slice of everyone (~0.5%/year) plus extra
+    restless surplus workers, all walking uphill to bigger towns that can feed them (nothing past
+    ~150 km). People are moved, never created. Tiny settlements (≤10 people) wink out.
+
+        out_i = th·P_i + nu·serv_i
+        attr_ij = max(0, P_j−P_i)·min(1, S_j/P_j)·e^(−d/Lm)·win(d)
+        flow_ij = out_i·attr_ij/Σ_k attr_ik
+
+    where `th = 0.005`/yr background emigration; `nu = 0.05`/yr of surplus hands;
+    `Lm = 50` km migration scale, `win` cuts to zero at 150 km; towns at `P ≤ 10` die
+    (`town_min_population`).
+
 ## Sanity results (3 archetype runs)
 
 **Lone settlements** (3,000 turns ≈ 58 yrs):
