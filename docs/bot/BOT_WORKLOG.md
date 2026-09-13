@@ -4070,3 +4070,8 @@ One 282k win (luck). Reverted (main keeps turtle 47.2). Parked.
 Tie-spoiler killed pre-build (redundant: guards kill solo takers, not
 tie). BUILD-feed marginal (feed vs found tradeoff unclear). Weakness-
 decoy queued next (full budget; aggressive; decoy-assisted pack kills).
+
+### Decoy killed (overmatch-equivalent) (2026-09-13 13:21 BST)
+Weakness-decoy needs pack to kill inflated foe (solo decoy dies free);
+with pack it IS overmatch (+1 extra). Redundant. Killed pre-build.
+Research queue exhausted (lanes fail, spoiler/feed/decoy dead).
