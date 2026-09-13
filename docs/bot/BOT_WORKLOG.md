@@ -4214,3 +4214,15 @@ only); founding redistributes at 10% BUILD tax. THEN READ THE ENGINE
 DOCS: optimal = 4-tier hierarchy (villages 300@4km, markets 500@13-18km,
 centers 3-5k@50-80km, regional 30k; +1.38-1.40/yr vs flat +0.69).
 Bot strategy = BUILD THE HIERARCHY (tools: hierarchy_opt.py).
+
+### Boot experiments G1/G3/G4 (2026-09-13, loop/turtle-v2r)
+G3 (500 student + 30k teacher@100km): student 606 (=lone, NO teaching
+effect without own services); teacher 30k->2102 (giants collapse without
+networks). G1 (5000 center + 6x500 ring): center 2976, villages ->13
+(hungry-first trade DRAINS villages; 6:1 ratio 60x too thin; total -60%).
+G4 CONVEYOR (600 mother + 6x47@20km): mother ->793, colonies ->32,
+total +12%/5k turns (2x lone rate). Mechanism: migration uphill (size
+gradient) + mother converts absorbed workers (disc underfarmed @600).
+Rules: ABSORB > SPRAWL; GRADIENT beats UNIFORM; ratios matter (province
+needs ~400 villages/center). Boot paradox: 600-cap vs hierarchy tiers
+(300-villages need 6.6x births ~1900yrs; nothing boots alone).
