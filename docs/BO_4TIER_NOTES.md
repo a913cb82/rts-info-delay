@@ -465,3 +465,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   search (4-tier +1.381 vs s64t +1.367, gap at noise level). 1/3 pricing.
 - District combo recheck: lean +1.395 > s64t +1.122 > flat +0.635.
   District 3-tier leg holds under combo knobs with a wide margin.
+- District dense-bourgs@13 (combo knobs): settled +1.396, urb 22% —
+  ties lean (+1.395) with far better shares: 78/17.5/4.7 vs reality
+  72/15/5–10. District shares land the same way 1M did: dense small
+  towns, free.
