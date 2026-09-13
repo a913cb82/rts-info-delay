@@ -357,3 +357,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - F-S3 (running): 1M prem.75 + min_ratio 2.0 (tier sizes must double —
   duplicate mush unrepresentable) + P0 default. Last search: can clean
   tiers win by search alone? 3/3 spent.
+- Load discipline: killed a third concurrent 1M job (pricing#1) — 3×1M
+  jobs contend the shared box ~3×. Pricing waits for S2. Rule: max two
+  heavy jobs; pricing runs ride along one search, never two.
