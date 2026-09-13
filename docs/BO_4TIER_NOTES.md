@@ -678,3 +678,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Regional curve at BASE: 12k (+0.68) < 30k (+0.86) > 40k (+0.83) >
   50k (+0.80). Peak ~30k, gentle fall — same shape as prem.75 (peak
   20–30k). Regional optimum ~30k across knobs, inside reality 15–40k.
+- H-S2 final (96 evals, 35 model, constrained BASE): seed wins (+0.841);
+  runner-up urban-degenerate (+0.775, urb 100% — constraints stop
+  phantoms and tiny P0, not few-town degeneracy). Constraint set needs
+  a count/urban-balance term to be complete; noted, not built (diminishing
+  returns — assay covers shares).
