@@ -139,3 +139,15 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   towns) reach 16.2% urban at zero cost (+0.843 vs +0.844 @18km).
 - share-BO#1 (running): 1M, prem.75 (widest plateau), seed 51 — free to
   find counts/sizes that lift urban share. 1/5 spent.
+
+## share-BO#1 verdict: seeds win again, dense packing found by hand
+
+- BO#1 (1M, prem.75, 12 model evals): best = 4-tier seed verbatim
+  (+1.156 settled, urb 12%). Runner-ups all seeds. The search explores
+  nothing beyond its skeletons at 12 evals.
+- Dense packing (hand): villages @3.5km in r100–r118 reach 30–40/km²
+  (reality 33) at top growth (+1.13–1.14 cold) — the 4km lattice was the
+  binding constraint on density, not fertility. Plateau flat 3.0–3.5km.
+  Dense r118: 3866×300 + 198×500 + 7×3000 + 20k, dens 29.7, urb 10.8%.
+- share-BO#2 (running): same config + dense seeds (s0=3.5 skeletons) —
+  can the search confirm dense packing itself? 2/5 spent.
