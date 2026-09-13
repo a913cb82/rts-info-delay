@@ -176,3 +176,12 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   vs reality 72/13/7/3 — villages and bourgs both land, chefs still small.
 - share-BO#4 (running): extend BO#3 log to 32 evals — can the search
   find the dense-bourg region itself? 4/5 spent.
+
+## Tier-earning audit (dense-bourg shape, prem.75, settled)
+
+- Full (vill+bourgs@13+chefs+reg): +1.164. No-regional: +1.062 (regional
+  earns +0.10). No-chefs: +1.183 (chefs HURT −0.02 — dense bourgs + regional
+  saturate; mid-chefs redundant). Best: villages + dense-bourgs + regional.
+- Squeeze confirmed at every level: each tier earns only where neighbors
+  don't saturate. Bourgs earn iff chefs absent/small; chefs earn iff
+  bourgs sparse; regional earns (wide shed, no substitute).
