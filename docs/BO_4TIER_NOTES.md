@@ -264,3 +264,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   tries dense bourgs unaided (density fractions unexplored at 13–21
   evals). Added dense-bourg 4-tier seed (500@13/3000@80/20000@150).
 - r2-BO#1 (running): prem.75 + dense-bourg seed, seed 63. 1/5 spent.
+- Dense bourgs at max-push (adopted standard): @13 → +0.889 settled
+  (urb 19%, beats BO#2 winner +0.885); @11 → +0.887 settled, urb 24.4%
+  (≈23% ✓), shares 76/20/2/2 vs reality 72/13/7/3 — villages and urban
+  total land; bourgs overshoot (20 vs 13), chefs short (2 vs 7).
