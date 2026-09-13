@@ -3180,3 +3180,7 @@ Buzzer +10g (880 total) -> ord 63.0 (mu 66.3, was 66.2/870g): +0.1 on
 Buzzer +20g (900 total) -> ord 61.6 (mu 64.9, was 66.3/880g): -1.4 on
 35% wins (incl 358k x2/291k/260k/245k) + 3 F1-deaths + fifths. 900 games
 banked (definitive). Converged true ~61-64.
+
+### Buzzer 910g (70% batch, no deaths) (2026-09-13 02:42 BST)
+Buzzer +10g (910 total) -> ord 62.5 (mu 65.9, was 64.9/900g): +1.0 on
+70% wins + ZERO deaths. 910 games.
