@@ -3343,3 +3343,7 @@ Buzzer +10g (1330 total) -> ord 64.0 (mu 67.3, was 66.8/1320g): +0.6 on
 ### Buzzer 1340g (2026-09-13 04:47 BST)
 Buzzer +10g (1340 total) -> ord 64.7 (mu 68.0, was 67.3/1330g): +0.7 on
 4W + F1-death + fourths. 1340 games.
+
+### Buzzer 1350g (50% batch) (2026-09-13 04:52 BST)
+Buzzer +10g (1350 total) -> ord 65.0 (mu 68.3, was 68.0/1340g): +0.3 on
+50% wins (218k/297k/426k/260k/319k) + F1-death. 1350 games.
