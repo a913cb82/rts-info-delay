@@ -4226,3 +4226,19 @@ gradient) + mother converts absorbed workers (disc underfarmed @600).
 Rules: ABSORB > SPRAWL; GRADIENT beats UNIFORM; ratios matter (province
 needs ~400 villages/center). Boot paradox: 600-cap vs hierarchy tiers
 (300-villages need 6.6x births ~1900yrs; nothing boots alone).
+
+### Growth fan-in: optimal play sketch (2026-09-13, loop/turtle-v2r)
+T0 honest conveyor (6x45 ring, all costs): +66@8k (+11/colony); colonies
+die (one-shot batteries, no stabilization). T2 BOOST beats founding ~5x
+(+8-12/boost, optimal ~750t period; colony holds+grows 47->210; 500t
+over-drains mother). T3 NO isolated ignition (growth falls monotonically
+600->3000); ring hierarchy ignites CENTER only (1000->2009, feeders drain;
+fades with size). T4 CONQUEST dominates: 60-army steals 287 (+243 net,
+4.8x return; min-size wins, big garrisons starve prize); founding +8;
+conquest privately optimal, globally destructive. T5 40:1 BOOTS center
+4.6x (2000->9303) but parasitic-transient (villages->22, total -50% vs
+ctrl); threshold between 6:1 and 40:1.
+OPTIMAL SKETCH: raid early (steal grown stocks, min-size armies) ->
+boost captives (hold+grow) -> feeder ratios (boot center) -> ride spike
+(time it; base dies). Personalities: aggressive=raider, expander=breeder,
+pro=ratio-timing, turtle=fed-fortress.
