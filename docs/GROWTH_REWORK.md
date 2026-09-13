@@ -70,74 +70,83 @@ total. Exact stacks keep the engine rule (smaller dies, larger ignores).
 
 ## Mechanics, in words and equations
 
- 1. Claim land. Your town farms everything within 5 km that's closer to it than to any rival.
-    Crowded neighborhoods split the ring; lonely towns get the full ~79 km².
+### 1. Land — who farms what
+Every scrap of land within 10 km belongs to its nearest settlement (split down the middle
+with neighbours). Land near home yields fully; the far edge yields less (the trudge costs
+time). And hands limit you: each farmer feeds 1.3 mouths, so a town farms whichever is
+smaller — what its labour can work, or what it owns.
 
-        area_i = |{ p : |p − x_i| ≤ R and i = argmin_j |p − x_j| }|
+        Y0 = decayed yield of the farmed disc
 
-    where `R = 5` km farm radius; `x_i` town position.
+- `farm_radius_km` = 5 — a day's walk to the fields and back
+- `rural_density` = 30/km² — mouths an acre feeds at subsistence
+- `farm_decay_at_radius` = 0.9, `farm_decay_shape` = 2.0 — far edge ~10% worse, smooth falloff
+- `farm_workers_yield` = 1.3 — mouths fed per farmer
 
- 2. Grow food — near land first. Nearby soil is rich; distant soil is poor (a field at the 5 km
-    edge yields a tenth of one next door, since walking eats the workday). Each town works its
-    best land first until it runs out of farmers or land. Small villages farm only the sweet
-    inner disc; big towns stretch into thin outer soil.
+### 2. Services — farming eats first
+Figure out the harvest, count the hands it needed, everyone else is a smith, weaver, or
+trader. No decision involved: farmers are the requirement, services are whoever's left over.
 
-        rho(d) = rho0·(1 − c·(d/R)^p),    Y0_i = ∫_0^r 2πd·rho(d) dd,
-        r = min( √(P_i·a_w/π), r_cell )
+        serv = max(0, P − Y0/1.3)
 
-    where `c = 0.9` yield lost at radius R; `p = 2` decay shape; `rho0` rescaled so a full
-    ring still yields `rho·πR²` (`rho = 30`/km²); `a_w = sf/rho0` km² each worker farms;
-    `r_cell` the town's cell radius.
+### 3. Improvement — smiths make farms better (three parts)
+**(a) Market (quantity).** Every service crew contributes help to neighbours within 60 km,
+fading with distance (grain carts travel ~20 km/day). Big crews count superlinearly — ten
+smiths together beat ten apart (division of labour).
 
- 3. Count spare hands. People not needed on the farms become the service sector — smiths,
-    traders, millers, priests. Rich near-land frees hands early, so even small villages have a
-    few.
+        mkt = Σ serv-mass · 2^(−d/20)
 
-        serv_i = max(0, P_i − Y0_i/sf)
+- `cart_distance_km` = 20 — a day's cart trip; trade/market reach 3× that = 60 km
+- `market_scaling` = 1.15 — big crews punch ~15% above weight
 
-    where `sf = 1.3` people fed per farm worker.
+**(b) Frontier (quality ceiling).** Help only matters if the *methods* exist. Your ceiling is
+set by the best crew you can learn from: anyone within daily walking distance (10 km,
+apprenticeship needs face-to-face), or a famous complete crew up to 60 km away (word travels
+farther than feet). No smith nearby → capped low, however much effort arrives.
 
- 4. Get improved — and pass it on. Services within carting distance (≈60 km, fading with
-    distance) make your farms more productive: better tools, seed, know-how. That lift is called
-    improvement — 0.2 means 20% extra yield — and it saturates (first smith matters most,
-    hundredth barely registers, never past the ceiling). Here's the network part: every town
-    offers its services scaled by the improvement it received last turn. So a market town fed by
-    a city resells city richness to its villages — city → town → village, one hop per week, like
-    carts actually move. Each hop keeps only a fraction (echoes fade), so nearby conduits matter
-    most and nothing ever explodes.
+        ceiling = 0.5 · min(1, (best_near/2356)^0.15)
 
-        offer_j = serv_j·(1 + last_j),    mkt_i = Σ_j offer_j·2^(−d_ij/Lc)  (d_ij ≤ 3·Lc)
-        improvement_i = mi·mkt_i/(mkt_i + P_i),    Y_i = (1 + improvement_i)·Y0_i
+- `max_improvement` = 0.5 — best-practice methods grow ~50% more
+- 2356 = a full ring's worth of specialists (the famous-or-not line)
 
-    where `Lc = 20` km (carting doubles grain price; reach `3·Lc = 60` km); `mi = 0.25`
-    ceiling; `last_j` = town j's received improvement last turn (0 at cold start). Large
-    service pools scale superlinearly: `contrib ∝ (serv/P_market)^γ`, `γ = 1.0`.
+**(c) Resell (memory).** Towns pass on what they received — this turn's offer is services ×
+(1 + last turn's improvement), so richness walks one hop per week and fades per hop. Cold
+start = plain neighbours.
 
- 5. Trade food. Surplus towns ship to hungry towns within 60 km, nearest first. Food is moved,
-    never created.
+        offer = serv · (1 + last),    Y = (1 + imp) · Y0
+        imp = ceiling · mkt/(mkt + P)    (help per head, saturating)
 
-        S_i = Y_i + imports_i,    surplus = max(0, Y − P) → deficit = max(0, P − Y),
-        nearest first with hard caps.
+### 4. Trade — hungry mouths eat first
+Nearest pairs first: while one side is better fed, move food to exact equality. Big or small,
+all mouths equalise — a starving town eats before a comfortable village overeats, and nobody
+is ever dragged below the mouth it feeds. Every unit is conserved.
 
- 6. Babies and deaths. Deaths are a flat rate; births rise with food per head but saturate (a
-    feast doesn't mean infinite babies).
+        f = (sp_donor − sp_hungry) · P_i·P_j/(P_i + P_j)    (food per head, sp = S/P)
 
-        B_i = b·P_i·S_i/(S_i + h·P_i), h = b/m − 1;    D_i = m·P_i
+### 5. Babies and deaths — Malthus
+Well-fed towns have more babies, up to a max; everyone dies at a flat rate. At exactly
+subsistence (food = mouths) births equal deaths — growth stops. Absolute speed limit: +0.4%/yr.
 
-    where `b = 35/1000`/yr, `m = 31/1000`/yr (per-turn rates divide by `turns_per_year = 52`).
+        births = b·P·S/(S + h·P),    deaths = m·P
 
- 7. Migrate. Every town constantly leaks a small slice of everyone (~0.5%/year) plus extra
-    restless surplus workers, all walking uphill to bigger towns that can feed them (nothing past
-    60 km — all town interactions share the trade-reach cap). People are moved,
-    never created. Tiny settlements (≤10 people) wink out.
+- `birth_rate` = 35/1000/yr, `death_rate` = 31/1000/yr; `h` just pins subsistence at S/P = 1
 
-        out_i = th·P_i + nu·serv_i
-        attr_ij = max(0, P_j−P_i)·min(1, S_j/P_j)·e^(−d/Lm)·win(d)
-        flow_ij = out_i·attr_ij/Σ_k attr_ik
+### 6. Migration — drift to the towns
+A trickle of everyone (0.5%/yr) plus more footloose service folk (5% of services) moves each
+year, uphill toward bigger towns that can feed arrivals. Movers are conserved — every arrival
+is someone's departure (which is why boomtowns grow on village births).
 
-    where `th = 0.005`/yr background emigration; `nu = 0.05`/yr of surplus hands;
-    `Lm = 50` km migration scale, `win` cuts to zero at 60 km (trade reach);
-    towns at `P ≤ 10` die (`town_min_population`).
+- `migration_share` = 0.005/yr background drift; `surplus_mobility` = 0.05 (service folk move
+  10× more); range ~50–60 km
+
+### 7. Death floor
+Towns at 10 or fewer people vanish (too few hands to hold the fields).
+
+- `town_min_population` = 10 (engine floor; bots still see the legacy 500)
+
+One turn = one week (`turns_per_year` = 52). Net growth can never exceed babies-minus-deaths,
+and food is conserved every turn — nothing comes from nothing; towns earn their keep by
+teaching villages to grow more.
 
 ## Sanity results (3 archetype runs)
 
