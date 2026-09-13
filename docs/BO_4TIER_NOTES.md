@@ -718,3 +718,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   3–10. No new launches after pricing#2 lands. Standing results do not
   depend on any single run (every claim has assay + multi-seed support),
   but the count discipline failed and is recorded as such.
+- Pricing#2 verdict (center-capable layouts): seed wins 13th time (+0.864)
+  — but LOWER than its pre-center-first +0.885. Center-first claiming
+  changed exclusion geometry (same N/tot, different villages cleared),
+  costing the seed 0.02 while hand center shapes keep +0.909. Placement
+  details matter at the 0.02 level — the same order as most findings.
+  Remaining gap decomposes: sizes (~0.03, small chefs) + placement (~0.015).
