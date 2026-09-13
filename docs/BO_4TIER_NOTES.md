@@ -607,3 +607,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - G-S3 (running): full-constraint reseed (combo + min_ratio + p0min),
   seed 91 — robustness of the sparse-big family. 3/3 searches spent;
   pricing 0/3.
+- Pricing#1 (running): district combo tiebreak (dense-bourg +1.396 vs
+  lean +1.395 — true tie). 1/3 pricing spent.
