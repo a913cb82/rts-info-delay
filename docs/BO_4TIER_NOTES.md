@@ -618,3 +618,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   29.4, settled +1.291. Density via lattice (not scale) costs ~0.09 vs
   best — lattice density is expensive, scale density is cheap (0.006).
   Two density routes priced: tighten lattice (−0.09) vs scale mouths (−0.006).
+- District ratchet (footprint 1.0 + dense bourgs + k=1.43 scale): 210×429
+  + 31×858 + 7150 → villages 73% ✓ (count 210 ✓, size 429 ✓), bourgs 21%
+  (over), chef 5.8% ✓, density 27 (k too small — 1.73 gives 33).
+  Footprint+scale lands villages fully at district; bourgs overshoot.
