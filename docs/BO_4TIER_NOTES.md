@@ -290,3 +290,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Big chefs + dense bourgs (5000@80 + 419 bourgs): +1.141 vs +1.161 with
   3000-chefs. Bigger chefs lose everywhere, even with dense-bourg cover.
   Chef size ~3k is a ceiling under all knobs, not a tunable.
+- r3-BO#1 verdict: seed wins 4th time (+1.156, 12 model evals). Added
+  district dense-bourg seed (600@13/2400@70); r3-BO#2 (district, prem.75)
+  tests whether the search finds the dense-bourg corner itself. 2/5 spent.
