@@ -173,6 +173,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 site = None
             if site:
                 out.extend(dispatch_settler(state, config, p, site[0], site[1]))
+            else:
+                # Crowding-bomb (spite-founding): no economic site? Found
+                # within 100km of the biggest foe town to stunt it
+                # (crowding taxes growth; spikes need growth). Sacrificial
+                # settlers; denies more than it costs vs compounders.
+                foes = sorted((t for t in state.world.towns if t.faction != faction),
+                              key=lambda t: -t.population)
+                if foes and own_t:
+                    big = foes[0]
+                    mx = (config.map_size[0] if config.map_size else 1000.0) - 20.0
+                    my = (config.map_size[1] if len(config.map_size or []) > 1 else 1000.0) - 20.0
+                    sx = min(mx, max(20.0, big.x + 80.0))
+                    sy = min(my, max(20.0, big.y + 60.0))
+                    if all(math.hypot(sx - t.x, sy - t.y) >= 40.0 for t in state.world.towns):
+                        out.extend(dispatch_settler(state, config, p, sx, sy))
     return out
 
 

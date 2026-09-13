@@ -3993,3 +3993,8 @@ Loop alive.
 
 ### Heartbeat (2026-09-13 13:21 BST)
 Loop alive.
+
+### Crowding-bomb built (2026-09-13 12:16 BST)
+Spite-founding (no-constraints imaginative): no economic site? Found
+within ~100km of biggest foe to stunt it (crowding taxes growth).
+Sacrificial settlers. Bar: exceed 37.0 AND takes (style).
