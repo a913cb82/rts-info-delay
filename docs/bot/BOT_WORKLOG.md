@@ -3770,3 +3770,9 @@ Reverted (main keeps expander 44.2). Parked on loop/exp-hyper.
 Takes without muster-tax: calm leftovers take fresh-empty viable spaced
 towns (natural/surplus force; fortress holds; threatened keep guards).
 Bar (gate): ord>=47.3 AND guards hold (style).
+
+### Surplus verdict: FAIL (34.0, take-guard split) (2026-09-13 10:21 BST)
+Rated clean 15g (3x5) -> ord 34.0 (mu 41.8): FAIL (gate 47.3+). Takes
+fire (5W/15, 22-173k) but strip guards (raided while away; die). Thin
+force can't take AND guard (split fails both; muster-tax vs split
+double-bind). Reverted (main keeps turtle 47.3). Parked.
