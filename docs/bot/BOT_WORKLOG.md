@@ -4340,3 +4340,8 @@ marches, remainder missions next; no return-trips) + tier spends (market
 667/village 333) + densify-gate (no feeding 800+ holes <30km). Scales:
 10k->9358, 500->671, clocks clean. Shrink-vs-start structural (1-train
 cap vs -12%/turn deaths); vs idle 6.7x.
+
+### v9 full scoreboard (2026-09-13, loop/grower)
+t10000 (grower vs idle): 500->671/608, 1k->1251/608, 10k->9358/1394,
+50k->9612/1410, 100k->9760/1411. Big starts converge ~9.6k (shed-rate
+ceiling: 1-train/turn caps savings; rest is starvation waste).
