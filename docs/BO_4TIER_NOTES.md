@@ -585,3 +585,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   has a clean receipt at 100k even where it garnishes at 1M.
 - District prem.75 flat baseline: +0.439 vs tiered +1.16–1.22. Hierarchy
   margin +0.7 at district under prem.75 — towns earn enormously there.
+- Village size flips with towns present (prem.75 district): flat villages
+  prefer 500 over 300 (+0.259 vs +0.207 — self-service needs scale), but
+  trade-fed villages prefer 300 (towns supply what size would). Size
+  optimum is conditional on hierarchy, not a property of villages.
