@@ -127,43 +127,36 @@ measured). Found by hand-built shapes plus search over spacings and sizes
 |---|---|---|---|---|
 | villages | ~300 | 300 | 4 km | ~85% |
 | market towns | ~19 | 600 | 18 km | ~11% |
-| center | 1 | 5,000 | central | ~5% |
+| center | 1 | 2,500 | central | ~2.5% |
 | big city | 0 | — | — | — |
 
-Land ~4,500 km² (~23/km²); growth +0.88/yr. A lone 9,600 town is second
-(+0.77); flat villages lose.
+Land ~4,500 km² (~23/km²); growth +0.92/yr. Uniform mid towns second
+(+0.80); flat villages lose. District chefs peak small (2,500–3,000) —
+a 5,000 center grows slower (+0.88), a 1,500 one much slower (+0.58).
 
 ### 1M province
 
 | tier | count | size each | spacing | share |
 |---|---|---|---|---|
-| villages | ~3,000 | 300 | 4 km | ~90% |
+| villages | ~3,000 | 300 | 4 km | ~88% |
 | market towns | ~150 | 600 | 18 km | ~9% |
-| centers | 1 | 5,000 | central | ~0.5% |
-| regional capital | 0 | — | — | — |
+| centers | ~7 | 3,000 | ~80 km | ~2% |
+| regional capital | 1 | 12,000–20,000 | central | ~1–2% |
 
-Land ~43,700 km² (~23/km²); growth +0.82/yr. Uniform mid-size towns
-(~50 × 2,400 @32 km, ~12% urban) win; the 4-tier province below is second
-(+0.79); flat villages lose (+0.32) and a lone giant starves (−0.37).
+Land ~43,700 km² (~23/km²); growth +0.89/yr, confirmed by search (BO
+lands on the same shape twice). Two-tier sparse tops second (+0.86);
+flat villages lose (+0.32) and a lone giant starves (−0.37).
 
-### Closest to reality (second place, closest structure)
+### Closest to reality (the 1M table above)
 
-The 4-tier province never beats uniform mid towns on growth — settled
-+0.79 vs +0.82 (cold it leads +0.77 vs +0.73, but settled is the honest
-measure). It stays because it is by far the closest structural match:
-
-| tier | count | size each | spacing | share |
-|---|---|---|---|---|
-| villages | ~3,000 | 300 | 4 km | ~84% |
-| market towns | ~150 | 600 | 18 km | ~9% |
-| centers | ~13 | 5,000 | ~64 km | ~6% |
-| regional capital | 1 | 20,000 | central | ~2% |
-
-Each tier owns a distinct teaching shed (bourgs their patch, centers
-their district ~60 km, the regional its province ~114 km+) — that is what
-lifts the fourth tier from distant last (at gentle settings) to second.
-It still loses, because extra big mouths cost more food than their
-saturated lift repays.
+The winning 1M stack is by far the closest structural match: bourg count
+exact (151 vs ~150), centers counted (7 vs ~9) though small (3k vs 8k),
+regional in range (12–20k vs 15–40k). It wins because each tier owns a
+distinct teaching shed (bourgs their patch, centers their district ~45 km,
+the regional its province ~114 km+) — at gentle settings the same stack
+loses badly, and small chefs beat big ones everywhere (3k > 5k > 8k).
+What still misses: villages too many/small, bourgs small (600 vs 900),
+urban ~12% vs 8–12% edge — and growth runs at +0.9 vs 0–0.3 recorded.
 
 ## Reality goals: 100k district and 1M province
 
@@ -201,11 +194,11 @@ empty).
 
 - **Market towns: exact.** ~150 bourgs at 1M, ~19 at 100k — count, size,
   and spacing all land on the anchors.
-- **Centers and regionals: close, but only when pushed.** Standard
-  settings grow one token center; the pushy settings grow 13 centers and
-  a 20,000 regional, near the historical sizes and shares. Courts, church,
-  walls, and rents — the non-food reasons cities exist — are still
-  unmodeled, so upper tiers have to earn purely through food and teaching.
+- **Centers and regionals: present and close.** 100k grows one ~2,500
+  center; 1M grows ~7 small centers plus a 12–20k regional — counts near
+  the anchors, sizes about half. Courts, church, walls, and rents — the
+  non-food reasons cities exist — are still unmodeled, so upper tiers
+  have to earn purely through food and teaching, and they come out small.
 - **Villages: too many and too small.** ~3,000×300 vs ~1,700×~430, because
   founding a settlement costs nothing and near fields always reward one
   more split. Fixed costs per settlement (common pasture, church, mill,

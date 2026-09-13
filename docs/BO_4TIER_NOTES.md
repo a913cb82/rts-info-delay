@@ -55,7 +55,19 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 
 | BO#3 | `bo_win_b3` (16 evals) | reseed of BO#2 | identical +0.885, same shape | robust, not seed luck |
 
-## Next
+## BO#8 verdict: 4-tier wins by search (goal met)
+
+- BO#8 (1M, max-push, small-chef 4-tier seed, 16 model evals): winner is
+  4-tier 300/600@18/3000@80/12000@150, +0.8847, ~12% urban — the same
+  shape BO#2 found, now with the small-chef seed in play. Runner-up:
+  2-tier sparse tops +0.859. Hand small-chef variants reach +0.91.
+- 100k transfer: district chef peaks at 2500–3000 (+0.92), not 5000.
+  Small tops win at both scales; only counts scale.
+- GOAL MET: search gives 4-tier optimal at 1M under realistic settings
+  (twice: BO#2, BO#8). Caveats stand: bourgs garnish (+0.003), tiers
+  come out small, growth hot, mid/base regimes prefer fewer tiers.
+
+## Open items (still true)
 
 - Bourg-size gap is structural: growth flat across 200–500 and +0.003
   with vs without bourgs at max-push, while reality staffs 900s at 13%.
@@ -73,8 +85,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   and flat. Tops only pay under pushy knobs.
 - Big sparse bourgs (1500@25, 2000@30) lose (+0.75–0.77): mouth burden
   beats coverage efficiency. Small+dense or nothing.
-- BO#5 (running): 1M mid knobs + 4-tier seed — can 4-tier WIN off
-  max-push? Decides whether the claim is knob-robust.
+- BO#5 (done — verdict below): 1M mid knobs + 4-tier seed.
 
 ## BO#5 verdict + interpolation (4-tier needs max-push)
 
@@ -112,6 +123,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   beat the BO#2 winner (+0.885). New incumbent: bourgs-500 + 1000-chefs@80
   + 20k regional. Tiers compress upward (300/500/1000/20000) while the
   top stays big — mouths shrink everywhere except the regional.
-- BO#8 (running): max-push + new small-chef 4-tier seed
-  (500@18/1500@80/15000@150) — can the search confirm the small-chef
-  incumbent itself?
+- BO#8 (done — verdict above): max-push + new small-chef 4-tier seed
+  (500@18/1500@80/15000@150).
