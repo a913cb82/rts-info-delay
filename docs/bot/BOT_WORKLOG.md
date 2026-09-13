@@ -3899,3 +3899,6 @@ Loop alive. All blocked.
 
 ### Heartbeat (2026-09-13 12:21 BST)
 Loop alive.
+
+### Heartbeat (2026-09-13 12:26 BST)
+Attempt-review (feed-to-peak, hyper+guards, scout-empties): all EV-negative. Loop alive.
