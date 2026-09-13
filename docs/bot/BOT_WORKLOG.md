@@ -3740,3 +3740,10 @@ Rated clean 15g (3x5) -> ord 35.9 (mu 43.6): FAIL (gate 47.3+). Wins
 occur (198k/116k/30k retaliations, style TRUE) but too rare (needs big
 repels + freed packs) to move ordinal; weak-diverse gate punishes rest.
 Reverted (main keeps turtle 47.3). Parked on loop/turtle-counter.
+
+### Expander trace: space decides + leapfrog queued (2026-09-13 09:51 BST)
+Self-play trace: F1 hyperactive (68 trains/944 moves/20 builds/5 takes)
+stunts to 14k (crowded); F3 efficient (20/109/5/4 small takes) compounds
+to 117k (uncrowded). SPACE (not takes) decides. QUEUED (cool rewrite per
+user): LEAPFROG chain-founding (150km staging hops to far voids; no long
+marches; sacrificial stones; style-perfect colonist).
