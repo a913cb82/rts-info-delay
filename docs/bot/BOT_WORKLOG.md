@@ -3908,3 +3908,9 @@ Style audit: all four style-true (compounder/fortress/colonist/conqueror hold). 
 
 ### Heartbeat (2026-09-13 12:36 BST)
 Loop alive.
+
+### Apex phased predator built (2026-09-13 11:51 BST)
+No-constraints build (user directive): new package bots/apex (pro fork)
+with temporal phases (P1 sprawl t3000-6000 to 5 towns; P2 conquer t6000+
+marches all free at best viable; guards throughout; no interference via
+time-separation). Bar (new entity): 60+ raw.
