@@ -331,3 +331,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   reality 72/13/7/3 — villages, bourgs, regional ALL land within noise;
   only chefs short (2 vs 7%). Sharp hunger + big regional is the closest
   configuration found on every axis at once.
+- Chef squeeze complete (starv1.6, settled): with dense bourgs + reg30k,
+  dropping chefs GAINS (+1.411 vs +1.379); with sparse bourgs, dropping
+  chefs still gains (+1.410 vs +1.379) and dropping bourgs is neutral
+  (+1.381). Chefs earn only with BOTH neighbors absent (s64t-era). In any
+  full stack the mid tier is redundant — coverage saturates from below
+  (bourgs) or above (regional), never leaving a gap chefs alone fill.
