@@ -4279,3 +4279,11 @@ JIT-muster; no standing armies/scouts). Compat fixes: silence_watch call
 (16k scan killed clock). Smoke 500t all-grower: 5x (TRAIN+M march+BUILD),
 5 colonies 44-pop, scores 501 (founding cost, payback over 1000s of t).
 Branch renamed (guard-lock parked on loop/turtle-v2).
+
+### Grower 10k: 655 vs 608 idle (+8%) (2026-09-13, loop/grower)
+Boost loop fires but recovery-bound (~2000t cadence: mother 450->500
+recovery gates, not the 750 cooldown). Colony held ~45 (never 210-track;
+T2 assumed 600-mother). Tracker gap: mirror Army.size never parsed (BUILD
+sends 1000, engine clamps; harmless but wrong). v2 levers: TRAIN_MIN_POP
+500->450 (faster cadence), size parsing (compat), colony trains (scale).
+Peaceful game is slow; competition changes payoffs (T4 raids).
