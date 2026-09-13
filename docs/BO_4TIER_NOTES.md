@@ -249,3 +249,11 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Squeeze confirmed at every level: each tier earns only where neighbors
   don't saturate. Bourgs earn iff chefs absent/small; chefs earn iff
   bourgs sparse; regional earns (wide shed, no substitute).
+
+## Both-scales round 2 (goal: hold tiers, move shares at 100k + 1M; 5-BO budget)
+
+- District dense-bourgs@13 (prem.75): settled +1.159, urb 22% — loses to
+  BO winner (+1.217, sparser bourgs@16). Unlike 1M, district punishes
+  dense bourgs (one chef + sparse bourgs already saturate). District leg
+  settled: dense 300@3.5 + 500@16 + 2500@70, twice confirmed.
+- both-BO#3 (carry-over): prem.75 + combo seed. Pre-budget information.
