@@ -322,3 +322,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   favor tiers — but chef sizes still won't scale (3k +1.343 > 8k +1.311).
 - F-S2 (running): 1M prem.75+starv1.6, 3 light seeds, xi 0.05, 96 evals —
   search where the 4-tier gradient is steepest. 2/3 searches spent.
+- Regional scales where chefs won't (starv1.6): 30k (+1.348) > 20k
+  (+1.343) > 40k (+1.323). The top rung has no substitute (114km+ shed
+  covers the province alone), so its lift repays mouths to ~30k — inside
+  the 15–40k anchor. Asymmetry confirmed: regional size free to ~30k,
+  chef size capped ~3k (overlapping sheds).
