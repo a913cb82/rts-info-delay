@@ -618,6 +618,32 @@ sizes small, spacings as-wide-as-possible. Real settlement (villages
 at 2–5 km *with* towns) is unrepresentable. That gap is what the
 rework fills.
 
+## BO hierarchy optimum (settled, 100k regime)
+
+Bayesian optimization over continuous densities/sizes (8-D: base
+spacing/size + 3× (density-fraction, size-ratio); tiers vanish by
+density falling out; total-pop band; settled = 3 warm + measured).
+110 evals (~55 in-band), GP Matern+nugget, EI. Winner:
+
+- Villages ~200 on a ~3 km lattice (not our assumed 300 @ 4 km!) +
+a sprinkling of ~650-person towns (~1–7 per 100k, urb 0.3–2.4%):
++0.1616…0.1621 vs hand-best s64/T2400 +0.1595, flat +0.1572.
+- Targeted checks on the winner baseline: pure flat +0.1603;
++seven 2400-towns +0.1589 (big towns HURT optimized villages —
+dilution); +seven 650-towns +0.1616; one 650-town +0.1621.
+- 3rd/4th tiers never pay (best 3-level +0.1606); cities/capitals are
+dilution. Levels explored 1/2/3/4 (4-level tail thin: 2 evals).
+- dense villages serve each other, so towns add less: agglomeration
+shows diminishing returns to density. Sparse villages (300 @ 4 km)
+need towns (+0.0023); dense ones (200 @ 3 km) barely do (+0.001).
+- Winner sits inside realism anchors (25/km² rural, 2–5 km spacing,
+150–400 size) — but urb ~0% vs the 8–12% anchor: towns exist in
+reality for non-agricultural reasons (administration, defense,
+trade nodes) the model lacks. Open gap, not a fit failure.
+- Caveats: single seed (basins agree, all dense-small); count
+rounding (±1 town); 1M transfer untested (spacings should transfer —
+physics-set — counts scale; top size may scale).
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
