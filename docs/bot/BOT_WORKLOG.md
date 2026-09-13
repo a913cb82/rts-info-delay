@@ -4004,3 +4004,7 @@ Rated clean 15g (3x5) -> ord 23.7 (mu 31.7): FAIL (gate 37.0+). Spite-
 foundings donate settlers (die en route) + stunt minor (foes outgrow).
 Spite costs more than it denies. Reverted (main keeps aggressive 37.0).
 Parked on loop/aggr-crowd.
+
+### Tribute built (mega-capital) (2026-09-13 12:21 BST)
+Imaginative (no-constraints): 3+ home idles BUILD into capital (+500;
+keep 2 guards). Mega-capital attractor. Bar: exceed 47.2 AND guards.

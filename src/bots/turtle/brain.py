@@ -222,6 +222,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         # garrison remainder
         if not built or state.army_has_target(p.id):
             continue
+        # Tribute (mega-capital): 3+ home idles convert surplus to pop
+        # (+500 each via instant BUILD; keep 2 guards; fortress holds).
+        if own_t:
+            cap = state.world.faction_capital(state.faction)
+            if cap is not None and math.hypot(p.x - cap.x, p.y - cap.y) <= 20.0:
+                home_idles = [a for a in state.own_armies()
+                              if not state.army_has_target(a.id)
+                              and any(math.hypot(a.x - t.x, a.y - t.y) <= 20.0 for t in own_t)]
+                if len(home_idles) > 2:
+                    out.append(f"BUILD {p.id} {cap.x:.1f} {cap.y:.1f}")
+                    continue
         if own_t:
             nearest = min(own_t, key=lambda t: math.hypot(t.x - p.x, t.y - p.y))
             if math.hypot(p.x - nearest.x, p.y - nearest.y) > 20:
