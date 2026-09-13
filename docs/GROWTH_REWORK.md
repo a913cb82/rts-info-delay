@@ -497,14 +497,17 @@ per new town set (cached after; was 0.6 s + 76 MB for the dense dist
 matrix, now deleted), market boost ~0.02 s/turn (accumulation over
 stored in-reach pairs), migration ~2-4 s/turn in 26 MB row blocks
 (same flops — the dense in-reach coupling is inherent, only the peak
-is bounded), trade negligible (pair lists). Peak RSS at N=3150 is
-~320 MB, down from ~900 MB. A full 7-shape 1M sweep runs ~40 s end
-to end (was ~3.5 min at 10 turns/config before the serv-lag removal).
-No dense N x N array exists anywhere now: one cached grid + 60 km
-neighbor lists serve land/trade/market, migration computes block
-rows on the fly from coordinates. Memory is O(N x local pairs).
+is bounded), trade negligible (pair lists). Migration weights (exp x window,
+position-only) are cached per in-reach pair at index build and scattered
+into block rows per turn — bit-exact (same values, same reductions),
+tripwire untouched; migration is ~0.8 s/turn at N=3150 (was ~2.7 s),
+~5 ms at N=240. Peak RSS at N=3150 is ~350 MB, down from ~900 MB.
+A full 7-shape 1M sweep runs ~40 s end to end (was ~3.5 min at 10
+turns/config before the serv-lag removal). No dense N x N array exists
+anywhere now: one cached grid + 60 km neighbor lists (+ migration
+weights) serve every kernel. Memory is O(N x local pairs).
 The land kernel is no longer O(n^2): per-town neighbor lists (towns
-within 2R, from the cached distance matrix) prune the inner loop from
+within 2R, from the cached cell grid) prune the inner loop from
 N to ~20 candidates. Exact — bit-identical on twin towns at exactly
 2R, exact stacks, ties, negative coords, and all benchmark shapes
 (tripwire unchanged). The N x N removal is bit-exact at ALL scales:

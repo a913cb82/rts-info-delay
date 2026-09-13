@@ -150,14 +150,20 @@ _geo_cache = {"key": None, "geo": None}
 
 
 def _geo(towns: list[Town], config: GameConfig):
-    """(nidx, ndist, ndeg, xs, ys): neighbors within trade reach.
+    """(nidx, ndist, ndeg, nweight, xs, ys): neighbors within trade reach.
 
     nidx[i] lists town indices within max_km (self included) ascending,
-    ndist their exact distances, ndeg the counts. One entry cached per
-    town set (positions only move when the set changes, like land);
-    the reach is part of the key so mid-run factor sweeps rebuild."""
+    ndist their exact distances, ndeg the counts, nweight the migration
+    weights w = exp(-d/scale)*win(d) (same code path as the dense form,
+    so bit-identical). Padding slots point at self with weight 1.0 =
+    the true self weight, so scatter writes there are order-free. One
+    entry cached per town set (positions only move when the set changes,
+    like land); reach and migration scale are part of the key so mid-run
+    sweeps rebuild."""
     max_km = _TRADE_REACH_FACTOR * config.cart_distance_km
-    key = (tuple((t.id, t.x, t.y) for t in towns), float(max_km))
+    scale = max(config.migration_scale_km, 1e-9)
+    key = (tuple((t.id, t.x, t.y) for t in towns),
+           float(max_km), float(scale))
     if _geo_cache["key"] == key:
         return _geo_cache["geo"]
     n = len(towns)
@@ -165,7 +171,7 @@ def _geo(towns: list[Town], config: GameConfig):
     ys = np.array([t.y for t in towns], dtype=np.float64)
     if n == 0:
         geo = (np.zeros((0, 0), np.int64), np.zeros((0, 0)),
-               np.zeros(0, np.int64), xs, ys)
+               np.zeros(0, np.int64), np.zeros((0, 0)), xs, ys)
     else:
         cell = _GRID_CELL_KM
         cells: dict = {}
@@ -200,7 +206,10 @@ def _geo(towns: list[Town], config: GameConfig):
             ndeg[i] = m
             nidx[i, :m] = rows_i[i]
             ndist[i, :m] = rows_d[i]
-        geo = (nidx, ndist, ndeg, xs, ys)
+            nidx[i, m:] = i  # padding: self, whose true weight is 1.0
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            nweight = np.exp(-ndist / scale) * _win_np(ndist, max_km)
+        geo = (nidx, ndist, ndeg, nweight, xs, ys)
     _geo_cache["key"] = key
     _geo_cache["geo"] = geo
     return geo
@@ -281,7 +290,7 @@ def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
     areas = np.zeros(n, dtype=np.float64)
     if n:
         _g = _geo(towns, config)
-        xs, ys = _g[3], _g[4]
+        xs, ys = _g[4], _g[5]
         nidx, ndist, ndeg = _g[0], _g[1], _g[2]
         sx, sy = _sample_offsets(_SAMPLE_K)
         # Candidate towns within 2R of each town (ascending index).
@@ -476,29 +485,27 @@ _MIG_BLOCK = 256
 
 
 def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
-               xs: np.ndarray, ys: np.ndarray, config: GameConfig) -> np.ndarray:
+               geo, config: GameConfig) -> np.ndarray:
+    """geo is the (nidx, ndist, ndeg, nweight, xs, ys) tuple from _geo."""
     n = len(pops)
     if n < 2:
         return np.zeros(n)
     with np.errstate(divide="ignore", invalid="ignore"):
         feed = np.where(pops > 0.0,
                         np.minimum(1.0, S / np.maximum(pops, 1e-12)), 0.0)
-    scale = max(config.migration_scale_km, 1e-9)
-    # All town interactions are capped at 60 km (trade reach), so migration
-    # uses the same cutoff — not info_speed (armies keep 150 km sight).
-    cap_km = _TRADE_REACH_FACTOR * config.cart_distance_km
+    nidx, nweight, ndeg = geo[0], geo[3], geo[2]
     inflow = np.zeros(n, dtype=np.float64)
     outflow = np.zeros(n, dtype=np.float64)
     for r0 in range(0, n, _MIG_BLOCK):
         B = slice(r0, min(r0 + _MIG_BLOCK, n))
-        # Distances computed on the fly with the same expression the old
-        # matrix used — bit-identical values, no N x N storage.
-        dx = xs[B, None] - xs[None, :]
-        dy = ys[B, None] - ys[None, :]
-        Db = np.sqrt(dx * dx + dy * dy)
+        R = min(r0 + _MIG_BLOCK, n) - r0
+        # Scatter cached weights into full rows (padding writes 1.0 onto
+        # the self column = its true weight, so order is irrelevant).
+        # Values match the old exp*win computation bit-for-bit.
+        Wb = np.zeros((R, n), dtype=np.float64)
+        Wb[np.arange(R)[:, None], nidx[B]] = nweight[B]
         gap_b = np.maximum(0.0, pops[None, :] - pops[B, None])
-        mig_b = np.exp(-Db / scale) * _win_np(Db, cap_km)
-        A_b = gap_b * feed[None, :] * mig_b
+        A_b = gap_b * feed[None, :] * Wb
         rs_b = A_b.sum(axis=1)
         fb = np.zeros_like(A_b)
         nz = rs_b > 0.0
@@ -545,7 +552,7 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
     deaths = m_t * pops
     p_surp = np.maximum(0.0, pops - base_prod / sf)
     out_people = th_t * pops + nu_t * p_surp
-    net_mig = _migration(pops, S, out_people, geo[3], geo[4], config)
+    net_mig = _migration(pops, S, out_people, geo, config)
     new_pops = np.maximum(0.0, pops + births - deaths + net_mig)
     return new_pops, serv
 

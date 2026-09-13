@@ -148,16 +148,14 @@ class TestMigration:
         pops = np.array([300.0, 2400.0])
         S = np.array([390.0, 2356.0])
         out = np.array([0.1, 0.0])
-        net = _migration(pops, S, out,
-                         np.array([0.0, 30.0]), np.array([0.0, 0.0]), CFG)
+        net = _migration(pops, S, out, _geo_xs(0.0, 30.0), CFG)
         assert net.sum() == pytest.approx(0.0, abs=1e-12)
 
     def test_people_move_upward(self) -> None:
         pops = np.array([300.0, 2400.0])
         S = np.array([390.0, 2356.0])
         out = np.array([0.5, 0.0])
-        net = _migration(pops, S, out,
-                         np.array([0.0, 30.0]), np.array([0.0, 0.0]), CFG)
+        net = _migration(pops, S, out, _geo_xs(0.0, 30.0), CFG)
         assert net[0] < 0 < net[1]
 
     def test_no_flow_beyond_sixty_km(self) -> None:
@@ -166,17 +164,15 @@ class TestMigration:
         pops = np.array([300.0, 2400.0])
         S = np.array([390.0, 2356.0])
         out = np.array([0.5, 0.0])
-        assert np.allclose(_migration(pops, S, out,
-                                      np.array([0.0, 100.0]),
-                                      np.array([0.0, 0.0]), CFG), 0.0)
+        assert np.allclose(_migration(pops, S, out, _geo_xs(0.0, 100.0),
+                                      CFG), 0.0)
 
     def test_no_flow_between_equal_towns(self) -> None:
         pops = np.array([300.0, 300.0])
         S = np.array([390.0, 390.0])
         out = np.array([0.5, 0.5])
-        assert np.allclose(_migration(pops, S, out,
-                                      np.array([0.0, 30.0]),
-                                      np.array([0.0, 0.0]), CFG), 0.0)
+        assert np.allclose(_migration(pops, S, out, _geo_xs(0.0, 30.0),
+                                      CFG), 0.0)
 
 
 class TestMarketAccess:
