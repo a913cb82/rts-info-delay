@@ -4287,3 +4287,14 @@ T2 assumed 600-mother). Tracker gap: mirror Army.size never parsed (BUILD
 sends 1000, engine clamps; harmless but wrong). v2 levers: TRAIN_MIN_POP
 500->450 (faster cadence), size parsing (compat), colony trains (scale).
 Peaceful game is slow; competition changes payoffs (T4 raids).
+
+### t10000-max fan-in (2026-09-13, loop/grower)
+Grower v2 679 (+71 idle). S1 raid snowball vs idle 2784 (+2108, 4.1x;
+5 raids->7 towns; increments accelerate); vs mustering 455 (-220).
+Defender over-muster -> foraged-bare starvation spiral (3719->375:
+mutual ruin; sustained THREAT starves). S2 spike UNTIMABLE (peaks
+@1-1.4k always; converge ~2300 @10k; villages-only 3350 > hierarchy:
+centers eat deadline value). S4 raid+cashout 1120 > combo 974 > grow
+795 > idle ("conquest is the game, rest garnish"; BUILD raiders INTO
+captive fix). RANK: raid2784 >> raid1120 > combo974 > grow795 > idle.
+Maximal = raid-unready + cash-out + boost, gated by intel (pop-watch).
