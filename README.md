@@ -55,8 +55,8 @@ Turn-based. Each turn consists of phases:
 
 #### Economy
 - Farms feed people from the land within 5km and from the farm labour available
-- Neighbouring settlements trade food (carting range ~60km) and provide market services
-- Births need food; people migrate toward larger towns; settlements at or below 10 die
+- Neighbouring settlements trade food (carting range ~60km, nearest needy mouths first; a little is lost on the road) and provide market services
+- Each town has a fixed number of babies per year; deaths fall when food per person is plentiful and climb steeply in hunger; people migrate toward larger towns; settlements at or below 10 die
 - Armies with build orders found new towns or boost existing towns
 
 #### Knowledge
@@ -65,8 +65,8 @@ Turn-based. Each turn consists of phases:
 ### Details
 
 - Score = Σ town population + 1000 per army. Highest score at end wins.
-- Food per turn: `(1 + market services) · min(30·farm_km², 1.3·population)`; births need food (`35/1000/yr` vs deaths `31/1000/yr`)
-- Within carting range (~60km): surplus villages feed deficit towns and towns provide services; people migrate toward larger, fed settlements; everything is conserved
+- Food per turn: `(1 + market services) · min(30·farm_km², 1.3·population)` (near land yields best; skilled neighbours improve output up to +75%); fixed surviving births (`24/1000/yr`) vs deaths (`31/1000/yr`, ~3× at half rations)
+- Within carting range (~60km): hungry towns are fed first, big receivers lose less in transit; services and methods travel up to 150km; people migrate toward larger, fed settlements; food is conserved except cart losses
 - Eliminated when no capital and no viceroy in flight.
 - Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
 - `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.
