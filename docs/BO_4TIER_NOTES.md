@@ -693,3 +693,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   ≠ 1000/20k-center). Seed fidelity matters at the second decimal.
 - Pricing#2 (running): BASE seed (+0.885) vs dense-bourg@13 (+0.889 hand)
   tiebreak — 0.004 gap, ideal pricing case. 2/3 pricing spent.
+- District BASE s64t (mid tops, no bourgs): +0.642 vs +0.92 dense/lean.
+  Bourgs earn +0.28 at district BASE — the middle tier's biggest receipt
+  anywhere (sparse tops can't cover alone at the standard).
