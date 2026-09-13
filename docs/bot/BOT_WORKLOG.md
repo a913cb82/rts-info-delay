@@ -3776,3 +3776,8 @@ Rated clean 15g (3x5) -> ord 34.0 (mu 41.8): FAIL (gate 47.3+). Takes
 fire (5W/15, 22-173k) but strip guards (raided while away; die). Thin
 force can't take AND guard (split fails both; muster-tax vs split
 double-bind). Reverted (main keeps turtle 47.3). Parked.
+
+### Turtle baseline truth (47.2, 20% deaths) (2026-09-13 10:26 BST)
+Turtle +15g (113 total) -> ord 47.2 (mu 51.2, was 51.5/98g): -0.3 on
+2W/15 (13%) + 3 deaths (20%) + mids. Truth converged (~47). Needs BOTH
+survive (cut 20% deaths) AND take (13%->55% wins) for 60. Queued.
