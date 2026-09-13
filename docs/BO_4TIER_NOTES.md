@@ -538,3 +538,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District combo dense-bourg@13 + 3000-chef (instead of 5000): +1.430 vs
   +1.396. Smaller chefs win at district under combo knobs too — the
   ~3k chef ceiling holds at both scales (2500–3000 district peak).
+- District BASE dense+3000: +0.924 — ties lean-2500 (+0.922) and
+  dense@11+2500 (+0.927) inside 0.005. District top is a three-way
+  plateau (2500–3000 chefs, dense bourgs optional); search cannot separate
+  them, only assay maps the flat.
