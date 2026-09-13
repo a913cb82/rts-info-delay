@@ -675,3 +675,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Regional size at BASE (small-chef shape): 12k (+0.677) vs 30k (+0.861).
   Bigger regional wins +0.18 — the top rung scales freely once chefs are
   small; mouths concentrate where sheds are unique.
+- Regional curve at BASE: 12k (+0.68) < 30k (+0.86) > 40k (+0.83) >
+  50k (+0.80). Peak ~30k, gentle fall — same shape as prem.75 (peak
+  20–30k). Regional optimum ~30k across knobs, inside reality 15–40k.
