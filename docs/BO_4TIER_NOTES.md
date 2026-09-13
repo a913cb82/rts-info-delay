@@ -482,3 +482,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   min_ratio fixes duplicate tiers but not tiny villages (3rd: P0=128) or
   low urban. Constraint toolkit now: min_ratio (distinct tiers) + p0min
   (village floor) — combine both next search Combines both.
+- Density-S3 (running): combo knobs + min_ratio 2 + p0min 300, 3 light
+  seeds, 96 evals — clean AND realistic tiers by search, first attempt.
+  1/3 searches spent.
