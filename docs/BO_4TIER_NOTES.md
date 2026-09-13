@@ -646,3 +646,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District BASE bourgs-only (no chef): +0.384 vs +0.922 with a 2,500
   chef. The single chef earns +0.54 — the biggest single-tier receipt
   measured anywhere. District centers are load-bearing, not garnish.
+- Pricing#1 verdict (BASE regression): 4-tier seed wins 10th straight
+  campaign (+0.885, 15 model evals). Hand small-chef lead (+0.909) again
+  outside search's path. Seed-win streak: 10.
