@@ -3456,3 +3456,8 @@ Buzzer +10g (1630 total) -> ord 65.3 (mu 68.7, was 68.9/1620g): -0.3 on
 ### Buzzer 1640g (70% batch, no deaths) (2026-09-13 06:22 BST)
 Buzzer +10g (1640 total) -> ord 66.2 (mu 69.6, was 68.7/1630g): +0.9 on
 70% wins + ZERO deaths + fifth. 1640 games.
+
+### Buzzer 1650g (80% batch!) (2026-09-13 06:27 BST)
+Buzzer +10g (1650 total) -> ord 67.3 (mu 70.7, was 69.6/1640g): +1.1 on
+80% wins (8/10) + ZERO deaths + fifth. Best batch in ages (weak fields).
+1650 games.
