@@ -3804,3 +3804,9 @@ spikes 329k in mirrors (failed branches spike as opponents; variance).
 Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
 (25%, 272k) + 1 death + mids. Interferes even in mirrors (recall-bleed
 + overmatch-wait). Dead both gates. Parked permanently.
+
+### Overmatch 707g (combine beats it H2H?) (2026-09-13 10:57 BST)
+21a74a6 +10g (707 total) -> ord 67.6 (mu 71.1, was 71.5/697g): -0.4 on
+4W + fifths + 3rds. Note: combine-2691ae0 above overmatch 6/10 here
+(beats weak-clones 60%, loses top-mirrors 25%; field-dependent hell).
+707 games.
