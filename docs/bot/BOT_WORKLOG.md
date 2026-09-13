@@ -3847,3 +3847,7 @@ Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
 ### Overmatch 797g (2026-09-13 11:42 BST)
 21a74a6 +10g (797 total) -> ord 66.6 (mu 70.1, was 71.0/787g): -0.9 on
 60% wins (offset by fifths). 797 games.
+
+### Aggressive empty-only built (2026-09-13 11:31 BST)
+Walk-ins only (S==0 + fresh<=10t; never donate into garrisons). Thin
+packs can't afford trades. Bar (gate): exceed 37.0 AND takes occur.

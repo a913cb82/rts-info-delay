@@ -156,6 +156,11 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
+            # Empty-only takes (walk-ins, never donate): S==0 AND fresh
+            # (seen<=10t; stale-empty may hide garrisons). Thin packs can't
+            # afford trades (donations bleed); walk-ins snowball free.
+            if not (s == 0 and state.turn - state._last_seen.get(("town", u.id), -10**9) <= 10.0):
+                continue
             # Bird-in-hand: an executable take now beats a bigger prize
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready. Capitals carry a
