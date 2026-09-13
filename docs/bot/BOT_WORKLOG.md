@@ -3885,3 +3885,7 @@ Thin-line builds 0/25 all-time (poverty-trap; EV -2.0). Pro builds
 Crack-hunt (feed-to-peak, walk-in creation, terrain, intel, town-count,
 pop-efficiency, steal-growth): all sealed/circular. Poverty-trap absolute
 (zero-sum FFA, no free resources). Loop alive.
+
+### Heartbeat (2026-09-13 12:06 BST)
+Infra/modeling options marginal (mechanisms fog-bound regardless).
+Nothing +EV. Loop alive.
