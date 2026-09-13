@@ -283,3 +283,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   max — reality's 23% sits inside it. Villages land via displacement
   (dense bourgs replace villages: 2742→2310). Only the urban MIX
   (bourgs vs chefs) resists: mouths pool at the cheapest tier.
+- prem.75 vs max-push head-to-head (dense-bourg@10): +1.157 vs +0.880
+  settled. Levels differ (premium lifts all), ranking within config is
+  what matters. Promotion case for prem.75 rests on shares (27% urban
+  achievable, dense bourgs win), not pace (both hot vs 0–0.3 history).
