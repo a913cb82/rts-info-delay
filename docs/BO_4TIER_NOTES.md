@@ -342,3 +342,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District sharp hunger (max-push + starv1.6): lean 3-tier +1.112 vs s64t
   +0.858 (gap +0.25, widest district margin measured). Hungry-chef rescue
   bonus strongly favors the full stack at district scale too.
+- Combined pro-tier knobs stack (district prem.75+starv1.6): lean +1.395
+  vs flat +0.635 (gap +0.76). Headroom + rescue bonus compound.
