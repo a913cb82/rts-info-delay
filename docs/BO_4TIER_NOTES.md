@@ -396,3 +396,12 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   the spacing side too.
 - Regional 20k vs 25k (dense-bourg shape, prem.75): +1.164 vs +1.160 —
   flat top, 20–30k all tie. Regional size free within the anchor band.
+- F-S2 final (96 evals, 48 model): +1.393, 4-tier low-urban (urb 5.7%);
+  runner-up dense-bourg 4-tier (urb 18.7%, −0.003).
+- F-S3 final (96 evals, 44 model, min_ratio 2): +1.138, CLEAN 4-tier
+  (302@3.56/1196@58/2480@84/7447@172, urb 6.9%) — distinct doubling
+  tiers, no phantoms. Runner-up phantom-tied. Constraint works as
+  intended; optimum stays low-urban.
+- All 3 searches spent. Every full-budget winner is 4-tier with urb
+  4–9%; every share gain (dense bourgs → 19–27% urban) comes from hand
+  shapes within 0.01–0.03 behind.
