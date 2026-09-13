@@ -125,3 +125,17 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   top stays big — mouths shrink everywhere except the regional.
 - BO#8 (done — verdict above): max-push + new small-chef 4-tier seed
   (500@18/1500@80/15000@150).
+
+## Share-tuning round (goal: 72/13/7/3 with 4-tier optimal; 5-BO budget)
+
+- Knob screens (cold, small-chef 4-tier vs s64t): 4-tier leads at prem.6
+  (+0.96), prem.75 (+1.10), g1.4 (+0.84), melt.002/0 (+0.87/+0.88),
+  birth.03 (+1.45). Winning everywhere cold — shares are the question.
+- Chef sizes plateau, never push big: prem.75/birth.03 tie 1k–5k; g1.4
+  still prefers small (1k +0.843 > 8k +0.794); g1.4+prem.75 ties 1k–5k
+  (+1.10), 8k falls. No knob makes big tops strictly win: mouths cost
+  linear, lift saturates.
+- Urban share lever that works: NUMBERS not sizes. Bourgs @14km (252
+  towns) reach 16.2% urban at zero cost (+0.843 vs +0.844 @18km).
+- share-BO#1 (running): 1M, prem.75 (widest plateau), seed 51 — free to
+  find counts/sizes that lift urban share. 1/5 spent.
