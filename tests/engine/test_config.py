@@ -28,13 +28,13 @@ class TestConfig:
         assert cfg.farm_decay_at_radius == 0.9
         assert cfg.birth_rate == 0.024  # net surviving (gross 0.035 x ~0.7)
         assert cfg.death_rate == 0.031
-        assert cfg.max_improvement == 0.25
-        assert cfg.market_scaling == 1.0
+        assert cfg.max_improvement == 0.75
+        assert cfg.market_scaling == 1.3
         assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
         assert cfg.migration_scale_km == 50.0
-        assert cfg.melt_per_km == 0.0
-        assert cfg.starvation_elasticity == 1.3
+        assert cfg.melt_per_km == 0.005
+        assert cfg.starvation_elasticity == 1.6
         assert cfg.town_min_population == 10.0
         assert cfg.build_efficiency == 0.9
         assert cfg.capture_loss == 0.5
@@ -55,13 +55,13 @@ class TestConfig:
         assert cfg.farm_decay_at_radius == 0.9
         assert cfg.birth_rate == 0.024  # net surviving (gross 0.035 x ~0.7)
         assert cfg.death_rate == 0.031
-        assert cfg.max_improvement == 0.25
-        assert cfg.market_scaling == 1.0
+        assert cfg.max_improvement == 0.75
+        assert cfg.market_scaling == 1.3
         assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
         assert cfg.migration_scale_km == 50.0
-        assert cfg.melt_per_km == 0.0
-        assert cfg.starvation_elasticity == 1.3
+        assert cfg.melt_per_km == 0.005
+        assert cfg.starvation_elasticity == 1.6
         assert cfg.town_min_population == 10.0
         assert cfg.build_efficiency == 0.9
         assert cfg.capture_loss == 0.5

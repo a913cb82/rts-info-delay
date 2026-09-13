@@ -66,20 +66,19 @@ is big enough to have real roads.
         sent f, arrived f·delta,    delta = exp(−tau·d)
         tau = melt·2356/(2356 + P_receiver)
 
-- `melt_per_km` = 0.005 — little lost per km (benchmarks; the game
-  itself still runs lossless at 0.0 until bots are re-tested)
+- `melt_per_km` = 0.005 — about 0.5% lost per cart-km
 
 ### 5. Births and deaths
 Towns have a fixed number of surviving babies each year. Deaths fall when
 food per person rises above need and climb steeply in hunger — so food acts
-through deaths, not births. Break-even is ~21% over need: towns must be
+through deaths, not births. Break-even is ~17% over need: towns must be
 overfed to hold their people.
 
         births = b·P,    deaths = m·P·(S/P)^−p
 
 - `birth_rate` = 24/1000/yr surviving births (35 born × ~0.7 survive infancy)
-- `death_rate` = 31/1000/yr; `starvation_elasticity` = 1.3 (half rations
-  kill ~2.5× normal)
+- `death_rate` = 31/1000/yr; `starvation_elasticity` = 1.6 (half rations
+  kill ~3× normal)
 
 ### 6. Migration — slow drift to the towns
 A trickle of everyone (0.5%/yr) plus more mobile service folk (5% of
@@ -93,27 +92,26 @@ Towns at 10 or fewer people vanish — too few hands to hold the fields.
 
 ## Settings (every one a real-world quantity)
 
-| setting | value | meaning |
+| setting | value | what it controls |
 |---|---|---|
-| `farm_radius_km` | 5 | nobody farms further than a day's walk |
-| `rural_density` | 30 /km² | subsistence density, England/France c.1600 |
-| `cart_distance_km` | 20 | carting doubles grain price over this distance |
+| `farm_radius_km` | 5 | how far anyone walks to farm |
+| `rural_density` | 30/km² | mouths an acre feeds at subsistence |
+| `cart_distance_km` | 20 | distance that halves delivered help |
 | `turns_per_year` | 52 | one turn is one week |
-| `farm_workers_yield` | 1.3 | mouths fed per farmer |
-| `farm_decay_at_radius` / `farm_decay_shape` | 0.9 / 2.0 | far fields yield less, smoothly |
-| `birth_rate` | 24 /1000/yr | surviving births per person per year |
-| `death_rate` | 31 /1000/yr | deaths per person per year at full rations |
-| `starvation_elasticity` | 1.3 | how steeply hunger kills |
-| `max_improvement` | 0.5 | full commercialization grows ~50% more |
-| `market_scaling` | 1.3 | big crews punch strongly above weight (top of measured urban scaling) |
-| `migration_share` / `surplus_mobility` | 0.005 / 0.05 /yr | background drift / footloose services |
-| `migration_scale_km` | 50 | moves fade with distance |
-| `melt_per_km` | 0.005 | little food lost per cart-km (benchmarks; game default 0.0) |
-| `info_speed` | 150 | farthest anything travels or is seen (km/turn) |
-| `town_min_population` | 10 | settlements at or below this die |
+| `farm_workers_yield` | 1.3 | mouths fed per farm worker |
+| `farm_decay_at_radius/shape` | 0.9 / 2.0 | how fast yields fall with distance from home |
+| `birth_rate` | 24/1000/yr | surviving babies per person per year |
+| `death_rate` | 31/1000/yr | deaths per person per year at full rations |
+| `starvation_elasticity` | 1.6 | how steeply deaths rise as rations fall |
+| `max_improvement` | 0.75 | cap on farm-yield bonus from market help |
+| `market_scaling` | 1.3 | how much more one big crew produces than many small ones |
+| `migration_share/surplus/scale` | 0.005/0.05/50km | who moves, how many, how far |
+| `melt_per_km` | 0.005 | food lost per cart-km (big receivers lose less — roads) |
+| `info_speed` | 150 | farthest anything travels or is seen per turn |
+| `town_min_population` | 10 | settlements at/below this vanish |
 
 Derived: one full farm ring feeds ≈ 2,356 people — the yardstick for
-service crews and road-building alike.
+service crews and road-building alike. Break-even is S/P ≈ 1.17.
 
 ## What grows fastest
 
@@ -127,36 +125,26 @@ measured). Found by hand-built shapes plus search over spacings and sizes
 |---|---|---|---|---|
 | villages | ~300 | 300 | 4 km | ~85% |
 | market towns | ~19 | 600 | 18 km | ~11% |
-| center | 1 | 2,500 | central | ~2.5% |
+| center | 1 | 5,000 | central | ~5% |
 | big city | 0 | — | — | — |
 
-Land ~4,500 km² (~23/km²); growth +0.92/yr. Uniform mid towns second
-(+0.80); flat villages lose. District chefs peak small (2,500–3,000) —
-a 5,000 center grows slower (+0.88), a 1,500 one much slower (+0.58).
+Land ~4,500 km² (~23/km²); growth +1.40/yr. A lone 9,600 town is second
+(+1.30); flat villages lose.
 
 ### 1M province
 
 | tier | count | size each | spacing | share |
 |---|---|---|---|---|
-| villages | ~3,000 | 300 | 4 km | ~88% |
-| market towns | ~150 | 600 | 18 km | ~9% |
-| centers | ~7 | 3,000 | ~80 km | ~2% |
-| regional capital | 1 | 12,000–20,000 | central | ~1–2% |
+| villages | ~2,740 | 300 | 4 km | ~80% |
+| market towns | ~300 | 500 | 13 km | ~15% |
+| centers | 7 | 3,000 | ~80 km | ~2% |
+| regional capital | 1 | 30,000 | central | ~3% |
 
-Land ~43,700 km² (~23/km²); growth +0.89/yr, confirmed by search (BO
-lands on the same shape twice). Two-tier sparse tops second (+0.86);
-flat villages lose (+0.32) and a lone giant starves (−0.37).
-
-### Closest to reality (the 1M table above)
-
-The winning 1M stack is by far the closest structural match: bourg count
-exact (151 vs ~150), centers counted (7 vs ~9) though small (3k vs 8k),
-regional in range (12–20k vs 15–40k). It wins because each tier owns a
-distinct teaching shed (bourgs their patch, centers their district ~45 km,
-the regional its province ~114 km+) — at gentle settings the same stack
-loses badly, and small chefs beat big ones everywhere (3k > 5k > 8k).
-What still misses: villages too many/small, bourgs small (600 vs 900),
-urban ~12% vs 8–12% edge — and growth runs at +0.9 vs 0–0.3 recorded.
+Land ~43,700 km² (~23/km²); growth +1.38/yr. Uniform mid-size towns
+(~55 × 2,400 @32 km) second (+1.34); flat villages lose (+0.69), and a lone
+giant thrives (+1.23) but can't cover a province alone. Each tier owns a distinct teaching shed (bourgs their patch,
+centers their district ~45 km, the regional its province ~114 km+) — that
+is what pays for the fourth tier.
 
 ## Reality goals: 100k district and 1M province
 
@@ -192,31 +180,29 @@ empty).
 
 ## Where the model matches and misses
 
-- **Market towns: exact.** ~150 bourgs at 1M, ~19 at 100k — count, size,
-  and spacing all land on the anchors.
-- **Centers and regionals: present and close.** 100k grows one ~2,500
-  center; 1M grows ~7 small centers plus a 12–20k regional — counts near
-  the anchors, sizes about half. Courts, church, walls, and rents — the
-  non-food reasons cities exist — are still unmodeled, so upper tiers
-  have to earn purely through food and teaching, and they come out small.
-- **Villages: too many and too small.** ~3,000×300 vs ~1,700×~430, because
-  founding a settlement costs nothing and near fields always reward one
-  more split. Fixed costs per settlement (common pasture, church, mill,
-  defence) would push villages up toward parish size.
+- **Market towns: close.** ~300 bourgs at 1M (twice the count, half the
+  size), ~19 at 100k on the count — spacing and count land, size runs
+  small because small mouths are cheap and every extra mouth must earn
+  its food purely through teaching.
+- **Centers and regionals: present.** 7 small centers plus a 30,000
+  regional at 1M; one 5,000 center at 100k. Counts near the anchors,
+  sizes about half (bourgs) to two-fifths (centers). Courts, church,
+  walls, and rents — the non-food reasons cities exist — are still
+  unmodeled.
+- **Villages: too many and too small.** ~2,700–3,000×300 vs ~1,700×~430,
+  because founding a settlement costs nothing and near fields always
+  reward one more split. Fixed costs per settlement (common pasture,
+  church, mill, defence) would push villages up toward parish size.
 - **Too spread out.** ~23/km² wall-to-wall vs ~33/km² nucleated with empty
-  hills and woods between. Same missing member: without terrain or fixed
-  costs the model tiles the map instead of clumping. Richer land does not
-  fix this — 2.5× fertility grows bigger tops, not denser settlement.
-- **A touch hot — now frankly hot.** +0.8–0.9/yr vs 0–0.3 recorded. The
-  pushy settings trade level realism (growth pace) for structural realism
-  (tiers that exist). Gentler settings run at history's pace but melt the
-  upper tiers away.
+  hills and woods between. Without terrain or fixed costs the model tiles
+  the map instead of clumping; richer land does not fix this.
+- **Too fast.** +1.4/yr vs 0–0.3 recorded. Pace was traded for structure:
+  the settings that grow tiers run hot.
 
 ## Open items
 
 - Settlement fixed costs (village size, density, nucleation).
-- Non-food urban income (upper tiers at standard settings).
-- Promote `melt_per_km` 0.005 to the game default (needs bot re-testing;
-  9 bot-side tests still encode older economies — the bot agent's remit).
-- Longer searches at 1M under the pushy settings (4-tier co-optimal on
-  hand shapes; a search may refine sizes and spacings).
+- Non-food urban income (upper-tier sizes).
+- Bot-side tests still encode older economies — the bot agent's remit
+  (`tests/bots/`); engine tests, tripwire, and benchmarks are green on
+  the settings above.

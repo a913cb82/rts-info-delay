@@ -49,6 +49,7 @@ from engine.world import Army, CommandType, StandingOrder, Town, World
 
 CFG = GameConfig()
 NO_MIG = replace(CFG, migration_share=0.0, surplus_mobility=0.0)
+NO_MELT = replace(CFG, melt_per_km=0.0)  # lossless trade math tests
 
 
 def _town(x: float, y: float, pop: float, faction: int = 0, cap: bool = False, tid: int = 0) -> Town:
@@ -227,7 +228,7 @@ class TestTrade:
         # S/P 0.867 vs 1.333 -> both end at 1.1 (overfeeds past deficit).
         pops = np.array([300.0, 300.0])
         S = np.array([260.0, 400.0])
-        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 30.0), CFG)
+        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 30.0), NO_MELT)
         assert imports[0] == pytest.approx(70.0)
         assert exports[1] == pytest.approx(70.0)
         assert S.sum() == pytest.approx(660.0)  # zero-sum exact
@@ -237,7 +238,7 @@ class TestTrade:
         # Starving town meets sated donor halfway; donor never drained below.
         pops = np.array([300.0, 300.0])
         S = np.array([0.0, 400.0])
-        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 30.0), CFG)
+        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 30.0), NO_MELT)
         assert imports[0] == pytest.approx(200.0)
         assert S[0] == pytest.approx(S[1])
         assert (S >= 0.0).all()
@@ -251,10 +252,23 @@ class TestTrade:
     def test_nearest_served_first(self) -> None:
         pops = np.array([300.0, 300.0, 300.0])
         S = np.array([240.0, 400.0, 400.0])
-        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 10.0, 40.0), CFG)
+        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 10.0, 40.0), NO_MELT)
         assert exports[1] == pytest.approx(80.0)  # nearest pays most
         assert exports[2] == pytest.approx(60.0)  # farther splits the rest
         assert S.sum() == pytest.approx(1040.0)
+
+    def test_melt_taxes_long_hauls(self) -> None:
+        # Default config melts freight: the recipient gets less than the
+        # donor sent, the melted remainder is tallied, food is conserved
+        # net of melt, and the donor never drops below the recipient.
+        pops = np.array([300.0, 300.0])
+        S = np.array([260.0, 400.0])
+        prod = S.sum()
+        imports, exports, melted = _trade(S, pops, _geo_xs(0.0, 30.0), CFG)
+        assert melted > 0.0
+        assert imports[0] < exports[1]
+        assert S.sum() == pytest.approx(prod - melted)
+        assert S[1] >= S[0]  # no inversion, even lossy
 
 
 class TestMigration:

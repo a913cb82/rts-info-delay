@@ -25,11 +25,9 @@ import engine.economy as eco
 from engine.config import GameConfig
 from engine.world import Town
 
-BASE_CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0,
-                   market_scaling=1.3, max_improvement=0.5, melt_per_km=0.005)
-# Closest-to-reality calibration (see docs/GROWTH_REWORK.md): strong
-# agglomeration, high headroom, cheap hauling. Upper tiers only earn
-# their keep with all three at once.
+BASE_CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0)
+# Engine defaults now carry the calibration (gamma 1.3, premium 0.75,
+# melt 0.005, hunger 1.6); only the Von Thunen decay stays overridden.
 CFG = BASE_CFG
 S_V = 4.0
 P_V = 300.0

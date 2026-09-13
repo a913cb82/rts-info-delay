@@ -163,11 +163,11 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for net births (b 0.035->0.024 surviving;
-        # lone giants decline faster, symmetric still symmetric).
-        # Verified: symmetric towns stay symmetric (both 4995.28->4954.06,
-        # monotone gentle decline), trajectories sane. Was 3a9e21f0...
+        # Re-based 2026-09-13 for promoted calibration (gamma 1.15->1.3,
+        # premium 0.25->0.75, melt 0->0.005, hunger 1.3->1.6).
+        # Verified: symmetric towns stay symmetric (both 4995.85->4965.16,
+        # monotone gentle decline), trajectories sane. Was 3faf313e...
         # (Malthusian swap).
-        assert h == "3faf313e088f0836cd396873e51e7aca77116439eb24f82c7373ae99a8d8c4d6"
+        assert h == "d0988167d545ea737c6f2f6e29a41fb076659de1354eba50b07f6fc7eda0c980"
     finally:
         path.unlink(missing_ok=True)
