@@ -268,3 +268,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (urb 19%, beats BO#2 winner +0.885); @11 → +0.887 settled, urb 24.4%
   (≈23% ✓), shares 76/20/2/2 vs reality 72/13/7/3 — villages and urban
   total land; bourgs overshoot (20 vs 13), chefs short (2 vs 7).
+- r2-BO#1 verdict: winner = sparse-top 4-tier (290-villages + 319@57 +
+  2096@62 + 4984@122, urb 2.8%, +1.167) — search maximizes by MINIMIZING
+  urban mouths. Combo seed third (+1.149). Lesson: pure growth pulls
+  urban share DOWN; shares need urban mouths the objective penalizes.
+  Dense-bourg hand shapes (19–24% urban, +1.16–1.18) remain the best
+  shares+rate compromise, within 0.03 of max.
