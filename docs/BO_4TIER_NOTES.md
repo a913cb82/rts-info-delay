@@ -298,3 +298,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   0.023. Sparse-top variant 2nd (+1.211, urb 3.5%). Minimal-urban wins,
   dense-shares cost little, tiny-village degeneracy excluded by P0 floor
   era being over (back to default bounds here; P0 stayed 300 anyway).
+- r3-BO#3 verdict (extend to 32, 27 model evals): incumbent wins 4th time
+  (+1.217). Extends never discover (0/4 across campaigns) — only seeds and
+  assay move the frontier.
+- r3-BO#4 (running): 1M max-push (adopted standard) with the FULL seed set
+  (dense-bourg, combo, small-chef, province) — first search that can see
+  every hand finding at once. 4/5 spent.
