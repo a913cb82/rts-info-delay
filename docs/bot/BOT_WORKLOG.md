@@ -4186,3 +4186,16 @@ Clean-sheet rewrite step 1 (interference-proof by construction): 2 home
 guards per town NEVER march (locked set; surplus dispatches; guards sit
 as 2v1 cleaners). Foundation for ghost-hunt + compound-untaxed phases.
 Bar: exceed 47.2 AND guards (style).
+
+### New-engine inspection (2026-09-13, loop/turtle-v2r)
+Main landed: sized armies (phases 1-7: size field, sized TRAIN/BUILD/
+MOVE_TO-split, exact landing, same-spot merges, size-weighted weakness,
+score by size), agrarian economy (farms 5km, forage+hunger, trade ~60km,
+fixed births, min town 10), capture halves pop+know-how (capture_loss),
+bot compat (prize math, landing waits, sized trains).
+FINDING: all 5 bots FROZEN on new engine (600t smoke: 0 orders, 0 armies,
+towns 500->507; bars calibrated for logistic 100k-scale, unreachable at
+agrarian equilibrium ~500s, capacity ~2.3k). Old-engine ratings VOID
+(different game). Guard-lock rebased clean (suites+liveness green) but
+unrated new-engine. NEXT: archive old DB, fresh re-baseline, recalibrate
+all bars to agrarian scale (loop v3 engine-reset), re-prove binds.
