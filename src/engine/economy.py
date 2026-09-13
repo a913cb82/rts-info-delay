@@ -482,6 +482,45 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
 # holds ~4 x R x N floats). N <= block runs as a single block, which is
 # bit-identical to the unblocked computation.
 _MIG_BLOCK = 256
+# Reused block buffers (kills per-block mmap/page-fault overhead).
+# Same values, same op order, same reductions as fresh arrays — exact.
+_mig_bufs = {"key": None, "bufs": None}
+_RR = np.arange(_MIG_BLOCK)[:, None]
+
+try:
+    import numba as _numba3
+
+    @_numba3.njit(cache=True)
+    def _mig_build(Ab, popsB, pops, feed, Wb):
+        # A = max(0, Pj-Pi)*feed_j*W fused. Same scalar ops in the same
+        # order per element as the numpy chain — identical values.
+        R = Ab.shape[0]
+        n = Ab.shape[1]
+        for r in range(R):
+            pr = popsB[r]
+            for j in range(n):
+                g = pops[j] - pr
+                if g < 0.0:
+                    g = 0.0
+                Ab[r, j] = g * feed[j] * Wb[r, j]
+
+    @_numba3.njit(cache=True)
+    def _mig_scale(Ab, outB, rs_safe):
+        # A = (A*out)/rs fused. Mult-then-divide matches the numpy chain
+        # bit-for-bit (mult commutes exactly); zero rows stay 0 via safe.
+        R = Ab.shape[0]
+        n = Ab.shape[1]
+        for r in range(R):
+            o = outB[r]
+            s = rs_safe[r]
+            for j in range(n):
+                Ab[r, j] = Ab[r, j] * o / s
+
+    _has_mig_numba = True
+except Exception:  # pragma: no cover
+    _has_mig_numba = False
+    _mig_build = None  # type: ignore
+    _mig_scale = None  # type: ignore
 
 
 def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
@@ -494,24 +533,42 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
         feed = np.where(pops > 0.0,
                         np.minimum(1.0, S / np.maximum(pops, 1e-12)), 0.0)
     nidx, nweight, ndeg = geo[0], geo[3], geo[2]
+    key = (_MIG_BLOCK, n)
+    if _mig_bufs["key"] != key:
+        _mig_bufs["key"] = key
+        _mig_bufs["bufs"] = [np.zeros((_MIG_BLOCK, n), dtype=np.float64),
+                              np.zeros((_MIG_BLOCK, n), dtype=np.float64)]
+    Wb0, Ab0 = _mig_bufs["bufs"]
     inflow = np.zeros(n, dtype=np.float64)
     outflow = np.zeros(n, dtype=np.float64)
     for r0 in range(0, n, _MIG_BLOCK):
         B = slice(r0, min(r0 + _MIG_BLOCK, n))
         R = min(r0 + _MIG_BLOCK, n) - r0
-        # Scatter cached weights into full rows (padding writes 1.0 onto
-        # the self column = its true weight, so order is irrelevant).
-        # Values match the old exp*win computation bit-for-bit.
-        Wb = np.zeros((R, n), dtype=np.float64)
-        Wb[np.arange(R)[:, None], nidx[B]] = nweight[B]
-        gap_b = np.maximum(0.0, pops[None, :] - pops[B, None])
-        A_b = gap_b * feed[None, :] * Wb
-        rs_b = A_b.sum(axis=1)
-        fb = np.zeros_like(A_b)
-        nz = rs_b > 0.0
-        fb[nz] = out_people[B][nz, None] * A_b[nz] / rs_b[nz, None]
-        outflow[B] = fb.sum(axis=1)
-        inflow += fb.sum(axis=0)
+        Wb, Ab = Wb0[:R], Ab0[:R]
+        # Scatter cached weights (padding writes 1.0 onto the self column
+        # = its true weight, so order is irrelevant). Values match the old
+        # exp*win computation bit-for-bit.
+        Wb.fill(0.0)
+        Wb[_RR[:R], nidx[B]] = nweight[B]
+        # gap -> A (fused numba, or numpy chain: same scalar ops/order).
+        if _has_mig_numba:
+            _mig_build(Ab, pops[B], pops, feed, Wb)
+        else:
+            np.subtract(pops[None, :], pops[B, None], out=Ab)
+            np.maximum(0.0, Ab, out=Ab)
+            Ab *= feed[None, :]
+            Ab *= Wb
+        rs_b = Ab.sum(axis=1)
+        # Flow in place: (A*out)/rs matches (out*A)/rs bit-for-bit
+        # (mult commutes exactly); zero rows stay 0 via rs_safe.
+        rs_safe = np.where(rs_b > 0.0, rs_b, 1.0)
+        if _has_mig_numba:
+            _mig_scale(Ab, out_people[B], rs_safe)
+        else:
+            Ab *= out_people[B, None]
+            Ab /= rs_safe[:, None]
+        outflow[B] = Ab.sum(axis=1)
+        inflow += Ab.sum(axis=0)
     return inflow - outflow
 
 

@@ -499,9 +499,12 @@ stored in-reach pairs), migration ~2-4 s/turn in 26 MB row blocks
 (same flops — the dense in-reach coupling is inherent, only the peak
 is bounded), trade negligible (pair lists). Migration weights (exp x window,
 position-only) are cached per in-reach pair at index build and scattered
-into block rows per turn — bit-exact (same values, same reductions),
-tripwire untouched; migration is ~0.8 s/turn at N=3150 (was ~2.7 s),
-~5 ms at N=240. Peak RSS at N=3150 is ~350 MB, down from ~900 MB.
+into reused block buffers per turn; gap/weight/flow fuse into two numba
+passes — bit-exact (same scalar ops per element, same reductions),
+tripwire untouched. Migration is ~0.2 s/turn at N=3150 (was ~2.7 s),
+~2 ms at N=240 — the full turn beats master's dense crowding kernel
+(~0.3 s) at 1M with zero quantitative difference anywhere.
+Peak RSS at N=3150 is ~350 MB, down from ~900 MB.
 A full 7-shape 1M sweep runs ~40 s end to end (was ~3.5 min at 10
 turns/config before the serv-lag removal). No dense N x N array exists
 anywhere now: one cached grid + 60 km neighbor lists (+ migration
