@@ -292,6 +292,43 @@ and add a bourg mechanic (settlements whose farmland is smaller than a
 full ring, so a small market town can still have net importers and
 service capacity).
 
+### Reality goals: 100k district and 1M province
+
+What the model should reproduce (France c.1600, ~18M on 550k km²;
+~40,000 parishes; anchors in `benchmarks/realism_ref.json`). A 100k
+area is about one *election* (~3,000 km² at ~33/km²); a 1M area is a
+large province (Normandy scale, ~30,000 km²). Same spacings at both
+scales — only a top tier appears with scale:
+
+100k district:
+
+| tier | count | size each | spacing | share |
+|---|---|---|---|---|
+| parishes (village + hamlets) | ~200–250 | ~450 souls (center 150–400) | 2–5 km | ~72% |
+| bourgs (weekly market) | ~15–25 | 500–1,500 | ~10–15 km | ~15% |
+| chef-lieu (election seat) | 1 | 5–10k | central | ~5–10% |
+| regional capital / great city | 0 | (25k+, 40–70 km apart — bigger than this area) | — | — |
+
+1M province (×10, plus one tier that fits only at scale):
+
+| tier | count | size each | spacing | share |
+|---|---|---|---|---|
+| parishes | ~1,700 | ~430 | 2–5 km | ~72% |
+| bourgs | ~150 | ~900 | 10–15 km | ~13% |
+| chef-lieux | ~9 | ~8k | ~50 km | ~7% |
+| regional capital (*parlement* town) | 1 (–2) | 15–40k | — | ~3% |
+| great city | usually 0 | (Paris 300k, Lyon ~45k are the exceptions) | — | — |
+
+Notes: urban (2k+) ~8–12%; long-run growth ~0.3%/yr; south dispersed
+(hamlets), north nucleated (the table is the northern pattern); settled
+districts run denser than the 33 average (mountains/forest/heath sit
+empty). Against the model: villages match (200 @ ~3 km ✓) but the
+bourgs + chef-lieu + regional have no agricultural reason to exist —
+they are administration, courts, church, walls, fairs. And the urban
+graveyard (cities shrank 10–30%/yr naturally) is unmodeled, so our
+towns face neither the cost nor the non-food reasons. Both gaps are
+identified open modeling, not fit failures.
+
 
 
 ### Multiple towns: 10k primary + 5k secondaries + villages
