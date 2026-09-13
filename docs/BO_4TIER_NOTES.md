@@ -485,3 +485,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Density-S3 (running): combo knobs + min_ratio 2 + p0min 300, 3 light
   seeds, 96 evals — clean AND realistic tiers by search, first attempt.
   1/3 searches spent.
+- Mid-run leaders: S2 (unconstrained reseed) back to tiny-mush (+1.392,
+  P0=141, urb 83% — degeneracy without the floor); S3 (min_ratio 2)
+  holds a phantom-tied shape (+1.347) with the duplicate harmlessly
+  deduped by footprint. Constraints doing their jobs, final ranks pending.
