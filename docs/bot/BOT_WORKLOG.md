@@ -3532,3 +3532,8 @@ alone can fail together. Reverted (main keeps overmatch 66.1). Parked.
 21a74a6 +15g (150 total) -> ord 66.1 (mu 69.8, was 69.8/135g): flat on
 53% wins + 2 F1-deaths. Holds pool lead (mu 69.8 highest). Main-tip
 identical code (rating transfers; grind this ID).
+
+### Overmatch 165g (73% batch, mu 71.8!) (2026-09-13 07:02 BST)
+21a74a6 +15g (165 total) -> ord 68.2 (mu 71.8, was 69.8/150g): +2.1 on
+73% wins (incl 393k/294k/291k) + ZERO deaths. Mu climbing (71.8).
+Pool lead extends.
