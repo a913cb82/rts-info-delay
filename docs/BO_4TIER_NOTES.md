@@ -544,3 +544,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   them, only assay maps the flat.
 - Pricing#2 (running): 1M BASE adjudication (small-chef hand +0.909 vs
   seed +0.885) — can search close a 0.024 hand lead? 2/3 pricing spent.
+- District bourg750@16 (+1.418) sits between dense@13+2500 (+1.430) and
+  lean (+1.395): size and spacing trade smoothly, no cliffs.bourg-size
+  and spacing both slide toward small+dense monotonically.
