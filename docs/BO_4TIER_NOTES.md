@@ -477,3 +477,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   @18 wins with sharp hunger added (wider equalization sheds cover
   sparser). Corrects the knob-stable-spacing claim for bourgs (chefs
   64–96 and regions 20–30k still stable).
+- F-S3 final (96 evals, 44 model, min_ratio 2): best UNCHANGED +1.138 —
+  clean 4-tier (302@3.56/1196@58/2480@84/7447@172, urb 6.9%), no phantoms.
+  min_ratio fixes duplicate tiers but not tiny villages (3rd: P0=128) or
+  low urban. Constraint toolkit now: min_ratio (distinct tiers) + p0min
+  (village floor) — combine both next search Combines both.
