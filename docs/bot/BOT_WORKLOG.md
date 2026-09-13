@@ -3925,3 +3925,16 @@ Cool architecture, same thin fate. Parked on loop/apex.
 Poor-fortress / rich-crusade (fscore-ahead takes with 2 home kept;
 behind pure fortress). Rich-press / poor-survive. Bar: exceed 47.2
 AND guards hold (style).
+
+### Turtle-wealth verdict: FAIL (45.6, close) + Q&A (2026-09-13 12:11 BST)
+Rated clean 15g (3x5) -> ord 45.6 (mu 53.0): FAIL (gate 47.2+, close!).
+Wins occur (139k/101k/185k rich-crusades; 20%) + 2nds, but poor-fortress
+places mid (not wins) and deaths persist. Closest turtle rung yet but
+short. Reverted (main keeps turtle 47.2). Parked on loop/turtle-wealth.
+Q (battles efficient/never lose?): YES via cohesion math (M>=N+1 clean),
+pack-only (no solo donations), overmatch margins, counter-punch, N+1
+holds — fog-limited (stale-need donations unavoidable).
+Q (scouting efficient/continuous pre-timed?): NO continuous — STRUCTURALLY
+DEAD (2-turn intel lag vs 1-step messenger + 10km tolerance; messenger
+delay 150km/turn). Discrete hops + probes + JIT/departure-sync instead;
+scouting paradox (needs surplus, never has it early).
