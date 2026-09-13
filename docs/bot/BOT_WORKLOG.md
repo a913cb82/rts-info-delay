@@ -3482,3 +3482,8 @@ Converged true ~61-65.
 ### Buzzer 1710g (spike-batch down) (2026-09-13 06:17 BST)
 Buzzer +10g (1710 total) -> ord 61.9 (mu 65.3, was 67.1/1700g): -1.8 on
 2W + F1-death + fifths. Spike-batch. 1710 games.
+
+### Buzzer 1720g (2026-09-13 06:22 BST)
+Buzzer +10g (1720 total) -> ord 61.0 (mu 64.4, was 65.3/1710g): -0.9 on
+10% wins (1/10) + 2 F1-deaths + fifths (21a74a6 393k). Declining edge.
+1720 games.
