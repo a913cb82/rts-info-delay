@@ -3527,3 +3527,8 @@ Rated clean 15g -> ord 38.2 (mu 45.9): FAIL (bar 66.1). Stacking works
 standalone but interferes combined (recall-bleed + overmatch-wait both
 fire in weak-diverse; 40% wins vs should-win 80%+). Mechanisms that work
 alone can fail together. Reverted (main keeps overmatch 66.1). Parked.
+
+### Overmatch 150g (holds 66.1) (2026-09-13 06:57 BST)
+21a74a6 +15g (150 total) -> ord 66.1 (mu 69.8, was 69.8/135g): flat on
+53% wins + 2 F1-deaths. Holds pool lead (mu 69.8 highest). Main-tip
+identical code (rating transfers; grind this ID).
