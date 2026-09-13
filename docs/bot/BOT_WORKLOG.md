@@ -4298,3 +4298,12 @@ centers eat deadline value). S4 raid+cashout 1120 > combo 974 > grow
 795 > idle ("conquest is the game, rest garnish"; BUILD raiders INTO
 captive fix). RANK: raid2784 >> raid1120 > combo974 > grow795 > idle.
 Maximal = raid-unready + cash-out + boost, gated by intel (pop-watch).
+
+### v3 725 + peaceful ceiling ~730 (2026-09-13, loop/grower)
+v3 (30-trains/350-floor + densify-4km): 725 (mother 349 + 139/137/100).
+Trade-sharing makes the SYSTEM the unit (distribution irrelevant).
+N-sweep flat (N=4 663 best, mother healthiest); CAD (30,350) 718.
+P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
+T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
+Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
+Fast paths all steal grown stocks (shelved: user wants peaceful first).

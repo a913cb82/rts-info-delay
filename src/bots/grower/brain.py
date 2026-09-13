@@ -14,8 +14,10 @@ from bots.expander.intel import BotState, silence_watch
 
 LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
 MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
-TRAIN_FLOOR = 200.0   # keep town >= this after a growth train
-TRAIN_MIN_POP = 450.0 # towns below never train (recover/grow; v2: faster cadence)
+DENSE_DIST = 4.0      # densify ring radius around small towns (P2/P2b)
+DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
+TRAIN_SIZE = 30.0     # v3: small-fast trains beat big-slow (CAD 718)
+TRAIN_FLOOR = 350.0   # train iff pop >= this (CAD winner)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 150.0   # colonies below this get boosted
 ARRIVED = 1.0         # km: close enough to count as landed (exact engine)
@@ -83,7 +85,33 @@ def _lattice_site(state, config, exclude=None) -> tuple[float, float] | None:
 
 def _train_size(t, config) -> float:
     frac = getattr(config, "max_train_frac", 0.1) or 0.1
-    return max(10.0, t.population * frac)
+    if t.population >= 700.0:
+        return max(TRAIN_SIZE, t.population * frac)
+    return min(TRAIN_SIZE, max(10.0, t.population * frac))
+
+
+def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
+    """Nearest 4km-ring point around a <=300 town (mild-gradient infill)."""
+    mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+    own = state.own_towns()
+    excl = list(exclude) if exclude else []
+    small = [t for t in own if t.population <= DENSE_MAX_POP]
+    best = None
+    for t in small:
+        for ring_r in (DENSE_DIST, DENSE_DIST * 2):
+            for k in range(6):
+                ang = k * math.pi / 3
+                x, y = t.x + ring_r * math.cos(ang), t.y + ring_r * math.sin(ang)
+                if x < 5 or x > mw - 5 or y < 5 or y > mh - 5:
+                    continue
+                if any(math.hypot(x - u.x, y - u.y) < DENSE_DIST for u in own):
+                    continue
+                if any(math.hypot(x - ex, y - ey) < DENSE_DIST for ex, ey in excl):
+                    continue
+                d = math.hypot(x - t.x, y - t.y)
+                if best is None or (t.population, d) < (best[0], best[1]):
+                    best = (t.population, d, (x, y))
+    return best[2] if best else None
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
@@ -97,10 +125,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     cap_id = cap.id if cap is not None else None
 
     def cooled(t) -> bool:
+        # v3: floor governs (CAD: no cooldown, recovery time is the governor)
         return (t.id not in state._pending_trains
-                and _LAST_TRAIN.get(t.id, -10 ** 9) + COOLDOWN <= turn
-                and t.population >= TRAIN_MIN_POP
-                and t.population - _train_size(t, config) >= TRAIN_FLOOR)
+                and t.population >= TRAIN_FLOOR)
 
     # 1. JIT muster (T6: muster beats raids; defense is score-neutral).
     foe_armies = [a for a in state.world.armies
@@ -138,6 +165,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)]
     pioneer_busy = any(not any(math.hypot(ex - t.x, ey - t.y) < MIN_DIST for t in own_t)
                         for ex, ey in enroute)
+    # densify openings (4km around <=300 towns), excluding en-route/used
+    def _dense_open(excl):
+        s = _densify_site(state, config, excl)
+        return s
+    dense_busy = any(any(math.hypot(ex - t.x, ey - t.y) < DENSE_DIST * 2 for t in own_t
+                          if t.population <= DENSE_MAX_POP)
+                     for ex, ey in enroute)
     idle = [a for a in state.own_armies()
             if not a.is_viceroy and not state.army_has_target(a.id)
             and not state.has_pending_build(a.id)]
@@ -152,7 +186,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             else:
                 out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {tgt.x:.1f} {tgt.y:.1f}")
             continue
-        site = _lattice_site(state, config, used_sites + enroute)
+        site = _densify_site(state, config, used_sites + enroute)
+        if site is None:
+            site = _lattice_site(state, config, used_sites + enroute)
         if site is None:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
@@ -165,6 +201,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
     if not pioneer_busy and _lattice_site(state, config, used_sites + enroute) is not None:
+        want += 1
+    if not dense_busy and _densify_site(state, config, used_sites + enroute) is not None:
         want += 1
     short = want - len(idle)
     if short > 0:
