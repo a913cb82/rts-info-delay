@@ -472,3 +472,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District ratchet (lean ×1.3): density 30.3 at settled +1.347 (cost 0.05
   vs +1.395 unscaled). Same density-for-rate trade at both scales; the
   ratchet is scale-free, as the uniform-scaling argument demands.
+- Pricing#1 verdict (combo knobs): 4-tier seed wins 7th time (+1.392).
+  Spacing optimum MOVES with knobs after all: bourgs@13 wins at prem.75,
+  @18 wins with sharp hunger added (wider equalization sheds cover
+  sparser). Corrects the knob-stable-spacing claim for bourgs (chefs
+  64–96 and regions 20–30k still stable).
