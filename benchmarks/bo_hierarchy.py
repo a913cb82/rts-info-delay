@@ -226,22 +226,26 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
         return info
 
     # seeds: known-good skeletons first (never regress reporting)
-    def seed_for(s0, P0, s1, r1, s2=200.0, r2=None):
+    def seed_for(s0, P0, s1, r1, s2=200.0, r2=None, s3=None, r3=None):
         if r2 is None:
             r2 = RMIN
+        s3 = 200.0 if s3 is None else s3
+        r3 = RMIN if r3 is None else r3
         u = [(math.log(s0) - LO[0]) / (HI[0] - LO[0]),
              (math.log(P0) - LO[1]) / (HI[1] - LO[1]),
              (math.log(s1) - LO[2]) / (HI[2] - LO[2]),
              (math.log(r1) - LO[3]) / (HI[3] - LO[3]),
              (math.log(s2) - LO[4]) / (HI[4] - LO[4]),
              (math.log(r2) - LO[5]) / (HI[5] - LO[5]),
-             1.0, 0.0]
+             (math.log(s3) - LO[6]) / (HI[6] - LO[6]),
+             (math.log(r3) - LO[7]) / (HI[7] - LO[7])]
         return [min(1.0, max(0.0, v)) for v in u]
     seeds = [seed_for(4.0, 300.0, 64.0, 8.0),            # ~= s64/T2400
              seed_for(4.0, 300.0, 200.0, RMIN),           # flat
              seed_for(4.0, 300.0, 32.0, 8.0),             # ~= s32/T2400
              seed_for(4.0, 300.0, 18.0, 1000.0 / 300.0, 82.0, 8.0),  # GOAL
-             seed_for(4.0, 300.0, 18.0, 2.0, 64.0, 8.0)]  # province (bourgs+chefs)
+             seed_for(4.0, 300.0, 18.0, 2.0, 64.0, 8.0),  # province (bourgs+chefs)
+             seed_for(4.0, 300.0, 18.0, 2.0, 80.0, 5.0, 150.0, 4.0)]  # full 4-tier
     for u in seeds:
         ask_evaluate(u)
 
