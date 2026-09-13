@@ -4035,3 +4035,9 @@ Loop alive.
 Dogleg waypoints (100km perpendicular) around foe armies within 50km
 of march segments (dodge stale predictions; survive; found more).
 Bar: exceed 44.2 AND most-foundings (style).
+
+### Evasion verdict: FAIL (41.4, delay loses) (2026-09-13 12:51 BST)
+Rated clean 15g (3x5) -> ord 41.4 (mu 48.7): FAIL (gate 44.2+). Settlers
+survive more (2W) but doglegs delay foundings (slow sprawl, fewer
+engines). Delay costs more than survival gains. Reverted (main keeps
+expander 44.2). Parked on loop/exp-evade.
