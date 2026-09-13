@@ -596,3 +596,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District big-size hand shape (236×438 + 13×1055 + 4600): +1.372 vs
   +1.453 dense winner. Realistic sizes cost 0.08 at district (counts and
   sizes both land: 236/13/1 ✓✓). Sizes have a measured price everywhere.
+- G-S1 final (96 evals, 33 model): winner +1.347 (s64-family 2400@64 +
+  sparse tops, urb 4.6%); big-size excursion 3rd (+1.299, urb 12%).
+  Constrained search crowns low-urban 4-tier — shares still need hand
+  placement. S2 next: same constraints at district.
