@@ -572,3 +572,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   Seeds can't express center placement or exact sizes — the +0.909 hand
   lead lives outside seed space entirely. Seed expressiveness, not optimizer
   effort, bounds search results.
+- Density-S4 verdict (96 evals, 27 model, min_ratio 2 + p0min 300): winner
+  +1.363 = SPARSE 4-tier (348@4.9/948@38/2596@50/10682@187, urb 11.8%) —
+  opposite corner from the dense hand family, same rate band. Two optima
+  families coexist: dense-small-many vs sparse-big-few. (Decode needs
+  run-time bounds; pristine-LO misreads P0 348→133 and all tier sizes.)
