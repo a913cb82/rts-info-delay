@@ -257,3 +257,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   dense bourgs (one chef + sparse bourgs already saturate). District leg
   settled: dense 300@3.5 + 500@16 + 2500@70, twice confirmed.
 - both-BO#3 (carry-over): prem.75 + combo seed. Pre-budget information.
+- Regional sweep (dense-bourg shape, prem.75, settled): 20k +1.164 >
+  25k +1.160 > 40k +1.113. Peak at ~20k; bigger tops lose on mouths.
+  Top sizes refuse to scale under any knob — the squeeze's upper half.
