@@ -215,22 +215,24 @@ class TestOrderLag:
         assert x_after_2 > x_after_1
 
     def test_TRAIN_then_TRAIN_second_ignored_after_pop_depleted(self) -> None:
-        """TRAIN with 1110 pop: first TRAIN spawns (pop→~110, town survives
-        the fitted 0-floor), a second TRAIN then bankrupts it (110 - 1000 < 0)."""
+        """TRAIN with 1110 pop: first TRAIN capped to 10% (111), town keeps
+        ~999 and spawns a size-111 army; an explicit TRAIN 1 2000 next turn
+        is capped again (~100)."""
         # Capital close to town (10 km) so messenger delivered same turn, but not at same pos to avoid extreme crowding
         cap = _town(0, 0, 5000, faction=0, tid=10, cap=True)
         t = _town(10, 0, 1110, faction=0, tid=1)
         w = _world_with(towns=[cap, t])
         ledger = Ledger(CFG.info_speed, 1414)
-        # Turn 1: TRAIN 1 — pop 1110 → ~110, spawns 1 army, town survives
+        # Turn 1: TRAIN 1 — default 1000 capped to 111, spawns 1 army
         step(w, CFG, ledger, turn=1, orders={0: ["TRAIN 1"]})
         assert len(w.armies) == 1
+        assert w.armies[0].size == pytest.approx(111.0, abs=1.0)
         assert w.get_town(1) is not None
-        assert w.get_town(1).population == pytest.approx(110.0, abs=1.0)
-        # Turn 2: TRAIN 1 again — deducting 1000 from ~110 bankrupts the town
-        step(w, CFG, ledger, turn=2, orders={0: ["TRAIN 1"]})
-        assert len(w.armies) == 1  # no new army (spawn needs pop >= 1000)
-        assert w.get_town(1) is None  # died below zero
+        assert w.get_town(1).population == pytest.approx(1110 - 111, abs=5.0)
+        # Turn 2: TRAIN 1 2000 — capped to 10% again, second army spawns
+        step(w, CFG, ledger, turn=2, orders={0: ["TRAIN 1 2000"]})
+        assert len(w.armies) == 2
+        assert w.armies[1].size == pytest.approx(100.0, abs=6.0)
 
     def test_train_standing_one_shot(self) -> None:
         """L5b: TRAIN standing order is one-shot (consumed after execution)."""
@@ -389,17 +391,18 @@ class TestCommands:
         assert len(viceroy) == 1
 
     def test_move_capital_guard(self) -> None:
-        """O9: Economy executes the intent: pop -1000, old capital demoted,
-        viceroy spawned at the capital (marches from next turn)."""
+        """O9: Economy executes the intent: pop -500 (capped 10%), old capital demoted,
+        viceroy of size 500 spawned at the capital (marches from next turn)."""
         t = _town(100, 100, 5000, faction=0, tid=1, cap=True)
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
-        # 5000 - 1000 + growth; lone 4000 on one ring starves mildly now
-        assert t.population == pytest.approx(4000, abs=5.0)
+        # 5000 - 500 + growth; lone 4500 on one ring starves mildly now
+        assert t.population == pytest.approx(4500, abs=8.0)
         assert t.is_capital is False  # demoted at train time
         viceroy = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy) == 1
+        assert viceroy[0].size == pytest.approx(500, abs=1.0)
         # Spawned in economy (after movement): still at the capital
         assert viceroy[0].x == 100
         assert viceroy[0].y == 100
@@ -432,14 +435,15 @@ class TestCommands:
         assert deliver(0, w, ledger, 2) == []
 
     def test_move_capital_insufficient_pop(self) -> None:
-        """O10b: MOVE_CAPITAL when capital pop < army_cost → rejected."""
+        """O10b: MOVE_CAPITAL from a small capital flies capped (10% of pop)."""
         t = _town(100, 100, 400, faction=0, tid=1, cap=True)  # pop < 1000
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
-        # Should not spawn viceroy
+        # Capped to 40, still flies
         viceroy = [a for a in w.armies if a.is_viceroy]
-        assert len(viceroy) == 0
+        assert len(viceroy) == 1
+        assert viceroy[0].size == pytest.approx(40, abs=2.0)
 
     def test_move_capital_founds(self) -> None:
         """O11: On arrival, guard founds new capital town."""

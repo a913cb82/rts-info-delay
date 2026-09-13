@@ -697,10 +697,10 @@ def score(world: World, config: GameConfig) -> dict[int, int]:
     for faction in factions:
         town_pop = sum(t.population for t in world.towns if t.faction == faction)
         # round? population is float, but score expects int? Tests expect int sum. We'll sum as int of population (floor?).
-        # The spec says total_town_population + army_cost * num_armies, population is float, but score int.
+        # The spec says total_town_population + army sizes; population is float, but score int.
         # We'll compute int(town_pop) or round? Tests use exact pops like 1000, 2000, 500 etc. We'll use sum and then int
-        num_armies = sum(1 for a in world.armies if a.faction == faction)
-        total = int(town_pop) + config.army_cost * num_armies
+        asize = sum(a.size for a in world.armies if a.faction == faction)
+        total = int(town_pop) + asize
         # But town_pop may be float with .5 fractions from growth; int conversion should maybe round? Use int(total) or round?
         # Use int(town_pop) to match test expectations where pop is float but they compare int
         result[faction] = total
@@ -728,35 +728,43 @@ def parse_orders(lines: list[str]) -> list[str]:
             continue
         cmd = parts[0].upper()
         if cmd == "MOVE_TO":
-            if len(parts) != 6:
+            if len(parts) not in (6, 7):
                 continue
             try:
                 aid = int(parts[1])
                 fx = float(parts[2]); fy = float(parts[3]); tx = float(parts[4]); ty = float(parts[5])
+                if len(parts) == 7:
+                    float(parts[6])
             except ValueError:
                 continue
             valid.append(s)
         elif cmd == "TRAIN":
-            if len(parts) != 2:
+            if len(parts) not in (2, 3):
                 continue
             try:
                 tid = int(parts[1])
+                if len(parts) == 3:
+                    float(parts[2])
             except ValueError:
                 continue
-            valid.append(f"TRAIN {tid}")
+            valid.append(s if len(parts) == 3 else f"TRAIN {tid}")
         elif cmd == "BUILD":
-            if len(parts) != 4:
+            if len(parts) not in (4, 5):
                 continue
             try:
                 aid = int(parts[1]); bx = float(parts[2]); by = float(parts[3])
+                if len(parts) == 5:
+                    float(parts[4])
             except ValueError:
                 continue
             valid.append(s)
         elif cmd == "MOVE_CAPITAL":
-            if len(parts) != 3:
+            if len(parts) not in (3, 4):
                 continue
             try:
                 x = float(parts[1]); y = float(parts[2])
+                if len(parts) == 4:
+                    float(parts[3])
             except ValueError:
                 continue
             valid.append(s)
@@ -785,10 +793,11 @@ def apply_orders_to_world(
         parts = s.split()
         cmd = parts[0].upper()
         if cmd == "MOVE_CAPITAL":
-            if len(parts) != 3:
+            if len(parts) not in (3, 4):
                 continue
             try:
                 tx = float(parts[1]); ty = float(parts[2])
+                size = float(parts[3]) if len(parts) == 4 else config.army_cost
             except ValueError:
                 continue
             tx, ty = world.clamp_position(tx, ty)
@@ -798,36 +807,39 @@ def apply_orders_to_world(
             # Normal command: 0-distance messenger to the capital itself.
             messenger = Messenger(faction=faction, command=CommandType.MOVE_CAPITAL,
                                   target_id=capital.id, target_type="town",
-                                  args=[tx, ty], remaining_dist=0.0)
+                                  args=[tx, ty, size], remaining_dist=0.0)
             world.messengers.append(messenger)
             continue
         elif cmd == "MOVE_TO":
-            if len(parts) != 6:
+            if len(parts) not in (6, 7):
                 continue
             try:
                 aid = int(parts[1]); fx = float(parts[2]); fy = float(parts[3]); tx = float(parts[4]); ty = float(parts[5])
+                amount = float(parts[6]) if len(parts) == 7 else 0.0
             except ValueError:
                 continue
             capital = world.faction_capital(faction)
             remaining = math.hypot(capital.x - fx, capital.y - fy) if capital else 0.0
-            messenger = Messenger(faction=faction, command=CommandType.MOVE_TO, target_id=aid, target_type="army", args=[fx, fy, tx, ty], remaining_dist=remaining)
+            messenger = Messenger(faction=faction, command=CommandType.MOVE_TO, target_id=aid, target_type="army", args=[fx, fy, tx, ty, amount], remaining_dist=remaining)
             world.messengers.append(messenger)
         elif cmd == "BUILD":
-            if len(parts) != 4:
+            if len(parts) not in (4, 5):
                 continue
             try:
                 aid = int(parts[1]); bx = float(parts[2]); by = float(parts[3])
+                size = float(parts[4]) if len(parts) == 5 else config.army_cost
             except ValueError:
                 continue
             capital = world.faction_capital(faction)
             remaining = math.hypot(capital.x - bx, capital.y - by) if capital else 0.0
-            messenger = Messenger(faction=faction, command=CommandType.BUILD, target_id=aid, target_type="army", args=[bx, by], remaining_dist=remaining)
+            messenger = Messenger(faction=faction, command=CommandType.BUILD, target_id=aid, target_type="army", args=[bx, by, size], remaining_dist=remaining)
             world.messengers.append(messenger)
         elif cmd == "TRAIN":
-            if len(parts) != 2:
+            if len(parts) not in (2, 3):
                 continue
             try:
                 tid = int(parts[1])
+                size = float(parts[2]) if len(parts) == 3 else config.army_cost
             except ValueError:
                 continue
             town = world.get_town(tid)
@@ -836,7 +848,7 @@ def apply_orders_to_world(
                 remaining = math.hypot(capital.x - town.x, capital.y - town.y)
             else:
                 remaining = 0.0
-            messenger = Messenger(faction=faction, command=CommandType.TRAIN, target_id=tid, target_type="town", args=[float(faction)], remaining_dist=remaining)
+            messenger = Messenger(faction=faction, command=CommandType.TRAIN, target_id=tid, target_type="town", args=[float(faction), size], remaining_dist=remaining)
             world.messengers.append(messenger)
         else:
             continue

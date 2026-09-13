@@ -1,4 +1,4 @@
-"""Score computation — per faction total pop + army_cost * num_armies."""
+"""Score computation — per faction total pop + total army size."""
 
 from engine.config import GameConfig
 from engine.world import World
@@ -18,8 +18,8 @@ def compute_score(world: World, faction: int | None = None, config: GameConfig |
     # If faction specified, compute only that faction
     if faction is not None:
         pop = sum(t.population for t in world.towns if t.faction == faction)
-        armies = sum(1 for a in world.armies if a.faction == faction)
-        return int(pop + config.army_cost * armies)
+        asize = sum(a.size for a in world.armies if a.faction == faction)
+        return int(pop + asize)
     else:
         # Return dict per faction? But compute_score called with faction param only, so this branch not needed
         # For runner.score compatibility, we also provide score(world, config) dict version

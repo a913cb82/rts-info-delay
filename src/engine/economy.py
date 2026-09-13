@@ -1227,14 +1227,24 @@ def apply_train(world: World, config: GameConfig, pre_capture_factions: dict[int
             except (ValueError, TypeError):
                 pass
         trained_this_turn.add(so.target_id)
+        try:
+            requested = float(so.args[1]) if len(so.args) >= 2 else config.army_cost
+        except (ValueError, TypeError):
+            requested = config.army_cost
+        if requested <= 0.0:
+            if so in world.standing_orders:
+                world.standing_orders.remove(so)
+            continue
+        # TRAIN draws at most max_train_frac of the town's people.
+        size = min(requested, config.max_train_frac * town.population)
         original_pop = town.population
-        town.population -= config.army_cost
-        should_spawn = original_pop >= config.army_cost - 1e-9
+        town.population -= size
+        should_spawn = original_pop >= size - 1e-9
         if should_spawn:
             new_id = world.allocate_id()
-            army = Army(id=new_id, faction=original_faction, x=town.x, y=town.y, is_viceroy=False)
+            army = Army(id=new_id, faction=original_faction, x=town.x, y=town.y, is_viceroy=False, size=size)
             world.armies.append(army)
-            events.append({"kind": "army_spawn", "id": army.id, "faction": army.faction, "x": army.x, "y": army.y, "is_viceroy": False})
+            events.append({"kind": "army_spawn", "id": army.id, "faction": army.faction, "x": army.x, "y": army.y, "is_viceroy": False, "size": army.size})
         if town.population <= config.town_min_population:
             tid = town.id
             tx, ty = town.x, town.y
@@ -1262,48 +1272,56 @@ def apply_build(world: World, config: GameConfig) -> list[dict]:
                 world.standing_orders.remove(so)
             continue
         if len(so.args) >= 2:
-            if len(so.args) >= 3:
-                try:
-                    maybe_faction = int(so.args[0])
-                    if maybe_faction == army.faction and len(so.args) == 3:
-                        tx, ty = float(so.args[1]), float(so.args[2])
-                    else:
-                        tx, ty = float(so.args[0]), float(so.args[1])
-                except Exception:
-                    tx, ty = float(so.args[0]), float(so.args[1])
-            else:
+            try:
                 tx, ty = float(so.args[0]), float(so.args[1])
+                size = float(so.args[2]) if len(so.args) >= 3 else config.army_cost
+            except Exception:
+                tx, ty = float(so.args[0]), float(so.args[1])
+                size = config.army_cost
         else:
             tx, ty = army.x, army.y
+            size = config.army_cost
         tx, ty = world.clamp_position(tx, ty)
+        # Exact site: the army must stand on the build spot.
         dist = math.hypot(army.x - tx, army.y - ty)
-        if dist > config.interact_radius + 1e-9:
+        if dist > 1e-9:
             if so in world.standing_orders:
                 world.standing_orders.remove(so)
             continue
         found_town = None
         for t in world.towns:
-            if math.hypot(t.x - tx, t.y - ty) <= config.interact_radius + 1e-9:
+            if math.hypot(t.x - tx, t.y - ty) <= 1e-9:
                 found_town = t
                 break
         if found_town is not None and found_town.faction != army.faction:
-            # Blocked by an enemy town: hold (keep the standing order)
-            # until it is captured or gone. Nothing consumed, no event.
+            # Blocked by an enemy town: BUILD is single-turn, so the order
+            # lapses (the army can take the town and rebuild next turn).
+            if so in world.standing_orders:
+                world.standing_orders.remove(so)
             continue
+        if size <= 0.0:
+            if so in world.standing_orders:
+                world.standing_orders.remove(so)
+            continue
+        # Spend at most the army's whole size; the rest marches on.
+        used = min(size, army.size)
+        gain = used * config.build_efficiency
         aid = army.id
         ax, ay = army.x, army.y
-        world.remove_army(aid)
-        events.append({"kind": "army_death", "id": aid, "x": ax, "y": ay})
+        army.size -= used
         if so in world.standing_orders:
             try:
                 world.standing_orders.remove(so)
             except ValueError:
                 pass
+        if army.size <= 1e-9:
+            world.remove_army(aid)
+            events.append({"kind": "army_death", "id": aid, "x": ax, "y": ay})
         if found_town is not None:
-            found_town.population += config.army_cost * config.build_efficiency
+            found_town.population += gain
         else:
             new_id = world.allocate_id()
-            new_town = Town(id=new_id, faction=army.faction, x=tx, y=ty, population=config.army_cost * config.build_efficiency, is_capital=False)
+            new_town = Town(id=new_id, faction=army.faction, x=tx, y=ty, population=gain, is_capital=False)
             world.towns.append(new_town)
             events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction, "x": new_town.x, "y": new_town.y, "population": new_town.population, "is_capital": False})
     return events

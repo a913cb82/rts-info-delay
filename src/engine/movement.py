@@ -125,6 +125,7 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
     factions = [a.faction for a in world.armies]
 
     moving_indices: list[int] = []
+    arriving: set[int] = set()  # within one turn of target: snap exact
     for i, army in enumerate(world.armies):
         if not army.has_target:
             continue
@@ -136,6 +137,7 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
         if dist <= speed:
             vel_x[i] = dx
             vel_y[i] = dy
+            arriving.add(i)
         else:
             scale = speed / dist
             vel_x[i] = dx * scale
@@ -364,6 +366,8 @@ def move_armies(world: World, config: GameConfig) -> list[dict]:
             t = stop_t[mi]
             nx = ax + t * vx
             ny = ay + t * vy
+        elif mi in arriving:
+            nx, ny = army.target_x, army.target_y
         else:
             nx = ax + vx
             ny = ay + vy

@@ -76,6 +76,25 @@ class World:
     _armies_by_faction: dict[int, list[Army]] = field(default_factory=dict, repr=False, compare=False)
     _index_dirty: bool = field(default=True, repr=False, compare=False)
 
+    def split_army(self, aid: int, amount: float) -> Army | None:
+        """Split `amount` off army `aid` for a partial MOVE_TO.
+
+        The mover keeps the army id (orders reference it); the remainder
+        becomes a new idle army at the same spot. Returns the remainder,
+        or None when `amount` means the whole army (<= 0 or >= size).
+        """
+        army = self.get_army(aid)
+        if army is None:
+            return None
+        if amount <= 0.0 or amount >= army.size - 1e-9:
+            return None
+        rest = Army(id=self.allocate_id(), faction=army.faction,
+                    x=army.x, y=army.y, size=army.size - amount)
+        army.size = amount
+        self.armies.append(rest)
+        self.mark_dirty()
+        return rest
+
     def allocate_id(self) -> int:
         # ensure no collision with existing ids (handles manual id assignment in tests)
         while True:

@@ -231,17 +231,19 @@ def _phase_command(
                         from_y = float(from_y) if from_y is not None else None
                         to_x = float(to_x)  # type: ignore
                         to_y = float(to_y)  # type: ignore
+                        amount = float(od.get("amount", 0.0))  # type: ignore
                     except Exception:
                         continue
                     army = world.get_army(aid)
                     if army is None:
                         continue
                     # Assume faction 0 for medium tests
-                    # Check from matches if provided
+                    # Check from matches if provided (exact: orders need the spot)
                     if from_x is not None and from_y is not None:
                         dist_from = math.hypot(army.x - from_x, army.y - from_y)
-                        if dist_from > config.interact_radius + 1e-9:
+                        if dist_from > 1e-9:
                             continue
+                    world.split_army(aid, amount)
                     army.target_x = to_x
                     army.target_y = to_y
                     army.has_target = True
@@ -249,6 +251,7 @@ def _phase_command(
                     tid = od.get("town_id", od.get("id"))
                     try:
                         tid = int(tid)  # type: ignore
+                        size = float(od.get("size", config.army_cost))  # type: ignore
                     except Exception:
                         continue
                     town = world.get_town(tid)
@@ -258,7 +261,7 @@ def _phase_command(
                     # Check duplicate?
                     exists = any(so.command == CommandType.TRAIN and so.target_id == tid for so in world.standing_orders)
                     if not exists:
-                        world.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town", args=[]))
+                        world.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town", args=[0.0, size]))
                 elif cmd == "BUILD":
                     aid = od.get("army_id", od.get("id"))
                     bx = od.get("x")
@@ -267,17 +270,18 @@ def _phase_command(
                         aid = int(aid)  # type: ignore
                         bx = float(bx)  # type: ignore
                         by = float(by)  # type: ignore
+                        size = float(od.get("size", config.army_cost))  # type: ignore
                     except Exception:
                         continue
                     army = world.get_army(aid)
                     if army is None:
                         continue
-                    # Distance check immediate
+                    # Exact site check
                     dist = math.hypot(army.x - bx, army.y - by)
-                    if dist > config.interact_radius + 1e-9:
+                    if dist > 1e-9:
                         continue
                     # Create standing order
-                    world.standing_orders.append(StandingOrder(command=CommandType.BUILD, target_id=aid, target_type="army", args=[bx, by]))
+                    world.standing_orders.append(StandingOrder(command=CommandType.BUILD, target_id=aid, target_type="army", args=[bx, by, size]))
                 elif cmd == "MOVE_CAPITAL":
                     x = od.get("x")
                     y = od.get("y")
@@ -289,6 +293,7 @@ def _phase_command(
                     try:
                         x = float(x)  # type: ignore
                         y = float(y)  # type: ignore
+                        size = float(od.get("size", config.army_cost))  # type: ignore
                     except Exception:
                         continue
                     # Need faction; assume 0 for structured
@@ -303,7 +308,7 @@ def _phase_command(
                         command=CommandType.MOVE_CAPITAL,
                         target_id=capital.id,
                         target_type="town",
-                        args=[x, y],
+                        args=[x, y, size],
                         remaining_dist=0.0,
                     ))
             return
@@ -335,11 +340,12 @@ def _phase_command(
             cmd = parts[0].upper()
             # MOVE_CAPITAL instant
             if cmd == "MOVE_CAPITAL":
-                if len(parts) != 3:
+                if len(parts) not in (3, 4):
                     continue
                 try:
                     tx = float(parts[1])
                     ty = float(parts[2])
+                    size = float(parts[3]) if len(parts) == 4 else config.army_cost
                 except ValueError:
                     continue
                 # Clamp target
@@ -355,7 +361,7 @@ def _phase_command(
                     command=CommandType.MOVE_CAPITAL,
                     target_id=capital.id,
                     target_type="town",
-                    args=[tx, ty],
+                    args=[tx, ty, size],
                     remaining_dist=0.0,
                 )
                 world.messengers.append(messenger)
@@ -363,7 +369,7 @@ def _phase_command(
 
             # For other commands, create messenger
             if cmd == "MOVE_TO":
-                if len(parts) != 6:
+                if len(parts) not in (6, 7):
                     continue
                 try:
                     aid = int(parts[1])
@@ -371,6 +377,7 @@ def _phase_command(
                     from_y = float(parts[3])
                     to_x = float(parts[4])
                     to_y = float(parts[5])
+                    amount = float(parts[6]) if len(parts) == 7 else 0.0
                 except ValueError:
                     continue
                 # Determine messenger distance: distance from capital to from_x,from_y or to army's current pos?
@@ -386,18 +393,19 @@ def _phase_command(
                     command=CommandType.MOVE_TO,
                     target_id=aid,
                     target_type="army",
-                    args=[from_x, from_y, to_x, to_y],
+                    args=[from_x, from_y, to_x, to_y, amount],
                     remaining_dist=remaining,
                 )
                 world.messengers.append(messenger)
 
             elif cmd == "BUILD":
-                if len(parts) != 4:
+                if len(parts) not in (4, 5):
                     continue
                 try:
                     aid = int(parts[1])
                     bx = float(parts[2])
                     by = float(parts[3])
+                    size = float(parts[4]) if len(parts) == 5 else config.army_cost
                 except ValueError:
                     continue
                 # For BUILD, messenger travels to army location? Or to build location?
@@ -412,16 +420,17 @@ def _phase_command(
                     command=CommandType.BUILD,
                     target_id=aid,
                     target_type="army",
-                    args=[bx, by],
+                    args=[bx, by, size],
                     remaining_dist=remaining,
                 )
                 world.messengers.append(messenger)
 
             elif cmd == "TRAIN":
-                if len(parts) != 2:
+                if len(parts) not in (2, 3):
                     continue
                 try:
                     tid = int(parts[1])
+                    size = float(parts[2]) if len(parts) == 3 else config.army_cost
                 except ValueError:
                     continue
                 # Messenger to town
@@ -441,7 +450,7 @@ def _phase_command(
                     command=CommandType.TRAIN,
                     target_id=tid,
                     target_type="town",
-                    args=[float(faction)],  # store faction for ownership check
+                    args=[float(faction), size],  # owner check + requested size
                     remaining_dist=remaining,
                 )
                 world.messengers.append(messenger)
@@ -477,10 +486,14 @@ def _phase_propagation(
                 continue
             if army.faction != m.faction:
                 continue
-            # args: [from_x, from_y, to_x, to_y]
+            # args: [from_x, from_y, to_x, to_y] (+ [amount])
             if len(m.args) < 4:
                 continue
             from_x, from_y, to_x, to_y = m.args[0], m.args[1], m.args[2], m.args[3]
+            try:
+                amount = float(m.args[4]) if len(m.args) >= 5 else 0.0
+            except (ValueError, TypeError):
+                amount = 0.0
             # Distance check: use projected position if army had existing target at start of propagation (for timing tests)
             # Use snapshot for same-turn FIFO: both orders see start pos
             snap = _init_army_state.get(army.id)
@@ -501,9 +514,10 @@ def _phase_propagation(
                         check_x = sx + dx * s
                         check_y = sy + dy * s
             dist = math.hypot(check_x - from_x, check_y - from_y)
-            if dist > config.interact_radius + 1e-9:
+            if dist > 1e-9:
                 continue
-            # Passed: set army target
+            # Passed: split off a partial mover if asked, then set target
+            world.split_army(army.id, amount)
             to_x_clamped, to_y_clamped = world.clamp_position(to_x, to_y)
             army.target_x = to_x_clamped
             army.target_y = to_y_clamped
@@ -518,6 +532,10 @@ def _phase_propagation(
             if len(m.args) < 2:
                 continue
             bx, by = m.args[0], m.args[1]
+            try:
+                size = float(m.args[2]) if len(m.args) >= 3 else config.army_cost
+            except (ValueError, TypeError):
+                size = config.army_cost
             bx, by = world.clamp_position(bx, by)
             snap = _init_army_state.get(army.id)
             if snap is not None:
@@ -537,14 +555,14 @@ def _phase_propagation(
                         check_x = sx + dx * s
                         check_y = sy + dy * s
             dist = math.hypot(check_x - bx, check_y - by)
-            if dist > config.interact_radius + 1e-9:
+            if dist > 1e-9:
                 continue
             # Create standing order for BUILD to be processed in economy
             # Avoid duplicate standing order for same army
             # Check if already exists
             exists = any(so.command == CommandType.BUILD and so.target_id == army.id for so in world.standing_orders)
             if not exists:
-                world.standing_orders.append(StandingOrder(command=CommandType.BUILD, target_id=army.id, target_type="army", args=[bx, by]))
+                world.standing_orders.append(StandingOrder(command=CommandType.BUILD, target_id=army.id, target_type="army", args=[bx, by, size]))
             delivered = True
         elif m.command == CommandType.TRAIN:
             town = world.get_town(m.target_id)
@@ -565,8 +583,12 @@ def _phase_propagation(
             # Create standing order for TRAIN if not exists
             exists = any(so.command == CommandType.TRAIN and so.target_id == town.id for so in world.standing_orders)
             if not exists:
-                # Store faction in args for later ownership check
-                world.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=town.id, target_type="town", args=[float(m.faction)]))
+                # Store faction in args for later ownership check, plus size
+                try:
+                    size = float(m.args[1]) if len(m.args) >= 2 else config.army_cost
+                except (ValueError, TypeError):
+                    size = config.army_cost
+                world.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=town.id, target_type="town", args=[float(m.faction), size]))
             delivered = True
         elif m.command == CommandType.MOVE_CAPITAL:
             # Delivery only queues the intent; execution (deduct, demote,
@@ -580,6 +602,7 @@ def _phase_propagation(
             try:
                 tx = float(m.args[0])
                 ty = float(m.args[1])
+                size = float(m.args[2]) if len(m.args) >= 3 else config.army_cost
             except (ValueError, TypeError):
                 continue
             tx, ty = world.clamp_position(tx, ty)
@@ -589,7 +612,7 @@ def _phase_propagation(
             if not exists:
                 world.standing_orders.append(StandingOrder(
                     command=CommandType.MOVE_CAPITAL, target_id=town.id,
-                    target_type="town", args=[tx, ty]))
+                    target_type="town", args=[tx, ty, size]))
         else:
             continue
         # If delivered, messenger removed (not added to remaining). If not delivered due to distance fail, also remove (command ignored, not retried)
@@ -637,7 +660,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         if not viceroy.is_viceroy or not viceroy.has_target:
             continue
         tx, ty = world.clamp_position(viceroy.target_x, viceroy.target_y)
-        if math.hypot(viceroy.x - tx, viceroy.y - ty) > config.interact_radius + 1e-9:
+        if math.hypot(viceroy.x - tx, viceroy.y - ty) > 1e-9:
             continue
         old_capital = world.faction_capital(viceroy.faction)
         if old_capital:
@@ -652,7 +675,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
         dest = None
         blocked = False
         for t in world.towns:
-            if math.hypot(t.x - tx, t.y - ty) > config.interact_radius + 1e-9:
+            if math.hypot(t.x - tx, t.y - ty) > 1e-9:
                 continue
             if t.faction != viceroy.faction:
                 blocked = True
@@ -663,7 +686,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
             continue
         if dest is not None:
             dest.is_capital = True
-            dest.population += config.army_cost * config.build_efficiency
+            dest.population += viceroy.size * config.build_efficiency
             world.mark_dirty()
             events.append({"kind": "town_spawn", "id": dest.id, "faction": dest.faction,
                            "x": dest.x, "y": dest.y, "population": dest.population,
@@ -674,7 +697,7 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
             nid = world.allocate_id()
             from engine.world import Town
             new_town = Town(id=nid, faction=viceroy.faction, x=tx, y=ty,
-                            population=config.army_cost * config.build_efficiency,
+                            population=viceroy.size * config.build_efficiency,
                             is_capital=True)
             world.towns.append(new_town)
             events.append({"kind": "town_spawn", "id": new_town.id, "faction": new_town.faction,
@@ -721,26 +744,36 @@ def _phase_economy(world: World, config: GameConfig, ledger=None, turn: int = 0,
             if so in world.standing_orders:
                 world.standing_orders.remove(so)
             continue
-        if town.population < config.army_cost - 1e-9:
+        if town.population <= 0.0:
             if so in world.standing_orders:
                 world.standing_orders.remove(so)
             continue
         tx, ty = (so.args[0], so.args[1]) if len(so.args) >= 2 else (town.x, town.y)
         tx, ty = world.clamp_position(tx, ty)
+        try:
+            requested = float(so.args[2]) if len(so.args) >= 3 else config.army_cost
+        except (ValueError, TypeError):
+            requested = config.army_cost
+        if requested <= 0.0:
+            if so in world.standing_orders:
+                world.standing_orders.remove(so)
+            continue
         # TRAIN-like execution: deduct, demote the old capital to a normal
         # town, and spawn the viceroy with its march target. Marching uses
         # normal movement; founding + promotion are the BUILD-step in
         # economy. One-shot: the order is consumed.
         # Unlike TRAIN, failure is a clean drop (no deduction): demoting or
         # charging for a viceroy that never flies would be pure loss.
-        town.population -= config.army_cost
+        # Same rules as TRAIN: capped to max_train_frac of town pop.
+        size = min(requested, config.max_train_frac * town.population)
+        town.population -= size
         processed_factions.add(faction)
         town.is_capital = False
         world.mark_dirty()
         nid = world.allocate_id()
-        viceroy = Army(id=nid, faction=faction, x=town.x, y=town.y, target_x=tx, target_y=ty, has_target=True, is_viceroy=True)
+        viceroy = Army(id=nid, faction=faction, x=town.x, y=town.y, target_x=tx, target_y=ty, has_target=True, is_viceroy=True, size=size)
         world.armies.append(viceroy)
-        events.append({"kind": "army_spawn", "id": viceroy.id, "faction": viceroy.faction, "x": viceroy.x, "y": viceroy.y, "is_viceroy": True})
+        events.append({"kind": "army_spawn", "id": viceroy.id, "faction": viceroy.faction, "x": viceroy.x, "y": viceroy.y, "is_viceroy": True, "size": viceroy.size})
         if so in world.standing_orders:
             world.standing_orders.remove(so)
 
