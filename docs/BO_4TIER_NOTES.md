@@ -492,3 +492,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District combo s32 (7×2400, no bourgs): +1.331 vs lean +1.395 vs
   dense-bourg +1.396. Bourgs earn at district (+0.06); mid-only towns
   trail. District ranking stable: dense-bourg ≈ lean > s32 > s64t > flat.
+- District dense-bourgs@13 + 2500-chef at adopted standard (max-push):
+  settled +0.924, urb 20% — ties lean-2500 (+0.922, urb 11%) with double
+  the urban share. Dense shares ride free at the standard too, both scales.
