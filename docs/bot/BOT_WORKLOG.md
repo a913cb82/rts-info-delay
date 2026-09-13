@@ -3723,3 +3723,9 @@ Converged ~66-70.
 Worst-first (user directive: improve, don't grind). Port mirror-proven
 overmatch (+2 priced clean-kill; unpriced unchanged) to aggressive.
 Bar (gate): ord>=47.2 AND takes occur (style).
+
+### Aggressive-overmatch verdict: FAIL (24.7, thin starves) (2026-09-13 09:31 BST)
+Rated clean 15g (3x5 batches) -> ord 24.7 (mu 32.6): FAIL (gate 47.2+).
+Takes occur (style TRUE: 232k/114k take-snowball wins) but waiting starves
+thin packs (zeros dominate). Affordability dominates (thin can't wait for
+clean). Reverted (main keeps aggressive 42.2). Parked.
