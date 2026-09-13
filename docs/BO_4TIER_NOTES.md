@@ -703,3 +703,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Center placement at district too: lattice-chef +0.868 vs center-chef
   +0.882. Center beats lattice by ~0.014 at both scales — symmetric hubs
   cover better than lattice vertices, everywhere.
+- H-S3 final (96 evals, 47 model, full 13-skeleton set): incumbent seed
+  wins 12th time (+0.885); dense-combo 2nd (+0.876); dense-bourg 3rd
+  (+0.868). Every seed loses to the incumbent INCLUDING the hand-derived
+  ones — the +0.909 hand lead needs center placement no seed expresses.
