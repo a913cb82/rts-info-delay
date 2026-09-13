@@ -178,6 +178,23 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             site = None
         if site:
             sx, sy = site
+            # Evasion (settler survival): foe armies within 50km of the
+            # direct segment trigger a 100km-perpendicular dogleg waypoint
+            # (dodge stale predictions; survive marches; found more).
+            dx, dy = sx - p.x, sy - p.y
+            seg = math.hypot(dx, dy) or 1.0
+            for f in state.world.armies:
+                if f.faction == faction:
+                    continue
+                t = max(0.0, min(1.0, ((f.x - p.x) * dx + (f.y - p.y) * dy) / (seg * seg)))
+                cx, cy = p.x + t * dx, p.y + t * dy
+                if math.hypot(f.x - cx, f.y - cy) <= 50.0:
+                    nx, ny = -dy / seg, dx / seg
+                    mx = (config.map_size[0] if config.map_size else 1000.0) - 20.0
+                    my = (config.map_size[1] if len(config.map_size or []) > 1 else 1000.0) - 20.0
+                    sx = min(mx, max(20.0, (p.x + sx) / 2 + nx * 100.0))
+                    sy = min(my, max(20.0, (p.y + sy) / 2 + ny * 100.0))
+                    break
             out.extend(dispatch_settler(state, config, p, sx, sy))
     # JIT packet flush: only full packets march.
     by_id = {a.id: a for a in state.own_armies()}

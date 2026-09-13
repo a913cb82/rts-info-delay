@@ -4030,3 +4030,8 @@ Loop alive.
 
 ### Heartbeat (2026-09-13 12:56 BST)
 Loop alive.
+
+### Settler evasion built (2026-09-13 12:36 BST)
+Dogleg waypoints (100km perpendicular) around foe armies within 50km
+of march segments (dodge stale predictions; survive; found more).
+Bar: exceed 44.2 AND most-foundings (style).
