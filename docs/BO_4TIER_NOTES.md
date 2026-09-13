@@ -589,3 +589,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   prefer 500 over 300 (+0.259 vs +0.207 — self-service needs scale), but
   trade-fed villages prefer 300 (towns supply what size would). Size
   optimum is conditional on hierarchy, not a property of villages.
+- G-S1 reseed mid-run: best +1.347 (s64-family, urb 4.6%); 3rd place finds
+  bigger sizes (villages 438@3.87 + 1055@20 + 4613@102 + 34k-regional,
+  urb 12%, +1.299) — first search excursion toward parish-size villages
+  AND big tops together. Constraints channel exploration productively.
