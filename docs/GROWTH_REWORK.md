@@ -55,9 +55,19 @@ week. A brand-new measurement starts from plain neighbours.
 
         offer = serv · (1 + last),    improvement = ceiling · mkt/(mkt + P)
 
-### 4. Trade — hungry mouths eat first
-Nearest pairs first: while one side holds more food per person, it sends
-food until the two are even. Big or small, all mouths count the same — a
+### 4. Forage — armies eat first
+Every soldier eats 1 unit of food a turn, the civilian rate, taken from
+towns within 10km of the ground the army actually marched that turn
+(a camped army forages its disc). Armies eat off the harvest before
+trade: whatever is left is what gets shared and what mouths get fed.
+Shared ground splits by hunger (each town feeds its visitors in
+proportion to their need) and every army taxes its whole path evenly —
+contested breadbaskets suffer first, and a column marching through
+wasteland arrives ravenous.
+
+### 5. Trade — hungry mouths eat first
+Nearest pairs first: while one side holds more food per person (after
+armies have taken theirs), it sends food until the two are even. Big or small, all mouths count the same — a
 starving town eats before a comfortable village overeats, and no donor ever
 drops below the town it feeds. Hauling loses some food on the way (carriers
 eat, grain spoils, tolls take their cut), and less is lost when the receiver
@@ -68,7 +78,7 @@ is big enough to have real roads.
 
 - `melt_per_km` = 0.005 — about 0.5% lost per cart-km
 
-### 5. Births and deaths
+### 6. Births and deaths
 Towns have a fixed number of surviving babies each year. Deaths fall when
 food per person rises above need and climb steeply in hunger — so food acts
 through deaths, not births. Break-even is ~17% over need: towns must be
@@ -80,24 +90,15 @@ overfed to hold their people.
 - `death_rate` = 31/1000/yr; `starvation_elasticity` = 1.6 (half rations
   kill ~3× normal)
 
-### 6. Migration — slow drift to the towns
+### 7. Migration — slow drift to the towns
 A trickle of everyone (0.5%/yr) plus more mobile service folk (5% of
 services) moves each year, uphill toward bigger towns that can feed the
 arrivals. Every arrival is someone's departure — boomtowns grow on village
 births. Nothing appears from nothing: only births and deaths change the
 total number of people.
 
-### 7. Death floor
+### 8. Death floor
 Towns at 10 or fewer people vanish — too few hands to hold the fields.
-
-### 8. Forage — armies eat first
-Every soldier eats 1 unit of food a turn, the civilian rate, taken from
-towns within 10km of the ground the army actually marched that turn
-(a camped army forages its disc). Armies eat off the harvest before trade:
-whatever is left sets births and deaths. Shared ground splits by hunger
-(each town feeds its visitors in proportion to their need) and every army
-taxes its whole path evenly — contested breadbaskets suffer first, and a
-column marching through wasteland arrives ravenous.
 
 ## Settings (every one a real-world quantity)
 
