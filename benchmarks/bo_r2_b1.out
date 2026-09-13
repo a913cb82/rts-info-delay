@@ -16,3 +16,5 @@ resumed 16 evals from benchmarks/bo_r2_b1.jsonl
   warnings.warn(
 /home/acbraith/projects/rl_game_min/.venv/lib/python3.10/site-packages/sklearn/gaussian_process/kernels.py:440: ConvergenceWarning: The optimal value found for dimension 0 of parameter k2__noise_level is close to the specified lower bound 1e-08. Decreasing the bound and calling fit again may find a better value.
   warnings.warn(
+iter 26: best=+1.1674 N=5255 s0=3.05 dt=15.30s
+done: 32 evals, best=+1.1674
