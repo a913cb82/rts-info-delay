@@ -667,3 +667,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (+0.841, urb 4.6%); hand c1000-shape (+0.909) and seed (+0.885) both
   ahead of everything searched. Search trails hand by 0.02–0.07 at the
   standard too — assay leads, search follows, both scales.
+- Sparse chefs@100 (7 tops): +0.878 vs @80 +0.885 — chef spacing flat
+  64–100km at BASE too. Spacing optima refuse to move under any knob.
