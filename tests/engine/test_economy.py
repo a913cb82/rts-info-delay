@@ -160,6 +160,16 @@ class TestMigration:
                          np.array([0.0, 30.0]), np.array([0.0, 0.0]), CFG)
         assert net[0] < 0 < net[1]
 
+    def test_no_flow_beyond_sixty_km(self) -> None:
+        # All town interactions are capped at 60 km: unequal towns 100 km
+        # apart exchange nothing (budgets unspent for lack of destinations).
+        pops = np.array([300.0, 2400.0])
+        S = np.array([390.0, 2356.0])
+        out = np.array([0.5, 0.0])
+        assert np.allclose(_migration(pops, S, out,
+                                      np.array([0.0, 100.0]),
+                                      np.array([0.0, 0.0]), CFG), 0.0)
+
     def test_no_flow_between_equal_towns(self) -> None:
         pops = np.array([300.0, 300.0])
         S = np.array([390.0, 390.0])

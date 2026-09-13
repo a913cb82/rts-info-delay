@@ -128,15 +128,16 @@ total. Exact stacks keep the engine rule (smaller dies, larger ignores).
 
  7. Migrate. Every town constantly leaks a small slice of everyone (~0.5%/year) plus extra
     restless surplus workers, all walking uphill to bigger towns that can feed them (nothing past
-    ~150 km). People are moved, never created. Tiny settlements (≤10 people) wink out.
+    60 km — all town interactions share the trade-reach cap). People are moved,
+    never created. Tiny settlements (≤10 people) wink out.
 
         out_i = th·P_i + nu·serv_i
         attr_ij = max(0, P_j−P_i)·min(1, S_j/P_j)·e^(−d/Lm)·win(d)
         flow_ij = out_i·attr_ij/Σ_k attr_ik
 
     where `th = 0.005`/yr background emigration; `nu = 0.05`/yr of surplus hands;
-    `Lm = 50` km migration scale, `win` cuts to zero at 150 km; towns at `P ≤ 10` die
-    (`town_min_population`).
+    `Lm = 50` km migration scale, `win` cuts to zero at 60 km (trade reach);
+    towns at `P ≤ 10` die (`town_min_population`).
 
 ## Sanity results (3 archetype runs)
 
@@ -495,7 +496,7 @@ N=570: everything ~= 0.06 s/turn. N=3150: neighbor index ~0.3 s once
 per new town set (cached after; was 0.6 s + 76 MB for the dense dist
 matrix, now deleted), market boost ~0.02 s/turn (accumulation over
 stored in-reach pairs), migration ~2-4 s/turn in 26 MB row blocks
-(same flops — the dense 150 km coupling is inherent, only the peak
+(same flops — the dense in-reach coupling is inherent, only the peak
 is bounded), trade negligible (pair lists). Peak RSS at N=3150 is
 ~320 MB, down from ~900 MB. A full 7-shape 1M sweep runs ~40 s end
 to end (was ~3.5 min at 10 turns/config before the serv-lag removal).

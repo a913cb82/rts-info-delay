@@ -484,6 +484,9 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
         feed = np.where(pops > 0.0,
                         np.minimum(1.0, S / np.maximum(pops, 1e-12)), 0.0)
     scale = max(config.migration_scale_km, 1e-9)
+    # All town interactions are capped at 60 km (trade reach), so migration
+    # uses the same cutoff — not info_speed (armies keep 150 km sight).
+    cap_km = _TRADE_REACH_FACTOR * config.cart_distance_km
     inflow = np.zeros(n, dtype=np.float64)
     outflow = np.zeros(n, dtype=np.float64)
     for r0 in range(0, n, _MIG_BLOCK):
@@ -494,7 +497,7 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
         dy = ys[B, None] - ys[None, :]
         Db = np.sqrt(dx * dx + dy * dy)
         gap_b = np.maximum(0.0, pops[None, :] - pops[B, None])
-        mig_b = np.exp(-Db / scale) * _win_np(Db, config.info_speed)
+        mig_b = np.exp(-Db / scale) * _win_np(Db, cap_km)
         A_b = gap_b * feed[None, :] * mig_b
         rs_b = A_b.sum(axis=1)
         fb = np.zeros_like(A_b)
