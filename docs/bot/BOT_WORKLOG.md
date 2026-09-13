@@ -3880,3 +3880,8 @@ mechanisms. Awaiting +EV idea or compute.
 ### Heartbeat (thin 0/25) (2026-09-13 11:56 BST)
 Thin-line builds 0/25 all-time (poverty-trap; EV -2.0). Pro builds
 (10%) don't advance new goal. Nothing unblocked. Loop alive.
+
+### Heartbeat (trap absolute) (2026-09-13 12:01 BST)
+Crack-hunt (feed-to-peak, walk-in creation, terrain, intel, town-count,
+pop-efficiency, steal-growth): all sealed/circular. Poverty-trap absolute
+(zero-sum FFA, no free resources). Loop alive.
