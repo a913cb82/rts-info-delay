@@ -405,17 +405,19 @@ with ~8-13% urban. There is no scale flip.
 
 Cheap replacement: `benchmarks/hierarchy_opt.py` builds matched
 shapes on a moderate region (N ~= 570, ~0.3 s/config, ~3 MB matrices)
-and measures windowed rates (warm 2 + span 2; verified identical to
-warm 4 + span 6 and warm 10 + span 20 — the feedback settles into a
-period-2 cycle by t3, so any even post-warmup window has the same
-mean). Validated: its ranking matches the 1M region (N ~= 3150)
+and measures single-turn rates — the economy is a pure function of
+the towns since the serv-lag removal, so one `_step_core` call is the
+exact instantaneous rate (no warmup, no window, no oscillation).
+Validated: its ranking matches the 1M region (N ~= 3150, ~5 s/config)
 shape-for-shape.
 
-Profiled costs per `_step_core` turn (shared 3.8 GB box, numba on):
-N=570: everything ~= 0.06 s. N=3150: land ~0.5 s once per new town
-set (cached after; was 2.3 s), dist matrix 0.6 s once (76 MB, cached),
-market boost 0.6 s/turn (N x N matmul), migration 1-4 s/turn (four N x N
-float64 temporaries, ~300 MB — the memory hog), trade negligible.
+Profiled costs (shared 3.8 GB box, numba on; load-sensitive, ±2x).
+N=570: everything ~= 0.06 s/turn. N=3150: land ~1 s once per new town
+set (cached after; was 2.3 s brute-force), dist matrix 0.6 s once
+(76 MB, cached), market boost ~0.6 s/turn (N x N matmul), migration
+~1-4 s/turn (four N x N float64 temporaries, ~300 MB — the memory
+hog), trade negligible. A full 7-shape 1M sweep runs ~40 s end to
+end (was ~3.5 min at 10 turns/config before the serv-lag removal).
 The land kernel is no longer O(n^2): per-town neighbor lists (towns
 within 2R, from the cached distance matrix) prune the inner loop from
 N to ~20 candidates. Exact — bit-identical on twin towns at exactly
