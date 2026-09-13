@@ -3571,3 +3571,8 @@ from 66.1). Riding.
 ### Overmatch 270g (69.8, mu 73.4) (2026-09-13 07:37 BST)
 21a74a6 +15g (270 total) -> ord 69.8 (mu 73.4, was 72.6/255g): +0.9 on
 60% wins (incl 388k/334k/293k) + 2nds/3rds + ZERO deaths. 270 games.
+
+### Overmatch 285g (BROKE 70: 70.5!) (2026-09-13 07:42 BST)
+21a74a6 +15g (285 total) -> ord 70.5 (mu 74.1, was 73.4/270g): +0.7 on
+67% wins + 2nds/3rds + ZERO deaths. BROKE 70 (new high). 80 needs +9.5
+(mu 81+). Riding.
