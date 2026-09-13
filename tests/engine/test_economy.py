@@ -658,6 +658,78 @@ class TestBuildBlocked:
         assert w.get_army(a.id) is None
 
 
+class TestForage:
+    """Armies eat first along their march stadiums (10km half-width)."""
+
+    def _world(self):
+        from engine.economy import apply_forage
+        w = World()
+        w.map_size = [1000, 1000]
+        return w, apply_forage
+
+    def test_camped_army_eats_full_need(self) -> None:
+        w, apply_forage = self._world()
+        w.towns.append(Town(id=1, faction=0, x=0, y=0, population=300))
+        w.armies.append(Army(id=2, faction=1, x=0, y=0, size=200.0))
+        S = np.array([360.0])
+        eaten = apply_forage(w, S, {2: (0, 0, 0, 0)}, CFG)
+        assert eaten[2] == pytest.approx(200.0)
+        assert S[0] == pytest.approx(160.0)
+
+    def test_midpath_town_eaten_endpoints_not(self) -> None:
+        # March (0,0)->(100,0): town at midpoint eaten, town 11km off kept.
+        w, apply_forage = self._world()
+        w.towns.append(Town(id=1, faction=0, x=50, y=0, population=300))
+        w.towns.append(Town(id=2, faction=0, x=50, y=11, population=300))
+        w.armies.append(Army(id=3, faction=1, x=0, y=0, size=100.0))
+        S = np.array([360.0, 360.0])
+        eaten = apply_forage(w, S, {3: (0, 0, 100, 0)}, CFG)
+        assert eaten[3] == pytest.approx(100.0)
+        assert S[0] < 360.0 and S[1] == pytest.approx(360.0)
+
+    def test_shared_split_by_need_no_id_bias(self) -> None:
+        # Two overlapping armies, needs 300 vs 100: shares 3:1, either order.
+        w, apply_forage = self._world()
+        w.towns.append(Town(id=1, faction=0, x=50, y=0, population=1000))
+        w.armies.append(Army(id=2, faction=1, x=0, y=0, size=300.0))
+        w.armies.append(Army(id=3, faction=1, x=0, y=0, size=100.0))
+        S = np.array([1200.0])
+        e1 = apply_forage(w, S.copy(), {2: (0, 0, 100, 0), 3: (0, 0, 100, 0)}, CFG)
+        assert e1[2] == pytest.approx(300.0) and e1[3] == pytest.approx(100.0)
+
+    def test_fed_army_nibbles_starving_strips(self) -> None:
+        # Breadbasket shared; fed army marches rich exclusive ground,
+        # starving army only wasteland. Fed nibbles, starving strips.
+        w, apply_forage = self._world()
+        w.towns.append(Town(id=1, faction=0, x=50, y=-7, population=1000))  # shared
+        w.towns.append(Town(id=2, faction=0, x=20, y=8, population=4000))   # fed excl
+        w.towns.append(Town(id=3, faction=0, x=80, y=-23, population=10))   # waste
+        w.armies.append(Army(id=4, faction=1, x=0, y=0, size=500.0))  # fed
+        w.armies.append(Army(id=5, faction=1, x=0, y=-15, size=500.0))  # starving
+        S = np.array([1200.0, 5000.0, 10.0])
+        eaten = apply_forage(w, S, {4: (0, 0, 100, 0), 5: (0, -15, 100, -15)}, CFG)
+        assert eaten[4] == eaten[5] == pytest.approx(500.0)  # both fill...
+        assert S[0] < 700  # ...but the shared breadbasket is stripped ~half,
+        assert S[1] > 4500  # while the fed army's rich land is barely touched
+
+    def test_pipeline_army_starves_village(self) -> None:
+        # Full turn: parked army strips its village vs an untouched control.
+        from engine.step import step
+        from engine.ledger import Ledger
+        cfg = CFG
+        w = World()
+        w.map_size = [1000, 1000]
+        w.towns.append(Town(id=1, faction=0, x=100, y=100, population=300))
+        w.towns.append(Town(id=2, faction=0, x=800, y=800, population=300))
+        w.armies.append(Army(id=3, faction=1, x=100, y=100, size=290.0))
+        ledger = Ledger(cfg.info_speed, 1414)
+        step(w, cfg, ledger, turn=1, orders={})
+        v = w.get_town(1)
+        c = w.get_town(2).population
+        # Foraged village dead or collapsed; control thrives.
+        assert (v is None or v.population < c - 50) and c > 290
+
+
 class TestTrainCap:
     """TRAIN capped at 1 army / town / turn; extras discarded cleanly."""
 

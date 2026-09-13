@@ -24,6 +24,8 @@ class Army:
     has_target: bool = False
     is_viceroy: bool = False
     size: float = 1000.0
+    sx: float | None = None  # x at start of movement (forage segment start)
+    sy: float | None = None  # y at start of movement (forage segment start)
 
 
 @dataclass

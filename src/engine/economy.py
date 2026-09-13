@@ -1081,13 +1081,16 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
 # ---------------------------------------------------------------------------
 # Core step
 
-def _step_core(towns: list[Town], map_size, config: GameConfig):
+def _step_core(towns: list[Town], map_size, config: GameConfig, forage=None):
     """One turn of the economy. One cross-turn state lives on the towns:
     last_improvement (what each town received last turn), which scales
     what it offers this turn — market richness propagates one hop per
     turn. Everything else resolves in a single pass: land -> own-land
-    production -> services -> improvement -> trade -> births/deaths ->
+    production -> services -> improvement -> forage -> trade -> births/deaths ->
     migration. Cold start (all zero) is exactly pairwise.
+
+    forage: optional list of (x0, y0, x1, y1, need) army march segments;
+    armies eat first from the harvest, before trade. None skips it.
     """
     n = len(towns)
     if n == 0:
@@ -1110,8 +1113,17 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
         t.last_improvement = float(v)
     prod = (1.0 + improvement) * base_prod
     S = prod.copy()
+    foraged = 0.0
+    if forage:
+        segs = [(f[0], f[1], f[2], f[3]) for f in forage]
+        needs = np.array([f[4] for f in forage], dtype=np.float64)
+        ftx = np.array([t.x for t in towns], dtype=np.float64)
+        fty = np.array([t.y for t in towns], dtype=np.float64)
+        takes, _ = _forage_takes(ftx, fty, S, segs, needs, FORAGE_RADIUS_KM)
+        foraged = float(takes.sum())
+        S -= takes
     imports, exports, melted = _trade(S, pops, geo, config)
-    assert abs(S.sum() - (prod.sum() - melted)) < 1e-6 * max(prod.sum(), 1.0)
+    assert abs(S.sum() - (prod.sum() - melted - foraged)) < 1e-6 * max(prod.sum(), 1.0)
     births = b_t * pops  # fixed: food acts through deaths, not births
     sp = S / np.maximum(pops, 1e-12)
     deaths = m_t * pops * np.power(np.maximum(sp, 1e-9),
@@ -1176,7 +1188,13 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
         return events
     towns = world.towns
     old = [t.population for t in towns]
-    new_pops, _serv = _step_core(towns, world.map_size, config)
+    segs = []
+    for a in world.armies:
+        if a.size <= 0.0 or a.sx is None or a.sy is None:
+            continue
+        segs.append((a.sx, a.sy, a.x, a.y, a.size * FORAGE_PER_MOUTH))
+    new_pops, _serv = _step_core(towns, world.map_size, config,
+                                 forage=segs or None)
     for t, p in zip(towns, new_pops):
         t.population = float(p)
     for t, o, p in zip(towns, old, new_pops):
@@ -1191,6 +1209,137 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
         events.append({"kind": "town_death", "id": t.id, "x": t.x, "y": t.y,
                        "faction": t.faction, "is_capital": was_capital})
     return events
+
+
+# ---------------------------------------------------------------------------
+# Forage — armies eat first along their march path
+
+FORAGE_PER_MOUTH = 1.0  # soldiers eat at the civilian rate (1 food/mouth/turn)
+FORAGE_RADIUS_KM = 10.0  # stadium half-width around the traversed segment
+
+
+def _seg_dist2(px, py, x0, y0, x1, y1):
+    """Squared distance from points (px, py) to segment (x0,y0)-(x1,y1)."""
+    dx = x1 - x0
+    dy = y1 - y0
+    L2 = dx * dx + dy * dy
+    if L2 <= 1e-18:
+        return (px - x0) ** 2 + (py - y0) ** 2
+    t = np.clip(((px - x0) * dx + (py - y0) * dy) / L2, 0.0, 1.0)
+    cx = x0 + t * dx
+    cy = y0 + t * dy
+    return (px - cx) ** 2 + (py - cy) ** 2
+
+
+def _forage_takes(tx, ty, S, segs, needs, radius):
+    """Forage takes per town. Pure numpy, no pairwise loops.
+
+    Towns are indexed once into a uniform grid (cell = radius); each army
+    only ever measures towns in the grid cells its stadium bbox touches.
+    Cost is O(towns + armies x local candidates) — never armies x towns.
+
+    Shared towns split offers by need; each army takes one global fraction
+    of (shared offers + exclusive stocks), shared ground first. Returns
+    (takes[T], eaten[A]).
+    """
+    T = len(tx)
+    A = len(segs)
+    takes = np.zeros(T)
+    eaten = np.zeros(A)
+    if T == 0 or A == 0 or radius <= 0.0:
+        return takes, eaten
+    cell = radius
+    ix = np.floor((tx - tx.min()) / cell).astype(np.int64)
+    iy = np.floor((ty - ty.min()) / cell).astype(np.int64)
+    W = int(ix.max()) + 1
+    cells: dict[int, list] = {}
+    for t in range(T):
+        cells.setdefault(int(iy[t]) * W + int(ix[t]), []).append(t)
+    x0lo = tx.min()
+    y0lo = ty.min()
+
+    def candidates(x0, y0, x1, y1):
+        lox = max(math.floor((min(x0, x1) - radius - x0lo) / cell), 0)
+        hix = math.floor((max(x0, x1) + radius - x0lo) / cell)
+        loy = max(math.floor((min(y0, y1) - radius - y0lo) / cell), 0)
+        hiy = math.floor((max(y0, y1) + radius - y0lo) / cell)
+        out = []
+        for gy in range(loy, hiy + 1):
+            for gx in range(lox, hix + 1):
+                lst = cells.get(gy * W + gx)
+                if lst:
+                    out.extend(lst)
+        if not out:
+            return np.zeros(0, dtype=np.int64)
+        c = np.array(out, dtype=np.int64)
+        d2 = _seg_dist2(tx[c], ty[c], x0, y0, x1, y1)
+        return c[d2 <= (radius + 1e-9) ** 2]
+
+    # Pass 1: coverage — who eats where, and each town's total need.
+    cand_list = []
+    need_total = np.zeros(T)
+    for i in range(A):
+        if needs[i] <= 0.0:
+            cand_list.append(np.zeros(0, dtype=np.int64))
+            continue
+        c = candidates(*segs[i])
+        cand_list.append(c)
+        if len(c):
+            np.add.at(need_total, c, needs[i])
+    # Pass 2: one global fraction per army, shared ground first.
+    S = np.maximum(S, 0.0)
+    for i in range(A):
+        need = needs[i]
+        if need <= 0.0:
+            continue
+        c = cand_list[i]
+        if not len(c):
+            continue
+        shared_m = need_total[c] > needs[i] + 1e-12
+        sh = c[shared_m]
+        ex = c[~shared_m]
+        offers = np.zeros(len(sh))
+        nz = need_total[sh] > 1e-18
+        offers[nz] = S[sh[nz]] * need / need_total[sh[nz]]
+        claimable = offers.sum() + S[ex].sum()
+        if claimable <= 1e-18:
+            continue
+        f = min(1.0, need / claimable)
+        if len(sh):
+            np.add.at(takes, sh, f * offers)
+        if len(ex):
+            np.add.at(takes, ex, f * S[ex])
+        eaten[i] = f * claimable
+    return takes, eaten
+
+
+def apply_forage(world, S, segments, config) -> dict[int, float]:
+    """Armies eat first from towns in their march stadiums.
+
+    world: World; S: stock array aligned with world.towns (mutated in
+    place); segments: {army_id: (x0, y0, x1, y1)} traversed this turn.
+    Returns {army_id: eaten}. Armies served without order bias: shared
+    towns split by need, every army takes one even fraction.
+    """
+    towns = world.towns
+    if not towns or not segments:
+        return {}
+    tx = np.array([t.x for t in towns], dtype=np.float64)
+    ty = np.array([t.y for t in towns], dtype=np.float64)
+    segs, needs, ids = [], [], []
+    for aid, sg in segments.items():
+        a = world.get_army(aid)
+        if a is None or a.size <= 0.0:
+            continue
+        segs.append(tuple(float(v) for v in sg))
+        needs.append(a.size * FORAGE_PER_MOUTH)
+        ids.append(aid)
+    if not segs:
+        return {}
+    takes, eaten = _forage_takes(tx, ty, np.asarray(S, dtype=np.float64),
+                                 segs, np.array(needs), FORAGE_RADIUS_KM)
+    S -= takes
+    return {aid: float(e) for aid, e in zip(ids, eaten)}
 
 
 # ---------------------------------------------------------------------------

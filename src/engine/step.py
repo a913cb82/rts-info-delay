@@ -624,6 +624,8 @@ def _phase_propagation(
 def _phase_movement(world: World, config: GameConfig) -> list[dict]:
     """Advance armies toward targets, resolve path-blocking contacts."""
     from engine.movement import move_armies
+    for a in world.armies:
+        a.sx, a.sy = a.x, a.y  # forage segment starts here
     return move_armies(world, config)
 
 
