@@ -3405,3 +3405,7 @@ Converged true ~61-65.
 ### Buzzer 1510g (2026-09-13 05:22 BST)
 Buzzer +10g (1510 total) -> ord 63.9 (mu 67.3, was 68.0/1500g): -0.8 on
 4W + 2 F1-deaths + fourths. 1510 games.
+
+### Buzzer 1520g (2026-09-13 05:27 BST)
+Buzzer +10g (1520 total) -> ord 64.5 (mu 67.9, was 67.3/1510g): +0.6 on
+4W + quality 2nds + ZERO deaths + fourth. 1520 games.
