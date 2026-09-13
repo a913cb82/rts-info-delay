@@ -499,3 +499,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (new district best), urb 24%, shares 76/21.5/2.4 vs reality 72/15/5–10.
   Villages land, urban total lands; bourgs overshoot, center small. Same
   numbers-lever as 1M, same squeeze one level up.
+- Density-S2 final (96 evals, 42 model): tiny-mush wins again (+1.392,
+  P0=141, urb 83%); runner-up s64t (+1.362). Unconstrained search is now
+  0/3 on shares (mush, mush, sparse) — constraints or hand shapes only.
