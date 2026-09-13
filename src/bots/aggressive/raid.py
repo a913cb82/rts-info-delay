@@ -156,6 +156,10 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
+            # Overmatch port (mirror-proven): +2 clean-kill margin on priced
+            # takes (stale-need donations bleed thin packs; clean takes
+            # snowball). Unpriced denial unchanged (max-pressure).
+            need = need + 2
             # Bird-in-hand: an executable take now beats a bigger prize
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready. Capitals carry a
