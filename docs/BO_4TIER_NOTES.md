@@ -430,3 +430,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   +43% mouths. Only chefs (2 vs 7%) still short.
 - density-BO#1 (running): 1M prem.75+starv1.6, 3 light seeds, 96 evals —
   can search find the scaled corner itself? 1/3 searches spent.
+- 100k scaled ×1.43 (combo knobs): 298×429 + 19×858 + 3575, density 32.6
+  ✓, settled +1.375. Sizes land (bourgs 858 ✓, chef low-edge); shares
+  86/11/2.4 preserved-as-before (village count still high). In an r31
+  disc this reads ~200×429 + ~13×858 + 1 chef — counts near reality too.
