@@ -555,3 +555,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (+0.885); dense-combo 2nd (+0.876); dense-bourg 3rd (+0.868). The hand
   small-chef lead (+0.909) stands untested by search — none of its exact
   geometry fell in 12 model evals. Next pricing should seed FROM it.
+- Pricing#3 (running): BASE + hand-lead seed (500@18/1000@80/10000@150 —
+  ratio bounds cap the regional at 10k in seed form; search can push the
+  ratio). First search that starts FROM the hand lead instead of chasing
+  it. 3/3 pricing committed.
