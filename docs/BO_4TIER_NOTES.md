@@ -409,3 +409,16 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   Pricing#3 (running): district prem.75 tiebreak (incumbent +1.217 vs
   dense-bourg +1.159 vs sparse +1.217) — can search break a three-way
   tie? 3/3 pricing committed.
+- Pricing#3 verdict: incumbent wins 4th time (+1.217); dense-bourg seed
+  2nd (+1.194, urb 20%). Tie not broken — minimal-urban wins outright
+  under search, dense shares trail by 0.023. Budget spent 3/3 + 3/3.
+\n## Round final: shares need a standard change, not more search
+\n- Every search (9 campaigns) crowns minimal-urban; every share gain came
+  from assay. Proposed standard change (for approval, not applied):
+  prem.75 (+starv1.6 at 1M) as the share configuration — 4-tier/3-tier
+  optimal held, dense shares within 0.01–0.03, villages land via
+  displacement (73–77%), urban 19–27%. Costs: growth runs 3–4× history,
+  tops stay small, mid/base regimes prefer fewer tiers.
+- Left open: founding costs (village size), urban income (top sizes),
+  terrain/waste (density 24→33). No further BO recommended until a
+  mechanism lands — search has priced everything on the table.
