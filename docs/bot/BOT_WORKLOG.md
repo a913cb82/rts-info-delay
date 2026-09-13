@@ -3948,3 +3948,7 @@ Rated clean 15g (3x5) -> ord 39.7 (mu 47.3): FAIL (gate 47.2+). More
 wins (33% vs 20%) but more deaths (peer-crusades donate; net negative).
 Tighten-don't-loosen (1.0 beats 0.8). Reverted (main keeps turtle 47.2).
 Parked on loop/turtle-wealth2.
+
+### Heartbeat (turtle parked x10) (2026-09-13 12:16 BST)
+Tuning ladder wandering (v1 45.6 > v2 39.7; v3 would wander further).
+Turtle parked (10 fails). All three parked. Loop alive.
