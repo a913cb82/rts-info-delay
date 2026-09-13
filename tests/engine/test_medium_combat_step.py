@@ -67,7 +67,23 @@ class TestCombatMedium:
         spawned = [a for a in w.armies if a.id != 10]
         assert len(spawned) == 1
         resolve_combat(w, CFG)
-        # 1v1 mutual kill: the new spawn dies with its enemy
+        # Small spawn (capped 200) dies to the bigger enemy; enemy survives
+        assert [a.id for a in w.armies] == [10]
+
+    def test_C13b_equal_sizes_mutual_kill(self) -> None:
+        """C13b: Equal sizes still kill each other (weakness ties)."""
+        w = World()
+        w.map_size = [1000, 1000]
+        tid = w.allocate_id()
+        t = Town(id=tid, faction=0, x=0, y=0, population=10000)
+        w.towns.append(t)
+        enemy = Army(id=10, faction=1, x=3, y=0)
+        w.armies = [enemy]
+        w.standing_orders.append(StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
+        apply_train(w, CFG)
+        spawned = [a for a in w.armies if a.id != 10]
+        assert len(spawned) == 1 and spawned[0].size == 1000.0
+        resolve_combat(w, CFG)
         assert len(w.armies) == 0
 
     def test_C14_score_reflects_deaths(self) -> None:
@@ -166,9 +182,9 @@ class TestTurnResolution:
         # Spawned in economy (after combat), so it exists after turn 1 ...
         spawned = [a for a in w.armies if a.id != 10]
         assert len(spawned) == 1
-        # ... and fights a 1v1 mutual kill on turn 2 (no immunity)
+        # ... and the capped spawn (300) dies to the bigger enemy on turn 2
         step(w, CFG, [])
-        assert len(w.armies) == 0
+        assert [a.id for a in w.armies] == [10]
 
     def test_T13_multiple_systems_one_step(self) -> None:
         """T13: Multiple systems interact in one step."""

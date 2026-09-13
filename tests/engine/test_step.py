@@ -105,9 +105,9 @@ class TestTurnOrder:
         # Spawned in economy (after combat), so it exists after turn 1 ...
         friendly_armies = [a for a in w.armies if a.faction == 0]
         assert len(friendly_armies) >= 1
-        # ... and fights a 1v1 mutual kill on turn 2 (no immunity)
+        # ... and the capped spawn (500) dies to the bigger enemy on turn 2
         step(w, CFG, ledger, turn=2, orders={})
-        assert len(w.armies) == 0
+        assert [a.id for a in w.armies] == [2]
 
     def test_eviction_last(self) -> None:
         """T6: Ledger eviction happens after knowledge phase."""
@@ -311,6 +311,42 @@ class TestCommands:
         step(w, CFG, ledger, turn=1, orders=orders)
         a = w.armies[0]
         assert not a.has_target
+
+    def test_move_to_partial_splits(self) -> None:
+        """MOVE_TO with amount splits the army: mover keeps the id."""
+        a = _army(0, 0, 0, 1)
+        a.size = 1000.0
+        w = _world_with(armies=[a])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_TO 1 0 0 100 0 400"]})
+        assert len(w.armies) == 2
+        mover = w.get_army(1)
+        assert mover is not None and mover.size == 400.0
+        assert mover.has_target  # the mover marches
+        rest = [x for x in w.armies if x.id != 1][0]
+        assert rest.size == 600.0 and not rest.has_target
+
+    def test_move_to_amount_zero_moves_all(self) -> None:
+        """amount=0 (or oversize) moves the whole army, no split."""
+        a = _army(0, 0, 0, 1)
+        a.size = 1000.0
+        w = _world_with(armies=[a])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["MOVE_TO 1 0 0 100 0 0"]})
+        assert len(w.armies) == 1 and w.armies[0].size == 1000.0
+
+    def test_build_partial_leaves_remainder(self) -> None:
+        """BUILD with size < army size spends part, army marches on."""
+        a = _army(50, 50, 0, 1)
+        a.size = 1000.0
+        w = _world_with(armies=[a])
+        ledger = Ledger(CFG.info_speed, 1414)
+        step(w, CFG, ledger, turn=1, orders={0: ["BUILD 1 50 50 400"]})
+        new_towns = [t for t in w.towns if t.x == 50 and t.y == 50]
+        assert len(new_towns) == 1
+        assert new_towns[0].population == pytest.approx(360.0)  # 400 x 0.9
+        assert w.get_army(1) is not None
+        assert w.get_army(1).size == pytest.approx(600.0)
 
     def test_move_to_replaces(self) -> None:
         """O3: New MOVE_TO replaces old target."""

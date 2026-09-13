@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from engine.config import GameConfig
-from engine.combat import compute_weaknesses, resolve_combat
-from engine.world import Army, Town, World
+from engine.combat import compute_weaknesses, resolve_combat, resolve_merges
+from engine.world import Army, CommandType, StandingOrder, Town, World
 
 CFG = GameConfig()
 
@@ -81,14 +81,14 @@ class TestCombat:
             assert a.id in alive
 
     def test_weakness_counts(self) -> None:
-        """C4: Single sees 2 enemies (weakness=2), each of pair sees 1."""
+        """C4: Single sees 2 enemies (weakness=2xsize), each of pair sees 1."""
         pair = [_army(0, 0, faction=0, aid=1), _army(5, 0, faction=0, aid=2)]
         single = [_army(3, 5, faction=1, aid=3)]
         w = _world_with(*(pair + single))
         weaknesses = compute_weaknesses(w.armies, CFG)
-        assert weaknesses[3] == 2  # single sees 2 enemies
-        assert weaknesses[1] == 1  # each of pair sees 1
-        assert weaknesses[2] == 1
+        assert weaknesses[3] == 2000.0  # single sees 2 enemies × 1000
+        assert weaknesses[1] == 1000.0  # each of pair sees 1
+        assert weaknesses[2] == 1000.0
 
     def test_no_enemies_safe(self) -> None:
         """C5: Lone army → survives."""
@@ -117,8 +117,8 @@ class TestCombat:
         weaknesses = compute_weaknesses(w.armies, CFG)
         # b sees 2 enemies (a1, a2), weakness=2
         # a1 sees 1 enemy (b), weakness=1 (a2 is same faction, not enemy)
-        assert weaknesses[3] == 2
-        assert weaknesses[1] == 1
+        assert weaknesses[3] == 2000.0
+        assert weaknesses[1] == 1000.0
 
     def test_multifaction_all_enemies(self) -> None:
         """C7b: 3 factions, 1 army each, all within radius → all die."""
@@ -259,9 +259,9 @@ class TestCombat:
         spawned = [army for army in w.armies if army.id != 10]
         assert len(spawned) == 1
         resolve_combat(w, CFG)
-        # 1v1 mutual kill: the new spawn dies with its enemy
+        # Capped spawn (200) dies to the bigger enemy; enemy survives
         assert len([a for a in w.armies if a.id != 10]) == 0
-        assert len(w.armies) == 0
+        assert [a.id for a in w.armies] == [10]
 
     def test_battle_event_has_combatants_with_id_faction(self) -> None:
         """Battle event combatants list has {id, faction} entries."""
@@ -284,6 +284,78 @@ class TestCombat:
         alive = {army.id for army in w.armies}
         assert 1 not in alive
         assert 2 in alive and 3 in alive
+
+
+class TestMerges:
+    """Co-located same-faction idle armies merge (lower id survives)."""
+
+    def _world(self) -> World:
+        w = World()
+        w.map_size = [1000, 1000]
+        return w
+
+    def test_idle_merge_sums(self) -> None:
+        w = self._world()
+        a = _army(10, 10, faction=0, aid=5); a.size = 400.0
+        b = _army(10, 10, faction=0, aid=3); b.size = 700.0
+        w.armies.extend([a, b])
+        resolve_merges(w, CFG)
+        assert [x.id for x in w.armies] == [3]
+        assert w.armies[0].size == 1100.0
+
+    def test_en_route_never_merges(self) -> None:
+        w = self._world()
+        a = _army(10, 10, faction=0, aid=1)
+        b = _army(10, 10, faction=0, aid=2)
+        b.has_target = True; b.target_x = 500.0; b.target_y = 500.0
+        w.armies.extend([a, b])
+        resolve_merges(w, CFG)
+        assert len(w.armies) == 2
+
+    def test_viceroy_never_merges(self) -> None:
+        w = self._world()
+        a = _army(10, 10, faction=0, aid=1)
+        v = _army(10, 10, faction=0, aid=2); v.is_viceroy = True
+        w.armies.extend([a, v])
+        resolve_merges(w, CFG)
+        assert len(w.armies) == 2
+
+    def test_builder_keeps_need(self) -> None:
+        # Idle 700 + builder 500 (need 300): builder keeps 300, idle grows.
+        w = self._world()
+        a = _army(10, 10, faction=0, aid=1); a.size = 700.0
+        b = _army(10, 10, faction=0, aid=2); b.size = 500.0
+        w.armies.extend([a, b])
+        w.standing_orders.append(StandingOrder(
+            command=CommandType.BUILD, target_id=2, target_type="army",
+            args=[10.0, 10.0, 300.0]))
+        resolve_merges(w, CFG)
+        assert len(w.armies) == 2
+        by_id = {x.id: x for x in w.armies}
+        assert by_id[1].size == 900.0  # idle absorbs the surplus
+        assert by_id[2].size == 300.0  # builder keeps exactly its need
+        builds = [s for s in w.standing_orders
+                  if s.command == CommandType.BUILD]
+        assert len(builds) == 1 and builds[0].target_id == 2
+
+    def test_two_builders_pool(self) -> None:
+        # Needs 300 + 400, sizes 500 + 200: one builder holds 700, no surplus.
+        w = self._world()
+        a = _army(10, 10, faction=0, aid=1); a.size = 500.0
+        b = _army(10, 10, faction=0, aid=2); b.size = 200.0
+        w.armies.extend([a, b])
+        w.standing_orders.append(StandingOrder(
+            command=CommandType.BUILD, target_id=1, target_type="army",
+            args=[10.0, 10.0, 300.0]))
+        w.standing_orders.append(StandingOrder(
+            command=CommandType.BUILD, target_id=2, target_type="army",
+            args=[10.0, 10.0, 400.0]))
+        resolve_merges(w, CFG)
+        assert [x.id for x in w.armies] == [1]
+        assert w.armies[0].size == 700.0
+        builds = [s for s in w.standing_orders
+                  if s.command == CommandType.BUILD]
+        assert len(builds) == 1 and builds[0].args[2] == 700.0
 
 
 class TestCaptureCapitals:
@@ -391,7 +463,7 @@ class TestCaptureReadsCombat:
         w.armies.append(Army(id=4, faction=1, x=60, y=0))  # R: w0 throughout
         _, weaknesses = resolve_combat(w, CFG)
         assert {a.id for a in w.armies} == {1, 3, 4}  # D died, the rest live
-        assert (weaknesses.get(1), weaknesses.get(4)) == (1, 0)
+        assert (weaknesses.get(1), weaknesses.get(4)) == (1000.0, 0)
         resolve_captures(w, CFG, weaknesses)
         t = w.get_town(0)
         assert t is not None and t.faction == 1 and t.population == 1000

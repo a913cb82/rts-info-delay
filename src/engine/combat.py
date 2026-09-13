@@ -7,16 +7,92 @@ import math
 import numpy as np
 
 from engine.config import GameConfig
-from engine.world import Army, World
+from engine.world import Army, CommandType, World
+
+
+def _build_need(world: World, army: Army, config: GameConfig) -> float:
+    """Size this army's BUILD order needs (0 if it holds none)."""
+    for so in world.standing_orders:
+        if so.command == CommandType.BUILD and so.target_id == army.id:
+            try:
+                return float(so.args[2]) if len(so.args) >= 3 else config.army_cost
+            except (ValueError, TypeError):
+                return config.army_cost
+    return 0.0
+
+
+def _en_route(army: Army) -> bool:
+    """True when the army is still travelling to its MOVE_TO target."""
+    if not army.has_target:
+        return False
+    return math.hypot(army.target_x - army.x, army.target_y - army.y) > 1e-9
+
+
+def resolve_merges(world: World, config: GameConfig) -> None:
+    """Merge co-located same-faction idle armies (lower id survives).
+
+    Runs after movement, before combat. Viceroys never merge; armies still
+    travelling never merge. BUILD needs pool onto the survivor's single
+    order at the shared spot; any surplus forms a second idle army (which
+    vanishes when there is none).
+    """
+    groups: dict[tuple[int, float, float], list[Army]] = {}
+    for a in world.armies:
+        if a.is_viceroy:
+            continue
+        groups.setdefault((a.faction, a.x, a.y), []).append(a)
+    for members in groups.values():
+        eligible = [a for a in members if not _en_route(a)]
+        if len(eligible) < 2:
+            continue
+        eligible.sort(key=lambda a: a.id)
+        needs = {a.id: _build_need(world, a, config) for a in eligible}
+        builders = [a for a in eligible if needs[a.id] > 0.0]
+        idles = [a for a in eligible if needs[a.id] <= 0.0]
+        total_need = sum(needs.values())
+        total_size = sum(a.size for a in eligible)
+        if builders:
+            # The lowest-id builder carries the pooled BUILD order;
+            # the next army in line holds the surplus idle.
+            survivor = builders[0]
+            rest = [a for a in eligible if a.id != survivor.id]
+            survivor.size = min(total_size, total_need)
+            # One BUILD order for the pooled need at the shared spot.
+            for so in [s for s in world.standing_orders
+                       if s.command == CommandType.BUILD
+                       and s.target_id in {a.id for a in eligible}]:
+                world.standing_orders.remove(so)
+            from engine.world import StandingOrder
+            world.standing_orders.append(StandingOrder(
+                command=CommandType.BUILD, target_id=survivor.id,
+                target_type="army",
+                args=[survivor.x, survivor.y, total_need]))
+            if rest and total_need < total_size - 1e-9:
+                second = rest[0]
+                second.size = total_size - survivor.size
+                second.has_target = False
+                gone = rest[1:]
+            else:
+                gone = rest
+        else:
+            survivor = eligible[0]
+            survivor.size = total_size
+            survivor.has_target = False
+            gone = list(eligible[1:])
+        for a in gone:
+            for so in [s for s in world.standing_orders if s.target_id == a.id]:
+                world.standing_orders.remove(so)
+            world.remove_army(a.id)
+        world.mark_dirty()
 
 
 def _brute_weakness_adj(
     armies: list[Army], R2: float, adj: dict[int, set[int]] | None
-) -> dict[int, int]:
+) -> dict[int, float]:
     """O(n^2) weakness (+ optional adjacency). Fallback and small-n path."""
-    result: dict[int, int] = {}
+    result: dict[int, float] = {}
     for a in armies:
-        cnt = 0
+        cnt = 0.0
         ax, ay, af, aid = a.x, a.y, a.faction, a.id
         for b in armies:
             if b.id == aid or b.faction == af:
@@ -24,7 +100,7 @@ def _brute_weakness_adj(
             dx = b.x - ax
             dy = b.y - ay
             if dx * dx + dy * dy <= R2:
-                cnt += 1
+                cnt += b.size
                 if adj is not None:
                     adj[aid].add(b.id)
                     adj[b.id].add(aid)
@@ -34,15 +110,15 @@ def _brute_weakness_adj(
 
 def compute_weaknesses(
     armies: list[Army], config: GameConfig
-) -> dict[int, int]:
-    """Return {army_id: num_enemy_armies_within_interact_radius}."""
+) -> dict[int, float]:
+    """Return {army_id: total enemy size within interact_radius}."""
     weaknesses, _ = _compute_weaknesses_and_adj(armies, config)
     return weaknesses
 
 
 def _compute_weaknesses_and_adj(
     armies: list[Army], config: GameConfig
-) -> tuple[dict[int, int], dict[int, set[int]]]:
+) -> tuple[dict[int, float], dict[int, set[int]]]:
     """Single-pass weakness + adjacency. Returns (weaknesses, adj)."""
     n = len(armies)
     if n == 0:
@@ -75,12 +151,12 @@ def _compute_weaknesses_and_adj(
         result = {}
         for a in armies:
             neigh = sh.query_radius(float(a.x), float(a.y), float(radius + 1e-9))
-            cnt = 0
+            cnt = 0.0
             for idx in neigh:
                 b = armies[idx]
                 if b.id == a.id or b.faction == a.faction:
                     continue
-                cnt += 1
+                cnt += b.size
                 adj[a.id].add(b.id)
                 adj[b.id].add(a.id)
             result[a.id] = cnt
@@ -92,12 +168,12 @@ def _compute_weaknesses_and_adj(
 
 def resolve_combat(
     world: World, config: GameConfig
-) -> tuple[list[dict], dict[int, int]]:
+) -> tuple[list[dict], dict[int, float]]:
     """Compute deaths from final positions.
 
     Returns (battle event dicts, weakness table). The table is shared
     with captures: towns read combat directly (they never contributed —
-    weakness counts enemy armies only). Fast paths return {} (exact:
+    weakness sums enemy size only). Fast paths return {} (exact:
     with no enemies anywhere, captures never consult values).
     An army dies if any enemy within interact_radius has weakness ≤ its own.
     Deaths are simultaneous — computed from snapshot of positions.
