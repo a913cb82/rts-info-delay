@@ -700,3 +700,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   loses with the pack — center-placed 20k regional (hand +0.909) vs
   lattice 10k (seed) differs by 0.02+. Center placement itself is worth
   hundredths: unseedable geometry decides the lead.
+- Center placement at district too: lattice-chef +0.868 vs center-chef
+  +0.882. Center beats lattice by ~0.014 at both scales — symmetric hubs
+  cover better than lattice vertices, everywhere.
