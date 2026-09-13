@@ -4120,3 +4120,6 @@ Rated clean 15g (3x5) -> ord 23.9 (mu 31.6): FAIL (gate 37.0+). Solos
 walk-in sometimes (88k/254k wins) but donate into stale-empty mostly
 (deaths). Pack-only validated (speed kills thin). Reverted (main keeps
 aggressive 37.0). Parked on loop/aggr-onesie.
+
+### Heartbeat (v3 triaged) (2026-09-13 13:36 BST)
+D-certain marginal, floor-first/home-garrison/phase-gate dead, compound-pro irrelevant. Loop alive.
