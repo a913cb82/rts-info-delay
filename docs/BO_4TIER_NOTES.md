@@ -504,3 +504,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   0/3 on shares (mush, mush, sparse) — constraints or hand shapes only.
 - District BASE bourg750@13: +0.882 vs 600@11 +0.927. Smaller+dense wins
   at district too — the squeeze holds at both scales under the standard.
+- Knob gaps filled (cold, 4-tier seed vs s64t): death .025 → 4-tier wins
+  (+1.08, break-even S/P≈1.03 makes towns cheap); death .040 → both sink
+  (+0.28, 4-tier still wins); prem .10 → s64t wins (+0.18 vs +0.14, floor
+  for 4-tier sits ~0.1–0.25); sf 1.2/1.5 → 4-tier wins both (+0.59/+1.02);
+  birth .02 → 4-tier wins (+0.36). 4-tier robust to yields and births;
+  premium has a hard floor, death rate sets town cheapness directly.
