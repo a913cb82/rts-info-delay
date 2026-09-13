@@ -463,3 +463,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   ~0.005 < gap 0.014). 4-tier leads at combo knobs by assay AND search.
 - Pricing#1 (running): combo knobs, seed 84 — tiebreak adjudication by
   search (4-tier +1.381 vs s64t +1.367, gap at noise level). 1/3 pricing.
+- District combo recheck: lean +1.395 > s64t +1.122 > flat +0.635.
+  District 3-tier leg holds under combo knobs with a wide margin.
