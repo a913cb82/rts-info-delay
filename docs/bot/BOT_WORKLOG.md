@@ -4102,3 +4102,10 @@ Rated clean 15g (3x5) -> ord 19.6 (mu 27.5): FAIL (gate 37.0+). Viable
 takes land (3W/15: 236k/165k/183k) but skipping small loses fuel
 (starve when no viable). Hostage-fuel matters (volume beats quality).
 Reverted (main keeps aggressive 37.0). Parked on loop/aggr-bypass.
+
+### Research v3 synthesis (2026-09-13 13:31 BST)
+21 ideas (7+4+6). STANDOUT: onesie-raider (inversion INV1: S==0 viable
+takes launch SOLO immediately, no pack assembly; speed-premium for thin;
+walk-in empties can't donate). Queued FIRST (aggressive). Others: volume-
+predator=baseline (redundant), D-certain (marginal), quiescence (conflicts
+muster), contacts=lanes (dead), rest built/complex.
