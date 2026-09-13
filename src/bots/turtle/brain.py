@@ -177,8 +177,22 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # one builder at a time
     built = False
+    # Guard-lock (coherent fortress foundation): 2 home guards per town
+    # NEVER march (no takes/settles/scouts poach them; interference-proof).
+    # Surplus (3+) may dispatch; guards hold position (2v1 cleaners).
+    locked: set[int] = set()
+    for t in own_t:
+        _h = sorted((a for a in state.own_armies()
+                     if not state.army_has_target(a.id)
+                     and math.hypot(a.x - t.x, a.y - t.y) <= 20.0),
+                    key=lambda a: math.hypot(a.x - t.x, a.y - t.y))
+        for a in _h[:2]:
+            locked.add(a.id)
     for p in sorted(state.own_armies(), key=lambda a: min((math.hypot(a.x - t.x, a.y - t.y) for t in own_t), default=0)):
         if p.is_viceroy and state.army_has_target(p.id):
+            continue
+        # Guard-lock holds (locked guards sit; skip all dispatch).
+        if p.id in locked:
             continue
         # recall first: threatened settlers abort and come home (2v1 beats
         # waves, 1v1 only trades — every home army counts). Skipped when

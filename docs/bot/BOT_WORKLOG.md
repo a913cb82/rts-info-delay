@@ -4180,3 +4180,9 @@ Loop alive.
 
 ### Heartbeat (positioning marginal) (2026-09-13 14:11 BST)
 Center-void/edge-flank positioning: marginal (long marches). Loop alive.
+
+### Guard-lock built (coherent fortress v1) (2026-09-13 13:51 BST)
+Clean-sheet rewrite step 1 (interference-proof by construction): 2 home
+guards per town NEVER march (locked set; surplus dispatches; guards sit
+as 2v1 cleaners). Foundation for ghost-hunt + compound-untaxed phases.
+Bar: exceed 47.2 AND guards (style).
