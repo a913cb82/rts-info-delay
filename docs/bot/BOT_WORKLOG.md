@@ -3786,3 +3786,10 @@ survive (cut 20% deaths) AND take (13%->55% wins) for 60. Queued.
 Aggressive +15g (62 total) -> ord 37.0 (mu 41.6, was 47.3/47g): -2.8 on
 1W/15 (7%) + ~60% death-zeros. Truth worse (~37). Double-bind confirmed
 (take-thin donates vs wait starves). Stuck-proven. Parked.
+
+### All-three-stuck verdict (truths converged) (2026-09-13 10:46 BST)
+Truths (earned, converged): turtle 47.2 (20% deaths, 13% wins),
+expander 44.2 (7% wins), aggressive 37.0 (60% deaths). All stuck-proven
+(turtle 8 fails triple-bind; expander 6 fails; aggressive 12 fails
+double-bind). Bold-rewrite ideas die on inspection (poor/mechanics).
+Goal (all >=60) blocked on mechanisms, not volume. Parked all three.
