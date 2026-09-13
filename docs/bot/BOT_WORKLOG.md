@@ -3765,3 +3765,8 @@ Rated clean 15g (3x5) -> ord 20.5 (mu 28.5): FAIL (gate 44.2+). Wins HUGE
 (710k/302k/289k/210k/64k; 33% wins) but dies often (thin; ~40% zeros).
 Variance kills ordinal (deaths punish more than huge wins reward).
 Reverted (main keeps expander 44.2). Parked on loop/exp-hyper.
+
+### Turtle surplus-takes built (2026-09-13 10:11 BST)
+Takes without muster-tax: calm leftovers take fresh-empty viable spaced
+towns (natural/surplus force; fortress holds; threatened keep guards).
+Bar (gate): ord>=47.3 AND guards hold (style).
