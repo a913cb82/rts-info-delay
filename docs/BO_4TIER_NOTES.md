@@ -363,3 +363,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District prem.75+starv1.6: lean 3-tier +1.395 vs s64t +1.122. Combined
   knobs keep 3-tier optimal at 100k with a wide margin — district leg
   holds under every knob regime tested.
+- Combo-knob cross-check (prem.75+starv1.6): 4-tier dense shape +1.381 vs
+  s64t +1.367. Four tiers lead at every knob setting where tops pay at
+  all; the only regimes preferring fewer tiers are the gentle ones where
+  no tops pay (documented earlier).
