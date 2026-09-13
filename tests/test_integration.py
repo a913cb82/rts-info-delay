@@ -123,12 +123,13 @@ class TestIntegration:
         """Score reflects current world state after each turn."""
         from runner.main import score
 
-        csv = "100,100,A,500\n"
+        # Two cooperating towns (trade+boost lift equilibrium; lone towns
+        # correctly stall at carrying capacity).
+        csv = "485,500,A,300\n515,500,A,300\n"
         w, ledger = _run_game(map_csv=csv, turns=200)
         result = score(w, CFG)
-        # Town should have grown (fitted clock: ~0.4%/yr, score is int)
-        assert w.towns[0].population > 500
-        assert result[0] > 500
+        assert sum(t.population for t in w.towns) > 600
+        assert result[0] > 600
 
     def test_deterministic_replay(self) -> None:
         """Same map + config → identical results."""
@@ -162,11 +163,11 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for resold improvement (towns offer services
-        # x (1 + last_improvement); state advances per turn) and the
-        # boost->improvement / market_premium->max_improvement renames.
-        # Verified: symmetric towns stay symmetric (both 4997.15, stored
-        # 0.1032), trajectories sane. Was 68355f53... (background mig).
-        assert h == "1373dfbeb0b0066605e976364106a161bd5e1396949c673b89ed2897faa6099b"
+        # Re-based 2026-09-13 for net births (b 0.035->0.024 surviving;
+        # lone giants decline faster, symmetric still symmetric).
+        # Verified: symmetric towns stay symmetric (both 4995.28->4954.06,
+        # monotone gentle decline), trajectories sane. Was 3a9e21f0...
+        # (Malthusian swap).
+        assert h == "3faf313e088f0836cd396873e51e7aca77116439eb24f82c7373ae99a8d8c4d6"
     finally:
         path.unlink(missing_ok=True)

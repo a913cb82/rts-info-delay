@@ -19,9 +19,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import engine.economy as eco
+from dataclasses import replace
 from engine.config import GameConfig
 from engine.world import Town
-from hierarchy_opt import BASE_CFG as CFG, lattice
+from hierarchy_opt import BASE_CFG, lattice
+CFG = BASE_CFG
 
 RMAX = 50.0
 AREA = math.pi * RMAX * RMAX
@@ -74,11 +76,13 @@ def fps_subset(pts, n):
     return chosen
 
 
-def layout(s0, P0, tiers):
+def layout(s0, P0, tiers, footprint=True):
     """Deterministic (s0,P0,tiers) -> spec; build() conventions mirrored:
     tiers on own offset lattices (densest +s/2 like towns, middle plain
-    like regionals, sparsest +s/2), claimed top-down (sparsest first),
-    each site clearing 0.6*s0 around it; villages fill the rest."""
+    like regionals, sparsest +s/2), claimed top-down (sparsest first).
+    footprint=True: each site clears 0.6*s0 around it; False: only exact
+    overlaps are excluded. Villages fill the rest."""
+    fr = 0.6 * s0 if footprint else 1e-9
     offs = [tiers[0][0] / 2.0, 0.0, tiers[2][0] / 2.0]
     claimed = []  # (x, y, pop), sparsest tier first
     for k in (2, 1, 0):
@@ -87,11 +91,11 @@ def layout(s0, P0, tiers):
             continue  # absent tier (expected < 1 town)
         for (x, y) in lattice(RMAX, s):
             xx = x + offs[k]  # no disc refilter: exact build() mirror
-            if all(math.hypot(xx - cx, y - cy) > 0.6 * s0
+            if all(math.hypot(xx - cx, y - cy) > fr
                    for (cx, cy, _) in claimed):
                 claimed.append((xx, y, P))
     vill = [(x, y, P0) for (x, y) in lattice(RMAX, s0)
-            if all(math.hypot(x - cx, y - cy) > 0.6 * s0
+            if all(math.hypot(x - cx, y - cy) > fr
                    for (cx, cy, _) in claimed)]
     return vill + [(x, y, p) for (x, y, p) in claimed]
 
@@ -115,6 +119,7 @@ def settled(spec, warm=3):
 
 
 REQUIRE = 0  # up-tiers that must be present (expected count >= 1); set in run()
+FOOTPRINT = True  # site footprint (0.6*s0 clearing) vs exact-overlap only; set in run()
 
 
 def evaluate(u):
@@ -130,7 +135,7 @@ def evaluate(u):
             return {"s0": s0, "P0": P0, "tiers": tiers, "N": 0,
                     "total": 0.0, "rate": -pen, "cold": None,
                     "model": False, "dt": time.perf_counter() - t0}
-    spec = layout(s0, P0, tiers)
+    spec = layout(s0, P0, tiers, footprint=FOOTPRINT)
     tot = sum(p for (_, _, p) in spec)
     info = {"s0": s0, "P0": P0, "tiers": tiers, "N": len(spec), "total": tot}
     if tot < BAND[0] or tot > BAND[1]:
@@ -154,10 +159,21 @@ def evaluate(u):
 
 
 def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
-        require=0):
-    global RMIN, REQUIRE, LO
+        require=0, footprint=True, melt=None, premium=None, gamma=None,
+        starv=None):
+    global RMIN, REQUIRE, LO, FOOTPRINT, CFG
     RMIN = float(min_ratio)
     REQUIRE = int(require)
+    FOOTPRINT = bool(footprint)
+    if melt is not None or premium is not None or gamma is not None or starv is not None:
+        CFG = replace(BASE_CFG,
+                      market_scaling=BASE_CFG.market_scaling if gamma is None else gamma,
+                      max_improvement=BASE_CFG.max_improvement if premium is None else premium,
+                      melt_per_km=BASE_CFG.melt_per_km if melt is None else melt,
+                      starvation_elasticity=BASE_CFG.starvation_elasticity if starv is None else starv)
+    print(f"CFG: melt={CFG.melt_per_km} premium={CFG.max_improvement} "
+          f"gamma={CFG.market_scaling} starv={CFG.starvation_elasticity} "
+          f"footprint={FOOTPRINT}", flush=True)
     LO = LO.copy()
     LO[3] = LO[5] = LO[7] = math.log(RMIN)
     from scipy.stats import norm, qmc
@@ -275,6 +291,14 @@ if __name__ == "__main__":
     ap.add_argument("--log", type=str, default=LOG)
     ap.add_argument("--min-ratio", type=float, default=1.0)
     ap.add_argument("--require", type=int, default=0)
+    ap.add_argument("--no-footprint", action="store_false", dest="footprint",
+                    help="only exclude exact overlaps (no 0.6*s0 site footprint)")
+    ap.add_argument("--melt", type=float, default=None)
+    ap.add_argument("--premium", type=float, default=None)
+    ap.add_argument("--gamma", type=float, default=None)
+    ap.add_argument("--starv", type=float, default=None)
     args = ap.parse_args()
     run(n_init=args.init, n_iter=args.iter, seed=args.seed,
-        log_path=args.log, min_ratio=args.min_ratio, require=args.require)
+        log_path=args.log, min_ratio=args.min_ratio, require=args.require,
+        footprint=args.footprint, melt=args.melt, premium=args.premium,
+        gamma=args.gamma, starv=args.starv)

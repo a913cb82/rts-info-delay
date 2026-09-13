@@ -29,8 +29,8 @@ class GameConfig:
     # Agrarian economy (2026-09-13). Annual rates; the engine converts
     # to per-turn with `turns_per_year`. Raw materials:
     #   production  Y_i = (1+improvement_i) * min(rural_density*area_i, farm_workers_yield*P_i)
-    #   births      B_i = birth_rate * P_i * S_i/(S_i + h*P_i), h = birth/death - 1
-    #   deaths      D_i = death_rate * P_i
+    #   births      B_i = birth_rate * P_i (fixed; net surviving births)
+    #   deaths      D_i = death_rate * P_i * (S_i/P_i)^-starvation_elasticity
     #   trade       surplus=Y-P exports to deficits, caps enforced (conservative)
     #   migration   total-population share + surplus-labour share move up the hierarchy
     #   market      improvement = max_improvement * mkt/(mkt+P_market), mkt from non-farm population
@@ -41,13 +41,19 @@ class GameConfig:
     farm_workers_yield: float = 1.3      # people fed per farm worker (near-field)
     farm_decay_at_radius: float = 0.9    # yield lost at the farm radius (Von Thunen: near land best)
     farm_decay_shape: float = 2.0        # distance-decay exponent p
-    birth_rate: float = 0.035            # crude birth rate, per person per year
+    birth_rate: float = 0.024            # net surviving births/person/year
+                                         # (gross ~0.035 x ~0.7 surviving infancy)
     death_rate: float = 0.031            # crude death rate, per person per year
     max_improvement: float = 0.25        # max farm-output improvement from market access
     market_scaling: float = 1.0          # gamma: urban service scaling exponent
     migration_share: float = 0.005        # theta: share of total population emigrating per year
     surplus_mobility: float = 0.05       # nu: share of surplus labour that emigrates per year
     migration_scale_km: float = 50.0     # migration distance scale
+    melt_per_km: float = 0.0             # freight melt per km (carriers eat,
+                                         # spoilage, tolls); scaled by route:
+                                         # big importers have roads
+    starvation_elasticity: float = 1.3   # famine deaths ~ S/P^-p (crisis x2.5
+                                         # at half rations); Malthusian check
     town_min_population: float = 10.0    # minimum settlement size (die at or below)
     build_efficiency: float = 0.9        # BUILD/MOVE_CAPITAL yield: army_cost x this = 900 pop
     capture_loss: float = 0.5            # population fraction lost when a town is captured

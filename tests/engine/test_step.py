@@ -395,7 +395,8 @@ class TestCommands:
         w = _world_with(towns=[t])
         ledger = Ledger(CFG.info_speed, 1414)
         step(w, CFG, ledger, turn=1, orders={0: ["MOVE_CAPITAL 200 200"]})
-        assert t.population == pytest.approx(4000, abs=1.0)  # 5000 - 1000 + growth
+        # 5000 - 1000 + growth; lone 4000 on one ring starves mildly now
+        assert t.population == pytest.approx(4000, abs=5.0)
         assert t.is_capital is False  # demoted at train time
         viceroy = [a for a in w.armies if a.is_viceroy]
         assert len(viceroy) == 1

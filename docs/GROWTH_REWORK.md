@@ -18,15 +18,17 @@ access/migration kernels) is superseded; its suite still runs via
 | `Lc` | `cart_distance_km` | 20 | distance over which carting doubles grain price |
 | — | `turns_per_year` | 52 | 1 turn = 1 week |
 | `sf` | `farm_workers_yield` | 1.3 | people fed per farm worker |
-| `b` | `birth_rate` | 35 /1000/yr | crude birth rate |
-| `m` | `death_rate` | 31 /1000/yr | crude death rate (`b−m` = 0.4%/yr) |
+| `b` | `birth_rate` | 24 /1000/yr | net surviving births (gross 35 × ~0.7 infant survival) |
+| `m` | `death_rate` | 31 /1000/yr | crude death rate (towns must overfeed ~21% to hold) |
 | `mi` | `max_improvement` | 0.25 | max farm-output improvement from market access |
 | `th` | `migration_share` | 0.005 /yr | share of total population that emigrates |
 | `nu` | `surplus_mobility` | 0.05 /yr | share of surplus labour that emigrates |
 | `Lm` | `migration_scale_km` | 50 | migration distance scale |
+| `melt` | `melt_per_km` | 0.015 | freight loss per km (carriers eat, spoilage, tolls in kind); big receivers lose less (roads) |
+| `p` | `starvation_elasticity` | 1.3 | deaths scale as (S/P)^−p (half rations kill ~2.5×) |
 | — | `town_min_population` | **10** | minimum settlement size (die at or below) |
 
-Derived: `Y_ring = rho·πR²` ≈ 2356 people (one ring's food), `h = b/m − 1` ≈ 0.13.
+Derived: `Y_ring = rho·πR²` ≈ 2356 people (one ring's food) = `P_market` (the famous-or-not crew line, and the roads reference for melt). Break-even is S/P ≈ 1.21 (net births ÷ deaths).
 
 ## Formulae (per turn)
 
@@ -48,12 +50,14 @@ turns — bounded by the soft cap, zero new parameters. _step_core (a
 turn) advances the state; nets_for/crowding_net (queries) snapshot and
 restore it, so rate measurement stays side-effect-free.
 
-trade       surplus_j = max(0, Y_j - P_j); deficit_i = max(0, P_i - Y_i)
-            greedy nearest-first with hard caps (conservative)
+trade       nearest pair first; while the donor is better fed per head,
+            move food toward (lossy) pairwise equality; donors never drop
+            below recipients; arrival = sent × exp(−tau·d),
+            tau = melt·Pm/(Pm + P_recipient) (big importers have roads)
             S_i = Y_i + imports_i                       food commanded
 
-births      B_i = b*P_i * S_i/(S_i + h*P_i)             f=1 -> births=deaths
-deaths      D_i = m*P_i
+births      B_i = b*P_i                                 fixed net births
+deaths      D_i = m*P_i * (S_i/P_i)^−p                  food acts via deaths
 
 migration   out_i   = th*P_i + nu*max(0, P_i - Y_i/sf)
             attr_ij = max(0,P_j-P_i) * min(1,S_j/P_j) * e^(-d/Lm) * win(d)
@@ -87,12 +91,12 @@ smaller — what its labour can work, or what it owns.
 Figure out the harvest, count the hands it needed, everyone else is a smith, weaver, or
 trader. No decision involved: farmers are the requirement, services are whoever's left over.
 
-        serv = max(0, P − Y0/1.3)
+        serv = max(0, P − Y0/(1.3·(1 + last improvement)))
 
 ### 3. Improvement — smiths make farms better (three parts)
 **(a) Market (quantity).** Every service crew contributes help to neighbours within 60 km,
 fading with distance (grain carts travel ~20 km/day). Big crews count superlinearly — ten
-smiths together beat ten apart (division of labour).
+smiths together beat ten apart (division of labour). [Recalibration below picks 1.15 + 0.25 cap.]
 
         mkt = Σ serv-mass · 2^(−d/20)
 
@@ -117,19 +121,24 @@ start = plain neighbours.
         imp = ceiling · mkt/(mkt + P)    (help per head, saturating)
 
 ### 4. Trade — hungry mouths eat first
-Nearest pairs first: while one side is better fed, move food to exact equality. Big or small,
+Nearest pairs first: while one side is better fed, move food toward pairwise equality
+(exact at melt = 0, lossy otherwise). Big or small,
 all mouths equalise — a starving town eats before a comfortable village overeats, and nobody
-is ever dragged below the mouth it feeds. Every unit is conserved.
+is ever dragged below the mouth it feeds. Food is conserved except melt, which is tallied
+(`S.sum() = prod.sum() − melted`).
 
-        f = (sp_donor − sp_hungry) · P_i·P_j/(P_i + P_j)    (food per head, sp = S/P)
+        f = (sp_donor − sp_hungry) · P_i·P_j/(P_i + delta·P_j)    (food per head, sp = S/P)
+        arrived = f · delta,    delta = exp(−tau·d)              (melt = 0: exact equality)
 
 ### 5. Babies and deaths — Malthus
-Well-fed towns have more babies, up to a max; everyone dies at a flat rate. At exactly
-subsistence (food = mouths) births equal deaths — growth stops. Absolute speed limit: +0.4%/yr.
+Towns have a fixed number of surviving babies each year; deaths fall when food per person
+rises above need and climb steeply in hunger. Break-even is ~21% over need (S/P ≈ 1.21),
+so towns must be overfed to hold their people.
 
-        births = b·P·S/(S + h·P),    deaths = m·P
+        births = b·P,    deaths = m·P·(S/P)^−p
 
-- `birth_rate` = 35/1000/yr, `death_rate` = 31/1000/yr; `h` just pins subsistence at S/P = 1
+- `birth_rate` = 24/1000/yr net surviving (gross 35 × ~0.7); `death_rate` = 31/1000/yr;
+  `starvation_elasticity` = 1.3 (half rations kill ~2.5×)
 
 ### 6. Migration — drift to the towns
 A trickle of everyone (0.5%/yr) plus more footloose service folk (5% of services) moves each
@@ -818,6 +827,62 @@ regional-shape +0.1386, flat +0.1145. Tiers 300/1000/8000/25000
 throughout (γ=1 setups unaffected). All pairs within 60km lists — the
 150km rule never approached.
 
+## Recalibration: three tiers at 100k (melt + premium, 2026-09-13)
+
+Engine changes since the sections above (were unchecked, now committed): net
+births (`b` 35→24/1000 surviving; food acts through deaths, not births),
+starvation deaths (`p` = 1.3), freight melt (`melt_per_km`, big receivers
+have roads), farmers staffed at boosted yields. At the inherited screening
+values (`melt` 0.005, `premium` 0.5) the 3-tier stack won by only +0.01 over
+a lone giant — fragile. A ~16-run sweep on `benchmarks/hierarchy_opt.py`
+(8 shapes incl. new 3-tier `goal` 1000@16+8000 and `lean` 600@18+5000, r38
+district + r50 check) plus a 68-eval BO (`benchmarks/bo_r12.jsonl`, settled
+rates) rebalanced the knobs. Assay changes: the 0.6·s0 site footprint is a
+`--no-footprint` toggle (exact-overlap only when off); the capital special
+case is gone (a center is just a site — `build_goal` holds by construction).
+
+Sweep ledger (cold %/yr, best shape@rate; decisive rivals shown):
+
+| # | config | best | rivals |
+|---|---|---|---|
+| 1 | base (melt .005, prem .5, γ1.15, p1.3) | lean +.83 | goal +.70, lone-9.6k +.69, flat +.43 |
+| 2–5 | melt 0 / .01 / .02 / .03 | lean +.85/+.81/+.76/+.69 | lone giant +.75→+.18 (dies by .03) |
+| 6 | γ1.0 | flat +.91 | hierarchy gone — ruled out (also unrealistic) |
+| 7 | γ1.3 | lean +.83 | flat +.16 (upper-edge γ, gap huge) |
+| 8 | prem .25 | lean +.45 | lone +.29, flat +.26 — historical pace |
+| 9 | starv 0.8 | lean +.36 | flat +.05 |
+| 10 | starv 1.8 | lean +1.20 | absurd hot — ruled out |
+| 11–12 | melt .015/.02 + prem .25 | lean +.39/+.35 | lone +.08/−.05 (stagnates, then shrinks: needs its bourgs) |
+| 13–14 | BO 20→68 evals at run-11 cfg | 280/518/1526, urb 4.9%, +.42 settled | flat +.38; hand lean +.49 settled (BO underexplored, ranking agrees: 3 levels, gaps 2–3×, tops small) |
+
+Recommended (all realistic — priors in the table below): `melt_per_km` =
+**0.015** (~1.5%/km food part of the doubling-every-20km cart cost),
+`max_improvement` = **0.25** (config default; the 0.5 screening value ran
+hot), `market_scaling` = **1.15** (anchor), `starvation_elasticity` = **1.3**.
+`BASE_CFG` now carries melt 0.015 with premium at default; the engine
+`GameConfig` default melt stays 0.0 (promotion needs gameplay/bot testing).
+
+Optimum at these settings (footprint ON, settled, rescaled to a 100k district):
+
+| tier | count | size each | spacing | share |
+|---|---|---|---|---|
+| villages | ~290 | 300 | 4 km | ~86% |
+| market towns | ~12–15 | 600 | ~18 km | ~8–9% |
+| center | 1 | ~5,000 | central | ~5% |
+| big city | 0 | — | — | — |
+
+Against the reality goals: village size/spacing match (ours carry no
+hamlets — reality's ~450 souls include them); market-town count/size/spacing
+match (15–25 × 500–1500 @10–15km); center size/share match (5–10k, 5–10%);
+no big city matches. Urban sits at the top edge (~13% vs 8–12%). District
+growth runs at history's pace (+0.35–0.49 vs 0–0.3 recorded).
+
+Footprint verdict (same ground, R12 cfg): ON crowns the 3-tier stack
+(+.49 vs +.42 two-tier, +.38 flat); OFF drops it to +.41 and two-tier wins
+(+.42) — 27 overlapping villages freeload on town fields. ON's optimum is
+higher (+.49 > +.42) because deleting an overlap always raises food per
+head; OFF can at best tie by learning avoidance. Keep ON.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
@@ -836,3 +901,11 @@ throughout (γ=1 setups unaffected). All pairs within 60km lists — the
   th = 0.002 is barely visible. Single-turn *total* growth tables are
   blind to this (migration is conservative — it reshuffles, and the
   table measures one turn from fixed populations).
+- Recalibration (melt 0.015 + premium 0.25) committed with its BO log
+  (`benchmarks/bo_r12.jsonl`); every growth table predating it used the
+  old births/deaths and melt-free trade — rankings where deep tiers won
+  stand, close calls should be re-run (done for the 100k optimum above).
+- Open: teaching-range flag (famous crews 60km → 10km local; the one big
+  lever still untested, docs predict it favors small towns); longer BO
+  (the search's own best has tops of only ~1,500 at ~5% urban — the
+  center may shrink further); promoting melt 0.015 to the engine default.

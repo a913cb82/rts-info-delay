@@ -31,11 +31,11 @@ class TestEconomyMedium:
         w = _make_world(a, b)
         for _ in range(10):
             apply_growth(w, CFG)
-        isolated = Town(id=99, faction=0, x=0, y=0, population=1000)
         w2 = _make_world(Town(id=99, faction=0, x=0, y=0, population=1000))
         for _ in range(10):
             apply_growth(w2, CFG)
-        assert a.population > isolated.population
+        # Compare against the stepped isolated town (not a fresh object).
+        assert a.population > w2.towns[0].population
 
     def test_E37_town_dies_mid_game(self) -> None:
         """E37: Town at the floor (0) dies mid-game."""
@@ -46,15 +46,17 @@ class TestEconomyMedium:
 
     def test_E38_build_then_growth(self) -> None:
         """E38: BUILD then growth."""
-        w = _make_world()
-        a = Army(id=w.allocate_id(), faction=0, x=100, y=100)
+        # Center, plus a neighbour village: lone 900s sit below the
+        # Malthusian point on labour footprint alone; trade+boost feed them.
+        w = _make_world(Town(id=99, faction=0, x=500, y=530, population=300))
+        a = Army(id=w.allocate_id(), faction=0, x=500, y=500)
         w.armies.append(a)
         w.standing_orders.append(
-            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 100])
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[500, 500])
         )
         apply_build(w, CFG)
         # Find the new town
-        new_towns = [t for t in w.towns if t.x == 100 and t.y == 100]
+        new_towns = [t for t in w.towns if t.x == 500 and t.y == 500]
         assert len(new_towns) == 1
         new_town = new_towns[0]
         initial_pop = new_town.population
@@ -93,18 +95,24 @@ class TestEconomyMedium:
 
     def test_E41_build_extends_life(self) -> None:
         """E41: BUILD on existing town extends life."""
-        t = Town(id=1, faction=0, x=100, y=100, population=600)
+        # Center (full ring): corner cells clip and starve boosted towns.
+        t = Town(id=1, faction=0, x=500, y=500, population=600)
         w = _make_world(t)
-        a = Army(id=w.allocate_id(), faction=0, x=100, y=100)
+        a = Army(id=w.allocate_id(), faction=0, x=500, y=500)
         w.armies.append(a)
         w.standing_orders.append(
-            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[100, 100])
+            StandingOrder(command=CommandType.BUILD, target_id=a.id, target_type="army", args=[500, 500])
         )
         apply_build(w, CFG)
         assert t.population == 1500
+        # Lone towns above ring capacity decline; BUILD buys life, and the
+        # boosted town outlives an unboosted twin (relative, robust).
+        twin = Town(id=2, faction=0, x=500, y=700, population=600)
+        w.towns.append(twin)
         for _ in range(10):
             apply_growth(w, CFG)
-        assert t.population > 1500
+        assert t.population > twin.population
+        assert t.population > 1000
 
     def test_E42_close_hamlets_stay_together(self) -> None:
         """E42: three 8-km-apart hamlets coexist and stay similar."""

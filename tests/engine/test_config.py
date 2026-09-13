@@ -11,7 +11,7 @@ class TestConfig:
     """X1–X5: GameConfig defaults, overrides, field names."""
 
     def test_default_values(self) -> None:
-        """X1: All 13 default field values match PLAN."""
+        """X1: All default field values match PLAN."""
         cfg = GameConfig()
         assert cfg.map_size == [1000, 1000]
         assert cfg.max_turns == 500
@@ -26,13 +26,15 @@ class TestConfig:
         assert cfg.cart_distance_km == 20.0
         assert cfg.farm_workers_yield == 1.3
         assert cfg.farm_decay_at_radius == 0.9
-        assert cfg.birth_rate == 0.035
+        assert cfg.birth_rate == 0.024  # net surviving (gross 0.035 x ~0.7)
         assert cfg.death_rate == 0.031
         assert cfg.max_improvement == 0.25
         assert cfg.market_scaling == 1.0
         assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
         assert cfg.migration_scale_km == 50.0
+        assert cfg.melt_per_km == 0.0
+        assert cfg.starvation_elasticity == 1.3
         assert cfg.town_min_population == 10.0
         assert cfg.build_efficiency == 0.9
         assert cfg.capture_loss == 0.5
@@ -51,13 +53,15 @@ class TestConfig:
         assert cfg.cart_distance_km == 20.0
         assert cfg.farm_workers_yield == 1.3
         assert cfg.farm_decay_at_radius == 0.9
-        assert cfg.birth_rate == 0.035
+        assert cfg.birth_rate == 0.024  # net surviving (gross 0.035 x ~0.7)
         assert cfg.death_rate == 0.031
         assert cfg.max_improvement == 0.25
         assert cfg.market_scaling == 1.0
         assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
         assert cfg.migration_scale_km == 50.0
+        assert cfg.melt_per_km == 0.0
+        assert cfg.starvation_elasticity == 1.3
         assert cfg.town_min_population == 10.0
         assert cfg.build_efficiency == 0.9
         assert cfg.capture_loss == 0.5
@@ -78,6 +82,8 @@ class TestConfig:
         assert "migration_share" in names
         assert "surplus_mobility" in names
         assert "town_min_population" in names
+        assert "melt_per_km" in names
+        assert "starvation_elasticity" in names
         # Old/regression names must NOT exist
         assert "k" not in names
         assert "gamma" not in names

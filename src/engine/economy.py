@@ -588,12 +588,14 @@ try:
     import numba as _numba
 
     @_numba.njit(cache=True)
-    def _trade_kernel(ii, jj, S, pops, imports, exports):
+    def _trade_kernel(ii, jj, dd, S, pops, tau, imports, exports):
         # Equalize S/P over a cached canonical pair order (see
-        # _trade_order): while the donor is better fed, move food to exact
-        # pairwise equality. Zero-sum: S[i] += f, S[j] -= f conserves food.
-        # pops<=0 pairs are geometry-listed but skipped (no mouths moves
-        # no food; guards are exact: f would be 0/undefined otherwise).
+        # _trade_order), discounted by melt (see _trade): while the donor
+        # is better fed, move food toward lossy pairwise equality.
+        # pops<=0 pairs are geometry-listed but skipped. Returns melted.
+        # melt = 0 is bit-exact with the melt-free kernel (delta = 1.0
+        # multiplies exactly; denominator ordered to match).
+        melted = 0.0
         for oi in range(ii.shape[0]):
             i = ii[oi]
             j = jj[oi]
@@ -602,14 +604,19 @@ try:
             spi = S[i] / pops[i]
             spj = S[j] / pops[j]
             if spj > spi:
-                f = (spj - spi) * pops[i] * pops[j] / (pops[i] + pops[j])
+                delta = math.exp(-tau[i] * dd[oi])
+                f = ((spj - spi) * pops[i] * pops[j] /
+                     (pops[i] + delta * pops[j]))
                 if f > S[j]:
                     f = S[j]
                 if f > 0.0:
-                    S[i] += f
+                    got = f * delta
+                    S[i] += got
                     S[j] -= f
-                    imports[i] += f
+                    imports[i] += got
                     exports[j] += f
+                    melted += f - got
+        return melted
 
     @_numba.njit(cache=True)
     def _trade_enum(nidx, ndist, ndeg, pops, ds, ii, jj):
@@ -736,7 +743,8 @@ def _trade_order(geo, config):
     key = (n, int(np.sum(ndeg)), hash((xs.tobytes(), ys.tobytes())),
            float(config.cart_distance_km))
     if _trade_cache["key"] == key and _trade_cache["ii"] is not None:
-        return _trade_cache["ii"], _trade_cache["jj"]
+        return (_trade_cache["ii"], _trade_cache["jj"],
+                _trade_cache["dd"])
     ev = _geo_cache.get("event")
     src = _trade_cache.get("geokey")
     prev = _geo_cache.get("prev_key")
@@ -767,10 +775,10 @@ def _trade_order(geo, config):
                 ii, jj, dd = t_ii[:c], t_jj[:c], t_dd[:c]
                 _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd,
                                     geokey=_geo_cache.get("key"))
-                return ii, jj
+                return ii, jj, dd
             ii, jj, dd = o_ii, o_jj, o_dd
             _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd, geokey=_geo_cache.get("key"))
-            return ii, jj
+            return ii, jj, dd
         if ev[0] == "remove":
             d = ev[1]
             t_dd = np.empty_like(o_dd)
@@ -779,31 +787,37 @@ def _trade_order(geo, config):
             c = _order_compact(o_dd, o_ii, o_jj, d, t_dd, t_ii, t_jj)
             ii, jj, dd = t_ii[:c], t_jj[:c], t_dd[:c]
             _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd, geokey=_geo_cache.get("key"))
-            return ii, jj
+            return ii, jj, dd
     ii, jj, dd = _trade_build(geo, config)
     _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd, geokey=_geo_cache.get("key"))
-    return ii, jj
+    return ii, jj, dd
 
 
 def _trade(S: np.ndarray, pops: np.ndarray, geo,
            config: GameConfig):
-    """Equalize food per head within reach (S mutated in place).
+    """Equalize food per head within reach (S mutated in place),
+    discounted by melt (see below).
 
-    Nearest pair first; while the donor is better fed, move food to exact
-    pairwise equality. Hungry mouths eat first regardless of size (per-unit
-    marginal births are size-blind at equal S/P, so equalizing is optimal
-    for concave births); donors never fall below recipients (no inversion,
-    no starvation by trade). Zero-sum: every unit imported is exported.
+    Nearest pair first; while the donor is better fed, move food toward
+    lossy pairwise equality. Hungry mouths eat first; donors never fall
+    below recipients (no inversion, no starvation by trade). Returns
+    (imports, exports, melted). Melt: a unit sent over distance d to a
+    recipient of pop P arrives as exp(-tau*d) with tau = melt*Pm/(Pm+P)
+    (big importers have roads; melt = 0 disables loss bit-exactly).
     geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
     n = len(S)
     imports = np.zeros(n, dtype=np.float64)
     exports = np.zeros(n, dtype=np.float64)
     if n < 2:
-        return imports, exports
-    ii, jj = _trade_order(geo, config)
+        return imports, exports, 0.0
+    ii, jj, dd = _trade_order(geo, config)
+    p_market = derived(config)[1]
+    melt = max(config.melt_per_km, 0.0)
+    tau = melt * p_market / (p_market + np.maximum(pops, 0.0))
     if _has_trade_numba:
-        _trade_kernel(ii, jj, S, pops, imports, exports)
-        return imports, exports
+        melted = _trade_kernel(ii, jj, dd, S, pops, tau, imports, exports)
+        return imports, exports, float(melted)
+    melted = 0.0
     for oi in range(ii.shape[0]):
         i = int(ii[oi])
         j = int(jj[oi])
@@ -812,14 +826,18 @@ def _trade(S: np.ndarray, pops: np.ndarray, geo,
         spi = S[i] / pops[i]
         spj = S[j] / pops[j]
         if spj > spi:
-            f = (spj - spi) * pops[i] * pops[j] / (pops[i] + pops[j])
+            delta = math.exp(-tau[i] * dd[oi])
+            f = ((spj - spi) * pops[i] * pops[j] /
+                 (pops[i] + delta * pops[j]))
             f = min(f, S[j])
             if f > 0.0:
-                S[i] += f
+                got = f * delta
+                S[i] += got
                 S[j] -= f
-                imports[i] += f
+                imports[i] += got
                 exports[j] += f
-    return imports, exports
+                melted += f - got
+    return imports, exports, melted
 
 
 try:
@@ -1050,18 +1068,22 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
     # everyone — action at a distance. _trade/_migration no-op below.)
     geo = _geo(towns, config)
     base_prod = production(config, areas, pops)
-    serv = np.maximum(0.0, pops - base_prod / sf)
     last = np.array([t.last_improvement for t in towns], dtype=np.float64)
+    # Farmers staffed at expected (boosted) yields: improved towns need
+    # fewer hands, freeing services. Cold start (last=0) is identical.
+    serv = np.maximum(0.0, pops - base_prod / (sf * (1.0 + last)))
     improvement = _market_improvement(serv, pops, geo, config, p_market, last)
     for t, v in zip(towns, improvement):
         t.last_improvement = float(v)
     prod = (1.0 + improvement) * base_prod
     S = prod.copy()
-    imports, exports = _trade(S, pops, geo, config)
-    assert abs(S.sum() - prod.sum()) < 1e-6 * max(prod.sum(), 1.0)  # zero-sum
-    births = b_t * pops * S / np.maximum(S + h * pops, 1e-12)
-    deaths = m_t * pops
-    p_surp = np.maximum(0.0, pops - base_prod / sf)
+    imports, exports, melted = _trade(S, pops, geo, config)
+    assert abs(S.sum() - (prod.sum() - melted)) < 1e-6 * max(prod.sum(), 1.0)
+    births = b_t * pops  # fixed: food acts through deaths, not births
+    sp = S / np.maximum(pops, 1e-12)
+    deaths = m_t * pops * np.power(np.maximum(sp, 1e-9),
+                                   -config.starvation_elasticity)
+    p_surp = serv  # same non-farm people
     out_people = th_t * pops + nu_t * p_surp
     net_mig = _migration(pops, S, out_people, geo, config)
     new_pops = np.maximum(0.0, pops + births - deaths + net_mig)
@@ -1072,12 +1094,13 @@ def base_growth(population: float, config: GameConfig) -> float:
     """Net growth per turn of a lone settlement (full ring, no neighbours,
     no market improvement) — the no-services analytic baseline. A real
     lone town still earns its own-services improvement via _step_core."""
-    _y_ring, _p_market, h, b_t, m_t, _th, _nu = derived(config)
+    _y_ring, _p_market, _h, b_t, m_t, _th, _nu = derived(config)
     area = np.array([math.pi * config.farm_radius_km ** 2])
     pops = np.array([float(population)])
     prod = float(production(config, area, pops)[0])
-    births = b_t * population * prod / max(prod + h * population, 1e-12)
-    return births - m_t * population
+    s = prod / max(population, 1e-12)
+    return (b_t * population
+            - m_t * population * max(s, 1e-9) ** -config.starvation_elasticity)
 
 
 def nets_for(all_towns: list[Town], config: GameConfig, map_size=None) -> list[float]:
