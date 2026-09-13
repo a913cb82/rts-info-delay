@@ -4075,3 +4075,10 @@ decoy queued next (full budget; aggressive; decoy-assisted pack kills).
 Weakness-decoy needs pack to kill inflated foe (solo decoy dies free);
 with pack it IS overmatch (+1 extra). Redundant. Killed pre-build.
 Research queue exhausted (lanes fail, spoiler/feed/decoy dead).
+
+### Research v2 synthesis (2026-09-13 13:01 BST)
+18 ideas (6+6+6). CONVERGENT SIGNAL: liquidate-doomed (scorched-earth +
+EDGE1 agree: TRAIN 1000-1499-pop towns into armies — deny foe capture +
+gain tempo). Queued FIRST (turtle deny when behind). Others: wall-towns
+(expensive), viceroy-hunt (fog-hard), bypass-starve (marginal),
+mission-orders (already implicit), rest complex/killed.
