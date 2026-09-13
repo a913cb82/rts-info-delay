@@ -3914,3 +3914,9 @@ No-constraints build (user directive): new package bots/apex (pro fork)
 with temporal phases (P1 sprawl t3000-6000 to 5 towns; P2 conquer t6000+
 marches all free at best viable; guards throughout; no interference via
 time-separation). Bar (new entity): 60+ raw.
+
+### Apex verdict: FAIL (31.9, phases don't fix poverty) (2026-09-13 12:01 BST)
+Rated clean 15g (3x5) -> ord 31.9 (mu 39.6): FAIL (bar 60+). Wins decent
+(5/15: 260k+ takes!) but loses to weak (P1 naked sprawl raided; P2 takes
+strip guards). Temporal separation avoids interference but NOT poverty.
+Cool architecture, same thin fate. Parked on loop/apex.
