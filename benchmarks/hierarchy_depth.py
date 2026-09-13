@@ -4,7 +4,7 @@ Reallocates the same urban population across 2/3/4 tiers and compares
 windowed per-capita rates. This isolates depth (concentration) from
 dilution (adding urban on top). Answers which parameter makes depth pay:
 market_scaling (gamma) — superlinear service output is the necessary
-condition; market_premium only scales the effect.
+condition; max_improvement only scales the effect.
 
 Usage: python benchmarks/hierarchy_depth.py [--rmax KM] [--gamma G]
        [--premium P] [--urban U]
@@ -88,7 +88,7 @@ CFG = BASE_CFG = BASE
 
 def main(rmax=118.0, gamma=1.15, premium=0.5):
     global CFG
-    CFG = replace(BASE, market_scaling=gamma, market_premium=premium)
+    CFG = replace(BASE, market_scaling=gamma, max_improvement=premium)
     print(f"{'tiers':>28} {'N':>5} {'urban%':>7} {'rate':>9}")
     # ~7.7% urban budget on ~1.68M: 54x2.4k | 40x2.4k+4x8.5k | 40x2.4k+3x8k+1x10k
     for label, tiers in [("2lvl: 54x2.4k", [(2400.0, 54)]),

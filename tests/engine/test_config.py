@@ -28,7 +28,7 @@ class TestConfig:
         assert cfg.farm_decay_at_radius == 0.9
         assert cfg.birth_rate == 0.035
         assert cfg.death_rate == 0.031
-        assert cfg.market_premium == 0.25
+        assert cfg.max_improvement == 0.25
         assert cfg.market_scaling == 1.0
         assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
@@ -53,7 +53,7 @@ class TestConfig:
         assert cfg.farm_decay_at_radius == 0.9
         assert cfg.birth_rate == 0.035
         assert cfg.death_rate == 0.031
-        assert cfg.market_premium == 0.25
+        assert cfg.max_improvement == 0.25
         assert cfg.market_scaling == 1.0
         assert cfg.migration_share == 0.005
         assert cfg.surplus_mobility == 0.05
@@ -74,7 +74,7 @@ class TestConfig:
         assert "farm_workers_yield" in names
         assert "birth_rate" in names
         assert "death_rate" in names
-        assert "market_premium" in names
+        assert "max_improvement" in names
         assert "migration_share" in names
         assert "surplus_mobility" in names
         assert "town_min_population" in names

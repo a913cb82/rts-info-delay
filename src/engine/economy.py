@@ -11,7 +11,7 @@ Every parameter is a real-world quantity (see GameConfig):
     sf   farm_workers_yield  people fed per farm worker (1.3)
     b    birth_rate          crude births / person / year (35/1000)
     m    death_rate          crude deaths / person / year (31/1000)
-    sm   market_premium      max farm-output premium from market access
+    mi   max_improvement     max farm-output improvement from market access
     th   migration_share     share of total population emigrating/year
     nu   surplus_mobility    share of surplus labour leaving per year
     Lm   migration_scale_km  migration distance scale
@@ -20,9 +20,12 @@ Per turn (TURNS_PER_YEAR = config.turns_per_year):
 
     Y0_i    = min(rho*area_i, sf*P_i)                     own-land production
     serv_j  = max(0, P_j - Y0_j/sf)                       non-farm workforce
-    boost_i = sm * mkt_i/(mkt_i + P_i)
-    mkt_i   = sum_j P_market*(serv_j/P_market)^g * c(d_ij)
-    Y_i     = (1+boost_i) * Y0_i                          production
+    offer_j = P_market*(serv_j/P_market)^g * (1 + last_j)  resell: pass on
+                                                            what was received
+    mkt_i   = sum_j offer_j * c(d_ij)                     one pass/turn;
+                                                            hops accrue over turns
+    improvement_i = mi * mkt_i/(mkt_i + P_i)              soft-capped at mi
+    Y_i     = (1+improvement_i) * Y0_i                    production
     S_i     = Y_i + imports_i                             food commanded
     B_i     = b*P_i * S_i/(S_i + h*P_i),  h = b/m - 1
     D_i     = m*P_i
@@ -406,17 +409,17 @@ try:
     import numba as _numba2
 
     @_numba2.njit(cache=True)
-    def _market_kernel(nidx, ndist, ndeg, contrib, cart_km, ln2, out):
+    def _market_kernel(nidx, ndist, ndeg, offer, cart_km, ln2, out):
         """Market accumulation over stored in-reach pairs (ascending).
 
         Same pairs in the same order with the same distances as the old
-        matrix scan — bit-identical sums."""
+        matrix scan — bit-identical sums for identical input."""
         n = nidx.shape[0]
         for i in range(n):
             s = 0.0
             for mm in range(ndeg[i]):
                 j = nidx[i, mm]
-                c = contrib[j]
+                c = offer[j]
                 if c != 0.0:
                     s += math.exp(-ndist[i, mm] * ln2 / cart_km) * c
             out[i] = s
@@ -427,13 +430,16 @@ except Exception:  # pragma: no cover
     _market_kernel = None  # type: ignore
 
 
-def _market_boost(serv: np.ndarray, pops: np.ndarray, geo,
-                  config: GameConfig, p_market: float) -> np.ndarray:
-    """Farm-output premium = services per head served.
+def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
+                        config: GameConfig, p_market: float,
+                        last: np.ndarray) -> np.ndarray:
+    """Farm-output improvement = services per head served, resold.
 
     mkt is the reachable non-farm population; the denominator is the
-    population it serves, so the premium is a service ratio (0 remote,
-    -> market_premium where services are abundant).
+    population it serves, so the improvement is a service ratio (0
+    remote, -> max_improvement where services are abundant). Each town
+    offers its services scaled by what it received last turn, so market
+    richness propagates one hop per turn (cold start = plain pairwise).
     geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
     n = len(serv)
     if n == 0:
@@ -445,21 +451,22 @@ def _market_boost(serv: np.ndarray, pops: np.ndarray, geo,
                             config.market_scaling),
         0.0,
     )
+    offer = contrib * (1.0 + last)
     nidx, ndist, ndeg = geo[0], geo[1], geo[2]
     mkt = np.zeros(n, dtype=np.float64)
     if _has_market_numba:
-        _market_kernel(nidx, ndist, ndeg, contrib,
+        _market_kernel(nidx, ndist, ndeg, offer,
                        config.cart_distance_km, ln2, mkt)
     else:
         for i in range(n):
             deg = ndeg[i]
             jj = nidx[i, :deg]
             dd = ndist[i, :deg]
-            m = contrib[jj] != 0.0
+            m = offer[jj] != 0.0
             if np.any(m):
                 mkt[i] = np.sum(np.exp(-dd[m] * ln2 / config.cart_distance_km)
-                                * contrib[jj[m]])
-    return config.market_premium * mkt / (mkt + np.maximum(pops, 1e-12))
+                                * offer[jj[m]])
+    return config.max_improvement * mkt / (mkt + np.maximum(pops, 1e-12))
 
 
 # Row-block size for migration: bounds the N x N temporaries (each block
@@ -502,13 +509,12 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
 # Core step
 
 def _step_core(towns: list[Town], map_size, config: GameConfig):
-    """One turn of the economy as a pure function of the towns.
-
-    No cross-turn state: the non-farm workforce is measured against
-    base (unboosted) yields, so boosted output per farmer rises by the
-    same factor and everything resolves in a single pass:
-    land -> own-land production -> services -> boosted production ->
-    trade -> births/deaths -> migration.
+    """One turn of the economy. One cross-turn state lives on the towns:
+    last_improvement (what each town received last turn), which scales
+    what it offers this turn — market richness propagates one hop per
+    turn. Everything else resolves in a single pass: land -> own-land
+    production -> services -> improvement -> trade -> births/deaths ->
+    migration. Cold start (all zero) is exactly pairwise.
     """
     n = len(towns)
     if n == 0:
@@ -517,14 +523,17 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
     y_ring, p_market, h, b_t, m_t, th_t, nu_t = derived(config)
     sf = max(config.farm_workers_yield, 1e-12)
     areas = land_areas(towns, map_size, config)
-    # No n>=2 shortcuts: a lone town earns its own-services boost too.
-    # (Skipping it would make founding a faraway town boost everyone —
-    # action at a distance. _trade/_migration still no-op below n=2.)
+    # No n>=2 shortcuts: a lone town earns its own-services improvement
+    # too. (Skipping it would make founding a faraway town improve
+    # everyone — action at a distance. _trade/_migration no-op below.)
     geo = _geo(towns, config)
     base_prod = production(config, areas, pops)
     serv = np.maximum(0.0, pops - base_prod / sf)
-    boost = _market_boost(serv, pops, geo, config, p_market)
-    prod = (1.0 + boost) * base_prod
+    last = np.array([t.last_improvement for t in towns], dtype=np.float64)
+    improvement = _market_improvement(serv, pops, geo, config, p_market, last)
+    for t, v in zip(towns, improvement):
+        t.last_improvement = float(v)
+    prod = (1.0 + improvement) * base_prod
     surplus = np.maximum(0.0, prod - pops)
     deficit = np.maximum(0.0, pops - prod)
     imports, _exports = _trade(surplus, deficit, geo, config)
@@ -540,8 +549,8 @@ def _step_core(towns: list[Town], map_size, config: GameConfig):
 
 def base_growth(population: float, config: GameConfig) -> float:
     """Net growth per turn of a lone settlement (full ring, no neighbours,
-    no market boost) — the no-services analytic baseline. A real lone
-    town still earns its own-services boost via _step_core."""
+    no market improvement) — the no-services analytic baseline. A real
+    lone town still earns its own-services improvement via _step_core."""
     _y_ring, _p_market, h, b_t, m_t, _th, _nu = derived(config)
     area = np.array([math.pi * config.farm_radius_km ** 2])
     pops = np.array([float(population)])
@@ -551,13 +560,22 @@ def base_growth(population: float, config: GameConfig) -> float:
 
 
 def nets_for(all_towns: list[Town], config: GameConfig, map_size=None) -> list[float]:
-    """Net population change per town for one turn (no mutation)."""
+    """Net population change per town for one turn (no mutation).
+
+    Pure query: snapshots and restores last_improvement, so measuring
+    rates never advances the resell state. Only _step_core (a turn)
+    advances it."""
     towns = list(all_towns)
     if not towns:
         return []
-    pops = np.array([t.population for t in towns], dtype=np.float64)
-    new_pops, _ = _step_core(towns, map_size or [1000, 1000], config)
-    return (new_pops - pops).tolist()
+    saved = [t.last_improvement for t in towns]
+    try:
+        pops = np.array([t.population for t in towns], dtype=np.float64)
+        new_pops, _ = _step_core(towns, map_size or [1000, 1000], config)
+        return (new_pops - pops).tolist()
+    finally:
+        for t, v in zip(towns, saved):
+            t.last_improvement = v
 
 
 

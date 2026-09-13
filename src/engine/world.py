@@ -33,6 +33,7 @@ class Town:
     y: float
     population: float
     is_capital: bool = False
+    last_improvement: float = 0.0
 
 
 @dataclass

@@ -56,7 +56,7 @@ def realism(sh):
     return sum(scores)/len(scores), len(scores)
 
 def search(gamma,prem):
-    sl.CFG=replace(sl.CFG,market_scaling=gamma,market_premium=prem)
+    sl.CFG=replace(sl.CFG,market_scaling=gamma,max_improvement=prem)
     rows=[]
     def add(s_v,qs,ms,L):
         r=sl.evaluate(s_v,qs,ms)

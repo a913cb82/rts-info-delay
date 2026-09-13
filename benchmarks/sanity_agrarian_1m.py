@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sanity_agrarian_levels as sl
 sl.TOTAL = 1_000_000.0
-sl.CFG = replace(sl.CFG, market_scaling=1.15, market_premium=0.5)
+sl.CFG = replace(sl.CFG, market_scaling=1.15, max_improvement=0.5)
 for s_v in (3.5, 3.0):
     for qs,ms in [((),()),
                   ((4,),(2,)), ((4,),(4,)),

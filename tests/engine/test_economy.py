@@ -1,13 +1,14 @@
 """Tests for engine/economy — agrarian model, TRAIN, BUILD.
 
 Model (all parameters real-world; see GameConfig):
-    Y_i     = (1+boost_i) * min(rural_density*area_i, farm_workers_yield*P_i)
-    boost_i = market_premium * mkt/(mkt + P_i)
-    mkt_i   = sum_j serv_j * c(d_ij),  serv_j = max(0, P_j - Y_j/sf)
+    Y_i     = (1+improvement_i) * min(rural_density*area_i, farm_workers_yield*P_i)
+    improvement_i = max_improvement * mkt/(mkt + P_i)
+    offer_j = serv_j * (1 + last_j),    serv_j = max(0, P_j - Y_j/sf)
+    mkt_i   = sum_j offer_j * c(d_ij)   (one hop/turn via last_improvement)
     S_i     = Y_i + imports_i
     B_i     = birth_rate*P_i*S_i/(S_i + h*P_i),  h = birth/death - 1
     D_i     = death_rate*P_i
-    out_i   = migration_share*max(0,B-D) + surplus_mobility*max(0,P - Y/sf)
+    out_i   = migration_share*P_i + surplus_mobility*max(0,P - Y/sf)
     trade   = greedy nearest-first with caps (conservative)
     migration = origin-budgeted flows, net antisymmetric (conservative)
 """
@@ -23,7 +24,7 @@ import pytest
 from engine.config import GameConfig
 from engine.economy import (
     _geo,
-    _market_boost,
+    _market_improvement,
     _migration,
     _step_core,
     _trade,
@@ -173,16 +174,29 @@ class TestMarketAccess:
     def test_non_farm_population_provides_services(self) -> None:
         serv = np.array([588.0, 0.0])
         pops = np.array([2400.0, 300.0])
-        boost = _market_boost(serv, pops, _geo_xs(0.0, 30.0),
-                              CFG, derived(CFG)[1])
-        assert boost[1] > 0.02
+        imp = _market_improvement(serv, pops, _geo_xs(0.0, 30.0),
+                                  CFG, derived(CFG)[1], np.zeros(2))
+        assert imp[1] > 0.02
 
-    def test_no_market_no_boost(self) -> None:
+    def test_no_market_no_improvement(self) -> None:
         serv = np.array([0.0, 0.0])
         pops = np.array([300.0, 300.0])
-        boost = _market_boost(serv, pops, _geo_xs(0.0, 30.0),
-                              CFG, derived(CFG)[1])
-        assert np.allclose(boost, 0.0)
+        imp = _market_improvement(serv, pops, _geo_xs(0.0, 30.0),
+                                  CFG, derived(CFG)[1], np.zeros(2))
+        assert np.allclose(imp, 0.0)
+
+    def test_resell_amplifies_connected_towns(self) -> None:
+        # A town carrying last turn's improvement offers more, so its
+        # village gains — the transitive hop. Soft cap always holds.
+        serv = np.array([588.0, 0.0])
+        pops = np.array([2400.0, 300.0])
+        geo = _geo_xs(0.0, 30.0)
+        pm = derived(CFG)[1]
+        cold = _market_improvement(serv, pops, geo, CFG, pm, np.zeros(2))
+        fed = _market_improvement(serv, pops, geo, CFG, pm,
+                                  np.array([0.2, 0.0]))
+        assert fed[1] > cold[1]
+        assert np.all(fed <= CFG.max_improvement + 1e-12)
 
     def test_market_yield_reaches_the_village(self) -> None:
         village = _town(500, 500, 300.0, tid=1)
@@ -191,11 +205,13 @@ class TestMarketAccess:
         together, _ = _step_core([village, town], [1000, 1000], NO_MIG)
         assert together[0] > alone[0]
 
-    def test_one_turn_is_stateless(self) -> None:
-        """Same inputs give same outputs; no priming turn needed."""
+    def test_same_state_same_outputs(self) -> None:
+        """Deterministic given state; cold start needs no priming turn."""
         towns = [_town(500, 500, 300.0, tid=1),
                  _town(530, 500, 2400.0, tid=2)]
         first, _ = _step_core(towns, [1000, 1000], CFG)
+        for t in towns:
+            t.last_improvement = 0.0
         second, _ = _step_core(towns, [1000, 1000], CFG)
         assert list(first) == list(second)
 
@@ -227,8 +243,8 @@ class TestBatch:
 
     def test_equal_towns_do_not_interact(self) -> None:
         # Beyond service reach (60 km) equal towns are fully independent:
-        # no shared boost, no trade, no migration between equals.
-        # (Within reach they share services through the market boost —
+        # no shared improvement, no trade, no migration between equals.
+        # (Within reach they share services through market improvement —
         # that is the agglomeration mechanism, not extraction.)
         towns = [_town(500, 500, 300, tid=0), _town(600, 500, 300, tid=1)]
         total = sum(nets_for(towns, CFG))

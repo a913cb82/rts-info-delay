@@ -38,7 +38,7 @@ def sweep(tag, cfg, village=300.0):
         print(f"   {label:9s} growth {g:+.4f}%/yr  total {tot:9.0f}  town net {tn:+8.1f}")
 
 sweep("base", BASE)
-sweep("premium 0.5", replace(BASE, market_premium=0.5))
+sweep("improvement 0.5", replace(BASE, max_improvement=0.5))
 sweep("gamma 1.15", replace(BASE, market_scaling=1.15))
 sweep("gamma 2.0", replace(BASE, market_scaling=2.0))
 sweep("mature villages 1800", BASE, village=1800.0)

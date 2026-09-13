@@ -202,7 +202,7 @@ class TestRecord:
                 "info_speed", "army_speed", "army_cost", "interact_radius",
                 "turns_per_year", "farm_radius_km", "rural_density",
                 "cart_distance_km", "farm_workers_yield", "birth_rate",
-                "death_rate", "market_premium", "market_scaling",
+                "death_rate", "max_improvement", "market_scaling",
                 "migration_share", "surplus_mobility", "migration_scale_km",
                 "town_min_population", "build_efficiency", "capture_loss",
             ]

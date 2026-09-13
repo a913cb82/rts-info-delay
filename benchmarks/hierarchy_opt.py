@@ -25,7 +25,7 @@ from engine.config import GameConfig
 from engine.world import Town
 
 BASE_CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0,
-                   market_scaling=1.15, market_premium=0.5)
+                   market_scaling=1.15, max_improvement=0.5)
 CFG = BASE_CFG
 S_V = 4.0
 P_V = 300.0
@@ -105,7 +105,7 @@ def main(rmax=50.0, gamma=None, premium=None):
     if gamma is not None or premium is not None:
         cfg = replace(BASE_CFG,
                       market_scaling=BASE_CFG.market_scaling if gamma is None else gamma,
-                      market_premium=BASE_CFG.market_premium if premium is None else premium)
+                      max_improvement=BASE_CFG.max_improvement if premium is None else premium)
     print(f"{'shape':>18} {'N':>5} {'urban%':>7} {'rate':>9}")
     rows = []
     for label, s_t, T, cap in SHAPES:

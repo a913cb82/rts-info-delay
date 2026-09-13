@@ -20,7 +20,7 @@ access/migration kernels) is superseded; its suite still runs via
 | `sf` | `farm_workers_yield` | 1.3 | people fed per farm worker |
 | `b` | `birth_rate` | 35 /1000/yr | crude birth rate |
 | `m` | `death_rate` | 31 /1000/yr | crude death rate (`b−m` = 0.4%/yr) |
-| `sm` | `market_premium` | 0.25 | max farm-output premium from market services |
+| `mi` | `max_improvement` | 0.25 | max farm-output improvement from market access |
 | `th` | `migration_share` | 0.005 /yr | share of total population that emigrates |
 | `nu` | `surplus_mobility` | 0.05 /yr | share of surplus labour that emigrates |
 | `Lm` | `migration_scale_km` | 50 | migration distance scale |
@@ -36,9 +36,17 @@ curves      win(d;D) = sig(D^2/d^2 - D^2/(D^2-d^2))     D = info_speed
 
 land        area_i = Voronoi cell within R (nearest-farmer, sampled)
 serv_j  = max(0, P_j - Y_j/sf)                          non-farm population
-mkt_i   = sum_j serv_j * c(d_ij)
-boost_i = sm * mkt_i/(mkt_i + P_i)                      services per head served
-Y_i     = (1 + boost_i) * min(rho*area_i, sf*P_i)       production
+offer_j = serv_j * (1 + last_j)                       resell last turn's gain
+mkt_i   = sum_j offer_j * c(d_ij)                     one hop/turn, n-hop over n
+improvement_i = mi * mkt_i/(mkt_i + P_i)              soft-capped at mi
+Y_i     = (1 + improvement_i) * min(rho*area_i, sf*P_i) production
+
+Resell state: each town carries last_improvement (what it received last
+turn; cold start 0 = plain pairwise). One accumulation per turn, so
+market richness hops once per turn and n-hop chains accrue over n
+turns — bounded by the soft cap, zero new parameters. _step_core (a
+turn) advances the state; nets_for/crowding_net (queries) snapshot and
+restore it, so rate measurement stays side-effect-free.
 
 trade       surplus_j = max(0, Y_j - P_j); deficit_i = max(0, P_i - Y_i)
             greedy nearest-first with hard caps (conservative)
@@ -349,7 +357,7 @@ villages of 296 at 4 km, 20 market towns of 592 at 16 km, one
 chef-lieu of 5,325 — 0.92 against the anchors).
 
 Recommendation unchanged (`market_scaling = 1.15` anchor +
-`market_premium = 0.5` for a robust margin), justification updated: the
+`max_improvement = 0.5` for a robust margin), justification updated: the
 anchor value sets a strong hierarchy advantage, not the existence of
 one.
 
@@ -485,7 +493,7 @@ non-growth reasons: administration, defence — out of scope here).
 - The realism suite (`growth_realism.py --system engine`) now measures
   the agrarian model through a compatibility adapter; its scores are
   not re-fitted yet (the suite was built for the fitted model).
-- Calibration knobs with priors: `market_premium` (0.05–0.5, anchor
+- Calibration knobs with priors: `max_improvement` (0.05–0.5, anchor
   `market_access_ratio`), `farm_workers_yield` (1.2–1.5),
   `surplus_mobility` and `migration_share`.
 - Migration budget is background + surplus: `out = th*P + nu*serv`

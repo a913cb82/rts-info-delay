@@ -162,12 +162,11 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for background migration (out = share x P +
-        # surplus, was share x natural increase), Von Thunen decay on by
-        # default (c=0.9), and lone-town self-boost (no n>=2 shortcut).
-        # Verified: symmetric towns stay symmetric, trajectories match to
-        # 2dp (5000 -> 4997.1 over 10 turns); diff is config defaults +
-        # later decimals. Was 1567df72... (one-turn economy).
-        assert h == "68355f5382e66e4fc0fe6d8fa2b350765f47c4144be84b57e71db5d043454cd0"
+        # Re-based 2026-09-13 for resold improvement (towns offer services
+        # x (1 + last_improvement); state advances per turn) and the
+        # boost->improvement / market_premium->max_improvement renames.
+        # Verified: symmetric towns stay symmetric (both 4997.15, stored
+        # 0.1032), trajectories sane. Was 68355f53... (background mig).
+        assert h == "1373dfbeb0b0066605e976364106a161bd5e1396949c673b89ed2897faa6099b"
     finally:
         path.unlink(missing_ok=True)

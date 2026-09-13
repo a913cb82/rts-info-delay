@@ -28,12 +28,12 @@ class GameConfig:
 
     # Agrarian economy (2026-09-13). Annual rates; the engine converts
     # to per-turn with `turns_per_year`. Raw materials:
-    #   production  Y_i = (1+boost_i) * min(rural_density*area_i, farm_workers_yield*P_i)
+    #   production  Y_i = (1+improvement_i) * min(rural_density*area_i, farm_workers_yield*P_i)
     #   births      B_i = birth_rate * P_i * S_i/(S_i + h*P_i), h = birth/death - 1
     #   deaths      D_i = death_rate * P_i
     #   trade       surplus=Y-P exports to deficits, caps enforced (conservative)
-    #   migration   natural increase share + surplus-labour share move up the hierarchy
-    #   market      boost = market_premium * mkt/(mkt+P_market), mkt from non-farm population
+    #   migration   total-population share + surplus-labour share move up the hierarchy
+    #   market      improvement = max_improvement * mkt/(mkt+P_market), mkt from non-farm population
     turns_per_year: float = 52.0        # weeks per year (1 turn = 1 week)
     farm_radius_km: float = 5.0          # R: farm walking radius
     rural_density: float = 30.0          # people/km2 the land feeds (c.1600)
@@ -43,7 +43,7 @@ class GameConfig:
     farm_decay_shape: float = 2.0        # distance-decay exponent p
     birth_rate: float = 0.035            # crude birth rate, per person per year
     death_rate: float = 0.031            # crude death rate, per person per year
-    market_premium: float = 0.25         # max farm-output premium from market access
+    max_improvement: float = 0.25        # max farm-output improvement from market access
     market_scaling: float = 1.0          # gamma: urban service scaling exponent
     migration_share: float = 0.005        # theta: share of total population emigrating per year
     surplus_mobility: float = 0.05       # nu: share of surplus labour that emigrates per year
