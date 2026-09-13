@@ -4261,3 +4261,13 @@ raid blind. Free alternative: passive pop-watch (600->540 dips = muster
 detected, 150km sight, 1-2t lag). Intel hierarchy: pop-watch (always) >
 forward pickets (coverage) > wilderness probes (high-value only).
 Every mechanism has a price (conquest->muster, scouts->attrition).
+
+### Early-game playbook (2026-09-13)
+t0-500: pop-watch only (free); train NOTHING (50-train costs ~30 net @3k
+unless priced). First 50 ranked: raid-if-idle (+243) > found-one-breeder
+(boost-750 track -> 210) > idle (safe). Then: boosted breeder + mother ->
+800-scale -> 80-trains -> 2nd breeder/bigger raids -> conveyor (break
+600-cap) -> feeder ratios (late-early). NEVER: parasite cities, big
+armies, wilderness scouts, 500t-boosts, uniform sprawl. Per-personality:
+aggr = gated raider; exp = breeder-booster; pro = opportunist (hole:
+ratios need scale); turtle = compound + muster-response + absorb.
