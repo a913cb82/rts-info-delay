@@ -3167,3 +3167,7 @@ Buzzer +10g (850 total) -> ord 62.8 (mu 66.2, was 66.1/840g): +0.1 on
 Buzzer +10g (860 total) -> ord 62.9 (mu 66.2, was 66.2/850g): +0.1 on
 3W + F1-death + mids. Slot-swap pair g0/g1 both 291k (slot-invariant
 attractor again). 860 games.
+
+### Buzzer 870g (2026-09-13 02:42 BST)
+Buzzer +10g (870 total) -> ord 62.9 (mu 66.2, was 66.2/860g): flat on
+50% wins + F1-death + fifths (wins offset by fifths). 870 games.
