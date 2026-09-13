@@ -3870,3 +3870,9 @@ Re-examined: takes-first (halved take-engines worse than foundings),
 guards (defense-offense tradeoff, thin can't both; style-conflict).
 6 fails stand. Parked. All three non-pro personalities parked
 stuck-proven (turtle 8, expander 6, aggressive 13+ fails).
+
+### Heartbeat (all blocked) (2026-09-13 11:51 BST)
+Aggressive re-examined (savings vs bird-in-hand; bird wins). All three
+parked reaffirmed. Pro grinding forbidden by user. No unblocked actions
+(builds EV-negative, volume forbidden/EV0). Loop alive, goal blocked on
+mechanisms. Awaiting +EV idea or compute.
