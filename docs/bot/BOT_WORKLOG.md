@@ -3096,3 +3096,7 @@ F1-deaths. 660 games.
 ### Buzzer 670g (60% batch) (2026-09-13 01:57 BST)
 Buzzer +10g (670 total) -> ord 63.2 (mu 66.5, was 65.3/660g): +1.2 on
 60% wins (360k/258k/203k/258k/188k/358k) + 1 F1-death. 670 games.
+
+### Buzzer 680g (2026-09-13 02:02 BST)
+Buzzer +10g (680 total) -> ord 62.1 (mu 65.4, was 66.5/670g): -1.1 on
+2W + 2 F1-deaths + fifths. Spike-batch (40145e1 255k x3). 680 games.
