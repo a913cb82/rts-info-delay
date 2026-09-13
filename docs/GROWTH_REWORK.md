@@ -63,7 +63,9 @@ trade: whatever is left is what gets shared and what mouths get fed.
 Shared ground splits by hunger (each town feeds its visitors in
 proportion to their need) and every army taxes its whole path evenly —
 contested breadbaskets suffer first, and a column marching through
-wasteland arrives ravenous.
+wasteland arrives ravenous. Unfed mouths shrink by the town hunger
+curve (half rations ~3x deaths) — armies carry a tenth of need as
+baggage, so barren land attrits (~2.4%/turn) rather than annihilating.
 
 ### 5. Trade — hungry mouths eat first
 Nearest pairs first: while one side holds more food per person (after

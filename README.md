@@ -57,7 +57,7 @@ Turn-based. Each turn consists of phases:
 #### Economy
 - Farms feed people from the land within 5km and from the farm labour available
 - Neighbouring settlements trade food (carting range ~60km, nearest needy mouths first; a little is lost on the road) and provide market services
-- Marching armies forage along their path (10km each side): soldiers eat at the civilian rate, first off the harvest, shared ground split by hunger
+- Marching armies forage along their path (10km each side): soldiers eat at the civilian rate, first off the harvest, shared ground split by hunger; unfed armies shrink by the same hunger curve (baggage train covers a tenth of need)
 - Each town has a fixed number of babies per year; deaths fall when food per person is plentiful and climb steeply in hunger; people migrate toward larger towns; settlements at or below 10 die
 - Armies with build orders found new towns or boost existing towns
 
