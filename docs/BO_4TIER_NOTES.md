@@ -375,3 +375,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   dense bourgs (431@13, urb 18.7%). Search crowns low-urban by 0.002 —
   shares cost little but never pay. 4-tier optimal confirmed at full
   budget; all three searches agree on structure, differ on urban mass.
+- Pricing#1 (running): combo knobs (prem.75+starv1.6), seed 81 — search
+  adjudication of the +1.38–1.41 cluster (reg30k shape, dense-bourg,
+  no-chefs variant). 1/3 pricing spent.
