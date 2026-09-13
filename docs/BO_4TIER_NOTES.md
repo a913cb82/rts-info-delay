@@ -304,3 +304,12 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - r3-BO#4 (running): 1M max-push (adopted standard) with the FULL seed set
   (dense-bourg, combo, small-chef, province) — first search that can see
   every hand finding at once. 4/5 spent.
+- Seeds-win critique (fair): at 12–21 evals in 8-D with strong hand seeds,
+  BO validates/prices but never discovers — every structural idea came
+  from cheap assay. Long runs (68/250 evals) DID find novel shapes, so
+  the method works with budget; 16-eval campaigns don't. Contributing:
+  seeds anchor GP exploitation, length-scales hit bounds (underfit, flat
+  EI), count-rounding cliffs read as noise.
+- r3-BO#5 (running): seedless district (--noseeds, prem.75) — the fair
+  discovery test. If it finds the dense 3-tier (+1.217) unaided, 16-eval
+  BO can discover; if not, seeds are load-bearing. 5/5 spent.
