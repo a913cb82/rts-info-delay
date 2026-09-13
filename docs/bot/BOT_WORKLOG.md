@@ -3431,3 +3431,7 @@ Buzzer +10g (1560 total) -> ord 61.9 (mu 65.2, was 66.1/1550g): -0.8 on
 ### Buzzer 1570g (70% batch, no deaths) (2026-09-13 05:52 BST)
 Buzzer +10g (1570 total) -> ord 63.7 (mu 67.1, was 65.2/1560g): +1.8 on
 70% wins + ZERO deaths + fourths. 1570 games.
+
+### Buzzer 1580g (2026-09-13 05:57 BST)
+Buzzer +10g (1580 total) -> ord 63.5 (mu 66.8, was 67.1/1570g): -0.2 on
+2W + mids + fifths. Flat. 1580 games.
