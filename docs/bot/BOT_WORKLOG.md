@@ -3759,3 +3759,9 @@ depth_extra 1000->0 + contact-floor to void-floor (print at floor;
 found+feed relentlessly). Field-dependent (dominates weak; strong
 punish per prior 700-window lesson, noted). Bar: exceed 44.2 AND
 most-foundings (style).
+
+### Hyperactive verdict: FAIL (20.5, variance) (2026-09-13 10:06 BST)
+Rated clean 15g (3x5) -> ord 20.5 (mu 28.5): FAIL (gate 44.2+). Wins HUGE
+(710k/302k/289k/210k/64k; 33% wins) but dies often (thin; ~40% zeros).
+Variance kills ordinal (deaths punish more than huge wins reward).
+Reverted (main keeps expander 44.2). Parked on loop/exp-hyper.
