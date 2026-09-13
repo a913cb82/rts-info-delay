@@ -19,11 +19,15 @@ MIN_TRAIN = 20.0      # never train below this (9-towns die; skip until want>=20
 SCAN_R = 400.0        # pioneer scan radius (cached; full-map fallback when empty)
 DENSE_DIST = 4.0      # densify ring radius around small towns (P2/P2b)
 DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
+DENSE_HOLE_R = 30.0  # no densify near 800+ towns (feeds black holes -> crash)
+DENSE_HOLE_POP = 800.0
 TRAIN_SIZE = 30.0     # v3: small-fast trains beat big-slow (CAD 718)
 TRAIN_FLOOR = 350.0   # train iff pop >= this (CAD winner)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 210.0   # colonies below this get boosted (T2 track)
-FOUND_SIZE = 450.0    # founding spend target (equilibrium scale; leftovers continue)
+FOUND_SIZE = 450.0    # legacy founding target (superseded by tier spends)
+MARKET_SPEND = 667.0   # 16km-site spend -> 600-town (E1 self-sufficient grower)
+VILLAGE_SPEND = 333.0  # 4km-site spend -> 300-town (T3 grows +0.2%/yr)
 CHUNK = 500.0         # max single BUILD spend (big armies chain-spend; E9: no overshoot)
 TRIAGE_GROWTH = -0.01   # town shrinking faster than 1%/turn is dying: shed (no floor)
 ARRIVED = 1.0         # km: close enough to count as landed (exact engine)
@@ -110,8 +114,11 @@ def _densify_list(state, config, exclude=None) -> list[tuple[float, float]]:
     own = state.own_towns()
     excl = list(exclude) if exclude else []
     small = [t for t in own if t.population <= DENSE_MAX_POP]
+    bigs = [(t.x, t.y) for t in own if t.population >= DENSE_HOLE_POP]
     out = []
     for t in small:
+        if any(math.hypot(t.x - bx, t.y - by) < DENSE_HOLE_R for bx, by in bigs):
+            continue  # hole brewing nearby: spread (pioneer) instead of feeding it
         for ring_r in (DENSE_DIST, DENSE_DIST * 2):
             for k in range(6):
                 ang = k * math.pi / 3
@@ -226,20 +233,28 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             spend = min(a.size, max(10.0, BOOST_BELOW - tgt.population), CHUNK)
             if math.hypot(a.x - tgt.x, a.y - tgt.y) <= ARRIVED:
                 out.append(f"BUILD {a.id} {tgt.x:.1f} {tgt.y:.1f} {spend:.1f}")
+            elif a.size >= 2 * spend:
+                out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {tgt.x:.1f} {tgt.y:.1f} {spend:.1f}")
             else:
                 out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {tgt.x:.1f} {tgt.y:.1f}")
             continue
         site = None
+        spend_target = VILLAGE_SPEND
         if didx < len(dsites):
             site = dsites[didx]
             didx += 1
+            spend_target = VILLAGE_SPEND
         elif pidx < len(psites):
             site = psites[pidx]
             pidx += 1
+            spend_target = MARKET_SPEND
         if site is None:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
-            out.append(f"BUILD {a.id} {site[0]:.1f} {site[1]:.1f} {min(a.size, FOUND_SIZE):.1f}")
+            out.append(f"BUILD {a.id} {site[0]:.1f} {site[1]:.1f} {min(a.size, spend_target):.1f}")
+        elif a.size >= 2 * spend_target:
+            # split-to-mission: mover marches with spend, remainder stays for next mission
+            out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f} {spend_target:.1f}")
         else:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
@@ -250,9 +265,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                for t in own_t if t.population < BOOST_BELOW
                and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute))
     if not pioneer_busy and pidx < len(psites):
-        want += FOUND_SIZE
+        want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
-        want += FOUND_SIZE
+        want += VILLAGE_SPEND
     short = want - sum(a.size for a in idle)
     if short >= MIN_TRAIN:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),

@@ -4329,3 +4329,14 @@ dsites-cache (sustained <10ms/turn; overdraft deaths gone). t10000:
 growth-rate, mouth-accounting, 500-chunks, triage-shed, caches). No
 per-size special cases. 10k-start swings across versions (path-sensitive
 triage; noted, not chased).
+
+### v9 splits + B2 black holes (2026-09-13, loop/grower)
+B1: 1 split/army/turn max (chain-splits merge back); binary 5 turns->32.
+B2 SHOCKER: flat 200x300@4km -> migration BLACK HOLE (one town 8928 by
+t2500, eats lattice) -> overshoot -> crash (2587@10k). No tiers emerge.
+Settled-optimal != dynamic-optimal (runaway!): sparse-stable wins
+(S2 villages-only 3350 > hierarchy 2300). v9: split-to-mission (mover
+marches, remainder missions next; no return-trips) + tier spends (market
+667/village 333) + densify-gate (no feeding 800+ holes <30km). Scales:
+10k->9358, 500->671, clocks clean. Shrink-vs-start structural (1-train
+cap vs -12%/turn deaths); vs idle 6.7x.
