@@ -3423,3 +3423,7 @@ Buzzer +10g (1540 total) -> ord 62.8 (mu 66.2, was 67.1/1530g): -0.9 on
 ### Buzzer 1550g (2026-09-13 05:42 BST)
 Buzzer +10g (1550 total) -> ord 62.7 (mu 66.1, was 66.2/1540g): -0.1 on
 3W + F1-death + fourths/fifths. Flat. 1550 games.
+
+### Buzzer 1560g (2026-09-13 05:47 BST)
+Buzzer +10g (1560 total) -> ord 61.9 (mu 65.2, was 66.1/1550g): -0.8 on
+4W + F1-death + fifths. 1560 games.
