@@ -3221,3 +3221,7 @@ Converged true ~61-64. 80 needs +17 (unreachable via scripted play).
 ### Buzzer 1010g (2026-09-13 03:07 BST)
 Buzzer +10g (1010 total) -> ord 63.0 (mu 66.3, was 66.6/1000g): -0.2 on
 3W + F1-death + fifths. 1010 games.
+
+### Buzzer 1020g (winless batch) (2026-09-13 03:12 BST)
+Buzzer +10g (1020 total) -> ord 62.3 (mu 65.6, was 66.3/1010g): -0.7 on
+0W (winless) + 2 F1-deaths + mids. Worst batch. 1020 games.
