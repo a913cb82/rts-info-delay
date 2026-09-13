@@ -3606,3 +3606,7 @@ from 66.1). Riding.
 ### Overmatch 390g (2026-09-13 08:17 BST)
 21a74a6 +15g (390 total) -> ord 67.5 (mu 71.2, was 71.3/375g): -0.1 on
 73% wins (offset by F1-death + fourths). Flat. 390 games.
+
+### Overmatch 400g MILESTONE (2026-09-13 08:22 BST)
+21a74a6 +10g (400 total) -> ord 66.5 (mu 70.2, was 71.2/390g): -1.0 on
+50% wins + 2 F1-deaths + 2nds/3rd. 400 games banked. Converged ~67-70?
