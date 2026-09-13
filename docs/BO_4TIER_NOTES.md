@@ -185,9 +185,32 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   urban down). Missing fixed costs confirmed as the binding gap.
 - Dense-bourg hand shape (77/14/2/2, +1.164) keeps the share lead among
   realistic-village layouts; no-chefs variant hits +1.183 (3-tier).
-- share-BO#5 (running): prem.75 + `--p0min 300` (new flag flooring
-  village size at the parish-center lower bound) — best shares under a
-  realistic-village constraint? 5/5 spent.
+- share-BO#5 (done — verdict below): prem.75 + `--p0min 300` (new flag
+  flooring village size at the parish-center lower bound). 5/5 spent.
+
+## share-BO#5 verdict: 4-tier wins with realistic villages forced
+
+- BO#5 (11 model evals, P0 ≥ 300 enforced): best = 4-tier seed shape
+  (+1.156, urb 12%). The floor binds (unconstrained wants P0 ~ 100–150)
+  and costs 0.04 vs tiny-village degeneracy (+1.197) — the measured price
+  of realistic villages. (Decode with pristine LO shows P0=100: the log
+  u values assume floored bounds; true P0 = 300.)
+- Process incident: BO#3's log got a concurrent second writer (extend
+  launched while the original still ran) → 50 lines/36 unique. Union
+  best (+1.197 tiny-village) stands; lesson: `ps`-verify death before
+  reusing a log path. Extend runs now confirm exit first.
+
+## Share-goal final (budget spent 5/5)
+
+- 4-tier optimal holds in every search that allows realistic villages
+  (BO#1/#2/#3/#5, seeds and reseeds, two knob regimes).
+- Best shares with 4-tier winning: dense-bourg@13 hand shape, 77/14/2/2
+  urb 19% (+1.164); no-chefs variant +1.183 (3-tier). Search-best shares:
+  seed shape 88/9/2/1, urb 12% (+1.156).
+- Remaining gaps are all mechanisms, verified from both sides: villages
+  (founding costs), big tops (urban income), density (terrain/waste).
+  No knob moves them — six knob directions tried (decay, hunger, melt,
+  reach, births, village floor); each either kills tiers or degenerates.
 
 ## Tier-earning audit (dense-bourg shape, prem.75, settled)
 
