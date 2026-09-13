@@ -724,3 +724,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   costing the seed 0.02 while hand center shapes keep +0.909. Placement
   details matter at the 0.02 level — the same order as most findings.
   Remaining gap decomposes: sizes (~0.03, small chefs) + placement (~0.015).
+- Builder conventions dominate: same tier params score +0.885 (BO layout:
+  middle plain, tops lattice+center) vs +0.827 (hand builder: middle +40,
+  tops center-only). Offsets/centering/refilter move results ±0.06 —
+  LARGER than knob effects. Next code step: unify build/layout into ONE
+  canonical builder before any more location/size tuning.
