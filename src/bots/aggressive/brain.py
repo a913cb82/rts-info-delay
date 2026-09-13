@@ -125,6 +125,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.extend(order_move(state, config, p, sk_march[0].x, sk_march[0].y))
             continue
         # Pack gate subsumes A2 departure-sync (need covers defendedness;
+        # Onesie-raider (speed-premium): visibly-empty (S==0) viable takes
+        # launch the NEAREST free solo immediately (walk-in empties can't
+        # donate; no pack assembly wait; catch windows before garrison).
+        if sel is not None and sel[2] == 0 and not state.army_has_target(p.id) and p.id not in held:
+            _u = sel[0]
+            if _u.population >= 4000:
+                _free = [a for a in state.own_armies() if not state.army_has_target(a.id)]
+                if _free and p.id == min(_free, key=lambda a: math.hypot(a.x - _u.x, a.y - _u.y)).id:
+                    out.extend(order_move(state, config, p, _u.x, _u.y))
+                    continue
         # the old retrench-march trickled). Undersized packs hold, except
         # one nearby probe vs visibly-empty (bounded recon by fire).
         if pack_building:

@@ -4109,3 +4109,8 @@ takes launch SOLO immediately, no pack assembly; speed-premium for thin;
 walk-in empties can't donate). Queued FIRST (aggressive). Others: volume-
 predator=baseline (redundant), D-certain (marginal), quiescence (conflicts
 muster), contacts=lanes (dead), rest built/complex.
+
+### Onesie-raider built (2026-09-13 13:21 BST)
+Research-driven inversion (speed-premium): S==0 viable takes launch
+nearest free solo immediately (no pack wait; empties can't donate).
+Bar: exceed 37.0 AND takes (style).
