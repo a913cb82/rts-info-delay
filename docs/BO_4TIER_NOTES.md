@@ -577,3 +577,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   opposite corner from the dense hand family, same rate band. Two optima
   families coexist: dense-small-many vs sparse-big-few. (Decode needs
   run-time bounds; pristine-LO misreads P0 348→133 and all tier sizes.)
+- Combo-knob baselines: s64t +1.367, flat +0.691 (gap +0.68 — hierarchy
+  margin widest measured). G-S1 (running): constrained reseed, seed 78.
+  1/3 searches spent.
