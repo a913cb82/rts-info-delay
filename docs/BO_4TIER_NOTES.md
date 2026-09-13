@@ -672,3 +672,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - H-S2 mid-run (25 model evals): seed still leads (+0.841). Constrained
   search at BASE behaves like every prior run — seeds first, GP polishes
   thousandths.
+- Regional size at BASE (small-chef shape): 12k (+0.677) vs 30k (+0.861).
+  Bigger regional wins +0.18 — the top rung scales freely once chefs are
+  small; mouths concentrate where sheds are unique.
