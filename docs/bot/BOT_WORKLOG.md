@@ -3261,3 +3261,7 @@ Buzzer +10g (1110 total) -> ord 63.3 (mu 66.6, was 66.4/1100g): +0.2 on
 ### Buzzer 1120g (60% batch) (2026-09-13 03:42 BST)
 Buzzer +10g (1120 total) -> ord 64.2 (mu 67.5, was 66.6/1110g): +0.9 on
 60% wins + F1-death. 1120 games.
+
+### Buzzer 1130g (2026-09-13 03:47 BST)
+Buzzer +10g (1130 total) -> ord 63.9 (mu 67.2, was 67.5/1120g): -0.3 on
+50% wins (offset by fifths) + F1-death. 1130 games.
