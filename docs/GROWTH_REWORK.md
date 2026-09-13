@@ -564,6 +564,60 @@ holds ~3,090 villages + 55 market towns. A 9.6k regional tier or any
 capital is dead weight for growth (they may still be wanted for
 non-growth reasons: administration, defence — out of scope here).
 
+## Hierarchy optimum: current vs legacy (100k and 1M)
+
+Matched shapes, per-capita %/yr. Current cold = single turn from zero
+state (plain pairwise); settled = 3 warmup turns (resell converges,
+pops drift 0.009%) + measured turn. Legacy = master's stock
+logistic+crowding, one turn (stateless). Absolute rates are NOT
+comparable across systems (different models); rankings are.
+
+100k region (N ~= 570):
+
+| shape | levels | urb% | top | cold | settled | legacy |
+|---|---|---|---|---|---|---|
+| flat | 1 | 0.0 | 300 | +0.1521 | +0.1572 | −274.70 |
+| s16/T600 | 2 | 12.1 | 600 | +0.1528 | +0.1576 | −275.62 |
+| s32/T2400 | 2 | 9.0 | 2400 | +0.1530 | +0.1544 | −274.36 |
+| s32/T2400+cap20k | 3 | 17.9 | 20000 | +0.1414 | +0.1418 | −272.04 |
+| s64/T2400 | 2 | 1.4 | 2400 | +0.1556 | +0.1595 | −274.68 |
+| s64/T9600 | 2 | 5.3 | 9600 | +0.1554 | +0.1577 | −273.38 |
+| +regional 9.6k | 3 | 13.5 | 9600 | +0.1479 | +0.1486 | −274.90 |
+| hier4 | 4 | 21.6 | 20000 | +0.1355 | +0.1357 | −58511348.56 |
+
+1M region (N ~= 3150):
+
+| shape | levels | urb% | top | cold | settled | legacy |
+|---|---|---|---|---|---|---|
+| flat | 1 | 0.0 | 300 | +0.1570 | +0.1614 | −699.83 |
+| s16/T600 | 2 | 11.9 | 600 | +0.1574 | +0.1614 | −701.24 |
+| s32/T2400 | 2 | 12.4 | 2400 | +0.1502 | +0.1511 | −694.96 |
+| s32/T2400+cap20k | 3 | 14.1 | 20000 | +0.1477 | +0.1485 | −695.42 |
+| s64/T2400 | 2 | 3.2 | 2400 | +0.1595 | +0.1618 | −697.68 |
+| s64/T9600 | 2 | 11.7 | 9600 | +0.1511 | +0.1517 | −685.42 |
+| +regional 9.6k | 3 | 17.7 | 9600 | +0.1426 | +0.1431 | −689.59 |
+| hier4 | 4 | 19.1 | 20000 | +0.1402 | +0.1407 | −10988422.35 |
+
+Current optimum (both scales, cold and settled agree): 2 levels —
+300-person villages on a dense (~4 km) lattice + 2400-person market
+towns spaced WIDE (~64 km, urban ~1–3%). Third/fourth tiers (20k
+capitals, 9.6k regionals) lose everywhere: big mouths, thin gains,
+dilution beats agglomeration. 9600-towns don't pay either (below flat
+at 1M). Resell adds +0.001..0.004 systematically but overturns
+nothing — deep hierarchy loses WITH the network effect, not for lack
+of it. Rankings are scale-invariant.
+
+Legacy: degenerate. Its crowding sums unbounded-range over hundreds of
+neighbors (a lone pair at 4 km merely halves growth to +2.5%/yr; x570
+neighbors = death spiral), and no agglomeration mechanism exists — a
+2400-town next door only crowds, never benefits. So every dense layout
+collapses at both scales (rankings meaningless; hier4 overflows), and
+its in-envelope optimum is degenerate too: rate rises monotonically
+with spacing toward the lone-village max (+5.18%/yr) — levels 1,
+sizes small, spacings as-wide-as-possible. Real settlement (villages
+at 2–5 km *with* towns) is unrepresentable. That gap is what the
+rework fills.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode

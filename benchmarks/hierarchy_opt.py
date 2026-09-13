@@ -4,10 +4,11 @@ Why this design (see docs/GROWTH_REWORK.md "scale" notes):
 - Whole-world per-capita rates are exact and comparable ACROSS shapes
   built on the same region (same edges). Never compare shapes built on
   different regions or with different urban fractions and call it scale.
-- The economy is a pure function of the towns: one `_step_core` call
-  resolves a whole turn (land -> services -> trade -> births ->
-  migration) with no cross-turn state, so a single turn gives the
-  exact instantaneous rate. No warmup, no windows.
+- One `_step_core` call resolves a whole turn (land -> services ->
+  improvement -> trade -> births -> migration). Towns carry one state
+  (last_improvement, cold start 0), so a single turn gives the exact
+  cold-start (plain pairwise) rate; settled rates need ~3 warmup turns
+  (see hierarchy_compare.py). No windows.
 - Towns on an independent lattice (spacing s_t, size T); villages fill
   the rest. ~600 towns, ~10 turns, ~1-2 s per config, ~1 MB matrices.
 
