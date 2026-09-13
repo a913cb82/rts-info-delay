@@ -91,6 +91,12 @@ def demand_trains(state: "BotState", config, can_train,
             want = True
         if expand:
             want = True
+        # Buzzer strip-mine (free force): towns >=60k have ~zero/negative
+        # marginal growth (logistic peak) — mustering to 60k costs nothing
+        # (score-neutral now: 1000->1000) and fields take-snowball force
+        # for the endgame (900+ turns). Growers (<60k) keep compounding.
+        if buzzer_active(state, config) and t.population >= 60000:
+            want = True
         if len(state.own_armies()) < probe_armies:
             want = True
         if not want:

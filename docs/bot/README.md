@@ -21,6 +21,13 @@ One iteration = **fix the worst performer**. Repeat forever, on a branch
 4. **Ideas** from the mistakes — **style-gated**: every idea must be
    congruent with the target's style (table below). Doctrine first,
    code second (`STRATEGY.md`). Sparks -> `STRATEGY.md`.
+   **Leak, not premium**: prove the loss was -EV *ex ante* (a decision
+   that was wrong given what was known: donations, stalls, freezes,
+   deadlocks). A correct insurance that didn't pay out (guards vs a
+   2-turn-away contact that sat; holds that bled but saved) is a PREMIUM
+   — fixing it makes play luck-dependent (wins when threats sit, dies
+   when they rush). Results-oriented fixes backfire; judge decisions by
+   ex-ante EV, never by outcome alone.
    If an idea requires changing shared/other-package code, it is a PORT
    (`benchmarks/port.py`, explicit + justified) or it is out of scope.
 5. **Code** one idea, INSIDE the target package
@@ -38,6 +45,10 @@ One iteration = **fix the worst performer**. Repeat forever, on a branch
    style invariants hold in the canonical game (table below). Package
    isolation guarantees the other three are untouched. If it fails,
    iterate on the branch (one idea at a time, measure, keep or revert).
+   **Stuck-escape**: a target with >=3 fails + structural stuck-proof is
+   PARKED (documented); the loop proceeds to the next-viable personality
+   (best may be targeted when all others are parked — ladder rungs need
+   the max). Worst-first stands for viable personalities.
 8. **Generate** the canonical game to BOTH viewer spots (`recordings/`
    + `viewer/public/`, `md5sum` match).
 

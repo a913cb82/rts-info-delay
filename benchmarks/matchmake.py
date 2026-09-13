@@ -121,8 +121,12 @@ def pool() -> list[str]:
         by_hash.setdefault(f"{b}@{h}", []).append((b, sha))
     picks = set()
     for key, specs in by_hash.items():
+        # Rated name wins (most games). Unrated/content ties -> OLDEST commit
+        # (the content's origin — usually the code commit; a newer docs-only
+        # successor must not shadow it and mint mirror matches when the fresh
+        # brain is rated: newest-on-tie picked worklog twins as opponents).
         specs.sort(key=lambda bs: (-elo.get(f"{bs[0]}-{bs[1]}", {}).get("games", 0),
-                                   -order.get(bs[1], -1)))
+                                   order.get(bs[1], 10 ** 9)))
         b, sha = specs[0]
         picks.add(f"{b}-{sha}")
     return sorted(picks)
@@ -179,13 +183,11 @@ def main(argv=None) -> int:
         slots = " ".join(f"F{j}={b}" for j, b in enumerate(f))
         print(f"field {i + 1}: {slots}  info={info_score(m, f, elo):.2f}", flush=True)
     if args.play:
-        from elo_field import update
-        from engine.config import GameConfig
-        from runner.main import run_game
-        cfg = {k: v for k, v in
-               json.loads(open("recordings/empty_10000.jsonl").readline().strip()).items()
-               if k != "type"}
-        cfg = GameConfig.from_dict(cfg)
+        from elo_field import update, ensure_master_engine, bot_cmd, master_map, sha_of
+        ensure_master_engine()  # tip-of-master engine/runner (methodology)
+        from engine.config import GameConfig  # noqa: E402 (main-tip)
+        from runner.main import run_game  # noqa: E402
+        cfg = GameConfig.from_dict(master_map())
         import time
         sys.path.insert(0, str(ROOT / "src"))
         _played = []
@@ -199,10 +201,7 @@ def main(argv=None) -> int:
             cmds = {}
             for slot, spec in enumerate(f):
                 name, commit = spec.rsplit("-", 1)
-                from elo_field import ensure_worktree, sha_of
-                sha = sha_of(commit)
-                d = ensure_worktree(sha)
-                cmds[slot] = f"cd {d} && PYTHONPATH={d}/src {sys.executable} -m bots.{name}"
+                cmds[slot] = bot_cmd(name, sha_of(commit))
             scores = run_game(cfg, cmds, None)
             sc = {s: float(scores.get(s, 0)) for s in range(5)}
             update(elo, {s: f[s] for s in range(5)}, sc)

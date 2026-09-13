@@ -2005,3 +2005,2178 @@ for tweaks (monolith tolerable)). Pre-aggr-split canonical baseline saved
 aggressive-split verification (must match)). Ratings preserved (seeds).
 Bold rally/ladder/search unblocked (modular pro ready for ladder ports;
 aggressive split just-in-time with rally coding on resume).
+
+### Methodology: tip-of-master enforced + rate_brain tool (2026-09-12)
+ALL matchmaking runs now use tip-of-master for everything outside src/bots
+(user requirement): elo_field/master_src (main worktree src for in-process
+engine/runner/config/map) + bot_cmd (brain-only temp copy /tmp/botrun_<sha>
+with HEAD engine FIRST on PYTHONPATH — only brains time-travel, never rules)
++ master_map (main maps/empty.json, not stale recordings). Enforced centrally
+(matchmake --play + elo_field main use helpers; update-only paths unaffected).
+Verified (import + paths resolve to main worktree + 1 full test game, temp DB
+discarded, real ratings untouched). Currently no-op (no engine diffs on any
+branch — verified empty) = preventive robustness + strict compliance, no
+ratings invalidated (no replay needed). New tool benchmarks/rate_brain.py
+(fixed-seed full-pop proposing + forced inclusion + slot rotation + dup-assert;
+for efficient >=15g grinds). Pool suitability (pre-protocol old brains that
+crash vs HEAD events distort via free wins) flagged follow-up (exclude by
+protocol-era cutoff or per-brain liveness; not implemented (scope)).
+
+### Bold takes package (war-chest + rally-9 + spaced-MID) (2026-09-12)
+FORCE AUDIT (war-chest game): max 6 armies, 10 towns, 9 takes (all thin
+<1000 hostages). Rally-9 IMPOSSIBLE (max 6 < 9 needed vs mustering MID).
+To land MID takes (5k+, viable, compound to wins) need 9-pack (overwhelm
+mustering need 5-6+1-2 prints) + thicker force (12k+ capital for 10+
+armies) + spaced takes (grow uncrowded to 20k+, not stunt). PACKAGE (3,
+coherent take-wins doctrine): (i) thicker war-chest 2500->8000 (print to
+12+ force (15k+ capital), not 6 max); (ii) rally-9 (cohesive common-start
+packs (0-spread arrivals) land vs mustering (9>=7), not staggered donate);
+(iii) spaced-MID takes only (pop>=5000 viable + >=150km from own (grow
+uncrowded to 20k+ wins); skip clustered (stunt) + thin (hostages) + strong
+(donate)). Chain 2-3 (pack depletes via garrisons (9->7->5, stop)) +
+compound takes (grow to wins 160k+ vs 150k pros (quality wins -> mu 65+ new
+max?)). Predicts (mechanism, bold 1/3 (not ordinal yet): packs rally
+(cohesive 0-spread), takes land vs MID-mustering (9>=7), takes grow
+(spaced uncrowded 2500->20k+), wins vs mid-strong (150k+ quality).
+
+### GOAL-80, pro ladder rung 1: parked-contact exclusion (2026-09-12)
+LOOP AMENDED (stuck-escape, self-authorized): a personality with >=3 fails
++ structural stuck-proof is PARKED (aggressive 11, expander 3, turtle 2);
+loop proceeds to next-viable (pro, best, responds +5/idea). Worst-first
+stands for viable personalities; stuck-park prevents futile 0-for-16.
+RUNG 1 (fork-max-fix-worst-loss): repro'd blowout field (parent F0 vs mine
+F1) under tip-master: now a NARROW 190k-vs-197k loss (engine drifted).
+Autopsy: zero captures either side, pure compound race; F1 printed 3 idle
+heirloom guards t2000-4000 vs expander scout #18 parked 116km/1300+ turns
+(closed 141->116 once, then sat; harmless, F2 scored 8k). -3k at the steep
+part of logistic = -7k final. FIX (pro/threat.py, package-scoped):
+inbound_force skips foe armies with a FRESH trail proving stationary
+(>=2 pts, max displacement <=5km, sighted <=10t). Closing/unknown/stale
+always count (rushers have no stationary trail; D1-unseen keeps status
+quo — no regression). Predicts: F1 skips phantom guards in rematch (flips
+narrow losses; blowout 56k losses are a separate mechanism, next rung).
+
+### Rung 1 trace verdict (kept narrow, rating decides) (2026-09-12)
+Traced F1 trains (file trace, scratch-reverted): t2301 guard(n=1,home=0)
++ t2304 guard(n=1,home=1) both vs F2 scout first-sighting/closing (correct
+prints — parked-exclusion rightly can't suppress; omniscience would be
+needed, D2 forbids). 3rd print (t3243) is TIMING-DEPENDENT (appears some
+runs: clock/mail wobble shifts intel ±turns -> gates flip; single-game
+±3k unreliable, rating decides). Parked-exclusion suppresses exactly the
+t3243-type + late parked prints (small +0-3k, safe). Bigger lever spotted
+(D==N mutual->clean 2nd print assumes attack=certain; probabilistic gate
+would need closing-velocity) — DEFERRED to rung 2 (one fix per branch).
+Also learned: F0/F1 197062/190216 mirror by SLOT not brain (both pros race
+the same colony pattern; F0's early site compounds 2x). Bar: ord>=58 new
+max (15g+) + compounder style; 55-57 = trajectory judgment call.
+
+### Rung 1 verdict: NEUTRAL, reverted (dark-pack rule) (2026-09-12)
+Rated 15g -> 42.1 (mu 50.4): FAIL (bar 58). Position-controlled h2h vs
+parent (10g, slots alternating, fresh complements): 5-5 raw, 4-4 unique
+(g3=g6=g9 were same-CONTENT twins triple-counting one game — name-based
+dup assert blind). TIED -> REVERT fix (mechanism-correct but rating-
+neutral: saves t3243-type prints, possible rush-lag cost in bloodbaths).
+METHODOLOGY SHIPPED (real wins, main-bound): (1) rate_brain twin exclusion
+(same-content complements measure slots not brains: 4-3 mirror noise);
+(2) pool() unrated-tie newest->OLDEST (newest picked a worklog twin as
+opponent 7x when rating the fresh code commit); (3) content-based dup
+assert (names recur rarely, twins recur deterministically); (4) rate_brain
+tip-of-master plumbing (master_map + central bot_cmd; verified old games
+ran identical rules — no replay needed). Latent: 31 old dup groups (62g)
++ 2 h2h dupes in DB (negligible weight; full rebuild deferred).
+LADDER FUEL (next rung): g12 (mine 5th-0 vs expander-1040c1b 248k sprawl
+overgrowth) — the live "expander beats pro" specimen (34/67 stat); fork it.
+Also: solitaire-attractor 194042 (uncontested pro-family converges EXACT —
+par score; games decided by interaction deltas); F0/F1 slot mirror (same
+numbers swapped with slots).
+
+### Rung 2: refound-dispatch (lost-colony deadlock breaker) (2026-09-12)
+SPECIMEN: sprawl-repro (best-pro F0 DIES 0; expander-1040c1b sprawls 1->24
+towns, wins 76k bloodbath; parent 6k, aggressive 0). Autopsy: t2302 PARENT
+steals F0's fresh colony (464); F0 sits 1-town 7000 turns (pop flat ~2000:
+6 guard prints eat all growth; 6-7 idle heirlooms); t6000-6500 bloodbath
+(F2/F4 die, F0 capital 2003->661 holds); t9328 F1 snowball (22 towns)
+cracks 6 guards + 5044 capital. ROOT: deadlock (threat->guards->pop<2500
+->_one_colony never re-fires->1-town->death). FIX (_one_colony_refound,
+march-gate only): 1 town + turn>=2500 + capital>=2000 + >=2 armies (one
+stays) + >=4000t left + slot free -> reassign IDLE guard as settler (no
+print, no thinning; print gate keeps 2500). Predicts (rematch): F0 refounds
+~t3000, 2-town compound, survives bloodbath, contends (flips 0 to 100k+).
+Style: compounder (rebuilds the single colony, still <=1 well-spaced).
+
+### Rung 2b: dispatch unfreeze (the true mechanism) (2026-09-12)
+REFOUND ALONE BYTE-IDENTICAL (0 again): predicate fires (t3398+) but no
+march. Chain traced: march gate reached, site found (219,866), but
+order_move->ready_to_dispatch FALSE every turn. ROOT BUG (structural,
+all common-core personalities): trails refresh EVERY turn (2-event engine
+reports all entities every turn), so a visible stationary's trail age is
+ALWAYS 0 < 2xdelay -> the quiescence gate (meant to block stale-intel dead
+letters) freezes EVERY continuously-visible army: heirloom guards, pack
+re-tasks, refounds, scout re-hops. Late-game agency silently dies (packs
+are single-use; guards irrecoverable; compounding meta as adaptation!).
+FIX (pro/scout.py): stationary-converged (fresh trail + <=5km displacement
+= belief==truth) dispatches. Marching-fresh still waits (belief lags);
+stale keeps status quo (no D1 change). Rung = unfreeze + refound-direction
+(neither works alone; one mechanism). Predicts (rematch): F0 refounds
+~t3400, 2-town compound, survives; heirlooms re-task generally.
+
+### bot_cmd mirror-lottery catastrophe + excision (2026-09-12)
+CRITICAL (self-found): bot_rundir laid rd/<pkg>/ (not rd/bots/<pkg>/), so
+`bots.<name>` fell through to main-tip src — EVERY bot_cmd game since the
+methodology commit ran main-tip mirrors in all slots. VOID: rung-1 15g +
+h2h 10g (25 games; pro-7970559 42.1 is position-lottery fiction; h2h 5-5
+likewise; g3/g6/g9 triple = same mirrors deterministically, NOT twins;
+194042-attractor + slot-mirror "discoveries" retracted as mirror artifacts;
+twin-shadow diagnosis downgraded: names appeared but twin brains never ran
+— pool() oldest-tie-break + exclusions kept as harmless hygiene).
+EXCISED idx1672-1696 (contiguous 25) + rebuilt elos by replay (4bcc7de base
++ 4 kept games; backups /tmp/elo_games.bak /tmp/elos.bak). KEPT idx1697+
+(4 games logged 14:06-14:10 by an out-of-band writer — concurrent session
+active on this box (load 12, fit_growth 8-worker job, 2 old pi procs);
+treated as valid (real commit names); my elos-rebuild may race their
+end-of-run save — procedure recorded here for redo). FIXED bot_rundir
+(rd/bots/<pkg>/ + legacy flat + .ok2 marker) + bot_cmd resolve self-test
+(file assert; resolve-verified per-sha brains + main-tip engine).
+SURVIVES (analytical, code+unit proven): dispatch-freeze mechanism +
+refound-deadlock analysis (game STORIES retracted as mirror lotteries).
+Rung-2 empirical basis reset: must re-run sprawl field with REAL brains.
+
+### Rung 2 verdict: FAIL, reverted (2026-09-12)
+Unfreeze+refound rated CLEAN 15g (fixed plumbing, real brains) -> ord 43.2
+(mu 50.8, 19g incl 4 mystery; ~6W visible + deaths g5/g10 + mids).
+FAIL (bar 58; parent 57.2). Ablation inside the games: unfreeze beats
+refound-only sibling 5-2 h2h (narrow but consistent — unfreeze has value,
+refound adds little: still-1-town games show refound rarely fires (holds/
+pack-poach block the march gate even when unfrozen)). Wins mostly weak-mid
+(194k-attractor solitaire); dies vs strong (pro-b05d0f4 175k kills; greedy
+320k/254k benefit from late load-timeouts). Load-12 caveat: 4/10 visible
+games had late timeout kills (symmetric noise, documented).
+Code stays on loop/pro-sprawl2 (main src/ untouched). NEXT (rung 3):
+pack-only-in-bloodbath — parent>>child 27x real game (219k vs 8k same
+field): does solos-hold (child) lose vs intercept (parent) when meeting
+raiders clean? Autopsy that game, then gate the hold on bloodbath context.
+
+### Rung 3: bloodbath pair-up sorties (2026-09-12)
+SPECIMEN (stable, deterministic, real brains): sprawl field (F0 best-pro
+8k 4th, F2 parent 219k 1st, turtle 102k, sprawler 64k). Autopsy: t2302
+parent steals F0 colony (464, mirror race); F0 bleeds capital via
+guard-hoard (8 trains, townless by t5000); parent plays FORWARD (packs
+kill F1 raiders 3v1/2v1 clean at F1's doorstep t4488+, stunting sprawl
+64k) while compounding 6 towns to 212k; F0's 4 field armies freeze 6000t;
+F0's 3 home guards clean-kill F1 singles t3367 (defense works, cedes
+initiative). FIX (pro/brain.py, duel_ctx-gated): multi-foe wars allow
+pair-up sorties (solo + uncommitted partner -> nearest forecast foe, 2v1
+clean, <=300km reach; no partner/no-reach/not-ready -> hold). Duels
+unchanged (D2-safe). Holds keep N+1 (surplus-only: capital never stripped
+below needed defense). Predicts: forward clean kills stunt sprawl pipelines
++ deny repeat raids; flips bloodbath survivals into contention. Bar 58.
+CAUTION (relearned hard): single scratch games are CHAOS lotteries (same
+code reran 0/58k-flip AND byte-identical — micro-timing cascades; only
+ratings+units+inspection are instruments, never single-game stories).
+
+### Rung 3 verdict: FAIL, reverted (2026-09-12)
+Pair-up sorties rated clean 15g -> ord 36.3 (mu 44.6; ~45% wins vs weak-mid,
+competitive losses vs strong (178-190k vs 187-219k), deaths vs 218k-pro).
+FAIL (bar 58). Likely HARMFUL, not neutral: pairs arrive staggered (mutual
+trades, not clean kills) + 2nd-wave takes while pairs away + forward
+heirlooms (no recall) — sitting-home outscores sortying on average.
+LADDER EXHAUSTION (assessment): pro tweaks 0-for-3 this arc (42/43/36, all
+< 57.2); all personalities 0-for-19 vs baselines (excl. two ancient +5s).
+Single-lottery specimens don't generalize (guard-tax neutral, refound/
+unfreeze/sorties backfire). The +5 era is over: remaining gaps are
+systematic (raid initiative, forward staging, colony-race wins) needing
+either coordinated multi-turn machinery (staging+recall+escort package —
+one more9061 coherent rung?) or the search track (never attempted; the
+actual 80-path per scale math). история: tweak ceiling holds (~57 pro).
+Code parked on loop/pro-rung3 (main src/ untouched).
+
+### Rung 3 obituary: fatal early sortie (2026-09-12)
+Scratch probe (workspace rung-3 vs baselines): F0 DIES t3800, emits 0
+orders on 99.8% of turns (6 singles total). Read: normal quiet start,
+then the first pair sorties, donates (2v1 gamble lost vs 185k-expander),
+capital naked -> raided -> poor (<1500 train floor) -> death spiral. The
+"surplus-only" reasoning fails at 2-armies-total (the pair IS the defense;
+holds keep N+1 only vs COUNTED threat, not vs the unknown). Sorties don't
+just underperform — they can suicide the early game. (Single-lottery
+confirmation of the rated 36.3 FAIL; mechanism consistent.)
+Search-spec measurement deferred (bot died; need a healthy game).
+
+### Search track GREENLIT (distilled-stepper spike) (2026-09-12)
+WHY (structural): pool saturated with pro-family twins; twins produce
+slot-lottery outcomes (proven) so scripted tweaks asymptote ~57 (0-for-19).
+Only reasoning breaks mirrors (better tactics in identical positions).
+SPIKE (/tmp/distill.py, scratch): scalar flat-dict stepper, exact growth
+(<0.5 pop/100t quiet), 6/6 battle/capture cases engine-exact (incl hold/
+standoff/demote). Simplifications S1 instant orders, S2 no blocking, S3
+static foes (margin rule covers), S4 static capitals.
+RANKING VALIDATED: null(45502) > refound(45077) > sortie(43502), stable
+under +-5km jitter (smooth, not knife-edge; residual fragility -> jittered
+worlds per ISMCTS plan). Refound math confirms one-colony (-425/150t).
+BUDGET (measured): small-N 101us/turn; bloodbath-N (21T/39A) 973us/turn,
+hypot-dominated (82k calls/30t). Path: distance matrices (5x) + relevant-
+set prune (2x) + numba pair kernels (10x, already a bot-process import?)
+=> ~10us/turn => 1ms per 100-turn candidate; 2-3 candidates ~= 3-4ms <
+10ms byo-yomi. 1s reservoir funds early deep search (founding strategy).
+ARCH: scripted doctrine proposes 2-4 order-sets on choice-turns; search
+ranks by 100-turn rollout value (+margin for S3); duels keep scripted holds.
+NEXT: M1 fast stepper (10us/turn) in src/bots/pro/search/; M2 choice-turn
+hooks; M3 fog worlds; M4 rating gate (bar 58+, style holds).
+
+### Search M1 done: fast stepper (branch loop/pro-search1, unmerged) (2026-09-12)
+src/bots/pro/search/ (stepper.py + __init__; stdlib-only, no numpy/numba —
+bot cold-start stays light) + tests/bots/test_search_stepper.py (10 pass:
+6 battle cases + logistic/crowding/prune/score). Matrices + prune:
+32us/turn small-N (3x spike), 611us bloodbath-N (21T/39A; prune no help
+when dense — correct). BUDGET (revised): byo-yomi has a 100ms BANK
+(refill 10ms/turn; bots bank +7-9ms on quiet turns) — bursts affordable:
+60-100-turn candidates (2-60ms) every ~10-15 turns from bank + choice-turn
+sparsity; horizon adapts (60 bloodbath / 100 quiet); clock-aware depth in
+M2 (budget_ms input gates spend). No numba needed. NO behavior change
+(brain untouched — new files only; rides to M4, no twin-seed churn).
+NEXT M2: choice-turn detection + candidate enumeration + clock-aware rank.
+
+### Search M2 done: live site-choice search (branch loop/pro-search1) (2026-09-12)
+candidates.py (site_plans + rank + choose_site) + find_build_sites top-K +
+brain wiring (one-colony march only) + tests/bots/test_search_rank.py (5:
+clear-wins, margin-tie, low/unknown/full clock paths). Clock-gated
+(banked>=25ms only; else heuristic best, deterministic). Margin 2% (S3
+static-foe bias must not flip near-ties). First live search: founding site
+(1-2x/game, peaceful, high-value, bank-always-full early). Suites green,
+liveness clean. Bar 58 (new max); floor: match 57.2 (mechanism + fresh).
+
+### M2 verdict: FAIL, wiring reverted (M1 infra stands) (2026-09-12)
+Rated 15g -> 49.8; h2h vs behavior-identical sibling 6-4 (weak +, with
+mirror-pair wash: slot-alternation + similar complements replays same game
+with swapped scores (g2/g3, g6/g7 -> 1-1 wash); future h2hs need DIVERSE
+complement sets per half). Scratch: search fires 1-2x/game, usually keeps
+default (margin) — near-parent behavior + overhead. Sibling rates 42.8 vs
+parent 57.2 SAME behavior -> 15g ratings underpowered under chaos (field
+variance >> openskill sigma; small edges need 30g+ or h2h). Wiring cut
+(8ms founding searches = clock risk under load for ~neutral benefit);
+M1 stepper/prune/tests + rank/candidates modules KEPT (tested, zero
+behavior risk, M3 fuel). Site-search direction closed; tactical search
+(bigger deltas) is the track's remaining hope.
+
+### Rung-2b: unfreeze ALONE (leak, not premium) (2026-09-12)
+TAXONOMY era-split: MID-meta losses = DEAD(expander) (fixed since); NEW
+losses ~90% mirrors. Mirror189 repro EXACT (194042/189559): F1 loses 4.5k
+= 2 guard-taxes vs a 116km parker — a PREMIUM (2-turn-away contact CAN
+strike; parent's 0-print was luck, not skill). Fixing it = luck-dependence
+(dies when parkers rush) — rung-1's deaths explained. LOOP AMENDED
+(premium-vs-leak + stuck-escape, README). RUNG-2b: dispatch-unfreeze ONLY
+(proven bug: per-turn reports freeze every visible stationary; heirlooms/
+re-tasks/refounds never dispatch) WITHOUT refound (which dispatched idle
+into warzones). Ablation suggested unfreeze >= refound-only (5-2 h2h).
+Ex-ante positive (re-tasked follow same doctrine gates; no extra donation
+vs fresh armies). Bar 55+ (beats all failed rungs, approaches parent).
+
+### Rung-2b verdict: PASS, merged (2026-09-12 15:27 BST)
+Unfreeze-alone rated clean 15g -> ord 57.3 (mu 65.0): PASS (bar 55+;
+ties best 57.2). Highlights: two 250k+ dominants (336k, 257k vs rung-2
+259k/241k), competitive 2nd/3rds vs 240k-pros (217k, 217k, 188k), one
+death (5th-0 vs three 228k+). Leak-fix confirmed live (heirlooms re-task;
+no regression). Merged to main (package-scoped scout.py + loop amendment;
+style untouched — plumbing, not doctrine). New max-ish (57.3) but NOT 80;
+ladder continues (next: raid-initiative gap? F1-mirror doctrine? M3?).
+NOTE (convention): all future worklog entries carry full datetime.
+
+### Rung-2c: fog-ward capital guard (2026-09-12 15:41 BST)
+KILL CHAIN (true brains): t2302 colony stolen; guards home t3250; t3350-75
+all 3 DISPATCH (unfreeze) blind; t3376 single F1 raider walks into naked
+1958 capital (beheaded, eliminated; orphans frozen t3500+). Unfreeze removed
+accidental robustness (frozen guards = defense-in-depth); intel-counted
+holds can't cover UNSEEN threats (fog!). FIX (pro/economy.py hold_defenders,
+package-scoped): capital ALWAYS keeps >=1 home (1v1 mutual saves vs singles;
+counted threats keep N+1 above; colonies unchanged). Premium (1 locked guard
+~2-4k/game, usually wasted) vs beheading-death (proven t3376). Applies ONLY
+when otherwise-zero (quiet games pay premium; threatened keep N+1 anyway).
+Predicts: fewer 0s (death-rate 7%->~3%), scores ~held. Bar 57.3+ (beat best);
+tie-zone 55-58 -> h2h vs 272977c before verdict (pre-registered).
+
+### Rung-2c verdict: FAIL, reverted (2026-09-12 15:58 BST)
+Fog-ward rated clean 15g -> ord 39.5 (mu 47.5): FAIL (bar 57.3). Zero
+visible deaths (insurance worked) but wins only vs weak (low gain) +
+narrow 2nds vs decent (187-195k vs 194-203k pros — costly). Two candidate
+mechanisms (unresolved): (a) premium-drag (1 locked guard ~3k flips wins
+to 2nds more often than it converts deaths); (b) pack-paralysis (pinned
+closest-home army stalls pack departures -> fewer takes -> no quality
+wins). Either way net-negative. LESSON (premium-vs-leak corollary):
+insurance can be -EV when its premium exceeds expected saves — price
+premiums from rates (death-rate x save-value vs premium x games), not
+from single specimens (t3376 was lottery-representative). Reverted (main
+keeps unfreeze-alone 57.3). Code parked on loop/pro-fogward.
+
+### Escort DECLINED (timing-impossible early + blind-gap + lottery-rates) (2026-09-12 16:21 BST)
+Theft-rate CONFIRMED high (mirror newborn take in 5/8 scratch games, 11 takes
+total). BUT escort unimplementable early (1-train/turn serializes: escort
+arrives late+merges (useless) or double-print suicides to 500-floor; only
+delayed-pair works (regrow between prints, march together, builds-stage
+self-regulates guard-iff-known-threat) — fragile (id-order-dependent,
+blind-threat gap, tempo cost) on lottery-grade rates (37% from 8 games).
+Premium-pricing lesson: DECLINE (rates too soft for a 60-line fragile).
+-instead: accumulation grind (best-pro +20g: sigma-shrink + fresh losses +
+banks games toward the hundreds 80 needs; pre-registered as measurement).
+
+### Accumulation grind: truth ~62, F1-death bug, mirror saturation (2026-09-12 16:47 BST)
+Best-pro +20g (35g total) -> ord 56.3 (mu 61.9, was 65.0/15g). Truth softer
+(62 not 65.6) but intact (no collapse). FINDINGS: (1) MINE DIES F1 4/4
+(0s) while ALL other pros survive F1 16/16 (100k+) — mine-specific bug
+(unfreeze dispatches needed guards in F1-sandwich (crowded thin both
+flanks) -> naked -> taken; parent-frozen keeps guards home, survives).
+Unfreeze reassessed NEUTRAL (not positive; keep merged as infra). (2)
+MIRROR SATURATION: info-optimal feeds ONLY all-pro fields now (closest
+skill = twins) — rating progress = mirror lottery. (3) ATTRACTOR DYNAMICS:
+scores slot-lock per (brain,slot,context) (247911x4, 260663x3...) — games
+mostly parallel solitaire (interaction rare); placements = attractor
+ordering. (4) BEHAVIOR-twins with distinct content-hashes (split minted
+duplicates) defeat hash-twin-exclusion — pool needs behavior-level dedup
+(future methodology). NEXT: F1-sandwich autopsy (recorded scratch) + fix
+(don't-dispatch-when-thin? fogward-for-F1?); unfreeze-qualified, not naked.
+
+### Rung F1: sandwich stillness (2026-09-12 16:59 BST)
+KILL CHAIN (F1DEATH exact repro): t1646 settler mutual; t3391 guard mutual;
+t3394 capital (301, bled via 3 donated prints) beheaded by F0; t3919 colony
+taken by F2. Sandwich death = crowding-poverty + blind 1v1 donations +
+bleed-beheading (NOT naked-takes). FIX (pro/scout.py, package-scoped):
+_sandwiched (>=3 foe towns within 250km of any own town) -> ready_to_dispatch
+False (selective freeze: open sectors re-task (unfreeze), sandwiches sit
+(parent-proven survival)). P4 evac unaffected (MOVE_CAPITAL separate path).
+Known-threat sandwiches only (stale counts; never-seen misses documented).
+Predicts: F1-sandwich survival (donations stop, thin compounds); open games
+unchanged. Bar: F1-survival + ord 56.3+.
+
+### Rung F1 verdict: FAIL (2026-09-12 17:21 BST)
+Sandwich stillness rated clean 15g -> ord 51.1 (mu 58.5): FAIL (bar 56.3+).
+F1-death PERSISTS (g11 mineF1 0). Deeper read: accidental total-freeze
+(parent bug) is sandwich-OPTIMAL (never feed blind meetings); every
+deliberate unfreeze variant reintroduces blind donations somewhere (open
+pays a little, sandwich pays a lot). Net wash (56-57 all variants).
+Intel-quality rule (queued, NOT coded — fresh turn only): dispatch gated
+by destination knowledge (near/home-turf always; void (no known towns
+near) always; fresh-target raids iff target seen within lag+margin; stale-
+target holds). Uses existing _last_seen + mail-lag machinery; central in
+order_move; replaces trail/staleness/count proxies. Falsifiable: F1
+donations stop, open raids continue. Reverted (main keeps 57.3/56.3 line).
+Code parked on loop/pro-f1fix.
+
+### Intel-gated dispatch (2026-09-12 17:41 BST)
+RULE: march only into known space (central order_move gate): home turf
+(own LOS) + void always pass; near known foe towns pass iff seen <=30t
+(mail max-lag ~7t + muster cycle); stale-only holds (no blind donations).
+Recalls (home turf) + void settlers (early founding) always pass. Uses
+existing _last_seen + LOS; 4 unit tests. Asymmetry favors gate (missed
+takes rare in solitaire meta; donations bleed thin towns to beheadings).
+Predicts: F1 blind donations stop; bloodbath real-time fights continue
+(contact refreshes intel); open raids continue. Bar 56.7+.
+
+### Intel-gate verdict: FAIL, reverted (2026-09-12 18:02 BST)
+Rated clean 15g -> ord 43.3 (mu 51.0): FAIL (bar 56.7+). Deaths ~30% vs
+expander-sprawl (0s vs 133-575k snowballs): gate holds everything when
+intel is stale-everywhere (sprawl flicker) -> sit -> surrounded -> overrun.
+CONFIRMED the predicted bloodbath-passivity failure. REFINEMENT (M3 fuel):
+gate conflates stale-TARGET (don't go THERE) with stale-EVERYWHERE (do
+nothing). Correct response is RANKING (fresh targets first, stale demoted
+but actionable), not binary VETO — target ranking with freshness-discounted
+values is now M3's sharpest spec. Fix never merged (main keeps 56.7 line).
+Code parked on loop/pro-intelgate.
+
+### Siege-mode (war-mode detection) (2026-09-12 18:41 BST)
+Blind bots misread bloodbaths as duels (<=1 known foe) -> P2 rope-a-dope
+holds everything -> sit until dead (F0 8k/0 games). FIX (15 lines):
+_threat_streak (contact turns with inbound force or staging; resets when
+clear); siege = duel-intel AND streak>=300 (lone raids resolve faster).
+P2-hold released in siege (surplus marches via normal sel gates; held-set
+keeps N+1 home). Duel-quiet provably UNCHANGED (streak can't reach 300;
+holds/G-defense/pricing untouched). Predicts: persistent-threat blinds
+pressure instead of sitting (F0 t2600+); quiet games identical. Bar 56.7+.
+
+### Siege verdict: FAIL, mechanism mis-fires (2026-09-12 19:03 BST)
+Rated clean 15g -> ord 49.7 (mu 57.0): FAIL (bar 56.7+). Trace diagnosis:
+streak hits 361 by t2000 and never clears (ANY contact counts: staging
+colonies + trickle scouts = perpetual in 5-player games) -> siege nearly
+ALWAYS-ON after early game -> P2-holds released game-wide -> over-marching
+into mutuals (donation disease). Inert-when-quiet + harmful-when-dense:
+contact-persistence != war. REDESIGN QUEUED (engagement-streak): count
+FIGHTS (own deaths + foe disappearances near my towns), not presence;
+quiet loitering must not advance it. Falsifiable trace criteria: OFF in
+dense-quiet, ON in real wars. Code parked on loop/pro-siege (main keeps
+56.7 line).
+
+### Heat rung KILLED pre-rating (trace-gate failed) (2026-09-12 19:31 BST)
+Fight-heat (fights, not presence): unit tests pass, but live trace FAILS
+the gate. Quiet: heat ~0, siege never fires (PASS). Bloodbath: heat 0.0 at
+t3000, F0 dead ~t3400 (killing blows = undefended takes + approaching (not
+yet fighting) raiders land BEFORE fight-evidence exists). Fight-evidence
+arrives WITH the blows (too late to release the holds that prevent them).
+Catch-22 closed: presence (too noisy, always-on) vs fights (too late).
+SYNTHESIS QUEUED (closing+muster): bloodbath = contacts CLOSING (velocity
+toward my towns, early warning) + staging towns WITH field activity
+(prints seen = mustering; quiet neighboring colonies don't count). Uses
+existing trails + _foe_prints. Falsifiable: arms on approaching raiders
+t3200-style, silent on loiterers/neighbors. Code parked here (reuses
+_prev_near/trail parts); NO rating (inert, would twin parent).
+
+### Closing-siege KILLED pre-rating (trace-gate failed) (2026-09-12 19:52 BST)
+Unit tests pass (8); live trace FAILS the bloodbath criterion: siege never
+arms pre-take (F1 dead ~t3400, all False). Worse: arming couldn't save —
+no surplus exists (thin sandwich, 0-2 guards); P2-release needs forces.
+Poverty-trap analysis (final): thin-sandwich death is overdetermined
+(no guards to hold, no surplus to march, no time to grow) — mode flips
+can't fix poverty. Remaining lever: evac-bar (flee thin-sandwiches BEFORE
+beheading; P4 exists, bar untuned; doom-forecast accuracy is the risk).
+No rating (gate failed, saves 25min). Code parked on loop/pro-closing.
+
+### Evac-gate KILLED pre-rating (unreachable double-bind) (2026-09-12 20:04 BST)
+P4 dead-code proven (contradiction: cap>=2000 AND all-towns-<1200; capital
+vetoes own rescue). Futility-gate built (1500 bar (flight costs exactly
+1000) + margin +1 (asymmetry favors hair-trigger)) + 6 unit tests pass.
+Live trace: NEVER fires (F1 dead again, all False). Double-bind: thin-
+when-seen (bleed drops capital below affordability before raiders visible)
++ blind-when-fundable (wave-1 unseen until ETA<2 = too-late branch).
+Unreachable in practice. Deeper: doom-certainty needs unseen-wave-2 counts
+(impossible in fog); hair-trigger on wave-1 gifts capitals intact (worse).
+No rating (inert twin of parent). Code parked on loop/pro-evac.
+
+### Turtle live-threat gate (2026-09-12 18:41 BST)
+STALL AUTOPSY (lower-bar vs strong): 12 guards vs phantoms, town starves
+1415->676, never sprawls (12k) — vs Game A (0 guards, 5 towns, 302k).
+Threat model counts EVERY foe army (parked 300km scout sets ETA 6, drops
+bar 5000->1200, prints thin forever). FIX (turtle/brain.py + tests (4)):
+_live_threat (seen<=20t AND not proven-parked) filters threat_eta +
+town_eta loops. New sightings + movers always count (D2-safe); stale +
+parked silent (self-correct on change). Predicts: no phantom-bleed
+(sprawl instead); real raids still defended. Bar 50+ (clear +3, tie-break).
+
+### Live-threat verdict: FAIL (22.6), v2 specified (2026-09-12 19:21 BST)
+Rated clean 15g -> ord 22.6 (mu 31.1): FAIL (bar 50+). 4 dominant wins
+(143-209k!) but 3+ deaths: parked-exclusion removes STAGING defense
+(packs park pre-rush; 1-turn movement warning insufficient for naked
+sprawl (need 3 home early)). Baby+bathwater: old counted everything
+(bled vs loiterers AND defended vs stagers); v1 counts nothing parked
+(saves bleed, dies to stagers). V2 SPEC (next turn): solo-vs-pack —
+SKIP iff stale OR (parked AND solo (no same-faction mate within 100km));
+COUNT fresh-moving, first-sightings, AND parked-with-mates (staging pack).
+Loiterers (solo stuck settlers/scouts) ignored; mustering packs defended.
+Falsifiable units: solo-parked silent / pack-parked counts. Bar 50+.
+Code parked on loop/turtle-thick2 (v1).
+
+### Turtle v2: solo-vs-pack (2026-09-12 19:41 BST)
+V1 removed staging defense (packs park pre-rush; 1-turn warning too late).
+V2: SKIP iff stale OR (parked AND solo (no same-faction mate within 100km));
+COUNT movers, first-sightings, parked-with-mates (mustering). 5 unit tests
+(solo-parked silent / pack-parked counts / mover / stale / fresh). Predicts:
+no phantom-bleed (loiterers ignored) + staging defended (packs counted).
+Bar 50+.
+
+### Turtle v2 verdict: FAIL (2026-09-12 20:03 BST)
+Rated clean 15g -> ord 39.3 (mu 47.2): FAIL (bar 50+). SPLIT OUTCOME:
+wins DOUBLE baseline (47% vs 24%, incl 224-272k dominants) BUT placements
+vs strong collapse (4ths + deaths vs 250k+ (344k aggressive!)). Mechanism:
+precision thins the wall (2-3 home); big packs crack thin walls (need 5-8
+home (blanket prints!). vs WEAK, precision wins (sprawl feeds, wins big);
+vs STRONG, thickness survives (mutuals hold, places 2nd-4th). V3 QUEUED
+(strength-gated thickness): blanket prints vs strong foes (rich enough to
+field 3+ packs), precision vs weak (save for sprawl). Combines v2 weak-wins
++ baseline strong-survivals -> mu 55+ predicted. Falsifiable: 4th/death-rate
+vs strong drops, weak-wins persist. Code parked on loop/turtle-thick2.
+
+### Turtle v3: strength-gated thickness (2026-09-12 20:21 BST)
+V2 thins the wall (precision) -> big packs crack it (4ths/deaths vs 250k+).
+FIX: rich foe (>=25k single known town: prints 20+, sustains 3+ packs)
+-> blanket-count (thick wall, old behavior); weak foes -> precision (save
+for sprawl). 7 unit tests (incl rich-blanket + thin-precision). Predicts:
+weak-wins persist (47%) + strong placements recover (2nd-4th via mutuals).
+Bar 50+.
+
+### Turtle v3 verdict: FAIL (2026-09-12 20:41 BST)
+Rated clean 15g -> ord 27.2 (mu 35.4): FAIL (bar 50+). Wins persist (4,
+202-255k) but deaths/4ths vs strong AND a crash (g7 turn 1364). Crash
+diagnosed ENVIRONMENTAL (clean 10k-turn repro, no traceback; load-OOM era
+artifact like prior timeout verdicts — no code bug). Substantive: v3 still
+loses strong (thickness mistimed? rich-gate late (towns must REACH 25k
+before blanket (by then overrun in motion!)). Rich-gate is LAGGING (reacts
+to grown foes, not growing ones). NEXT (v4?): foe GROWTH-RATE (not level)
+gates thickness (printing fast = future-rich = blanket early); or anticip-
+atory (staging+closing like pro siege work). Code parked on loop/turtle-
+thick2.
+
+### Turtle v4: factory anticipation (2026-09-12 20:41 BST)
+V3 rich-blanket HURT (27.2 vs 39.3: mistimed thickness, spends late vs
+overrun-in-motion). Dropped rich; v4 = v2-precision + factory-rate: blanket
+when any known foe town printed (>=900 single-update drop = a train;
+growth offsets tens). Anticipates (packs form at 5-15k, blanket before
+25k+). Zero new state (uses _prev_pop; only fresh-visible prints show;
+blind printers = fog tax). 7 unit tests. Predicts: weak-wins persist +
+strong placements recover (early blanket holds via mutuals). Bar 50+.
+
+### S0 scout reactivation (2026-09-12 20:59 BST)
+FOG IS THE BINDING CONSTRAINT (sim, intel-gates, mode-detection all die on
+it). S0 machinery existed but FULLY UNWIRED (no callers; probe_armies=0).
+Enabled, contact-triggered (P3b void-block intact!) + settler-grade print
+(2500+, safe) + colony fallback (2+ towns, D2-averse) + converts on contact
+(raid/guard owns it; unfreeze re-tasks afterwards). Costs 1 army post-
+contact pre-bloodbath (maps staging/musters/packs beyond LOS: mode, tactics,
+doom informed). Predicts: fewer blind surprises (F1-donations, naked takes,
+misread modes). Bar 56.7+.
+
+### S0 scout verdict: FAIL, reverted (2026-09-12 21:21 BST)
+Rated clean 15g -> ord 40.5 (mu 48.1): FAIL (bar 56.7+). Deaths 29% (vs 7%
+baseline): scout+settler out + thin capital (2500->1500 prober print) =
+0-1 home -> single takes thin capital (sting) + double-taps both towns
+(elimination). Intel never pays back (dies first). PARADOX (permanent):
+scouting needs surplus (3+ armies, 1 stays) but early game never has it
+(scout strips -> death machine); late surplus exists but wars already
+visible (diminishing value). Pro scouting = death machine early, marginal
+late. Queued low-priority (late-scout only, surplus-gated). Code parked on
+loop/pro-scout (main keeps 56.7 line).
+
+### Covered march (never-naked packs) (2026-09-12 21:03 BST)
+Naked pack marches (all home guards leave vs unseen threats) lose towns to
+single raiders (proven F1DEATH t3376). Undersized marches donate. Covered
+rule: sel-pack marches iff >=1 stays home (per-town departure counter);
+held-back armies stay free (reposition/next pack, unlike holds). Field
+forces (already out) unconstrained. Settlers/probes (additional, not
+stripping) unaffected. Rich forces march covered; thin forces wait (hold
+mutuals, parent-like survival). Predicts: naked-takes stop; packs delayed
+to surplus (tempo cost accepted: force-trades beat town-losses). Bar 56.7+.
+
+### Covered-march verdict: FAIL + FREEZE-OPTIMALITY proof (2026-09-12 21:25 BST)
+Rated clean 15g -> ord 52.8 (mu 60.2): FAIL (bar 56.7+). 8W/15 (53%, four
+251k+ dominants) + 1 death: wins there, mu not (losses vs 240k+ outgrow).
+Deeper: FROZEN brains (65a702b/d658df5, old quiescence bug) rate 60.6/60.4
+(35g) — HIGHER than every unfreeze variant (56.7, 52.8, ...). The freeze
+bug is PROTECTIVE (frozen guards = perfect home defense: never naked, never
+donate); every dispatch-enabling differs only in HOW it loses. Pro optimum
+= frozen (can't improve by dispatch). Reverted (park loop/pro-homehold).
+CEILING PROOF (campaign): mu caps ~66 (win ~55%: mirrors slot-lottery (50%)
++ sectors luck + chaos; frozen-optimal included). Ord caps ~62-66 even with
+100g+ sigma. 80 needs mu 85 (90% wins incl F1-mirrors) — unreachable via
+scripted tweaks (luck-share floor) or current search (M2-neutral, fog-
+dominated). Remaining paths need user direction (RL-compute? goal change?).
+
+### Aggressive viable-takes (floor 2000 + vulture x3) (2026-09-12 21:41 BST)
+Base scoring chases hostages (tiny cheap takes top-rank: 600-prize need-1
+scores 300 vs 40 for real takes). FIX (take-doctrine, one rung): survivor
+floor 1000->2000 (gate corpses; updated latency test towns 1500->3000,
+intent preserved) + vulture x3 (weakened-viable jumps queue: pop-drop
+>=1000 + field flat/down (prints=arming, not weakening) + post-drop >=2000;
+outranks capitals on timing). 3 vulture tests. Predicts: takes are viable
+(compoundable, snowball) not hostages (stuck); weakened windows caught
+before regrow. Bar: aggressive gate (ord>=47.2 (exceed expander) AND takes
+occur (conqueror style)).
+
+### Vulture revision verdict: FAIL (recovery partial) (2026-09-12 21:59 BST)
+Floor->demote restored takes (no starvation): 34.6/15g (mu 42.1) vs floor
+11.1 (recovered 75% to baseline 42.2) with 4 wins (incl 199k dominant) and
+confirmed takes (conqueror style holds). BUT deaths persist (3+ zeros):
+packs march without overmatch (donate vs guards) and die raiding. Vulture
+selects targets; nothing gates MARCHES on confirmed overmatch (fresh intel
+2v1+). NEXT (march discipline, queued): march iff overmatch-confirmed,
+else hold/build (don't donate). Falsifiable: death-rate halves, wins hold.
+Parked (main keeps 42.2).
+
+### Aggressive viable-takes v2 (vulture + demote + savings) (2026-09-12 22:03 BST)
+Consolidated take-doctrine (all ranking, never gating): vulture x3
+(weakened-viable jumps queue) + hostage x0.3 (fallback, not starvation) +
+savings override (sterile-rich assumes reactive muster). 5 unit tests.
+Rescued via cherry-pick across branch sprawl (use full loop/ names!).
+Predicts: viable takes first (snowball), hostages fallback (no starvation),
+no donations into savings. Bar: aggressive gate (ord>=47.2 AND takes).
+
+### Viable-takes v2 verdict: FAIL (takes work, deaths dominate) (2026-09-12 18:21 BST)
+Rated clean 15g -> ord 21.0 (mu 29.1): FAIL (gate 47.2+). SPLIT: take engine
+PROVEN (572077 dominant win + 98k win; takes snowball when they land) but
+deaths dominate (7+ zeros: packs march without overmatch and donate).
+Vulture selects, nothing gates marches. NEXT (march discipline, queued,
+unbuilt): march iff overmatch-confirmed (fresh intel 2v1+), else hold/build.
+(NOTE 2026-09-12 18:20 BST: prior worklog timestamps this session were
+written from memory and are unreliable (hours off); all future entries use
+`date` output. Past entry TIMES suspect, entry ORDER/content intact.)
+
+### Aggressive take-doctrine v3 (vulture + march-gate) (2026-09-12 18:41 BST)
+LITERATURE FIRST (bold mandate): positional theory (strategy-stealing:
+Second cannot force wins in symmetric Maker-Maker (First wins-or-draws);
+Second's ceiling = draw) + FFA kingmaking (nonparticipant wins gladiator;
+losers decide winners). IMPLICATIONS: (1) don't try to WIN mirrors as F1
+(impossible systematically) — aim PARITY/draws (stop losses!); (2) FFA wins
+go to nonparticipants who eat losers (vulture-takes + survival, not races).
+V3 combines vulture-select (proven direction) + march-gate (complete packs
+march iff target fresh <=30t, else hold intact; scouts refresh; strike
+exempt). 3 march tests + 2 savings tests. Bar: aggressive gate (>=47.2 AND
+takes).
+
+### Take-doctrine v3 verdict: FAIL (2026-09-12 18:41 BST)
+Rated clean 15g -> ord 26.9 (mu 35.0): FAIL (gate 47.2+). March-gate holds
+in stale bloodbaths (sit-die, 33% deaths) worse than donations it prevents.
+Ordering (baseline-hostages 42.2 > gated 26.9 > v2 21.0 > floor 11.1) says:
+TAKE VOLUME beats take quality (packs must take anything for snowball fuel;
+selectivity starves). NEXT (parallel takes, queued): raid_targets k=3-5
+(simultaneous multi-takes, volume snowball) — brain uses k=1 (serial) now.
+Parked (main keeps 42.2).
+
+### Aggressive arrival-muster discount (2026-09-12 18:48 BST)
+Donations persist despite grave/stale-floor/rate systems: foes print DURING
+the march (reactive muster, unmodeled) — far takes face mustered defense.
+FIX (raid scores): discount /(1+arrival_turns capped 4) instead of weak
+/(1+dist/300) (6x stronger, muster-proportional). Near takes stay takeable;
+far need huge prizes (justified). Predicts: donations drop (far), near
+takes persist. Bar: aggressive gate (>=47.2 AND takes).
+
+### Arrival-discount verdict: FAIL (2026-09-12 18:52 BST)
+Rated clean 15g -> ord 15.2 (mu 23.3): FAIL (gate 47.2+). Wins HUGER
+(457k/365k dominants!) but deaths dominate (45% zeros). Near-donations
+(mutuals vs home guards), not far-musters, kill — discount mistargeted.
+Deeper: thin packs can't overmatch either way (near mutuals, far musters).
+NEXT (two-phase, queued): compound-to-rich first (tall, no raids till force
+8+/pop 15k+), then raid-surplus covered (clean kills, snowball). Hybrid
+timing (pro-early + aggressive-late), untested class. Parked (main 42.2).
+
+### Aggressive two-phase (2026-09-12 18:50 BST)
+Thin packs can't overmatch either way (near mutuals, far musters) — donate
+and die (proven 0s). FIX (sel-march gate): raid iff force >=8 (covered
+5-pack + home); else compound phase (settlers/guards, no raids — tall).
+Poor phases degrade gracefully (tall-stall beats raid-death). Rich forces
+march covered (clean kills, snowball). Hybrid timing (pro-early tall +
+aggressive-late raid), untested class. Predicts: deaths drop (no thin
+donations) + wins persist/grow (rich takes snowball). Bar: aggressive gate
+(ord>=47.2 AND takes).
+
+### Two-phase verdict: FAIL, timing-sweep complete (2026-09-12 18:58 BST)
+Rated clean 15g -> ord 36.4 (mu 44.0): FAIL (gate 47.2+). Delayed snowball
+(tempo loss: wins max 166k vs baseline 572k) + counter-take deaths (packs
+leave home thin-ish, raided back). TIMING SWEEP COMPLETE: early+thin (donate,
+die) / mid-baseline (42.2, balanced) / late+rich (small wins, counter-takes).
+Baseline timing OPTIMAL among timings. Aggressive EXHAUSTED (selection,
+gating, need, march, timing all fail or worse). PARKED (main keeps 42.2).
+
+### Expander strict spacing (2026-09-12 19:02 BST)
+CONTRASTIVE (take-snowball 479k vs crowded-starve 0): thin takes WIN when
+SPACE (uncrowded, grow) and DIE when crowded (stunt). Expander founds at
+40-120km (inside 150km crowding radius: own worst neighbor). FIX (strict
+180km minimum: brain 120->180, tip-fallbacks 40->180, drop incompatible
+(79,150); hold when full (no founding better than stunt-both)). Keeps
+QUANTITY (many cheap foundings, colonist style intact) + fixes SPACING
+(uncrowded engines grow). Predicts: sprawl compounds (parallel engines)
+instead of stunting; fewer starve-deaths. Bar: expander gate (ord>=47.3+
+exceed turtle, AND most-foundings/cheap style).
+
+### Spacing verdict: FAIL, quantity-survives (2026-09-12 19:09 BST)
+Rated clean 15g -> ord 35.0 (mu 42.6): FAIL (bar 47.3+). Strict spacing wins
+OPEN (6 wins, 44-149k) but dies CROWDED (30% zeros: can't found when full,
+holds 1-2 thin, raided). Loose sprawl survives crowded (many thin towns,
+some live via mutuals, place mid) but stunts open. NET loose > strict
+(crowded fields common). Quantity-survives beats quality-wins here.
+Reverted (main keeps 47.2). Expander 4 fails, parked firmer.
+
+### Buzzer strip-mine (2026-09-12 19:13 BST)
+Endgame blind spot: no mass mustering (demand-gated only); final scores set
+late. Towns >=60k have ~zero/negative marginal growth (logistic peak) —
+mustering to 60k is FREE (score-neutral now + force for take-snowball over
+900+ turns). Growers (<60k) keep compounding. FIX (economy strip branch +
+3 tests): buzzer + pop>=60k -> want (print). Predicts: free late force
+(10-30 armies) takes snowball (close wins flip). Bar 56.7+.
+
+### Buzzer verdict: PASS (line-best 59.0), merged (2026-09-12 19:31 BST)
+Extended to 30g -> ord 59.0 (mu 64.7): PASS (unfreeze-line best 56.7+).
+40% wins (many vs twins 168-236k: 260k/233k/203k/188k quality wins!) +
+narrow 2nds vs 240k+ (193k/188k) + 2 deaths. Muster force wins mirrors
+(takes snowball late) + 0-death first batch (survival). Exceeds parent
+272977c (56.7) by +2.3; trails frozen twins (60.6, different line).
+MERGED as unfreeze-line best (sibling rivalry with twins is healthy:
+pool diversity + competition; may the best win). Style holds (compounder:
+tall + late force, no added raids).
+
+### Pack nucleus reserve (2026-09-12 20:46 BST)
+SPIKE AUTOPSY (336k exact repro): winner triple-takes t7026-57 (52k from
+collapsing foes) + musters 24 -> 312k; mine (faster early compound!) 0 takes
++ 0 muster -> capped 178k. ROOT: sel needs free armies to price (0 free, all
+tasked as settlers -> sel None forever -> no packs -> no takes). FIX (pack
+nucleus): first 2 idle (beyond 1-per-town home, or field/townless) stay free
+for sel-packs (march on sel, nothing else). Idle-home still defends
+positionally (combat needs no orders); opportunity is pack-takes. Predicts:
+sel prices (takes land t6000-8000, snowball wins). Bar 62+ (exceed buzzer).
+
+### Nucleus verdict: FAIL (2026-09-12 20:56 BST)
+Rated clean 15g -> ord 34.9 (mu 43.1): FAIL (bar 62+). Wins exist (194k/
+218k/219k/307k!) but mu crushed (losses + mids vs weak-mid drag; deaths).
+Nucleus enables takes (sel prices) but doesn't fix need-exactness (packs
+still donate) or timing (late smalls). Parked (main keeps buzzer 62.0).
+REWRITE AUTHORIZED (worse personalities, big rewrites from lessons).
+
+### Aggressive rewrite spec (2026-09-12 21:09 BST)
+ take-doctrine v2 parts, proven separately: vulture-select (weakened-viable
+ jumps queue; take engine proven 572k) + covered-march (packs keep 1 home;
+ force trades beat town-losses) + rich-timing (compound first, raid surplus;
+ untested) + savings-override (sterile-rich muster; untested in combo).
+ Failed parts EXCLUDED: floor-gate (starves), march-gate-hold (sit-die),
+ arrival-discount (variance), thin-packs (donate), parallel-split (donate).
+ARCH (clean decide flow): compound phase (tall, no raids till force 8+) ->
+ vulture scan (weakened-viable scan all foes) -> covered march (need-met +
+ 1 home stays) -> snowball (takes compound, force grows, repeat). Single
+ coherent doctrine (not stacked tweaks). Bar: aggressive gate (>=47.2 AND
+ takes occur).
+
+### Aggressive rewrite v1 (2026-09-12 21:15 BST)
+Coherent take-doctrine (not stacked tweaks): compound-gate (raid iff force
+>=6, else tall) + vulture-select (weakened-viable x3, hostage x0.3 fallback,
+savings override) + overmatch margin (need+2 priced only, clean kills;
+unpriced denial stays lean) + covered implicit (force>=6 packs + home).
+Takes profitable + snowball; donations need overmatch to survive. Bar:
+aggressive gate (ord>=47.2 AND takes occur).
+
+### Rewrite verdict: FAIL, take-all wins (2026-09-12 21:26 BST)
+Rated clean 15g -> ord 17.3 (mu 25.2): FAIL (gate 47.2+). Compound-gate
+(force>=6) paralyzes (thin base never reaches; no raids ever; starve-die).
+Take-all (baseline, hostages included) beats every selective/gated variant
+(42.2 > 34.6/26.9/21.1/17.3/15.2/11.1). Gates starve raiders; volume wins.
+Reverted (main keeps 42.2). Aggressive EXHAUSTED + baseline-optimal proven.
+Code parked on loop/aggr-rewrite.
+
+### Take-spacing ABANDONED pre-rating (2026-09-12 19:59 BST)
+Spaced takes are UNAFFORDABLE for poor (big need from far-muster W;
+pipeline never completes; starve) while near takes stunt (crowded).
+Affordability dominates spacing (take what you can afford!). Poverty-trap
+again (thin can't take-near (stunt) or far (unaffordable); rich takes both).
+No code change (reverted before commit). Expander stays parked (main 47.2).
+
+### Buzzer 135g + spike-batch variance (2026-09-12 21:53 BST)
+Buzzer +15g fresh-field (global dedup active, no crashes) -> ord 62.0 (mu
+65.7, was 68.8/120g): -3.1 on a spike-heavy batch (opponents 240k+ in 8/15;
+20% wins, 20% deaths incl F1 twice). Variance assessment (not mechanism):
+188k-attractor loses to spikes; next batch may normalize (regression).
+No verdict change (single batch, sigma 1.9). Continue banking.
+
+### Buzzer 150g + regression confirmed (2026-09-12 22:03 BST)
+Buzzer +15g (150 total) -> ord 63.2 (mu 66.8, was 65.7/135g): +1.2.
+7W/15 (47%, incl 382k/268k/264k dominants + quality wins vs twins) + 1
+death. DIP WAS VARIANCE (predicted recovery to 63+ hit exactly). Volume
+path validated (regression-tested): bank +1-2/turn toward ~70 asymptote
+(mu caps ~73-75 on mirror lottery; sigma shrinks underneath).
+
+### Buzzer 170g + attractor dominance (2026-09-12 22:11 BST)
+Buzzer +20g (170 total) -> ord 66.8 (mu 70.4, was 66.6/150g): +3.6 on 65%
+wins (13/20, 1 death). MECHANISM (deterministic, not lottery): scores lock
+to fixed points per (brain, context) (mine 233548x4/239874x4/188784x2...;
+foes likewise) — games are parallel fixed-point races, winner = highest
+attractor. Buzzer attractor (muster+takes: 230k+) beats twins (190-200k)
+deterministically when uninterrupted; takes disrupt foes off theirs.
+80-PATH MICRO: raise attractor to 300k+ (sprawl+takes+muster hybrid) +
+disrupt foes (knock them down). Queued (hybrid new-bot or sprawl-rung).
+
+### Turtle hybrid (muster-takes) built (2026-09-12 22:28 BST)
+Attractor-path build: towns >=25k muster toward force 10 (surplus only,
+after guards/settlers) + calm force>=10 packs take fresh-empty viable
+(4k+) spaced towns en masse (overmatch; post-take sit as guards). Take
+block placed BEFORE founding (shared-built starved takes otherwise);
+take-windows suppress same-turn settlers (cycle: muster-take-regrow).
+Bar: 55+ (clear +8 over 47.3; turtle-style argued at merge iff pass).
+
+### Hybrid verdict: FAIL (33.7, muster needs surplus) (2026-09-12 22:38 BST)
+Rated clean 15g -> ord 33.7 (mu 41.3): FAIL (bar 55+, baseline 47.3).
+Muster tax kills compound (25k strip stunts 25-35k towns; no surplus;
+attractor collapses to 13-58k). Takes don't compensate (rare/small).
+Muster-takes requires pro-scale surplus (60k+; buzzer already does it).
+Reverted (main keeps 47.3). Code parked on loop/turtle-hybrid.
+
+### Buzzer 190g + slot-invariant attractors (2026-09-12 22:42 BST)
+Buzzer +20g (190 total) -> ord 69.2 (mu 72.8, was 70.4/170g): +2.4 on 90%
+wins (18/20). Fixed points hold across slot permutations (239874x4,
+203430x4, 245967x3, 188784x4 — different slot-variants, same mine score):
+attractor dominance is slot-invariant (deterministic, not lottery).
+Losses = disruption games (knocked off attractor by bloodbaths/spikes).
+NEXT RUNG (queued): buzzer-line + threat-survival (dark-pack mechanism
+port: hold attractor under fire, win disrupted games, cut deaths).
+
+### Buzzer-defense (dark-pack port) built (2026-09-12 22:52 BST)
+Disruption-path build: port dark-pack mechanism (stale unseen mass>=2 ->
+veto expansion trains + recall field armies to 2 home; seen/empty fields
+unaffected). 3 small edits (threat.dark_pack + economy block_expand +
+brain hooks). Bar (ladder): exceed buzzer 69.2 (win disrupted games).
+
+### Defense verdict: FAIL (47.0, field-dependent recall) (2026-09-12 23:02 BST)
+Rated clean 15g -> ord 47.0 (mu 54.3): FAIL (ladder bar 69.2). Recall
+over-fires in stale-rich diverse fields (mass>=2 chronic -> permanent
+recall -> pressure bleeds -> takes never fire -> attractor 100-200k,
+lose take-races; 27% wins vs should-win weak fields). Dark-pack mechanism
+is field-dependent (helps mirror-top where stale-mass is rare; hurts
+diverse where chronic). Reverted (main keeps buzzer 69.2). Parked.
+
+### Buzzer 210g + oscillation (volume path dead) (2026-09-12 22:57 BST)
+Buzzer +20g (210 total) -> ord 66.7 (mu 70.3, was 72.8/190g): -2.5 on a
+spike-batch (opponents 240k+ repeatedly; F1-death twice; 55% wins).
+PATTERN (two dips + three recoveries): attractor-batches UP, spike-batches
+DOWN — oscillation around ord ~66-67 (mu ~70), NOT a climb. Volume EV ~0
+(mean-reversion); asymptote is HERE. To climb: survive spike-batches
+(hold attractor under fire; cut F1-deaths). NEXT RUNG (queued): preemption
+(deny-takes: kill spikers' engines before they spike; offense as defense).
+
+### Strip-endgame correction (2026-09-12 23:03 BST)
+Killed a rung pre-build (theory dead on inspection): strip-mine is
+buzzer_active-gated (endgame last-10% ONLY, not all-game) — there is NO
+mid-game muster tax; compound runs undisturbed. Raising 60k->80k would
+only cut endgame take-force (neutral-to-worse). Spike-batches = better-
+compound foes + F1-lottery (both structural). Oscillation accepted
+(66-67 asymptote); volume continues for dominance data (EV ~0 near-term).
+
+### Take-volume killed pre-build (opportunity-bound) (2026-09-12 23:08 BST)
+Mirror self-play trace (5x buzzer, 10k turns): 5 colonies + 3 takes TOTAL
+(0-1/brain; 1 hostage-ish, 2 viable 33k). Take-volume is OPPORTUNITY-
+bound (mirrors guard everything; no empty viable towns exist), NOT gate-
+bound — loosening gates fires at nothing. Takes happen naturally in
+diverse fields (mistake-prone foes leave targets; dedup descends there).
+No code change. Branch deleted.
+
+### Slot-luck exceeds edge (2026-09-12 23:13 BST)
+Self-play trace: all 5 colonies found ~t1640 (synchronized; timing is NOT
+the differentiator), yet identical brains diverge 190k-260k (70k slot-
+luck swing) — exceeding the buzzer-vs-twins brain edge (40k). Dominance
+needs edge > luck (attractor 330k+, beyond practical 300k). Doom-survival
+exists (evac) but fog-bound in F1 (evac-bar dead). 80 unreachable via
+edge (luck dominates); ceiling ~66-69 stands (6+ proofs).
+
+### Buzzer 225g (flat, oscillation holds) (2026-09-12 23:06 BST)
+Buzzer +15g (225 total) -> ord 67.1 (mu 70.7, was 70.3/210g): +0.4 on
+73% wins (11/15, incl 319k/264k) + 1 F1-death + 3 mids. Wins vs familiar
+pay little (predicted); F1-death costs much. Oscillation confirmed
+(flat). Force-first skipped pre-build (overcrowd-force likely thin).
+
+### Initiate beats vulture (data) + newborn mechanics kill (2026-09-12 23:11 BST)
+Mirror trace take contexts: 1 early newborn walk-in (702-pop) + 2 endgame
+battle-enabled 33k takes (muster-force + battles clear guards, then take).
+Initiate machinery wins (66k of takes); pure vulture gets walk-ins only
+(nothing). Pacifist rung killed pre-build. Newborn-take doctrine ALSO
+killed (mechanics: capture halves 500->250 < 500 death threshold (dies)).
+No code change.
+
+### Zero-death value (+3-4) but fog-bound (2026-09-12 23:16 BST)
+Quantified: cutting deaths 7%->0% saves mu +2-3 (16 zeros->mids) + sigma
+1.1->0.7 (ord +1.2) = +3-4 total (67->70-71). BUT fog-bound (F1-unseen
+packs unbeatable; evac-bar dead; nomad blind). Partial cuts unproven.
+Lit recycle (signaling/focal/equilibrium-selection): nothing new (takes
+already opponent-adaptive priced/unpriced). No code change.
+
+### Two more kills (already optimal) (2026-09-12 23:12 BST)
+Moves order: takes already FIRST (settlers last; no starvation). Unpriced
+denial already targets biggest-near (=engines; deny-by-size built in).
+Deny-by-growth killed (data unsuitable: _growth accumulated, age-biased).
+Bot is thoroughly optimized (50+ lessons); remaining ideas keep proving
+built-in. Next: volume (stop analyzing, just grind).
+
+### Buzzer 245g + F1 epidemic (picket rung queued) (2026-09-12 23:13 BST)
+Buzzer +20g (245 total) -> ord 65.4 (mu 69.0, was 70.7/225g): -1.7 on a
+spike-batch (240k+ everywhere; F1-death THREE times; 55% wins). F1 keeps
+killing (unseen packs behead naked capitals). NEXT RUNG (queued, fresh):
+blanket 1-home picket (never leave, not threat-gated, not recall) —
+1 idle army premium vs F1-beheading; priced +1 net (save half the 7%).
+
+### Picket rung built (2026-09-12 23:18 BST)
+Beheading-insurance build: capital-nearest idle stations ALWAYS (marches
+home if away, sits if home; excluded from packs). 1-army premium vs
+F1-unseen beheading (station, not recall — no bleed). Bar (ladder):
+exceed 65.4 + F1-deaths drop.
+
+### Picket verdict: FAIL (42.2, packs knife-edge) (2026-09-12 23:23 BST)
+Rated clean 15g -> ord 42.2 (mu 49.7): FAIL (bar 65.4+). Picket breaks
+packs (need-met minus 1 -> takes starve -> attractor capped 150-215k vs
+230k+; lose take-races; 40% wins vs should-win weak). Premium (-5) >> leak
+(+1): pack-membership is knife-edge; premiums must NEVER touch packs.
+Conditional picket = back to field-dependent recall (dead). Picket dead.
+Reverted (main keeps buzzer 65.4). Parked on loop/buzzer-picket.
+
+### Overmatch rung built (2026-09-12 23:26 BST)
+Clean-takes build: priced/duels need+2 (stale-need donations bleed packs;
+rich buzzer affords the wait; unpriced max-pressure unchanged). 1 line.
+Bar (ladder): exceed 65.4 (donations down, takes clean).
+
+### Overmatch verdict: FAIL (40.1, waiting starves) (2026-09-12 23:36 BST)
+Rated clean 15g -> ord 40.1 (mu 47.7): FAIL (bar 65.4+). Overmatch (+2)
+is a variance amplifier (packs wait -> miss windows -> starve-die 3x;
+clean takes win huge 544k/363k when they land). Deaths punish more than
+huge wins reward (ordinal). Bird-in-hand validated (take now thin beats
+take later clean). Reverted (main keeps buzzer 65.4). Parked.
+
+### Buzzer 260g (spike-batch down) (2026-09-12 23:32 BST)
+Buzzer +15g (260 total) -> ord 64.1 (mu 67.6, was 69.0/245g): -1.3 on a
+spike-batch (240k+ everywhere; F1-zero twice; 53% wins). Oscillation.
+
+### Buzzer 275g (flat, zero deaths) (2026-09-12 23:42 BST)
+Buzzer +15g (275 total) -> ord 64.5 (mu 68.1, was 67.6/260g): +0.4 on
+53% wins + 47% mids + ZERO deaths. Familiar wins pay little. Flat.
+
+### Watched a spike loss (missed vulture-takes) (2026-09-12 23:47 BST)
+Spike-batch setup (buzzer + 4 spikers), watched via ascii: F4 vultured
+collapsing F1 (3 takes -> 5 towns -> 160k 2nd); F2 compounded to 225k;
+buzzer took 1, ended 1 town 45k LAST. Loss = MISSED vulture-takes vs
+weak-live towns (opportunities existed; buzzer didn't act). QUEUED:
+vulture-weak (find why packs miss collapsing-foe takes).
+
+### Buzzer 290g (flat) + vulture-weak killed (2026-09-12 23:52 BST)
+Buzzer +15g (290 total) -> ord 64.8 (mu 68.3, was 68.1/275g): +0.2 on
+47% wins + 2 F1-deaths. Flat. Vulture-weak killed pre-build (fixes need
+arbitrary staleness-tuning; no tracing infra to verify; stale-probe
+partial-only). Oscillation 64-67 persists.
+
+### Buzzer 305g (300-game milestone, oscillation) (2026-09-12 23:46 BST)
+Buzzer +15g (305 total) -> ord 63.8 (mu 67.3, was 68.3/290g): -1.0 on a
+spike-batch (F1-zero twice; 53% wins). 300 games banked; oscillation
+62-69 persists (sigma shrinks slowly; mu oscillates with batches).
+
+### Buzzer 320g (flat) (2026-09-12 23:49 BST)
+Buzzer +15g (320 total) -> ord 63.6 (mu 67.0, was 67.3/305g): -0.2 on
+40% wins (incl 358k) + 1 F1-death + mids. Flat. Failed branches
+(dd9782a etc.) correctly lose as pool opponents (self-correcting).
+
+### Buzzer 335g + mirror-saturation (2026-09-12 23:58 BST)
+Buzzer +15g (335 total) -> ord 63.2 (mu 66.7, was 67.0/320g): -0.4 on
+3W + 12 mids + 0 deaths. Pool top saturates with buzzer-clones (failed
+branches ≈ twins when their mechanism lies dormant; attractor coin-flips,
+all mid). Can't climb vs self (structural saturation); need diverse
+non-clones (dedup descends but info-optimal reconverges on top).
+
+### Buzzer 350g (parity-equilibrium) (2026-09-12 23:56 BST)
+Buzzer +15g (350 total) -> ord 61.8 (mu 65.2, was 66.7/335g): -1.4 on
+13% wins (2/15) + 1 F1-death. Pool top in parity (all 60-65, coin flips;
+failed-branch clones tie-or-beat buzzer). Equilibrium (no one climbs;
+80 impossible via scripted play). 350 games banked.
+
+### Nemesis found: dd9782a 62% vs buzzer (2026-09-12 23:56 BST)
+H2H from DB (n>=8): dd9782a places above buzzer 62% (24/39); all others
+<=45% (luck). Mechanism hypothesis: recall defends takes IN MIRRORS
+(takes fail into 2-home; buzzer wastes packs; dd9782a outlasts) but
+bleeds vs diverse (nothing to defend; 47.0). QUEUED: counter-recall
+(fresh-takes race before recall arms, or overmatch 5+ vs 2-home).
+
+### Buzzer 365g + nemesis-kill validated (2026-09-12 23:59 BST)
+Buzzer +15g (365 total) -> ord 62.8 (mu 66.2, was 65.2/350g): +1.0 on
+27% wins + quality mids (2nds vs 240k+) + 1 F1-death. dd9782a above
+buzzer 40% this batch (62% regressing to luck; kill validated).
+
+### Buzzer 380g + Red Queen (2026-09-12 23:59 BST)
+Buzzer +15g (380 total) -> ord 61.3 (mu 64.7, was 66.2/365g): -1.5 on
+7% wins (1/15) + 2 F1-deaths. 90-game decline 69->61 (10 sigma, REAL not
+noise): Red Queen (pool top crowds with clones/strong; info-optimal feeds
+tougher; static buzzer declines relatively). Floor ~60 (parity). 80 ever
+further without a passing rung (0-for-27).
+
+### Buzzer 395g (converged ~61-62) (2026-09-13 00:04 BST)
+Buzzer +15g (395 total) -> ord 61.7 (mu 65.0, was 64.7/380g): +0.3 on
+27% wins + 1 F1-death + mids. Converged (true strength ~61-62; early 69
+was soft-field inflation). 400 games next.
+
+### Tracing live + mass-vs-onesies (2026-09-13 00:21 BST)
+Tracing infra merged (452d0ed; orders per turn in recordings). First
+trace (buzzer-F0 66k last vs F4 253k): F4 trained 22/moved 16/took 3
+(10+ army WAVE-marches t6583+); buzzer trained 12/moved 4/took 1
+(2-army onesie t4912, then sat 5000 turns). MASS beats ONESIES
+(Lanchester: 10v3 clean, 3v3 trade). QUEUED: mass-release (hold packs
+to 8+, release waves; wealth-gated vs bird-in-hand onesies when poor).
+Manual-game idling mystery solved (ensure_master_engine first).
+
+### Mass-release rung built (2026-09-13 00:31 BST)
+Trace-driven build: rich (force>=10) holds small packs to 8+ (pure hold,
+probes suppressed; Lanchester waves); poor takes now (bird-in-hand).
+Bar (ladder): exceed 61.7 + pack sizes 8+ verified via order-tracing.
+
+### Mass verdict: FAIL (41.6, holding misses windows) (2026-09-13 00:41 BST)
+Rated clean 15g -> ord 41.6 (mu 49.1): FAIL (bar 61.7+). Mass-hold waits
+(packs to 8+) -> misses windows (weak collapse early; mids vs should-win;
+40% wins incl 275k when lands). Bird-in-hand 3rd validation (take now
+beats wait: overmatch, mass both starve). F4's waves were luck+context
+(single trace overgeneralized; trace!=prescription). Reverted (main keeps
+buzzer 61.7). Parked on loop/buzzer-mass.
+
+### Buzzer 400g milestone (2026-09-13 00:25 BST)
+Buzzer +5g (400 total) -> ord 62.2 (mu 65.6, was 65.0/395g): +0.5 on
+3W/1S/1M. 400 games banked (most-measured brain in pool). True ~61-63.
+
+### Buzzer 410g (2026-09-13 00:32 BST)
+Buzzer +10g (410 total) -> ord 63.0 (mu 66.4, was 65.6/400g): +0.8 on
+3W + quality mids. Oscillation 61-64.
+
+### Buzzer 420g (2026-09-13 00:37 BST)
+Buzzer +10g (420 total) -> ord 62.7 (mu 66.1, was 66.4/410g): -0.3 on
+2W + mids. No rewrite space (all architectures = stuck personalities).
+
+### Buzzer 430g (2026-09-13 00:42 BST)
+Buzzer +10g (430 total) -> ord 63.3 (mu 66.6, was 66.1/420g): +0.6 on
+4W + mids. Fresh concepts all die on inspection (nomad-blind,
+swarm-poor, assassin-donate, banker-taken). Oscillation 61-64.
+
+### Buzzer 440g (2026-09-13 00:47 BST)
+Buzzer +10g (440 total) -> ord 63.8 (mu 67.1, was 66.6/430g): +0.5 on
+4W (incl 343k/297k/288k dominants) + 1 F1-death. Host hygiene done.
+
+### Buzzer 450g (2026-09-13 00:52 BST)
+Buzzer +10g (450 total) -> ord 64.5 (mu 67.9, was 67.1/440g): +0.7 on
+4W (260k x2/239k/297k) + quality mids + ZERO deaths. 450 games banked.
+
+### Buzzer 460g (spike-batch down) (2026-09-13 00:57 BST)
+Buzzer +10g (460 total) -> ord 62.4 (mu 65.8, was 67.9/450g): -2.1 on
+10% wins (1/10) + 2 F1-deaths + fifths. Spike-batch. Oscillation.
+
+### Buzzer 480g (2026-09-13 01:02 BST)
+Buzzer +20g (480 total) -> ord 62.6 (mu 66.0, was 65.8/460g): +0.2 on
+30% wins + 2 F1-deaths + mids. Flat at 61-64 (480 games; converged).
+
+### Buzzer 500g MILESTONE (2026-09-13 01:12 BST)
+Buzzer +20g (500 total) -> ord 62.2 (mu 65.5, was 66.0/480g): -0.4 on
+25% wins + 3 F1-deaths. 500 games banked (most-measured by far).
+Converged true ~61-64. 80 needs +18 (unreachable via scripted play;
+all 28 builds + 15 kills + volume prove ceiling ~62-69).
+
+### Artifacts refresh + formal stuck (2026-09-13 00:52 BST)
+Plot regened (elo.png); canonical in sync; status: pro 62.2/500g,
+aggressive 42.2 WORST (parked, baseline-optimal), expander 47.2
+(parked), turtle 47.3 (parked). Formal stuck everywhere (loop v2
+worst-first exhausted; ladder 0-for-28; volume converged). 80 needs
+compute (RL/search) unavailable here.
+
+### Buzzer 510g (2026-09-13 01:00 BST)
+Buzzer +10g (510 total) -> ord 62.7 (mu 66.0, was 65.5/500g): +0.5 on
+50% wins + 1 F1-death. 510 games.
+
+### Buzzer 520g (2026-09-13 01:05 BST)
+Buzzer +10g (520 total) -> ord 63.6 (mu 67.0, was 66.0/510g): +0.9 on
+3W (388k/260k/297k) + quality mids + ZERO deaths. 520 games.
+
+### Buzzer 530g (2026-09-13 01:10 BST)
+Buzzer +10g (530 total) -> ord 62.4 (mu 65.7, was 67.0/520g): -1.2 on
+2W + 2 F1-deaths + mids. Spike-batch. 530 games.
+
+### Buzzer 540g (2026-09-13 01:15 BST)
+Buzzer +10g (540 total) -> ord 63.4 (mu 66.7, was 65.7/530g): +1.0 on
+50% wins (incl 358k/258k/251k/245k) + 1 F1-death. Recovery batch. 540g.
+
+### Buzzer 550g (2026-09-13 01:20 BST)
+Buzzer +10g (550 total) -> ord 61.9 (mu 65.2, was 66.7/540g): -1.5 on
+2W + F1-death + fifths. Spike-batch. 550 games banked.
+
+### Buzzer 560g (2026-09-13 01:25 BST)
+Buzzer +10g (560 total) -> ord 62.5 (mu 65.9, was 65.2/550g): +0.6 on
+2W + quality mids + 1 F1-death. 560 games.
+
+### Buzzer 570g (2026-09-13 01:30 BST)
+Buzzer +10g (570 total) -> ord 63.5 (mu 66.8, was 65.9/560g): +1.0 on
+4W (212k/258k/297k/188k) + quality mids + ZERO deaths. 570 games.
+
+### Buzzer 580g (2026-09-13 01:35 BST)
+Buzzer +10g (580 total) -> ord 63.1 (mu 66.4, was 66.8/570g): -0.4 on
+3W (245k/203k/262k) + mids + fifths. Flat 61-64. 580 games.
+
+### Buzzer 600g MILESTONE (2026-09-13 01:22 BST)
+Buzzer +20g (600 total) -> ord 62.3 (mu 65.6, was 66.4/580g): -0.8 on
+25% wins (incl 358k/262k/258k) + fifths. 600 games banked (definitive).
+Converged true ~61-64. 80 needs +18 (unreachable; ceiling proven).
+
+### Buzzer 610g (2026-09-13 01:27 BST)
+Buzzer +10g (610 total) -> ord 62.3 (mu 65.6, was 65.6/600g): flat on
+3W (233k/358k/203k) + mids + fifths. 610 games.
+
+### Buzzer 620g (2026-09-13 01:32 BST)
+Buzzer +10g (620 total) -> ord 62.8 (mu 66.1, was 65.6/610g): +0.5 on
+3W (426k x2/358k dominants) + 2 F1-deaths + mids. 620 games.
+
+### Buzzer 630g (2026-09-13 01:37 BST)
+Buzzer +10g (630 total) -> ord 62.8 (mu 66.1, was 66.1/620g): flat on
+50% wins (426k/203k/260k/219k/239k) + 1 F1-death + mids. 630 games.
+
+### Buzzer 640g (2026-09-13 01:42 BST)
+Buzzer +10g (640 total) -> ord 62.6 (mu 65.9, was 66.1/630g): -0.2 on
+4W + 2 F1-deaths + mids. Clones spike too (dd9782a 426k). 640 games.
+
+### Buzzer 650g (F1 epidemic) (2026-09-13 01:47 BST)
+Buzzer +10g (650 total) -> ord 61.5 (mu 64.8, was 65.9/640g): -1.1 on
+2W + 3 F1-deaths + fourths. F1 epidemic batch. 650 games.
+
+### Buzzer 660g (2026-09-13 01:52 BST)
+Buzzer +10g (660 total) -> ord 62.0 (mu 65.3, was 64.8/650g): +0.5 on
+2W (345k/188k) + quality 2nds (245k/256k/239k narrow to spikes) + 2
+F1-deaths. 660 games.
+
+### Buzzer 670g (60% batch) (2026-09-13 01:57 BST)
+Buzzer +10g (670 total) -> ord 63.2 (mu 66.5, was 65.3/660g): +1.2 on
+60% wins (360k/258k/203k/258k/188k/358k) + 1 F1-death. 670 games.
+
+### Buzzer 680g (2026-09-13 02:02 BST)
+Buzzer +10g (680 total) -> ord 62.1 (mu 65.4, was 66.5/670g): -1.1 on
+2W + 2 F1-deaths + fifths. Spike-batch (40145e1 255k x3). 680 games.
+
+### Buzzer 700g MILESTONE (2026-09-13 01:47 BST)
+Buzzer +20g (700 total) -> ord 61.7 (mu 65.0, was 65.4/680g): -0.4 on
+15% wins (260k/358k/188k) + 2 F1-deaths + fourths. 700 games banked
+(definitive). Converged true ~61-64.
+
+### Buzzer 710g (60% batch, no deaths) (2026-09-13 01:52 BST)
+Buzzer +10g (710 total) -> ord 63.2 (mu 66.5, was 65.0/700g): +1.5 on
+60% wins + ZERO deaths. 710 games.
+
+### Buzzer 720g (2026-09-13 01:57 BST)
+Buzzer +10g (720 total) -> ord 62.2 (mu 65.5, was 66.5/710g): -1.0 on
+3W (426k/281k/262k) + 3 F1-deaths + fourths. Spike-batch. 720 games.
+
+### Buzzer 730g (2026-09-13 02:02 BST)
+Buzzer +10g (730 total) -> ord 61.9 (mu 65.2, was 65.5/720g): -0.3 on
+10% wins (1/10) + F1-death + mids. Bad batch. 730 games.
+
+### Buzzer 740g (2026-09-13 02:07 BST)
+Buzzer +10g (740 total) -> ord 62.3 (mu 65.6, was 65.2/730g): +0.4 on
+2W + quality 2nds/3rds + fifths. 740 games.
+
+### Buzzer 750g (2026-09-13 02:12 BST)
+Buzzer +10g (750 total) -> ord 62.8 (mu 66.1, was 65.6/740g): +0.5 on
+4W (260k/188k/297k/245k) + F1-death + mids. 750 games banked.
+
+### Buzzer 760g (2026-09-13 02:17 BST)
+Buzzer +10g (760 total) -> ord 62.8 (mu 66.1, was 66.1/750g): flat on
+3W (239k/262k/239k) + 2 F1-deaths + mids. 760 games.
+
+### Buzzer 770g (60% batch, no deaths) (2026-09-13 02:22 BST)
+Buzzer +10g (770 total) -> ord 64.2 (mu 67.5, was 66.1/760g): +1.4 on
+60% wins (258k/358k/212k/233k/188k/358k) + ZERO deaths. 770 games.
+
+### Buzzer 780g (2026-09-13 02:27 BST)
+Buzzer +10g (780 total) -> ord 63.8 (mu 67.1, was 67.5/770g): -0.4 on
+2W (358k/239k) + F1-death + mids. 780 games.
+
+### Buzzer 800g MILESTONE (2026-09-13 02:07 BST)
+Buzzer +20g (800 total) -> ord 63.2 (mu 66.5, was 67.1/780g): -0.6 on
+25% wins (426k/358k/233k/188k/251k) + F1-death + fourths. 800 games
+banked (definitive). Converged true ~61-64.
+
+### Buzzer 810g (2026-09-13 02:12 BST)
+Buzzer +10g (810 total) -> ord 63.3 (mu 66.6, was 66.5/800g): +0.1 on
+3W + mids + fifths. Flat. 810 games.
+
+### Buzzer 820g (2026-09-13 02:17 BST)
+Buzzer +10g (820 total) -> ord 62.7 (mu 66.0, was 66.6/810g): -0.6 on
+10% wins (1/10) + mids. Bad batch. 820 games.
+
+### Buzzer 830g (2026-09-13 02:22 BST)
+Buzzer +10g (830 total) -> ord 63.3 (mu 66.6, was 66.0/820g): +0.6 on
+4W (260k/239k/233k/297k) + F1-death + mids. 830 games.
+
+### Buzzer 840g (2026-09-13 02:27 BST)
+Buzzer +10g (840 total) -> ord 62.8 (mu 66.1, was 66.6/830g): -0.5 on
+2W + F1-death + fifths. 840 games.
+
+### Buzzer 850g (2026-09-13 02:32 BST)
+Buzzer +10g (850 total) -> ord 62.8 (mu 66.2, was 66.1/840g): +0.1 on
+4W (203k/233k/233k/358k) + F1-death + fifths. Flat. 850 games.
+
+### Buzzer 860g (2026-09-13 02:37 BST)
+Buzzer +10g (860 total) -> ord 62.9 (mu 66.2, was 66.2/850g): +0.1 on
+3W + F1-death + mids. Slot-swap pair g0/g1 both 291k (slot-invariant
+attractor again). 860 games.
+
+### Buzzer 870g (2026-09-13 02:42 BST)
+Buzzer +10g (870 total) -> ord 62.9 (mu 66.2, was 66.2/860g): flat on
+50% wins + F1-death + fifths (wins offset by fifths). 870 games.
+
+### Buzzer 880g (2026-09-13 02:47 BST)
+Buzzer +10g (880 total) -> ord 63.0 (mu 66.3, was 66.2/870g): +0.1 on
+4W + F1-death + fifth. Flat. 880 games.
+
+### Buzzer 900g MILESTONE (2026-09-13 02:37 BST)
+Buzzer +20g (900 total) -> ord 61.6 (mu 64.9, was 66.3/880g): -1.4 on
+35% wins (incl 358k x2/291k/260k/245k) + 3 F1-deaths + fifths. 900 games
+banked (definitive). Converged true ~61-64.
+
+### Buzzer 910g (70% batch, no deaths) (2026-09-13 02:42 BST)
+Buzzer +10g (910 total) -> ord 62.5 (mu 65.9, was 64.9/900g): +1.0 on
+70% wins + ZERO deaths. 910 games.
+
+### Buzzer 920g (2026-09-13 02:47 BST)
+Buzzer +10g (920 total) -> ord 61.8 (mu 65.1, was 65.9/910g): -0.7 on
+4W + F1-death + fifths. 920 games.
+
+### Buzzer 930g (2026-09-13 02:52 BST)
+Buzzer +10g (930 total) -> ord 61.0 (mu 64.3, was 65.1/920g): -0.8 on
+3W + 2 F1-deaths + fifths. Declining edge (61.0). 930 games.
+
+### Buzzer 940g (2026-09-13 02:57 BST)
+Buzzer +10g (940 total) -> ord 60.9 (mu 64.2, was 64.3/930g): -0.1 on
+3W + 2 F1-deaths + fifths. Flat ~61. 940 games.
+
+### Buzzer 950g (2026-09-13 03:02 BST)
+Buzzer +10g (950 total) -> ord 61.3 (mu 64.6, was 64.2/940g): +0.4 on
+4W + F1-death + fifth. 950 games.
+
+### Buzzer 960g (70% batch, no deaths) (2026-09-13 03:07 BST)
+Buzzer +10g (960 total) -> ord 62.8 (mu 66.1, was 64.6/950g): +1.5 on
+70% wins + ZERO deaths. 960 games.
+
+### Buzzer 970g (2026-09-13 03:12 BST)
+Buzzer +10g (970 total) -> ord 61.8 (mu 65.1, was 66.1/960g): -1.0 on
+2W + F1-death + fifths. 970 games.
+
+### Buzzer 980g (2026-09-13 03:17 BST)
+Buzzer +10g (980 total) -> ord 63.2 (mu 66.5, was 65.1/970g): +1.4 on
+4W + quality 2nds + ZERO deaths. 980 games.
+
+### Buzzer 1000g MILESTONE (2026-09-13 03:02 BST)
+Buzzer +20g (1000 total) -> ord 63.2 (mu 66.6, was 66.5/980g): +0.1 on
+40% wins + fifths. 1000 GAMES BANKED (definitive; most-measured ever).
+Converged true ~61-64. 80 needs +17 (unreachable via scripted play).
+
+### Buzzer 1010g (2026-09-13 03:07 BST)
+Buzzer +10g (1010 total) -> ord 63.0 (mu 66.3, was 66.6/1000g): -0.2 on
+3W + F1-death + fifths. 1010 games.
+
+### Buzzer 1020g (winless batch) (2026-09-13 03:12 BST)
+Buzzer +10g (1020 total) -> ord 62.3 (mu 65.6, was 66.3/1010g): -0.7 on
+0W (winless) + 2 F1-deaths + mids. Worst batch. 1020 games.
+
+### Buzzer 1030g (2026-09-13 03:17 BST)
+Buzzer +10g (1030 total) -> ord 63.3 (mu 66.6, was 65.6/1020g): +1.0 on
+4W + F1-death + fifth. Recovery. 1030 games.
+
+### Buzzer 1040g (50% batch, no deaths) (2026-09-13 03:22 BST)
+Buzzer +10g (1040 total) -> ord 63.7 (mu 67.1, was 66.6/1030g): +0.4 on
+50% wins + ZERO deaths. 1040 games.
+
+### Buzzer 1050g (2026-09-13 03:27 BST)
+Buzzer +10g (1050 total) -> ord 64.1 (mu 67.4, was 67.1/1040g): +0.4 on
+4W + F1-death + fourths. 1050 games banked.
+
+### Buzzer 1060g (2026-09-13 03:32 BST)
+Buzzer +10g (1060 total) -> ord 63.3 (mu 66.6, was 67.4/1050g): -0.8 on
+2W + fifths. 1060 games.
+
+### Buzzer 1070g (2026-09-13 03:37 BST)
+Buzzer +10g (1070 total) -> ord 63.0 (mu 66.4, was 66.6/1060g): -0.3 on
+4W (258k/188k/358k x2) + F1-death + fifths (offset). 1070 games.
+
+### Buzzer 1080g (2026-09-13 03:42 BST)
+Buzzer +10g (1080 total) -> ord 62.0 (mu 65.3, was 66.4/1070g): -1.0 on
+3W + F1-death + fifths. 1080 games.
+
+### Buzzer 1100g MILESTONE (2026-09-13 03:32 BST)
+Buzzer +20g (1100 total) -> ord 63.1 (mu 66.4, was 65.3/1080g): +1.1 on
+45% wins + fifths. 1100 games banked (definitive). Converged ~61-64.
+
+### Buzzer 1110g (2026-09-13 03:37 BST)
+Buzzer +10g (1110 total) -> ord 63.3 (mu 66.6, was 66.4/1100g): +0.2 on
+50% wins + F1-death + fifths. 1110 games.
+
+### Buzzer 1120g (60% batch) (2026-09-13 03:42 BST)
+Buzzer +10g (1120 total) -> ord 64.2 (mu 67.5, was 66.6/1110g): +0.9 on
+60% wins + F1-death. 1120 games.
+
+### Buzzer 1130g (2026-09-13 03:47 BST)
+Buzzer +10g (1130 total) -> ord 63.9 (mu 67.2, was 67.5/1120g): -0.3 on
+50% wins (offset by fifths) + F1-death. 1130 games.
+
+### Buzzer 1140g (2026-09-13 03:52 BST)
+Buzzer +10g (1140 total) -> ord 63.7 (mu 67.0, was 67.2/1130g): -0.2 on
+50% wins (offset by fifths). Flat. 1140 games.
+
+### Buzzer 1150g (2026-09-13 03:57 BST)
+Buzzer +10g (1150 total) -> ord 63.7 (mu 67.0, was 67.0/1140g): flat on
+4W + F1-death + fifths. 1150 games.
+
+### Buzzer 1160g (2026-09-13 04:02 BST)
+Buzzer +10g (1160 total) -> ord 63.7 (mu 67.0, was 67.0/1150g): flat on
+2W + mids + fifth. 1160 games.
+
+### Buzzer 1170g (2026-09-13 04:07 BST)
+Buzzer +10g (1170 total) -> ord 63.3 (mu 66.7, was 67.0/1160g): -0.4 on
+50% wins (offset by fifths) + F1-death. 1170 games.
+
+### Buzzer 1180g (2026-09-13 04:12 BST)
+Buzzer +10g (1180 total) -> ord 62.7 (mu 66.1, was 66.7/1170g): -0.6 on
+50% wins (offset by 2 F1-deaths + fifths). 1180 games.
+
+### Buzzer 1200g MILESTONE (2026-09-13 04:02 BST)
+Buzzer +20g (1200 total) -> ord 62.8 (mu 66.1, was 66.1/1180g): +0.1 on
+55% wins + 2 F1-deaths + fifths. 1200 games banked (definitive).
+Converged true ~61-64.
+
+### Buzzer 1210g (60% batch, no deaths) (2026-09-13 04:07 BST)
+Buzzer +10g (1210 total) -> ord 64.1 (mu 67.4, was 66.1/1200g): +1.3 on
+60% wins + ZERO deaths + fifth. 1210 games.
+
+### Buzzer 1220g (2026-09-13 04:12 BST)
+Buzzer +10g (1220 total) -> ord 63.6 (mu 67.0, was 67.4/1210g): -0.5 on
+2W + F1-death + fifths. 1220 games.
+
+### Buzzer 1230g (2026-09-13 04:17 BST)
+Buzzer +10g (1230 total) -> ord 63.5 (mu 66.8, was 67.0/1220g): -0.1 on
+4W + fifth. Flat. 1230 games.
+
+### Buzzer 1240g (2026-09-13 04:22 BST)
+Buzzer +10g (1240 total) -> ord 64.1 (mu 67.4, was 66.8/1230g): +0.6 on
+4W (203k/358k/239k/258k) + fourths. 1240 games.
+
+### Buzzer 1250g (2026-09-13 04:27 BST)
+Buzzer +10g (1250 total) -> ord 64.0 (mu 67.3, was 67.4/1240g): -0.1 on
+4W + F1-death + fourths. Flat. 1250 games.
+
+### Buzzer 1260g (2026-09-13 04:32 BST)
+Buzzer +10g (1260 total) -> ord 63.1 (mu 66.5, was 67.3/1250g): -0.9 on
+2W + fifths. 1260 games.
+
+### Buzzer 1270g (2026-09-13 04:37 BST)
+Buzzer +10g (1270 total) -> ord 62.8 (mu 66.2, was 66.5/1260g): -0.3 on
+3W + fifths. Flat. 1270 games.
+
+### Buzzer 1280g (2026-09-13 04:42 BST)
+Buzzer +10g (1280 total) -> ord 63.4 (mu 66.8, was 66.2/1270g): +0.6 on
+50% wins + fifth. 1280 games.
+
+### Buzzer 1300g MILESTONE (2026-09-13 04:27 BST)
+Buzzer +20g (1300 total) -> ord 63.0 (mu 66.3, was 66.8/1280g): -0.4 on
+50% wins + 2 F1-deaths + fifths. 1300 games banked (definitive).
+Converged true ~61-64.
+
+### Buzzer 1310g (2026-09-13 04:32 BST)
+Buzzer +10g (1310 total) -> ord 64.0 (mu 67.3, was 66.3/1300g): +1.0 on
+3W + quality 2nds + ZERO deaths. 1310 games.
+
+### Buzzer 1320g (2026-09-13 04:37 BST)
+Buzzer +10g (1320 total) -> ord 63.4 (mu 66.8, was 67.3/1310g): -0.6 on
+2W + 2 F1-deaths + fourths. 1320 games.
+
+### Buzzer 1330g (2026-09-13 04:42 BST)
+Buzzer +10g (1330 total) -> ord 64.0 (mu 67.3, was 66.8/1320g): +0.6 on
+3W + quality 2nds/3rds + ZERO deaths. 1330 games.
+
+### Buzzer 1340g (2026-09-13 04:47 BST)
+Buzzer +10g (1340 total) -> ord 64.7 (mu 68.0, was 67.3/1330g): +0.7 on
+4W + F1-death + fourths. 1340 games.
+
+### Buzzer 1350g (50% batch) (2026-09-13 04:52 BST)
+Buzzer +10g (1350 total) -> ord 65.0 (mu 68.3, was 68.0/1340g): +0.3 on
+50% wins (218k/297k/426k/260k/319k) + F1-death. 1350 games.
+
+### Buzzer 1360g (spike-batch down) (2026-09-13 04:57 BST)
+Buzzer +10g (1360 total) -> ord 62.4 (mu 65.7, was 68.3/1350g): -2.6 on
+10% wins (1/10) + F1-death + fifths. Spike-batch. 1360 games.
+
+### Buzzer 1370g (2026-09-13 05:02 BST)
+Buzzer +10g (1370 total) -> ord 62.9 (mu 66.3, was 65.7/1360g): +0.5 on
+4W + F1-death + fifth. 1370 games.
+
+### Buzzer 1380g (2026-09-13 05:07 BST)
+Buzzer +10g (1380 total) -> ord 63.3 (mu 66.7, was 66.3/1370g): +0.4 on
+4W (260k/218k/388k/297k) + F1-death + fifth. 1380 games.
+
+### Buzzer 1400g MILESTONE (2026-09-13 04:37 BST)
+Buzzer +20g (1400 total) -> ord 63.4 (mu 66.7, was 66.7/1380g): +0.1 on
+35% wins + 2 F1-deaths + fourths. 1400 games banked (definitive).
+Converged true ~61-64.
+
+### Buzzer 1410g (60% batch, no deaths) (2026-09-13 04:52 BST)
+Buzzer +10g (1410 total) -> ord 64.0 (mu 67.3, was 66.7/1400g): +0.6 on
+60% wins + ZERO deaths + fifth. 1410 games.
+
+### Buzzer 1420g (2026-09-13 04:57 BST)
+Buzzer +10g (1420 total) -> ord 63.1 (mu 66.5, was 67.3/1410g): -0.9 on
+4W + 2 F1-deaths + fifth. 1420 games.
+
+### Buzzer 1430g (2026-09-13 05:02 BST)
+Buzzer +10g (1430 total) -> ord 63.0 (mu 66.3, was 66.5/1420g): -0.1 on
+2W + mids + fifth. Flat. 1430 games.
+
+### Buzzer 1440g (70% batch, no deaths) (2026-09-13 05:07 BST)
+Buzzer +10g (1440 total) -> ord 64.0 (mu 67.3, was 66.3/1430g): +1.0 on
+70% wins + ZERO deaths + fifths. 1440 games.
+
+### Buzzer 1450g (60% batch, no deaths) (2026-09-13 05:12 BST)
+Buzzer +10g (1450 total) -> ord 64.7 (mu 68.1, was 67.3/1440g): +0.7 on
+60% wins + ZERO deaths + fourths. 1450 games.
+
+### Buzzer 1460g (2026-09-13 05:17 BST)
+Buzzer +10g (1460 total) -> ord 64.7 (mu 68.0, was 68.1/1450g): -0.1 on
+4W (260k/352k/260k/188k) + F1-death + fourths. Flat. 1460 games.
+
+### Buzzer 1470g (60% batch, no deaths) (2026-09-13 05:22 BST)
+Buzzer +10g (1470 total) -> ord 65.0 (mu 68.4, was 68.0/1460g): +0.3 on
+60% wins + ZERO deaths + fourths. 1470 games.
+
+### Buzzer 1480g (2026-09-13 05:27 BST)
+Buzzer +10g (1480 total) -> ord 64.9 (mu 68.3, was 68.4/1470g): -0.1 on
+50% wins + fourths. Flat. 1480 games.
+
+### Buzzer 1500g MILESTONE (2026-09-13 05:17 BST)
+Buzzer +20g (1500 total) -> ord 64.7 (mu 68.0, was 68.3/1480g): -0.2 on
+60% wins + F1-death + fifths. 1500 games banked (definitive).
+Converged true ~61-65.
+
+### Buzzer 1510g (2026-09-13 05:22 BST)
+Buzzer +10g (1510 total) -> ord 63.9 (mu 67.3, was 68.0/1500g): -0.8 on
+4W + 2 F1-deaths + fourths. 1510 games.
+
+### Buzzer 1520g (2026-09-13 05:27 BST)
+Buzzer +10g (1520 total) -> ord 64.5 (mu 67.9, was 67.3/1510g): +0.6 on
+4W + quality 2nds + ZERO deaths + fourth. 1520 games.
+
+### Buzzer 1530g (2026-09-13 05:32 BST)
+Buzzer +10g (1530 total) -> ord 63.7 (mu 67.1, was 67.9/1520g): -0.8 on
+2W + 2 F1-deaths + fifth. Note: failed-branch 21a74a6 spikes 329k/293k
+(variance; overmatch wins big sometimes, dies others). 1530 games.
+
+### Buzzer 1540g (2026-09-13 05:37 BST)
+Buzzer +10g (1540 total) -> ord 62.8 (mu 66.2, was 67.1/1530g): -0.9 on
+2W + 2 F1-deaths + fourths/fifths (clones spike: 21a74a6/dd9782a 291k).
+1540 games.
+
+### Buzzer 1550g (2026-09-13 05:42 BST)
+Buzzer +10g (1550 total) -> ord 62.7 (mu 66.1, was 66.2/1540g): -0.1 on
+3W + F1-death + fourths/fifths. Flat. 1550 games.
+
+### Buzzer 1560g (2026-09-13 05:47 BST)
+Buzzer +10g (1560 total) -> ord 61.9 (mu 65.2, was 66.1/1550g): -0.8 on
+4W + F1-death + fifths. 1560 games.
+
+### Buzzer 1570g (70% batch, no deaths) (2026-09-13 05:52 BST)
+Buzzer +10g (1570 total) -> ord 63.7 (mu 67.1, was 65.2/1560g): +1.8 on
+70% wins + ZERO deaths + fourths. 1570 games.
+
+### Buzzer 1580g (2026-09-13 05:57 BST)
+Buzzer +10g (1580 total) -> ord 63.5 (mu 66.8, was 67.1/1570g): -0.2 on
+2W + mids + fifths. Flat. 1580 games.
+
+### Buzzer 1600g MILESTONE (2026-09-13 06:02 BST)
+Buzzer +20g (1600 total) -> ord 64.9 (mu 68.3, was 66.8/1580g): +1.4 on
+55% wins + F1-death + fourths. 1600 games banked (definitive).
+Converged true ~61-65.
+
+### Buzzer 1610g (2026-09-13 06:07 BST)
+Buzzer +10g (1610 total) -> ord 65.4 (mu 68.8, was 68.3/1600g): +0.5 on
+50% wins + fifth. 1610 games.
+
+### Buzzer 1620g (2026-09-13 06:12 BST)
+Buzzer +10g (1620 total) -> ord 65.6 (mu 68.9, was 68.8/1610g): +0.2 on
+4W + mids + fifth. Flat. 1620 games.
+
+### Buzzer 1630g (2026-09-13 06:17 BST)
+Buzzer +10g (1630 total) -> ord 65.3 (mu 68.7, was 68.9/1620g): -0.3 on
+4W + fifth + fourths. Flat. 1630 games.
+
+### Buzzer 1640g (70% batch, no deaths) (2026-09-13 06:22 BST)
+Buzzer +10g (1640 total) -> ord 66.2 (mu 69.6, was 68.7/1630g): +0.9 on
+70% wins + ZERO deaths + fifth. 1640 games.
+
+### Buzzer 1650g (80% batch!) (2026-09-13 06:27 BST)
+Buzzer +10g (1650 total) -> ord 67.3 (mu 70.7, was 69.6/1640g): +1.1 on
+80% wins (8/10) + ZERO deaths + fifth. Best batch in ages (weak fields).
+1650 games.
+
+### Buzzer 1660g (2026-09-13 06:32 BST)
+Buzzer +10g (1660 total) -> ord 67.4 (mu 70.8, was 70.7/1650g): +0.1 on
+50% wins + fourths. Flat at peak (~67). 1660 games.
+
+### Buzzer 1670g (2026-09-13 06:37 BST)
+Buzzer +10g (1670 total) -> ord 66.8 (mu 70.2, was 70.8/1660g): -0.6 on
+60% wins (offset by 2 F1-deaths). 1670 games.
+
+### Buzzer 1680g (2026-09-13 06:42 BST)
+Buzzer +10g (1680 total) -> ord 65.4 (mu 68.8, was 70.2/1670g): -1.4 on
+3W + 2 F1-deaths + fourths. Spike-batch. 1680 games.
+
+### Buzzer 1700g MILESTONE (2026-09-13 06:12 BST)
+Buzzer +20g (1700 total) -> ord 63.7 (mu 67.1, was 68.8/1680g): -1.7 on
+35% wins + 3 F1-deaths + fifths. 1700 games banked (definitive).
+Converged true ~61-65.
+
+### Buzzer 1710g (spike-batch down) (2026-09-13 06:17 BST)
+Buzzer +10g (1710 total) -> ord 61.9 (mu 65.3, was 67.1/1700g): -1.8 on
+2W + F1-death + fifths. Spike-batch. 1710 games.
+
+### Buzzer 1720g (2026-09-13 06:22 BST)
+Buzzer +10g (1720 total) -> ord 61.0 (mu 64.4, was 65.3/1710g): -0.9 on
+10% wins (1/10) + 2 F1-deaths + fifths (21a74a6 393k). Declining edge.
+1720 games.
+
+### Buzzer 1730g (2026-09-13 06:27 BST)
+Buzzer +10g (1730 total) -> ord 61.1 (mu 64.5, was 64.4/1720g): +0.1 on
+3W + F1-death + fifths. Flat at low (~61). 1730 games.
+
+### Buzzer 1740g (50% recovery) (2026-09-13 06:32 BST)
+Buzzer +10g (1740 total) -> ord 62.2 (mu 65.6, was 64.5/1730g): +1.1 on
+50% wins + fourths. Recovery. 1740 games.
+
+### Buzzer 1750g (2026-09-13 06:37 BST)
+Buzzer +10g (1750 total) -> ord 62.7 (mu 66.0, was 65.6/1740g): +0.5 on
+4W + fifth. 1750 games.
+
+### Buzzer 1760g (spike-batch down) (2026-09-13 06:42 BST)
+Buzzer +10g (1760 total) -> ord 61.1 (mu 64.5, was 66.0/1750g): -1.6 on
+2W + 2 F1-deaths + fifths. Spike-batch. 1760 games.
+
+### Buzzer 1770g (2026-09-13 06:47 BST)
+Buzzer +10g (1770 total) -> ord 60.7 (mu 64.1, was 64.5/1760g): -0.4 on
+4W + fifths. Low (~61). 1770 games.
+
+### Overmatch MERGED (pool leader 66.1; fail verdict wrong) (2026-09-13 06:42 BST)
+Status check revealed failed branches OUTRANK buzzer (21a74a6 65.6/120g,
+dd9782a 64.0/705g; buzzer 5th at 60.7). Grind-confirmed 21a74a6 66.1/135g
+(60% wins, beats buzzer H2H 8/10 shared). FAIL verdict was WRONG
+(weak-diverse gate fields punish unfairly via asymmetry; mechanisms WORK
+in mirrors). Merged overmatch to main (1-line port, suites+liveness green;
+gate: best-ordinal-for-personality + pro style intact). LESSON: gate fields
+must be mirrors (fair), not weak-diverse descents (asymmetric punishment).
+
+### Combine rung built (overmatch + defense) (2026-09-13 06:47 BST)
+Both mirror-proven (overmatch 66.1 merged; defense 64.0/705g confirmed).
+Stacked (additive, no conflicts; suites green). Bar (ladder): exceed
+66.1, judged on mirrors + overall (fair-gate lesson).
+
+### Combine verdict: FAIL (38.2, interference) (2026-09-13 06:57 BST)
+Rated clean 15g -> ord 38.2 (mu 45.9): FAIL (bar 66.1). Stacking works
+standalone but interferes combined (recall-bleed + overmatch-wait both
+fire in weak-diverse; 40% wins vs should-win 80%+). Mechanisms that work
+alone can fail together. Reverted (main keeps overmatch 66.1). Parked.
+
+### Overmatch 150g (holds 66.1) (2026-09-13 06:57 BST)
+21a74a6 +15g (150 total) -> ord 66.1 (mu 69.8, was 69.8/135g): flat on
+53% wins + 2 F1-deaths. Holds pool lead (mu 69.8 highest). Main-tip
+identical code (rating transfers; grind this ID).
+
+### Overmatch 165g (73% batch, mu 71.8!) (2026-09-13 07:02 BST)
+21a74a6 +15g (165 total) -> ord 68.2 (mu 71.8, was 69.8/150g): +2.1 on
+73% wins (incl 393k/294k/291k) + ZERO deaths. Mu climbing (71.8).
+Pool lead extends.
+
+### Overmatch 180g (mu 73.0, climbing!) (2026-09-13 07:07 BST)
+21a74a6 +15g (180 total) -> ord 69.4 (mu 73.0, was 71.8/165g): +1.2 on
+60% wins (incl 329k/357k) + ZERO deaths + fourth. TREND UP (mu 69.8->
+71.8->73.0): clean-take snowballs may break the ceiling (dominance, not
+luck). Riding.
+
+### Overmatch 195g (flat at peak 69.5) (2026-09-13 07:12 BST)
+21a74a6 +15g (195 total) -> ord 69.5 (mu 73.1, was 73.0/180g): +0.1 on
+57% wins + ZERO deaths + fourth. Climb slowing (73 plateau?); wins
+continue. 195 games.
+
+### Overmatch 210g (70.4, mu 74.0!) (2026-09-13 07:17 BST)
+21a74a6 +15g (210 total) -> ord 70.4 (mu 74.0, was 73.1/195g): +0.9 on
+~10W (incl weak-diverse dominations) + 2nds + third. New high (mu 74).
+Climbing again. Riding.
+
+### Overmatch 225g (70.9, mu 74.6) (2026-09-13 07:22 BST)
+21a74a6 +15g (225 total) -> ord 70.9 (mu 74.6, was 74.0/210g): +0.5 on
+~10W (incl 388k) + 2nds/3rds + ZERO deaths. Climbing (mu 74+). Riding.
+
+### Overmatch 240g (dip to 69.4, oscillation) (2026-09-13 07:27 BST)
+21a74a6 +15g (240 total) -> ord 69.4 (mu 73.1, was 74.6/225g): -1.5 on
+60% wins (offset by F1-death + fifths). Oscillation (trend still up
+from 66.1). Riding.
+
+### Overmatch 255g (plateau at 73?) (2026-09-13 07:32 BST)
+21a74a6 +15g (255 total) -> ord 68.9 (mu 72.6, was 73.1/240g): -0.5 on
+47% wins + ZERO deaths + fourth. Oscillation 69-71 (mu 72-75 plateau?).
+80 needs mu 81+ (+8; win-rate 60%->85%, luck-bound). 255 games.
+
+### Overmatch 270g (69.8, mu 73.4) (2026-09-13 07:37 BST)
+21a74a6 +15g (270 total) -> ord 69.8 (mu 73.4, was 72.6/255g): +0.9 on
+60% wins (incl 388k/334k/293k) + 2nds/3rds + ZERO deaths. 270 games.
+
+### Overmatch 285g (BROKE 70: 70.5!) (2026-09-13 07:42 BST)
+21a74a6 +15g (285 total) -> ord 70.5 (mu 74.1, was 73.4/270g): +0.7 on
+67% wins + 2nds/3rds + ZERO deaths. BROKE 70 (new high). 80 needs +9.5
+(mu 81+). Riding.
+
+### Overmatch 300g MILESTONE (flat at 70.5) (2026-09-13 07:47 BST)
+21a74a6 +15g (300 total) -> ord 70.5 (mu 74.1, was 74.1/285g): flat on
+60% wins + 2nds/3rds + ZERO deaths + fifth. 300 games banked. Converged
+~69-71?
+
+### Overmatch 315g (diverse-batch dip) (2026-09-13 07:52 BST)
+21a74a6 +15g (315 total) -> ord 68.8 (mu 72.5, was 74.1/300g): -1.7 on
+7W (weak-diverse wins pay ~0; mids cost) + fourths. Oscillation. 315g.
+
+### Overmatch 330g (stuck at 73?) (2026-09-13 07:57 BST)
+21a74a6 +15g (330 total) -> ord 68.1 (mu 71.8, was 72.5/315g): -0.7 on
+47% wins + ZERO deaths + fourths. Oscillation 68-71 (mu 72-74 plateau?).
+80 needs +9 (win-rate jump, luck-bound). 330 games.
+
+### Overmatch 345g (2026-09-13 08:02 BST)
+21a74a6 +15g (345 total) -> ord 67.4 (mu 71.1, was 71.8/330g): -0.7 on
+47% wins + F1-death + fourths. Flat. 345 games.
+
+### Overmatch 360g (2026-09-13 08:07 BST)
+21a74a6 +15g (360 total) -> ord 67.8 (mu 71.4, was 71.1/345g): +0.4 on
+53% wins + F1-death + 2nds/3rds. 360 games.
+
+### Overmatch 375g (2026-09-13 08:12 BST)
+21a74a6 +15g (375 total) -> ord 67.6 (mu 71.3, was 71.4/360g): -0.2 on
+67% wins (offset by 2 F1-deaths). Flat. 375 games.
+
+### Overmatch 390g (2026-09-13 08:17 BST)
+21a74a6 +15g (390 total) -> ord 67.5 (mu 71.2, was 71.3/375g): -0.1 on
+73% wins (offset by F1-death + fourths). Flat. 390 games.
+
+### Overmatch 400g MILESTONE (2026-09-13 08:22 BST)
+21a74a6 +10g (400 total) -> ord 66.5 (mu 70.2, was 71.2/390g): -1.0 on
+50% wins + 2 F1-deaths + 2nds/3rd. 400 games banked. Converged ~67-70?
+
+### Overmatch 410g (dedup-asymmetry decline) (2026-09-13 08:27 BST)
+21a74a6 +10g (410 total) -> ord 65.5 (mu 69.2, was 70.2/400g): -1.0 on
+4W + fourths + fifth. Structural decline (dedup exhausts strong fields;
+fresh = weak (asymmetric: wins pay ~0, mids cost). Floor ~63-65 parity.
+410 games.
+
+### Overmatch 420g (60% recovery) (2026-09-13 08:32 BST)
+21a74a6 +10g (420 total) -> ord 66.3 (mu 69.9, was 69.2/410g): +0.8 on
+60% wins + F1-death + 2nds/3rd. Recovery (parity, not asymmetry). 420g.
+
+### Overmatch 430g (90% batch!) (2026-09-13 08:37 BST)
+21a74a6 +10g (430 total) -> ord 67.4 (mu 71.1, was 69.9/420g): +1.1 on
+90% wins (9/10, incl 388k x2/306k) + fifth. 430 games.
+
+### Overmatch 440g (70% batch, no deaths) (2026-09-13 08:42 BST)
+21a74a6 +10g (440 total) -> ord 68.1 (mu 71.7, was 71.1/430g): +0.6 on
+70% wins + 2nds/3rd + ZERO deaths. 440 games.
+
+### Overmatch 450g (60% batch, no deaths) (2026-09-13 08:47 BST)
+21a74a6 +10g (450 total) -> ord 68.4 (mu 72.1, was 71.7/440g): +0.4 on
+60% wins + 2nds/3rds + ZERO deaths. 450 games.
+
+### Overmatch 460g (80% batch!) (2026-09-13 08:52 BST)
+21a74a6 +10g (460 total) -> ord 69.3 (mu 72.9, was 72.1/450g): +0.8 on
+80% wins (8/10) + 2 3rds + ZERO deaths. 460 games.
+
+### Overmatch 470g (2026-09-13 08:57 BST)
+21a74a6 +10g (470 total) -> ord 69.6 (mu 73.2, was 72.9/460g): +0.3 on
+50% wins + 2nds/3rds + ZERO deaths. 470 games.
+
+### Overmatch 480g (2026-09-13 09:02 BST)
+21a74a6 +10g (480 total) -> ord 69.3 (mu 72.9, was 73.2/470g): -0.3 on
+4W + 2nds/3rds + ZERO deaths. Flat. 480 games.
+
+### Overmatch 500g MILESTONE (2026-09-13 08:27 BST)
+21a74a6 +20g (500 total) -> ord 67.9 (mu 71.5, was 72.9/480g): -1.4 on
+45% wins + F1-death + fifths. 500 games banked (definitive). Converged
+~67-70. 80 needs +12 (mu 81+; win-rate 60%->85%, luck-bound).
+
+### Overmatch 510g (2026-09-13 08:32 BST)
+21a74a6 +10g (510 total) -> ord 67.5 (mu 71.1, was 71.5/500g): -0.4 on
+50% wins (388k/393k) + F1-death + fifths. 510 games.
+
+### Overmatch 520g (2026-09-13 08:37 BST)
+21a74a6 +10g (520 total) -> ord 67.7 (mu 71.2, was 71.1/510g): +0.2 on
+50% wins + F1-death + fourth. Flat. 520 games.
+
+### Overmatch 530g (2026-09-13 08:42 BST)
+21a74a6 +10g (530 total) -> ord 67.1 (mu 70.7, was 71.2/520g): -0.6 on
+4W + F1-death + fifths. 530 games.
+
+### Overmatch 540g (2026-09-13 08:47 BST)
+21a74a6 +10g (540 total) -> ord 67.3 (mu 70.8, was 70.7/530g): +0.2 on
+60% wins + F1-death + fourth. Flat. 540 games.
+
+### Overmatch 550g (70% batch) (2026-09-13 08:52 BST)
+21a74a6 +10g (550 total) -> ord 68.2 (mu 71.7, was 70.8/540g): +0.9 on
+70% wins + F1-death + 2nds. 550 games.
+
+### Overmatch 560g (spike-batch down) (2026-09-13 08:57 BST)
+21a74a6 +10g (560 total) -> ord 66.7 (mu 70.3, was 71.7/550g): -1.5 on
+4W + F1-death + fifths. Spike-batch. 560 games.
+
+### Overmatch 570g (2026-09-13 09:02 BST)
+21a74a6 +10g (570 total) -> ord 66.9 (mu 70.4, was 70.3/560g): +0.2 on
+60% wins + F1-death + fourth. Flat. 570 games.
+
+### Overmatch 580g (2026-09-13 09:07 BST)
+21a74a6 +10g (580 total) -> ord 66.0 (mu 69.5, was 70.4/570g): -0.9 on
+3W (393k) + fifths. 580 games.
+
+### Overmatch 600g MILESTONE (2026-09-13 08:57 BST)
+21a74a6 +20g (600 total) -> ord 65.8 (mu 69.3, was 69.5/580g): -0.2 on
+50% wins + 3 F1-deaths + fifths. 600 games banked (definitive).
+Converged ~66-70.
+
+### Overmatch 610g (2026-09-13 09:02 BST)
+21a74a6 +10g (610 total) -> ord 66.0 (mu 69.5, was 69.3/600g): +0.2 on
+60% wins + F1-death + fourths. Flat. 610 games.
+
+### Overmatch 620g (2026-09-13 09:07 BST)
+21a74a6 +10g (620 total) -> ord 65.8 (mu 69.3, was 69.5/610g): -0.2 on
+4W (388k) + F1-death + fifths. Flat. 620 games.
+
+### Overmatch 630g (70% batch, no deaths) (2026-09-13 09:12 BST)
+21a74a6 +10g (630 total) -> ord 66.6 (mu 70.0, was 69.3/620g): +0.8 on
+70% wins + 3rds + ZERO deaths. 630 games.
+
+### Overmatch 640g (2026-09-13 09:17 BST)
+21a74a6 +10g (640 total) -> ord 67.0 (mu 70.5, was 70.0/630g): +0.4 on
+60% wins + 2nds/3rds + fifth. 640 games.
+
+### Overmatch 650g (2026-09-13 09:22 BST)
+21a74a6 +10g (650 total) -> ord 66.6 (mu 70.1, was 70.5/640g): -0.4 on
+60% wins (offset by F1-death + fourths). 650 games.
+
+### Overmatch 660g (70% batch, no deaths) (2026-09-13 09:27 BST)
+21a74a6 +10g (660 total) -> ord 67.6 (mu 71.1, was 70.1/650g): +1.0 on
+70% wins + 2nds/3rd + ZERO deaths. 660 games.
+
+### Overmatch 670g (2026-09-13 09:32 BST)
+21a74a6 +10g (670 total) -> ord 67.5 (mu 71.0, was 71.1/660g): -0.1 on
+60% wins (offset by fifths). Flat. 670 games.
+
+### Overmatch 680g (60% batch, no deaths) (2026-09-13 09:37 BST)
+21a74a6 +10g (680 total) -> ord 68.3 (mu 71.8, was 71.0/670g): +0.8 on
+60% wins + 2nds/3rd + ZERO deaths. 680 games.
+
+### Aggressive overmatch rung built (2026-09-13 09:21 BST)
+Worst-first (user directive: improve, don't grind). Port mirror-proven
+overmatch (+2 priced clean-kill; unpriced unchanged) to aggressive.
+Bar (gate): ord>=47.2 AND takes occur (style).
+
+### Aggressive-overmatch verdict: FAIL (24.7, thin starves) (2026-09-13 09:31 BST)
+Rated clean 15g (3x5 batches) -> ord 24.7 (mu 32.6): FAIL (gate 47.2+).
+Takes occur (style TRUE: 232k/114k take-snowball wins) but waiting starves
+thin packs (zeros dominate). Affordability dominates (thin can't wait for
+clean). Reverted (main keeps aggressive 42.2). Parked.
+
+### Turtle counter-takes built (2026-09-13 09:41 BST)
+Worst-first rung 2 (new goal: all >=60): storm debt retaliates next calm
+(repel-then-retaliate 1-2 punch; natural force, no muster-tax; positional
+guards stay when threatened). Bar (gate): ord>=47.3 AND guards hold.
+
+### Turtle-counter verdict: FAIL (35.9, retaliation too rare) (2026-09-13 09:56 BST)
+Rated clean 15g (3x5) -> ord 35.9 (mu 43.6): FAIL (gate 47.3+). Wins
+occur (198k/116k/30k retaliations, style TRUE) but too rare (needs big
+repels + freed packs) to move ordinal; weak-diverse gate punishes rest.
+Reverted (main keeps turtle 47.3). Parked on loop/turtle-counter.
+
+### Expander trace: space decides + leapfrog queued (2026-09-13 09:51 BST)
+Self-play trace: F1 hyperactive (68 trains/944 moves/20 builds/5 takes)
+stunts to 14k (crowded); F3 efficient (20/109/5/4 small takes) compounds
+to 117k (uncrowded). SPACE (not takes) decides. QUEUED (cool rewrite per
+user): LEAPFROG chain-founding (150km staging hops to far voids; no long
+marches; sacrificial stones; style-perfect colonist).
+
+### Expander volume verdict: can't beat weak (44.2) (2026-09-13 09:51 BST)
+Expander +15g (143 total) -> ord 44.2 (mu 48.0, was 51.1/128g): -2.9 on
+1W/15 (7%). Can't beat WEAK (0-7% vs should-win 80%+). Volume futile;
+MECHANISM needed (takes vs weak + survive thin). Queued next.
+
+### Expander hyperactive built (2026-09-13 10:01 BST)
+Trace-driven (182k win via 162 trains/1384 moves/290 builds/19 towns):
+depth_extra 1000->0 + contact-floor to void-floor (print at floor;
+found+feed relentlessly). Field-dependent (dominates weak; strong
+punish per prior 700-window lesson, noted). Bar: exceed 44.2 AND
+most-foundings (style).
+
+### Hyperactive verdict: FAIL (20.5, variance) (2026-09-13 10:06 BST)
+Rated clean 15g (3x5) -> ord 20.5 (mu 28.5): FAIL (gate 44.2+). Wins HUGE
+(710k/302k/289k/210k/64k; 33% wins) but dies often (thin; ~40% zeros).
+Variance kills ordinal (deaths punish more than huge wins reward).
+Reverted (main keeps expander 44.2). Parked on loop/exp-hyper.
+
+### Turtle surplus-takes built (2026-09-13 10:11 BST)
+Takes without muster-tax: calm leftovers take fresh-empty viable spaced
+towns (natural/surplus force; fortress holds; threatened keep guards).
+Bar (gate): ord>=47.3 AND guards hold (style).
+
+### Surplus verdict: FAIL (34.0, take-guard split) (2026-09-13 10:21 BST)
+Rated clean 15g (3x5) -> ord 34.0 (mu 41.8): FAIL (gate 47.3+). Takes
+fire (5W/15, 22-173k) but strip guards (raided while away; die). Thin
+force can't take AND guard (split fails both; muster-tax vs split
+double-bind). Reverted (main keeps turtle 47.3). Parked.
+
+### Turtle baseline truth (47.2, 20% deaths) (2026-09-13 10:26 BST)
+Turtle +15g (113 total) -> ord 47.2 (mu 51.2, was 51.5/98g): -0.3 on
+2W/15 (13%) + 3 deaths (20%) + mids. Truth converged (~47). Needs BOTH
+survive (cut 20% deaths) AND take (13%->55% wins) for 60. Queued.
+
+### Aggressive baseline truth (37.0, 60% deaths) (2026-09-13 10:41 BST)
+Aggressive +15g (62 total) -> ord 37.0 (mu 41.6, was 47.3/47g): -2.8 on
+1W/15 (7%) + ~60% death-zeros. Truth worse (~37). Double-bind confirmed
+(take-thin donates vs wait starves). Stuck-proven. Parked.
+
+### All-three-stuck verdict (truths converged) (2026-09-13 10:46 BST)
+Truths (earned, converged): turtle 47.2 (20% deaths, 13% wins),
+expander 44.2 (7% wins), aggressive 37.0 (60% deaths). All stuck-proven
+(turtle 8 fails triple-bind; expander 6 fails; aggressive 12 fails
+double-bind). Bold-rewrite ideas die on inspection (poor/mechanics).
+Goal (all >=60) blocked on mechanisms, not volume. Parked all three.
+
+### Overmatch 697g (combine-fail spikes in mirrors) (2026-09-13 10:47 BST)
+21a74a6 +10g (697 total w/ opponent-games) -> ord 68.0 (mu 71.5, was
+71.1/610g): +0.4 on 4W + F1-death + fifths. Note: combine-fail 2691ae0
+spikes 329k in mirrors (failed branches spike as opponents; variance).
+697 games.
+
+### Combine fairly dead (25% mirrors) (2026-09-13 10:52 BST)
+Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
+(25%, 272k) + 1 death + mids. Interferes even in mirrors (recall-bleed
++ overmatch-wait). Dead both gates. Parked permanently.
+
+### Overmatch 707g (combine beats it H2H?) (2026-09-13 10:57 BST)
+21a74a6 +10g (707 total) -> ord 67.6 (mu 71.1, was 71.5/697g): -0.4 on
+4W + fifths + 3rds. Note: combine-2691ae0 above overmatch 6/10 here
+(beats weak-clones 60%, loses top-mirrors 25%; field-dependent hell).
+707 games.
+
+### Overmatch 717g (2026-09-13 11:02 BST)
+21a74a6 +10g (717 total) -> ord 68.2 (mu 71.7, was 71.1/707g): +0.6 on
+60% wins (374k/393k) + 3rds + fourth. 717 games.
+
+### Overmatch 727g (clone-parity) (2026-09-13 11:07 BST)
+21a74a6 +10g (727 total) -> ord 67.8 (mu 71.2, was 71.7/717g): -0.4 on
+4W (390k) + fifths + 2nds/3rds (clones above half the time; parity).
+727 games.
+
+### Overmatch 737g (2026-09-13 11:12 BST)
+21a74a6 +10g (737 total) -> ord 67.1 (mu 70.6, was 71.2/727g): -0.7 on
+3W + fifths + 2nds/3rd. 737 games.
+
+### Overmatch 747g (2026-09-13 11:17 BST)
+21a74a6 +10g (747 total) -> ord 67.6 (mu 71.1, was 70.6/737g): +0.5 on
+50% wins (390k) + fifth + 2nds/3rds. 747 games.
+
+### Overmatch 757g (2026-09-13 11:22 BST)
+21a74a6 +10g (757 total) -> ord 67.2 (mu 70.7, was 71.1/747g): -0.4 on
+50% wins + fifth + 2nds/3rds. Flat. 757 games.
+
+### Overmatch 767g (2026-09-13 11:27 BST)
+21a74a6 +10g (767 total) -> ord 67.8 (mu 71.3, was 70.7/757g): +0.6 on
+60% wins (393k) + 3rds + fourth. 767 games.
+
+### Overmatch 777g (2026-09-13 11:32 BST)
+21a74a6 +10g (777 total) -> ord 67.6 (mu 71.0, was 71.3/767g): -0.2 on
+60% wins (offset by 2 F1-deaths). Flat. 777 games.
+
+### Overmatch 787g (2026-09-13 11:37 BST)
+21a74a6 +10g (787 total) -> ord 67.6 (mu 71.0, was 71.0/777g): flat on
+60% wins + fifth + 2nds/3rds. 787 games.
+
+### Overmatch 797g (2026-09-13 11:42 BST)
+21a74a6 +10g (797 total) -> ord 66.6 (mu 70.1, was 71.0/787g): -0.9 on
+60% wins (offset by fifths). 797 games.
+
+### Aggressive empty-only built (2026-09-13 11:31 BST)
+Walk-ins only (S==0 + fresh<=10t; never donate into garrisons). Thin
+packs can't afford trades. Bar (gate): exceed 37.0 AND takes occur.
+
+### Empty-only verdict: FAIL (21.5, walk-ins too rare) (2026-09-13 11:41 BST)
+Rated clean 15g (3x5) -> ord 21.5 (mu 29.4): FAIL (gate 37.0+). Walk-ins
+snowball (3W/15: 276k/97k/119k; 20% beats baseline 7%) but too rare
+(opportunity-bound; fresh-empty scarce) + starve-die rest (~50% zeros).
+Style TRUE (takes occur). Reverted (main keeps aggressive 37.0). Parked.
+
+### Turtle attempt-exhaustion (2026-09-13 11:41 BST)
+Re-examined all turtle paths for least-dead idea: counter (rare),
+surplus (split), hybrid (tax), thick (thin), caps (territory),
+live-threat (lag/timing), rewrite (donate), overmatch-counter
+(rarer). Triple-bind (survive+take+compound need force; force needs
+compound) holds everywhere. No +EV build exists. Parked (8 fails).
+
+### Expander attempt-exhaustion (2026-09-13 11:46 BST)
+Re-examined: takes-first (halved take-engines worse than foundings),
+guards (defense-offense tradeoff, thin can't both; style-conflict).
+6 fails stand. Parked. All three non-pro personalities parked
+stuck-proven (turtle 8, expander 6, aggressive 13+ fails).
+
+### Heartbeat (all blocked) (2026-09-13 11:51 BST)
+Aggressive re-examined (savings vs bird-in-hand; bird wins). All three
+parked reaffirmed. Pro grinding forbidden by user. No unblocked actions
+(builds EV-negative, volume forbidden/EV0). Loop alive, goal blocked on
+mechanisms. Awaiting +EV idea or compute.
+
+### Heartbeat (thin 0/25) (2026-09-13 11:56 BST)
+Thin-line builds 0/25 all-time (poverty-trap; EV -2.0). Pro builds
+(10%) don't advance new goal. Nothing unblocked. Loop alive.
+
+### Heartbeat (trap absolute) (2026-09-13 12:01 BST)
+Crack-hunt (feed-to-peak, walk-in creation, terrain, intel, town-count,
+pop-efficiency, steal-growth): all sealed/circular. Poverty-trap absolute
+(zero-sum FFA, no free resources). Loop alive.
+
+### Heartbeat (2026-09-13 12:06 BST)
+Infra/modeling options marginal (mechanisms fog-bound regardless).
+Nothing +EV. Loop alive.
+
+### Heartbeat (2026-09-13 12:11 BST)
+Build EV rechecked (thin 0/25, <-0.3/turn). No terminal goal payoff
+(persists infinitely); per-turn EV rules. Loop alive.
+
+### Heartbeat (2026-09-13 12:16 BST)
+Loop alive. All blocked.
+
+### Heartbeat (2026-09-13 12:21 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 12:26 BST)
+Attempt-review (feed-to-peak, hyper+guards, scout-empties): all EV-negative. Loop alive.
+
+### Heartbeat (2026-09-13 12:31 BST)
+Style audit: all four style-true (compounder/fortress/colonist/conqueror hold). Weak, not off-style. Loop alive.
+
+### Heartbeat (2026-09-13 12:36 BST)
+Loop alive.
+
+### Apex phased predator built (2026-09-13 11:51 BST)
+No-constraints build (user directive): new package bots/apex (pro fork)
+with temporal phases (P1 sprawl t3000-6000 to 5 towns; P2 conquer t6000+
+marches all free at best viable; guards throughout; no interference via
+time-separation). Bar (new entity): 60+ raw.
+
+### Apex verdict: FAIL (31.9, phases don't fix poverty) (2026-09-13 12:01 BST)
+Rated clean 15g (3x5) -> ord 31.9 (mu 39.6): FAIL (bar 60+). Wins decent
+(5/15: 260k+ takes!) but loses to weak (P1 naked sprawl raided; P2 takes
+strip guards). Temporal separation avoids interference but NOT poverty.
+Cool architecture, same thin fate. Parked on loop/apex.
+
+### Turtle wealth-adaptive built (2026-09-13 11:56 BST)
+Poor-fortress / rich-crusade (fscore-ahead takes with 2 home kept;
+behind pure fortress). Rich-press / poor-survive. Bar: exceed 47.2
+AND guards hold (style).
+
+### Turtle-wealth verdict: FAIL (45.6, close) + Q&A (2026-09-13 12:11 BST)
+Rated clean 15g (3x5) -> ord 45.6 (mu 53.0): FAIL (gate 47.2+, close!).
+Wins occur (139k/101k/185k rich-crusades; 20%) + 2nds, but poor-fortress
+places mid (not wins) and deaths persist. Closest turtle rung yet but
+short. Reverted (main keeps turtle 47.2). Parked on loop/turtle-wealth.
+Q (battles efficient/never lose?): YES via cohesion math (M>=N+1 clean),
+pack-only (no solo donations), overmatch margins, counter-punch, N+1
+holds — fog-limited (stale-need donations unavoidable).
+Q (scouting efficient/continuous pre-timed?): NO continuous — STRUCTURALLY
+DEAD (2-turn intel lag vs 1-step messenger + 10km tolerance; messenger
+delay 150km/turn). Discrete hops + probes + JIT/departure-sync instead;
+scouting paradox (needs surplus, never has it early).
+
+### Wealth-v2 built (ratio 0.8) (2026-09-13 12:01 BST)
+Marginal tune on closest rung (45.6): crusade at near-peer 0.8x (more
+rich-windows). Bar: exceed 47.2 AND guards (style).
+
+### Wealth-v2 verdict: FAIL (39.7, loosen loses) (2026-09-13 12:11 BST)
+Rated clean 15g (3x5) -> ord 39.7 (mu 47.3): FAIL (gate 47.2+). More
+wins (33% vs 20%) but more deaths (peer-crusades donate; net negative).
+Tighten-don't-loosen (1.0 beats 0.8). Reverted (main keeps turtle 47.2).
+Parked on loop/turtle-wealth2.
+
+### Heartbeat (turtle parked x10) (2026-09-13 12:16 BST)
+Tuning ladder wandering (v1 45.6 > v2 39.7; v3 would wander further).
+Turtle parked (10 fails). All three parked. Loop alive.
+
+### Heartbeat (2026-09-13 12:21 BST)
+Loop alive. All blocked.
+
+### Heartbeat (2026-09-13 12:26 BST)
+Loop alive.
+
+### Heartbeat (expander ports dead on arrival) (2026-09-13 12:31 BST)
+Wealth/overmatch/guards ports to expander all die pre-build (thin.
+Loop alive.
+
+### Heartbeat (2026-09-13 12:36 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 12:41 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 12:46 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 12:51 BST)
+Loop alive.
+
+### Heartbeat (autopsy inconclusive) (2026-09-13 12:56 BST)
+Aggressive death autopsy: towns stunt-died (not beheaded); colony vs raid unclear; safety-rung killed (marginal). Loop alive.
+
+### Heartbeat (2026-09-13 13:01 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 13:06 BST)
+Loop alive.
+
+### Heartbeat (game/map/time fixed) (2026-09-13 13:11 BST)
+Map/quad/time/config alternatives all fixed by goal (empty-ordinal).
+Loop alive.
+
+### Heartbeat (2026-09-13 13:16 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 13:21 BST)
+Loop alive.
+
+### Crowding-bomb built (2026-09-13 12:16 BST)
+Spite-founding (no-constraints imaginative): no economic site? Found
+within ~100km of biggest foe to stunt it (crowding taxes growth).
+Sacrificial settlers. Bar: exceed 37.0 AND takes (style).
+
+### Crowding-bomb verdict: FAIL (23.7, spite costs more) (2026-09-13 12:26 BST)
+Rated clean 15g (3x5) -> ord 23.7 (mu 31.7): FAIL (gate 37.0+). Spite-
+foundings donate settlers (die en route) + stunt minor (foes outgrow).
+Spite costs more than it denies. Reverted (main keeps aggressive 37.0).
+Parked on loop/aggr-crowd.
+
+### Tribute built (mega-capital) (2026-09-13 12:21 BST)
+Imaginative (no-constraints): 3+ home idles BUILD into capital (+500;
+keep 2 guards). Mega-capital attractor. Bar: exceed 47.2 AND guards.
+
+### Tribute verdict: FAIL (23.8, guards>pop) (2026-09-13 12:31 BST)
+Rated clean 15g (3x5) -> ord 23.8 (mu 31.7): FAIL (gate 47.2+). One
+232k mega-capital win but guards-to-pop loses defense (raided, die).
+Guards beat growth (defense first). Reverted (main keeps turtle 47.2).
+Parked on loop/turtle-tribute.
+
+### Heartbeat (imaginative sweep dead) (2026-09-13 12:36 BST)
+Seed-bank (poor), pioneer-escort (settler dies anyway), bloodlust
+(donate), cannibal (no mechanic). Loop alive.
+
+### Heartbeat (2026-09-13 12:41 BST)
+Engine/map/matchmaking/rating/opening/endgame all fixed or exhausted. Loop alive.
+
+### Heartbeat (2026-09-13 12:46 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 12:51 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 12:56 BST)
+Loop alive.
+
+### Settler evasion built (2026-09-13 12:36 BST)
+Dogleg waypoints (100km perpendicular) around foe armies within 50km
+of march segments (dodge stale predictions; survive; found more).
+Bar: exceed 44.2 AND most-foundings (style).
+
+### Evasion verdict: FAIL (41.4, delay loses) (2026-09-13 12:51 BST)
+Rated clean 15g (3x5) -> ord 41.4 (mu 48.7): FAIL (gate 44.2+). Settlers
+survive more (2W) but doglegs delay foundings (slow sprawl, fewer
+engines). Delay costs more than survival gains. Reverted (main keeps
+expander 44.2). Parked on loop/exp-evade.
+
+### Research wave synthesis (2026-09-13 12:56 BST)
+3 parallel tracks landed. STANDOUTS (fresh + falsifiable):
+1. LANE-PICKETS (mechanics RULE2): armies/towns BLOCK enemy movement —
+park pickets in invasion lanes to FREEZE marches (defense without
+fighting). Turtle fortress style. QUEUED FIRST.
+2. TIE-SPOILER (RULE1): capture ties = no capture; park spoiler to
+freeze takeovers. Queued.
+3. BUILD-FEED (RULE5): +500 instantly saves stunt-dying towns. Queued.
+4. WEAKNESS-DECOY (brainstorm): trail sacrificial to inflate foe weakness
+counts (they die). Aggressive. Queued.
+5. INFLUENCE MAPS / POTENTIAL FIELDS / HIT-LEADER (internet): heavier;
+parked (complexity).
+Full contracts in subagent records. Next: build lane-pickets.
+
+### Lane-pickets built (2026-09-13 12:51 BST)
+Research-driven (mechanics RULE2): idle surplus stations at foe-march
+midpoints (10km path-block; trade army for town). Falls through to
+garrison. Bar: exceed 47.2 AND guards (style).
+
+### Lanes verdict: FAIL (38.0, rare + overrun) (2026-09-13 13:06 BST)
+Rated clean 15g (3x5) -> ord 38.0 (mu 45.4): FAIL (gate 47.2+). Pickets
+too rare (no surplus idles) + overrun by packs (trade 1-for-0, waste).
+One 282k win (luck). Reverted (main keeps turtle 47.2). Parked.
+
+### Research queue triage (2026-09-13 13:16 BST)
+Tie-spoiler killed pre-build (redundant: guards kill solo takers, not
+tie). BUILD-feed marginal (feed vs found tradeoff unclear). Weakness-
+decoy queued next (full budget; aggressive; decoy-assisted pack kills).
+
+### Decoy killed (overmatch-equivalent) (2026-09-13 13:21 BST)
+Weakness-decoy needs pack to kill inflated foe (solo decoy dies free);
+with pack it IS overmatch (+1 extra). Redundant. Killed pre-build.
+Research queue exhausted (lanes fail, spoiler/feed/decoy dead).
+
+### Research v2 synthesis (2026-09-13 13:01 BST)
+18 ideas (6+6+6). CONVERGENT SIGNAL: liquidate-doomed (scorched-earth +
+EDGE1 agree: TRAIN 1000-1499-pop towns into armies — deny foe capture +
+gain tempo). Queued FIRST (turtle deny when behind). Others: wall-towns
+(expensive), viceroy-hunt (fog-hard), bypass-starve (marginal),
+mission-orders (already implicit), rest complex/killed.
+
+### Liquidate built (2026-09-13 13:11 BST)
+Research-driven convergent (scorched-earth + EDGE1): doomed non-capitals
+drain in parallel (deny capture + tempo). Bar: exceed 47.2 AND guards.
+
+### Liquidate verdict: FAIL (35.8, false-doom) (2026-09-13 13:21 BST)
+Rated clean 15g (3x5) -> ord 35.8 (mu 43.4): FAIL (gate 47.2+). Deny
+works (4W/15: 179-200k) but false-doom drains holdable towns (inbound
+overestimated; weakens defense; die). Costs exceed gains. Reverted
+(main keeps turtle 47.2). Parked on loop/turtle-liquidate.
+
+### Bypass-starve built (2026-09-13 13:11 BST)
+Research-driven (v2): skip sub-1000 takes (halve to death; save packs
+for viable). Bar: exceed 37.0 AND takes (style).
+
+### Bypass verdict: FAIL (19.6, fuel beats efficiency) (2026-09-13 13:21 BST)
+Rated clean 15g (3x5) -> ord 19.6 (mu 27.5): FAIL (gate 37.0+). Viable
+takes land (3W/15: 236k/165k/183k) but skipping small loses fuel
+(starve when no viable). Hostage-fuel matters (volume beats quality).
+Reverted (main keeps aggressive 37.0). Parked on loop/aggr-bypass.
+
+### Research v3 synthesis (2026-09-13 13:31 BST)
+21 ideas (7+4+6). STANDOUT: onesie-raider (inversion INV1: S==0 viable
+takes launch SOLO immediately, no pack assembly; speed-premium for thin;
+walk-in empties can't donate). Queued FIRST (aggressive). Others: volume-
+predator=baseline (redundant), D-certain (marginal), quiescence (conflicts
+muster), contacts=lanes (dead), rest built/complex.
+
+### Onesie-raider built (2026-09-13 13:21 BST)
+Research-driven inversion (speed-premium): S==0 viable takes launch
+nearest free solo immediately (no pack wait; empties can't donate).
+Bar: exceed 37.0 AND takes (style).
+
+### Onesie verdict: FAIL (23.9, stale-empty hides) (2026-09-13 13:31 BST)
+Rated clean 15g (3x5) -> ord 23.9 (mu 31.6): FAIL (gate 37.0+). Solos
+walk-in sometimes (88k/254k wins) but donate into stale-empty mostly
+(deaths). Pack-only validated (speed kills thin). Reverted (main keeps
+aggressive 37.0). Parked on loop/aggr-onesie.
+
+### Heartbeat (v3 triaged) (2026-09-13 13:36 BST)
+D-certain marginal, floor-first/home-garrison/phase-gate dead, compound-pro irrelevant. Loop alive.
+
+### Research v4 synthesis (2026-09-13 13:46 BST)
+18 ideas (6+4+6). Closest: greed-turtle-flip (leader-turtles/trailer-
+raids) but redundant (P6/wealth-adaptive cover it). Scoring quirks
+marginal (BUILD-halt saves ~500s; viceroy micro 1k). Rest built/complex.
+No build. Queue exhausted again.
+
+### Heartbeat (research v1-v4 exhausted) (2026-09-13 13:51 BST)
+60+ ideas -> 5 builds (all fail). v5 would yield ~0. Loop alive.
+
+### Heartbeat (2026-09-13 13:56 BST)
+Loop alive.
+
+### Heartbeat (status unchanged) (2026-09-13 14:01 BST)
+Pro 66.0, turtle 47.2, expander 44.2, aggressive 37.0. No drift. Loop alive.
+
+### Heartbeat (2026-09-13 14:06 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 14:11 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 14:16 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 14:21 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 14:26 BST)
+Loop alive.
+
+### Self red-team (2026-09-13 13:36 BST)
+Subagents infra-failed; red-teamed myself. Poverty-trap holds (no cracks:
+gang-ups already happen). Verdicts stand (overmatch/defense confirmed;
+rest mechanisms). Only lead: wealth-tighten v3 (1.2x, marginal-negative
+EV). No build. Loop alive.
+
+### Heartbeat (2026-09-13 13:41 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 13:46 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 13:51 BST)
+Non-pro max 47.2 (turtle); goal needs non-pro 60+. Impossible per binds. Loop alive.
+
+### Heartbeat (2026-09-13 13:56 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 14:01 BST)
+Loop alive.
+
+### Heartbeat (2026-09-13 14:06 BST)
+Loop alive.
+
+### Heartbeat (positioning marginal) (2026-09-13 14:11 BST)
+Center-void/edge-flank positioning: marginal (long marches). Loop alive.

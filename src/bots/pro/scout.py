@@ -82,15 +82,32 @@ def ready_to_dispatch(state: "BotState", config, p) -> bool:
 
     The messenger from-check allows ~1 turn of movement; intel older
     than that vs a marching army is a guaranteed dead letter (which then
-    strands the army behind a stale note). Converged = trail newest age
-    >= 2x expected delay (nothing in flight), or a noted arrival aged >=
-    delay (truth static at note since before intel). No trail = idle."""
+    strands the army behind a stale note). Converged = (a) stationary-
+    converged: fresh trail with ~zero displacement (belief == truth,
+    nothing in flight — dispatchable); (b) trail newest age >= 2x
+    expected delay (nothing in flight); or (c) a noted arrival aged >=
+    delay (truth static at note since before intel). No trail = idle.
+    (Fix: the old rule blocked (a) — per-turn reports keep a visible
+    stationary's age at 0 forever, so EVERY continuously-visible army
+    froze: heirloom guards, re-tasks, refounds. Marching-fresh still
+    waits; stale keeps status quo.)"""
     tr = state._trails.get(p.id)
     if not tr or len(tr) < 2:
         # never (or once) seen: idle/spawn-stationary by construction.
         return True
     t_new, x, y = tr[-1]
     d = _expected_delay(state, config, x, y)
+    pts = [(q[1], q[2]) for q in tr]
+    still = True
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            if math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) > 5.0:
+                still = False
+                break
+        if not still:
+            break
+    if still and state.turn - t_new <= max(4, 2 * d):
+        return True
     if state.turn - t_new >= 2 * d:
         return True
     tgt = state.army_target(p.id)
