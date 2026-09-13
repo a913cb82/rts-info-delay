@@ -3781,3 +3781,8 @@ double-bind). Reverted (main keeps turtle 47.3). Parked.
 Turtle +15g (113 total) -> ord 47.2 (mu 51.2, was 51.5/98g): -0.3 on
 2W/15 (13%) + 3 deaths (20%) + mids. Truth converged (~47). Needs BOTH
 survive (cut 20% deaths) AND take (13%->55% wins) for 60. Queued.
+
+### Aggressive baseline truth (37.0, 60% deaths) (2026-09-13 10:41 BST)
+Aggressive +15g (62 total) -> ord 37.0 (mu 41.6, was 47.3/47g): -2.8 on
+1W/15 (7%) + ~60% death-zeros. Truth worse (~37). Double-bind confirmed
+(take-thin donates vs wait starves). Stuck-proven. Parked.
