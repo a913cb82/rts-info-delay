@@ -37,7 +37,7 @@ Big crews count superlinearly — ten smiths together beat ten apart.
         mkt = Σ help · 2^(−d/20), running out to 150 km
 
 - `cart_distance_km` = 20 — a day's cart trip
-- `market_scaling` = 1.15 — big crews punch ~15% above weight
+- `market_scaling` = 1.3 — big crews punch strongly above weight
 
 **(b) Methods (quality ceiling).** Help only matters if the *methods* exist.
 Every town's teaching range grows smoothly with its size: 10 km (a day's
@@ -66,7 +66,7 @@ is big enough to have real roads.
         sent f, arrived f·delta,    delta = exp(−tau·d)
         tau = melt·2356/(2356 + P_receiver)
 
-- `melt_per_km` = 0.015 — about 1.5% lost per km (benchmarks; the game
+- `melt_per_km` = 0.005 — little lost per km (benchmarks; the game
   itself still runs lossless at 0.0 until bots are re-tested)
 
 ### 5. Births and deaths
@@ -104,11 +104,11 @@ Towns at 10 or fewer people vanish — too few hands to hold the fields.
 | `birth_rate` | 24 /1000/yr | surviving births per person per year |
 | `death_rate` | 31 /1000/yr | deaths per person per year at full rations |
 | `starvation_elasticity` | 1.3 | how steeply hunger kills |
-| `max_improvement` | 0.25 | best methods grow ~25% more |
-| `market_scaling` | 1.15 | big crews punch ~15% above weight |
+| `max_improvement` | 0.5 | full commercialization grows ~50% more |
+| `market_scaling` | 1.3 | big crews punch strongly above weight (top of measured urban scaling) |
 | `migration_share` / `surplus_mobility` | 0.005 / 0.05 /yr | background drift / footloose services |
 | `migration_scale_km` | 50 | moves fade with distance |
-| `melt_per_km` | 0.015 | food lost per cart-km (benchmarks; game default 0.0) |
+| `melt_per_km` | 0.005 | little food lost per cart-km (benchmarks; game default 0.0) |
 | `info_speed` | 150 | farthest anything travels or is seen (km/turn) |
 | `town_min_population` | 10 | settlements at or below this die |
 
@@ -130,8 +130,8 @@ measured). Found by hand-built shapes plus search over spacings and sizes
 | center | 1 | 5,000 | central | ~5% |
 | big city | 0 | — | — | — |
 
-Land ~4,500 km² (~23/km²); growth +0.42/yr. Bourgs-only and a lone
-mid-size town tie close behind; flat villages and lone giants lose.
+Land ~4,500 km² (~23/km²); growth +0.88/yr. A lone 9,600 town is second
+(+0.77); flat villages lose.
 
 ### 1M province
 
@@ -142,15 +142,15 @@ mid-size town tie close behind; flat villages and lone giants lose.
 | centers | 1 | 5,000 | central | ~0.5% |
 | regional capital | 0 | — | — | — |
 
-Land ~43,700 km² (~23/km²); growth +0.44/yr. Bourgs-only ties (+0.43);
-the single center is nearly a token — at this scale one hub cannot feed
-a province through melting supply lines (a lone giant starves at −0.37).
+Land ~43,700 km² (~23/km²); growth +0.82/yr. Uniform mid-size towns
+(~50 × 2,400 @32 km, ~12% urban) win; the 4-tier province below is second
+(+0.79); flat villages lose (+0.32) and a lone giant starves (−0.37).
 
-### Closest to reality (needs pushy settings)
+### Closest to reality (second place, closest structure)
 
-With strong agglomeration, high headroom, and cheap hauling
-(γ1.3/prem.5/melt.005), upper tiers earn their keep and the 4-tier stack
-ties for first (+0.79 vs +0.82 for uniform mid towns, flat +0.32):
+The 4-tier province never beats uniform mid towns on growth — settled
++0.79 vs +0.82 (cold it leads +0.77 vs +0.73, but settled is the honest
+measure). It stays because it is by far the closest structural match:
 
 | tier | count | size each | spacing | share |
 |---|---|---|---|---|
@@ -161,8 +161,9 @@ ties for first (+0.79 vs +0.82 for uniform mid towns, flat +0.32):
 
 Each tier owns a distinct teaching shed (bourgs their patch, centers
 their district ~60 km, the regional its province ~114 km+) — that is what
-pays for the fourth tier. At the standard settings above it still loses,
-because extra big mouths cost more food than their saturated lift repays.
+lifts the fourth tier from distant last (at gentle settings) to second.
+It still loses, because extra big mouths cost more food than their
+saturated lift repays.
 
 ## Reality goals: 100k district and 1M province
 
@@ -213,14 +214,16 @@ empty).
   hills and woods between. Same missing member: without terrain or fixed
   costs the model tiles the map instead of clumping. Richer land does not
   fix this — 2.5× fertility grows bigger tops, not denser settlement.
-- **A touch hot.** +0.4/yr at 100k vs 0–0.3 recorded; 1M runs at history's
-  pace.
+- **A touch hot — now frankly hot.** +0.8–0.9/yr vs 0–0.3 recorded. The
+  pushy settings trade level realism (growth pace) for structural realism
+  (tiers that exist). Gentler settings run at history's pace but melt the
+  upper tiers away.
 
 ## Open items
 
 - Settlement fixed costs (village size, density, nucleation).
 - Non-food urban income (upper tiers at standard settings).
-- Promote `melt_per_km` 0.015 to the game default (needs bot re-testing;
+- Promote `melt_per_km` 0.005 to the game default (needs bot re-testing;
   9 bot-side tests still encode older economies — the bot agent's remit).
 - Longer searches at 1M under the pushy settings (4-tier co-optimal on
   hand shapes; a search may refine sizes and spacings).

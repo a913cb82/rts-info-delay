@@ -26,8 +26,10 @@ from engine.config import GameConfig
 from engine.world import Town
 
 BASE_CFG = replace(GameConfig(), farm_decay_at_radius=0.9, farm_decay_shape=2.0,
-                   market_scaling=1.15, melt_per_km=0.015)
-# max_improvement left at the 0.25 default (the 0.5 screening value ran hot);
+                   market_scaling=1.3, max_improvement=0.5, melt_per_km=0.005)
+# Closest-to-reality calibration (see docs/GROWTH_REWORK.md): strong
+# agglomeration, high headroom, cheap hauling. Upper tiers only earn
+# their keep with all three at once.
 CFG = BASE_CFG
 S_V = 4.0
 P_V = 300.0
