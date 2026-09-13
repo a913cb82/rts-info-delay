@@ -3461,3 +3461,7 @@ Buzzer +10g (1640 total) -> ord 66.2 (mu 69.6, was 68.7/1630g): +0.9 on
 Buzzer +10g (1650 total) -> ord 67.3 (mu 70.7, was 69.6/1640g): +1.1 on
 80% wins (8/10) + ZERO deaths + fifth. Best batch in ages (weak fields).
 1650 games.
+
+### Buzzer 1660g (2026-09-13 06:32 BST)
+Buzzer +10g (1660 total) -> ord 67.4 (mu 70.8, was 70.7/1650g): +0.1 on
+50% wins + fourths. Flat at peak (~67). 1660 games.
