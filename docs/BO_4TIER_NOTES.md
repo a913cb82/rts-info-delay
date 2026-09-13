@@ -567,3 +567,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   3500 (+0.93) > 5000 (+0.88). Peak 2500–3500, steep rise, gentle fall —
   coverage threshold then mouth burden. District chef ≈ province regional
   in miniature (one shed must span the region).
+- Pricing#3 verdict: old seed wins 9th time (+0.885); hand-lead seed loses
+  with it (15k-lattice-regional + 1500-chefs ≠ 20k-center + 1000-chefs).
+  Seeds can't express center placement or exact sizes — the +0.909 hand
+  lead lives outside seed space entirely. Seed expressiveness, not optimizer
+  effort, bounds search results.
