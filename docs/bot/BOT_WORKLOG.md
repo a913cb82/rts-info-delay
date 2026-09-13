@@ -3942,3 +3942,9 @@ scouting paradox (needs surplus, never has it early).
 ### Wealth-v2 built (ratio 0.8) (2026-09-13 12:01 BST)
 Marginal tune on closest rung (45.6): crusade at near-peer 0.8x (more
 rich-windows). Bar: exceed 47.2 AND guards (style).
+
+### Wealth-v2 verdict: FAIL (39.7, loosen loses) (2026-09-13 12:11 BST)
+Rated clean 15g (3x5) -> ord 39.7 (mu 47.3): FAIL (gate 47.2+). More
+wins (33% vs 20%) but more deaths (peer-crusades donate; net negative).
+Tighten-don't-loosen (1.0 beats 0.8). Reverted (main keeps turtle 47.2).
+Parked on loop/turtle-wealth2.
