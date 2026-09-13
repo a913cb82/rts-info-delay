@@ -3734,3 +3734,9 @@ clean). Reverted (main keeps aggressive 42.2). Parked.
 Worst-first rung 2 (new goal: all >=60): storm debt retaliates next calm
 (repel-then-retaliate 1-2 punch; natural force, no muster-tax; positional
 guards stay when threatened). Bar (gate): ord>=47.3 AND guards hold.
+
+### Turtle-counter verdict: FAIL (35.9, retaliation too rare) (2026-09-13 09:56 BST)
+Rated clean 15g (3x5) -> ord 35.9 (mu 43.6): FAIL (gate 47.3+). Wins
+occur (198k/116k/30k retaliations, style TRUE) but too rare (needs big
+repels + freed packs) to move ordinal; weak-diverse gate punishes rest.
+Reverted (main keeps turtle 47.3). Parked on loop/turtle-counter.
