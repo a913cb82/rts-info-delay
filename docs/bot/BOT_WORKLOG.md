@@ -4092,3 +4092,7 @@ Rated clean 15g (3x5) -> ord 35.8 (mu 43.4): FAIL (gate 47.2+). Deny
 works (4W/15: 179-200k) but false-doom drains holdable towns (inbound
 overestimated; weakens defense; die). Costs exceed gains. Reverted
 (main keeps turtle 47.2). Parked on loop/turtle-liquidate.
+
+### Bypass-starve built (2026-09-13 13:11 BST)
+Research-driven (v2): skip sub-1000 takes (halve to death; save packs
+for viable). Bar: exceed 37.0 AND takes (style).

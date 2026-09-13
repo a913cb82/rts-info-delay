@@ -156,6 +156,11 @@ def raid_targets(state: "BotState", config, k: int = 1, priced: bool = True,
             if best is None or score > best[0]:
                 best = (score, u, need, s)
         elif prize > margin:
+            # Bypass-starve (take efficiency): skip sub-1000 towns (capture
+            # halves to <500 = death-threshold (waste march time + packs).
+            # Save force for viable takes that compound.
+            if u.population < 1000:
+                continue
             # Bird-in-hand: an executable take now beats a bigger prize
             # after print-turns (opportunity cost + compounding). Pipeline
             # targets discount by turns-to-ready. Capitals carry a
