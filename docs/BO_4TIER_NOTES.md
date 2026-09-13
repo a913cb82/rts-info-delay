@@ -219,6 +219,16 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   trade is the same trap at both scales.
 - both-BO#2 (running): district reseed, seed 62 — robustness. 2/5 spent.
 
+## both-BO#2 verdict: identical winner (robust)
+
+- Reseed reproduces +1.2170 exactly (same shape). District 3-tier optimum
+  (dense 300@3.5 + 500@16 + 2500@70) confirmed twice.
+- Combo shape (dense vill@3.5 + dense bourgs@13 + chefs + reg, prem.75):
+  settled +1.167, density 30.0, shares 85/12/2/1.5, urb 14.6% — best
+  combined hand shape; beats both parents.
+- both-BO#3 (running): prem.75 + dense-combo seed (500@13/3000@80/20000
+  @150, s0 3.5) — search confirmation of the combo corner? 3/5 spent.
+
 ## Share-goal final (budget spent 5/5)
 
 - 4-tier optimal holds in every search that allows realistic villages

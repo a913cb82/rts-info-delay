@@ -251,7 +251,8 @@ def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
              seed_for(4.0, 300.0, 18.0, 2.0, 80.0, 5.0, 150.0, 4.0),  # full 4-tier
              seed_for(4.0, 300.0, 18.0, 5.0 / 3.0, 80.0, 3.0, 150.0, 10.0),  # small-chef 4-tier
              seed_for(3.5, 300.0, 16.0, 5.0 / 3.0, 70.0, 5.0, 150.0, 4.0),  # dense 4-tier
-             seed_for(3.5, 300.0, 14.0, 5.0 / 3.0, 80.0, 10.0, 150.0, 10.0)]  # maxi-dense 4-tier
+             seed_for(3.5, 300.0, 14.0, 5.0 / 3.0, 80.0, 10.0, 150.0, 10.0),  # maxi-dense 4-tier
+             seed_for(3.5, 300.0, 13.0, 5.0 / 3.0, 80.0, 6.0, 150.0, 20.0 / 3.0)]  # dense-combo 4-tier
     for u in seeds:
         ask_evaluate(u)
 
