@@ -652,3 +652,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District BASE s32 (mid towns, no bourgs): +0.803 vs dense-bourg +0.927.
   Bourgs earn +0.12 at the adopted standard — middle tier load-bearing at
   district under every config tested.
+- H-S1 final (96 evals, 43 model, constrained): winner s64-family +1.347
+  (urb 4.6%), identical to G-S1 — reseed reproduces exactly. Runner-up
+  big-size excursion (+1.303, urb 11%: 508/1507/3212/17939).
+- H-S2 (running): same constraints at BASE (adopted standard) — clean
+  tiers by search at the standard, first attempt. 2/3 searches spent.
