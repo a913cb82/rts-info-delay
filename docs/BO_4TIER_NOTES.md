@@ -600,3 +600,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   sparse tops, urb 4.6%); big-size excursion 3rd (+1.299, urb 12%).
   Constrained search crowns low-urban 4-tier — shares still need hand
   placement. S2 next: same constraints at district.
+- G-S2 final (80 evals, 22 model, constrained district): winner 2-tier
+  s32 (+1.331); runner-up dense 3-tier (+1.184). Constrained search drops
+  the bourg tier (min jumps price it out); hand dense-bourg (+1.396) beats
+  both. District 3-tier optimum stands on hand shapes only.
