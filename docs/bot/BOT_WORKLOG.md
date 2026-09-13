@@ -3857,3 +3857,10 @@ Rated clean 15g (3x5) -> ord 21.5 (mu 29.4): FAIL (gate 37.0+). Walk-ins
 snowball (3W/15: 276k/97k/119k; 20% beats baseline 7%) but too rare
 (opportunity-bound; fresh-empty scarce) + starve-die rest (~50% zeros).
 Style TRUE (takes occur). Reverted (main keeps aggressive 37.0). Parked.
+
+### Turtle attempt-exhaustion (2026-09-13 11:41 BST)
+Re-examined all turtle paths for least-dead idea: counter (rare),
+surplus (split), hybrid (tax), thick (thin), caps (territory),
+live-threat (lag/timing), rewrite (donate), overmatch-counter
+(rarer). Triple-bind (survive+take+compound need force; force needs
+compound) holds everywhere. No +EV build exists. Parked (8 fails).
