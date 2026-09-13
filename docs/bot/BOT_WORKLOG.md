@@ -3616,3 +3616,7 @@ from 66.1). Riding.
 4W + fourths + fifth. Structural decline (dedup exhausts strong fields;
 fresh = weak (asymmetric: wins pay ~0, mids cost). Floor ~63-65 parity.
 410 games.
+
+### Overmatch 420g (60% recovery) (2026-09-13 08:32 BST)
+21a74a6 +10g (420 total) -> ord 66.3 (mu 69.9, was 69.2/410g): +0.8 on
+60% wins + F1-death + 2nds/3rd. Recovery (parity, not asymmetry). 420g.
