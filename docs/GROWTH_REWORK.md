@@ -414,15 +414,20 @@ shape-for-shape.
 Profiled costs (shared 3.8 GB box, numba on; load-sensitive, ±2x).
 N=570: everything ~= 0.06 s/turn. N=3150: land ~1 s once per new town
 set (cached after; was 2.3 s brute-force), dist matrix 0.6 s once
-(76 MB, cached), market boost ~0.6 s/turn (N x N matmul), migration
-~1-4 s/turn (four N x N float64 temporaries, ~300 MB — the memory
-hog), trade negligible. A full 7-shape 1M sweep runs ~40 s end to
-end (was ~3.5 min at 10 turns/config before the serv-lag removal).
+(76 MB, cached and shared), market boost ~0.1 s/turn (sparse neighbor
+accumulation over in-reach pairs only — no N x N matrix), migration
+~2-4 s/turn in 26 MB row blocks (same flops, no 300 MB temporaries),
+trade negligible (already pair lists). Peak RSS at N=3150 is ~400 MB,
+down from ~900 MB. A full 7-shape 1M sweep runs ~40 s end to end
+(was ~3.5 min at 10 turns/config before the serv-lag removal).
 The land kernel is no longer O(n^2): per-town neighbor lists (towns
 within 2R, from the cached distance matrix) prune the inner loop from
 N to ~20 candidates. Exact — bit-identical on twin towns at exactly
 2R, exact stacks, ties, negative coords, and all benchmark shapes
-(tripwire unchanged). Quadrature points (`_SAMPLE_K = 32`): isolated towns are exact at any
+(tripwire unchanged). Small-N code paths are bit-identical to the
+old dense kernels (verified exactly to N=256); large-N paths differ
+only by summation regrouping (~1e-16 relative, tables print
+identically). Quadrature points (`_SAMPLE_K = 32`): isolated towns are exact at any
 K; shared boundaries need K large enough that one point (pi*R^2/K km2)
 stays small next to the smallest farmed area (~7 km2 for a 300-pop
 village). Measured: K=8 errs up to 40% on small cells, K=16/32 a few
