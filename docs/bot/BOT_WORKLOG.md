@@ -4251,3 +4251,13 @@ defender's merged 162 (3 turns x 10%/turn); attacker net -65, defender
 vs unprepared/depleted. Redesign: INTEL-GATED raids (scout muster-state;
 attack the drained/post-spam); candidate T7 siege-by-forage (camp on
 their farmland, eat harvest first). Turtle muster-response validated.
+
+### T8 scout price tags (2026-09-13)
+600t horizon (idle 507): farmland-posted scout 50->35, total -30 (forage
+tax on home + upkeep); wilderness scout 50->3 (2.4%/turn attrition),
+total -47 (mother clean -50 = train only). Scout-window math: scout
+(30) pays iff victim-idle-p in (0.14, 0.68) — below: stay home; above:
+raid blind. Free alternative: passive pop-watch (600->540 dips = muster
+detected, 150km sight, 1-2t lag). Intel hierarchy: pop-watch (always) >
+forward pickets (coverage) > wilderness probes (high-value only).
+Every mechanism has a price (conquest->muster, scouts->attrition).
