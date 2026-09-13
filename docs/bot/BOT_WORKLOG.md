@@ -3079,3 +3079,7 @@ Buzzer +10g (620 total) -> ord 62.8 (mu 66.1, was 65.6/610g): +0.5 on
 ### Buzzer 630g (2026-09-13 01:37 BST)
 Buzzer +10g (630 total) -> ord 62.8 (mu 66.1, was 66.1/620g): flat on
 50% wins (426k/203k/260k/219k/239k) + 1 F1-death + mids. 630 games.
+
+### Buzzer 640g (2026-09-13 01:42 BST)
+Buzzer +10g (640 total) -> ord 62.6 (mu 65.9, was 66.1/630g): -0.2 on
+4W + 2 F1-deaths + mids. Clones spike too (dd9782a 426k). 640 games.
