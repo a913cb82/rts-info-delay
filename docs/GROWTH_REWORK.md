@@ -121,6 +121,10 @@ Towns at 10 or fewer people vanish — too few hands to hold the fields.
 | `melt_per_km` | 0.005 | food lost per cart-km (big receivers lose less — roads) |
 | `info_speed` | 150 | farthest anything travels or is seen per turn |
 | `town_min_population` | 10 | settlements at/below this vanish |
+| `max_train_frac` | 0.1 | largest share of a town trainable in one turn |
+| `build_efficiency` | 0.9 | settling soldiers per mustered civilian (marching overhead) |
+| `capture_loss` | 0.5 | share of people and know-how a sack destroys |
+| forage radius / baggage | 10km / tenth of need | how far armies eat around their march; food carried |
 
 Derived: one full farm ring feeds ≈ 2,356 people — the yardstick for
 service crews and road-building alike. Break-even is S/P ≈ 1.17.
