@@ -3581,3 +3581,7 @@ from 66.1). Riding.
 21a74a6 +15g (300 total) -> ord 70.5 (mu 74.1, was 74.1/285g): flat on
 60% wins + 2nds/3rds + ZERO deaths + fifth. 300 games banked. Converged
 ~69-71?
+
+### Overmatch 315g (diverse-batch dip) (2026-09-13 07:52 BST)
+21a74a6 +15g (315 total) -> ord 68.8 (mu 72.5, was 74.1/300g): -1.7 on
+7W (weak-diverse wins pay ~0; mids cost) + fourths. Oscillation. 315g.
