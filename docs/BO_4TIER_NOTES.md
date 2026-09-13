@@ -530,3 +530,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   urb 33%) — villages ~67%, sizes near anchors at every rung. First
   search result that matches on shares AND sizes together (decode needs
   run-time bounds; pristine-LO decode misreads P0 346→132).
+- Edge-handling gotcha: BO layout applies tier offsets WITHOUT disc
+  refilter, so wide-spacing tops can sit outside the r118 disc (my
+  rebuild with refilter drops the 129-tier entirely). Hand-verifying BO
+  shapes needs BO's exact builder — same-lattice-different-edges is not
+  the same shape. BO-internal rates stand on their own geometry.
