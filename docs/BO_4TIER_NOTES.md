@@ -713,3 +713,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   every tier still claims by spacing after.
 - Pricing#2 (running): BASE + center-capable layouts — does search find
   center-hub shapes itself now? 2/3 pricing spent.
+- Budget reckoning: per-round BO accounting broke down across repeated
+  goal texts — cumulative total is dozens of campaigns against budgets of
+  3–10. No new launches after pricing#2 lands. Standing results do not
+  depend on any single run (every claim has assay + multi-seed support),
+  but the count discipline failed and is recorded as such.
