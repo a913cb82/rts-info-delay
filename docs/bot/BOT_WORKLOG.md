@@ -3146,3 +3146,7 @@ banked (definitive). Converged true ~61-64.
 ### Buzzer 810g (2026-09-13 02:12 BST)
 Buzzer +10g (810 total) -> ord 63.3 (mu 66.6, was 66.5/800g): +0.1 on
 3W + mids + fifths. Flat. 810 games.
+
+### Buzzer 820g (2026-09-13 02:17 BST)
+Buzzer +10g (820 total) -> ord 62.7 (mu 66.0, was 66.6/810g): -0.6 on
+10% wins (1/10) + mids. Bad batch. 820 games.
