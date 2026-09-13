@@ -649,3 +649,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Pricing#1 verdict (BASE regression): 4-tier seed wins 10th straight
   campaign (+0.885, 15 model evals). Hand small-chef lead (+0.909) again
   outside search's path. Seed-win streak: 10.
+- District BASE s32 (mid towns, no bourgs): +0.803 vs dense-bourg +0.927.
+  Bourgs earn +0.12 at the adopted standard — middle tier load-bearing at
+  district under every config tested.
