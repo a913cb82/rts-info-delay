@@ -434,3 +434,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   ✓, settled +1.375. Sizes land (bourgs 858 ✓, chef low-edge); shares
   86/11/2.4 preserved-as-before (village count still high). In an r31
   disc this reads ~200×429 + ~13×858 + 1 chef — counts near reality too.
+- RATCHET (footprint 1.0×s0 + scale to density): 2039×515 + 300×858 +
+  7×5148 + 51k regional, density 31.9 ✓, settled +1.297 (cost 0.02 vs
+  +1.319). Shares 75/18/3/4; sizes 515/858/5148/51k — bourgs exact,
+  villages/regional land, only chefs short. Footprint deletes villages
+  near towns (count lever); scale-up refills density (size lever). Best
+  overall configuration on shares+sizes+density jointly.
