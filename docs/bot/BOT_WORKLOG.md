@@ -4123,3 +4123,9 @@ aggressive 37.0). Parked on loop/aggr-onesie.
 
 ### Heartbeat (v3 triaged) (2026-09-13 13:36 BST)
 D-certain marginal, floor-first/home-garrison/phase-gate dead, compound-pro irrelevant. Loop alive.
+
+### Research v4 synthesis (2026-09-13 13:46 BST)
+18 ideas (6+4+6). Closest: greed-turtle-flip (leader-turtles/trailer-
+raids) but redundant (P6/wealth-adaptive cover it). Scoring quirks
+marginal (BUILD-halt saves ~500s; viceroy micro 1k). Rest built/complex.
+No build. Queue exhausted again.
