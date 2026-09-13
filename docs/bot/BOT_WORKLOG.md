@@ -3847,3 +3847,13 @@ Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
 ### Overmatch 797g (2026-09-13 11:42 BST)
 21a74a6 +10g (797 total) -> ord 66.6 (mu 70.1, was 71.0/787g): -0.9 on
 60% wins (offset by fifths). 797 games.
+
+### Aggressive empty-only built (2026-09-13 11:31 BST)
+Walk-ins only (S==0 + fresh<=10t; never donate into garrisons). Thin
+packs can't afford trades. Bar (gate): exceed 37.0 AND takes occur.
+
+### Empty-only verdict: FAIL (21.5, walk-ins too rare) (2026-09-13 11:41 BST)
+Rated clean 15g (3x5) -> ord 21.5 (mu 29.4): FAIL (gate 37.0+). Walk-ins
+snowball (3W/15: 276k/97k/119k; 20% beats baseline 7%) but too rare
+(opportunity-bound; fresh-empty scarce) + starve-die rest (~50% zeros).
+Style TRUE (takes occur). Reverted (main keeps aggressive 37.0). Parked.
