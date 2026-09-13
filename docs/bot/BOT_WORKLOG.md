@@ -3876,3 +3876,7 @@ Aggressive re-examined (savings vs bird-in-hand; bird wins). All three
 parked reaffirmed. Pro grinding forbidden by user. No unblocked actions
 (builds EV-negative, volume forbidden/EV0). Loop alive, goal blocked on
 mechanisms. Awaiting +EV idea or compute.
+
+### Heartbeat (thin 0/25) (2026-09-13 11:56 BST)
+Thin-line builds 0/25 all-time (poverty-trap; EV -2.0). Pro builds
+(10%) don't advance new goal. Nothing unblocked. Loop alive.
