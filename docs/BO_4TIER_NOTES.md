@@ -327,3 +327,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   covers the province alone), so its lift repays mouths to ~30k — inside
   the 15–40k anchor. Asymmetry confirmed: regional size free to ~30k,
   chef size capped ~3k (overlapping sheds).
+- reg30k settled +1.381 (starv1.6): best overall. Shares 77/14/2/3 vs
+  reality 72/13/7/3 — villages, bourgs, regional ALL land within noise;
+  only chefs short (2 vs 7%). Sharp hunger + big regional is the closest
+  configuration found on every axis at once.
