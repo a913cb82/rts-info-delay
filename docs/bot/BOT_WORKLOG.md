@@ -4307,3 +4307,10 @@ P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
 T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
 Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
 Fast paths all steal grown stocks (shelved: user wants peaceful first).
+
+### v6 one-train + scale retest (2026-09-13, loop/grower)
+Flood autopsy: want-mouths trained 5x in 7 turns (mother pinned 350) +
+0.0-BUILD spam (sub-10 armies). Fixes: ONE growth train/turn, MIN_ARMY
+10, MIN_TRAIN 20, SCAN_R 400 (t1 clock). Scales: 500->714, 1k->1342,
+10k->3418 (t1435 marginal death), 50k->2071 (t149 death), 100k running.
+Remaining: silence_watch cost at 50-100 armies (~44ms) — throttle when big.
