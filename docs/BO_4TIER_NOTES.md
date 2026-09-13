@@ -622,3 +622,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   + 31×858 + 7150 → villages 73% ✓ (count 210 ✓, size 429 ✓), bourgs 21%
   (over), chef 5.8% ✓, density 27 (k too small — 1.73 gives 33).
   Footprint+scale lands villages fully at district; bourgs overshoot.
+- District exact-density (k=1.73): 33.0/km² ✓ at settled +1.320 (cost 0.03
+  vs 27.3). Shares 72.8/21.5/5.8 vs reality 72/15/5–10 — villages EXACT,
+  chef lands, only bourgs overshoot (21.5 vs 15). Sizes 519/1038/8650 all
+  inside anchors except villages (519 vs ~450, close).
