@@ -88,3 +88,18 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   max-push (γ1.3/prem.5/melt.005), where food is cheap and headroom high.
 - BO#6 (running): between mid and max-push (γ1.25/prem.4/melt.008) +
   4-tier seed — mapping the boundary where 4-tier takes over.
+
+## BO#6 verdict: boundary holds for 4-tier (by seed + hand)
+
+- BO#6 (1M, boundary knobs, 4-tier seed present, 13 model evals): the
+  4-tier SEED wins (+0.726) over s64t (+0.716) — but the search added
+  nothing beyond its seeds; hand variants nearby do better.
+- Small-chef sweep at boundary: 3000 (+0.718) < 2500 (+0.727) < 2000
+  (+0.734) < 1500 (+0.740) < 1200 (+0.744) < 1000 (+0.746). Monotone
+  smaller; regional 20k beats 15k/25k/30k variants nearby.
+- Small-chef 4-tier at mid/base knobs still loses (mid: +0.647 vs +0.652;
+  base: uncompetitive). Chef-shrinking helps only where tops already pay.
+- Scoreboard: 4-tier wins max-push (search ×2) and boundary (seed + hand
+  variants); loses mid (−0.005…0.016) and base (badly).
+- BO#7 (running): extend BO#6 log to 32 evals — can the search find the
+  small-chef region itself and confirm the boundary win?
