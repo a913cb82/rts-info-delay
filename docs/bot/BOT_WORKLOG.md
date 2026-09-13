@@ -3610,3 +3610,9 @@ from 66.1). Riding.
 ### Overmatch 400g MILESTONE (2026-09-13 08:22 BST)
 21a74a6 +10g (400 total) -> ord 66.5 (mu 70.2, was 71.2/390g): -1.0 on
 50% wins + 2 F1-deaths + 2nds/3rd. 400 games banked. Converged ~67-70?
+
+### Overmatch 410g (dedup-asymmetry decline) (2026-09-13 08:27 BST)
+21a74a6 +10g (410 total) -> ord 65.5 (mu 69.2, was 70.2/400g): -1.0 on
+4W + fourths + fifth. Structural decline (dedup exhausts strong fields;
+fresh = weak (asymmetric: wins pay ~0, mids cost). Floor ~63-65 parity.
+410 games.
