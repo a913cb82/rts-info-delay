@@ -274,3 +274,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   urban share DOWN; shares need urban mouths the objective penalizes.
   Dense-bourg hand shapes (19–24% urban, +1.16–1.18) remain the best
   shares+rate compromise, within 0.03 of max.
+- District sparse-bourgs@25 (7 bourgs, urb 6.8%): settled +1.217 — ties
+  the BO district winner (+1.2170). Minimal-urban principle holds at both
+  scales: fewer towns, same rate; extra towns are free riders, never drivers.
