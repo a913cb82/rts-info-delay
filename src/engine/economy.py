@@ -351,6 +351,34 @@ def _trade(surplus: np.ndarray, deficit: np.ndarray, D: np.ndarray,
     return imports, exports
 
 
+try:
+    import numba as _numba2
+
+    @_numba2.njit(cache=True)
+    def _market_kernel(D, contrib, cart_km, max_km, ln2, out):
+        """Sparse market accumulation: only in-reach, contributing pairs.
+
+        Pairs beyond max_km or with zero contribution are exactly 0.0
+        in the dense form, so skipping them only regroups the sum
+        (fp noise at ~1e-16 relative, verified on the suite).
+        """
+        n = D.shape[0]
+        for i in range(n):
+            s = 0.0
+            for j in range(n):
+                d = D[i, j]
+                if d <= max_km:
+                    c = contrib[j]
+                    if c != 0.0:
+                        s += math.exp(-d * ln2 / cart_km) * c
+            out[i] = s
+
+    _has_market_numba = True
+except Exception:  # pragma: no cover
+    _has_market_numba = False
+    _market_kernel = None  # type: ignore
+
+
 def _market_boost(serv: np.ndarray, pops: np.ndarray, D: np.ndarray,
                   config: GameConfig, p_market: float) -> np.ndarray:
     """Farm-output premium = services per head served.
@@ -363,16 +391,29 @@ def _market_boost(serv: np.ndarray, pops: np.ndarray, D: np.ndarray,
         return np.zeros(0)
     max_km = _TRADE_REACH_FACTOR * config.cart_distance_km
     ln2 = math.log(2.0)
-    cm = np.where(D <= max_km,
-                  np.exp(-D * ln2 / config.cart_distance_km), 0.0)
     contrib = np.where(
         serv > 0.0,
         p_market * np.power(np.maximum(serv, 0.0) / p_market,
                             config.market_scaling),
         0.0,
     )
-    mkt = cm @ contrib
+    mkt = np.zeros(n, dtype=np.float64)
+    if _has_market_numba:
+        _market_kernel(D, contrib, config.cart_distance_km, max_km, ln2, mkt)
+    else:
+        for i in range(n):
+            row = D[i]
+            m = (row <= max_km) & (contrib != 0.0)
+            if np.any(m):
+                mkt[i] = np.sum(np.exp(-row[m] * ln2 / config.cart_distance_km)
+                                * contrib[m])
     return config.market_premium * mkt / (mkt + np.maximum(pops, 1e-12))
+
+
+# Row-block size for migration: bounds the N x N temporaries (each block
+# holds ~4 x R x N floats). N <= block runs as a single block, which is
+# bit-identical to the unblocked computation.
+_MIG_BLOCK = 256
 
 
 def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
@@ -383,14 +424,22 @@ def _migration(pops: np.ndarray, S: np.ndarray, out_people: np.ndarray,
     with np.errstate(divide="ignore", invalid="ignore"):
         feed = np.where(pops > 0.0,
                         np.minimum(1.0, S / np.maximum(pops, 1e-12)), 0.0)
-    gap = np.maximum(0.0, pops[None, :] - pops[:, None])
-    mig = np.exp(-D / max(config.migration_scale_km, 1e-9)) * _win_np(D, config.info_speed)
-    A = gap * feed[None, :] * mig
-    rs = A.sum(axis=1)
-    flow = np.zeros_like(A)
-    nz = rs > 0.0
-    flow[nz] = out_people[nz, None] * A[nz] / rs[nz, None]
-    return flow.sum(axis=0) - flow.sum(axis=1)
+    scale = max(config.migration_scale_km, 1e-9)
+    inflow = np.zeros(n, dtype=np.float64)
+    outflow = np.zeros(n, dtype=np.float64)
+    for r0 in range(0, n, _MIG_BLOCK):
+        B = slice(r0, min(r0 + _MIG_BLOCK, n))
+        Db = D[B, :]
+        gap_b = np.maximum(0.0, pops[None, :] - pops[B, None])
+        mig_b = np.exp(-Db / scale) * _win_np(Db, config.info_speed)
+        A_b = gap_b * feed[None, :] * mig_b
+        rs_b = A_b.sum(axis=1)
+        fb = np.zeros_like(A_b)
+        nz = rs_b > 0.0
+        fb[nz] = out_people[B][nz, None] * A_b[nz] / rs_b[nz, None]
+        outflow[B] = fb.sum(axis=1)
+        inflow += fb.sum(axis=0)
+    return inflow - outflow
 
 
 # ---------------------------------------------------------------------------
