@@ -4065,3 +4065,8 @@ garrison. Bar: exceed 47.2 AND guards (style).
 Rated clean 15g (3x5) -> ord 38.0 (mu 45.4): FAIL (gate 47.2+). Pickets
 too rare (no surplus idles) + overrun by packs (trade 1-for-0, waste).
 One 282k win (luck). Reverted (main keeps turtle 47.2). Parked.
+
+### Research queue triage (2026-09-13 13:16 BST)
+Tie-spoiler killed pre-build (redundant: guards kill solo takers, not
+tie). BUILD-feed marginal (feed vs found tradeoff unclear). Weakness-
+decoy queued next (full budget; aggressive; decoy-assisted pack kills).
