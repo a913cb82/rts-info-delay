@@ -3952,3 +3952,6 @@ Parked on loop/turtle-wealth2.
 ### Heartbeat (turtle parked x10) (2026-09-13 12:16 BST)
 Tuning ladder wandering (v1 45.6 > v2 39.7; v3 would wander further).
 Turtle parked (10 fails). All three parked. Loop alive.
+
+### Heartbeat (2026-09-13 12:21 BST)
+Loop alive. All blocked.
