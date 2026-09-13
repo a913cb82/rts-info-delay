@@ -160,19 +160,22 @@ def evaluate(u):
 
 def run(n_init=24, n_iter=86, seed=0, log_path=LOG, min_ratio=1.0,
         require=0, footprint=True, melt=None, premium=None, gamma=None,
-        starv=None):
+        starv=None, decay=None, cart=None):
     global RMIN, REQUIRE, LO, FOOTPRINT, CFG
     RMIN = float(min_ratio)
     REQUIRE = int(require)
     FOOTPRINT = bool(footprint)
-    if melt is not None or premium is not None or gamma is not None or starv is not None:
+    if melt is not None or premium is not None or gamma is not None or starv is not None or decay is not None or cart is not None:
         CFG = replace(BASE_CFG,
                       market_scaling=BASE_CFG.market_scaling if gamma is None else gamma,
                       max_improvement=BASE_CFG.max_improvement if premium is None else premium,
                       melt_per_km=BASE_CFG.melt_per_km if melt is None else melt,
-                      starvation_elasticity=BASE_CFG.starvation_elasticity if starv is None else starv)
+                      starvation_elasticity=BASE_CFG.starvation_elasticity if starv is None else starv,
+                      farm_decay_at_radius=BASE_CFG.farm_decay_at_radius if decay is None else decay,
+                      cart_distance_km=BASE_CFG.cart_distance_km if cart is None else cart)
     print(f"CFG: melt={CFG.melt_per_km} premium={CFG.max_improvement} "
           f"gamma={CFG.market_scaling} starv={CFG.starvation_elasticity} "
+          f"decay={CFG.farm_decay_at_radius} cart={CFG.cart_distance_km} "
           f"footprint={FOOTPRINT}", flush=True)
     LO = LO.copy()
     LO[3] = LO[5] = LO[7] = math.log(RMIN)
@@ -297,8 +300,10 @@ if __name__ == "__main__":
     ap.add_argument("--premium", type=float, default=None)
     ap.add_argument("--gamma", type=float, default=None)
     ap.add_argument("--starv", type=float, default=None)
+    ap.add_argument("--decay", type=float, default=None)
+    ap.add_argument("--cart", type=float, default=None)
     args = ap.parse_args()
     run(n_init=args.init, n_iter=args.iter, seed=args.seed,
         log_path=args.log, min_ratio=args.min_ratio, require=args.require,
         footprint=args.footprint, melt=args.melt, premium=args.premium,
-        gamma=args.gamma, starv=args.starv)
+        gamma=args.gamma, starv=args.starv, decay=args.decay, cart=args.cart)
