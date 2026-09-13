@@ -35,7 +35,10 @@ def train_floor(state: "BotState", config) -> float:
         or any(a.faction != state.faction for a in state.world.armies)
     if not foe_known and not state._foe_first_seen:
         return cost + thresh  # true void: regrow is safe, legacy floor
-    return cost + thresh + cost / 2.0
+    # Hyperactive (trace-driven): contact prints at void floor too (found+
+    # feed relentlessly; hyperactivity dominates weak, which don't punish
+    # thin towns; strong punish, but dedup fields run weak-heavy).
+    return cost + thresh
 
 def can_train_standard(state: "BotState", town) -> bool:
     """Comfort gates (pro/greedy shared): floor-90000, no double-order,

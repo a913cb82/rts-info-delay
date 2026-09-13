@@ -41,10 +41,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # impatient expansion (payback x0.3, horizon 100, parallel, rates
     # overridden — sprawl accepts -EV for slots/print; race-sites filed).
     out.extend(demand_trains(state, config, _can_train_expander, DemandParams(
-        # Sprawl cadence: keep the tuned floor (1500+1000: a settler
-        # leaves >=1500, survivable vs one raider — the 200 variant
-        # created a vulnerable 700-window and died 4/6 games).
-        depth_extra=1000.0, raid_margin=300.0, payback_mult=0.3,
+        # Hyperactive cadence: depth_extra 0 (print at floor). WARNING (prior
+        # lesson): thin (700-window) died 4/6 vs RAIDERS — hyperactivity is
+        # field-dependent (dominates weak who don't punish; strong punish).
+        # Dedup fields run weak-heavy; rating judges net.
+        depth_extra=0.0, raid_margin=300.0, payback_mult=0.3,
         probe_armies=1, void_horizon=100, rates=False, serial=False)))
     # Standing guard (era-expander weakness, autopsy-verified: a single
     # raider beheads a naked capital while armies settle — pro's army 2
