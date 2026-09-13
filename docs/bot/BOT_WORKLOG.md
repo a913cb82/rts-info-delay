@@ -4271,3 +4271,11 @@ unless priced). First 50 ranked: raid-if-idle (+243) > found-one-breeder
 armies, wilderness scouts, 500t-boosts, uniform sprawl. Per-personality:
 aggr = gated raider; exp = breeder-booster; pro = opportunist (hole:
 ratios need scale); turtle = compound + muster-response + absorb.
+
+### Grower v1 built + smoke PASS (2026-09-13, loop/grower)
+Peaceful max-growth, clean-sheet (pioneer-16km-hex + boost<150/750t +
+JIT-muster; no standing armies/scouts). Compat fixes: silence_watch call
+(stale notes), arrival-release (engine keeps has_target), site cache
+(16k scan killed clock). Smoke 500t all-grower: 5x (TRAIN+M march+BUILD),
+5 colonies 44-pop, scores 501 (founding cost, payback over 1000s of t).
+Branch renamed (guard-lock parked on loop/turtle-v2).
