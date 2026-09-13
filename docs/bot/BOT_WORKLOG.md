@@ -4082,3 +4082,13 @@ EDGE1 agree: TRAIN 1000-1499-pop towns into armies — deny foe capture +
 gain tempo). Queued FIRST (turtle deny when behind). Others: wall-towns
 (expensive), viceroy-hunt (fog-hard), bypass-starve (marginal),
 mission-orders (already implicit), rest complex/killed.
+
+### Liquidate built (2026-09-13 13:11 BST)
+Research-driven convergent (scorched-earth + EDGE1): doomed non-capitals
+drain in parallel (deny capture + tempo). Bar: exceed 47.2 AND guards.
+
+### Liquidate verdict: FAIL (35.8, false-doom) (2026-09-13 13:21 BST)
+Rated clean 15g (3x5) -> ord 35.8 (mu 43.4): FAIL (gate 47.2+). Deny
+works (4W/15: 179-200k) but false-doom drains holdable towns (inbound
+overestimated; weakens defense; die). Costs exceed gains. Reverted
+(main keeps turtle 47.2). Parked on loop/turtle-liquidate.
