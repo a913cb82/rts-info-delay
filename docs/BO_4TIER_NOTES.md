@@ -461,3 +461,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Inversion resolved by hand rematch (identical protocol, combo knobs):
   4-tier +1.381 vs s64t +1.367. The search crown was noise (protocol wobble
   ~0.005 < gap 0.014). 4-tier leads at combo knobs by assay AND search.
+- Pricing#1 (running): combo knobs, seed 84 — tiebreak adjudication by
+  search (4-tier +1.381 vs s64t +1.367, gap at noise level). 1/3 pricing.
