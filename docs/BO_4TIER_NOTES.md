@@ -669,3 +669,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   standard too — assay leads, search follows, both scales.
 - Sparse chefs@100 (7 tops): +0.878 vs @80 +0.885 — chef spacing flat
   64–100km at BASE too. Spacing optima refuse to move under any knob.
+- H-S2 mid-run (25 model evals): seed still leads (+0.841). Constrained
+  search at BASE behaves like every prior run — seeds first, GP polishes
+  thousandths.
