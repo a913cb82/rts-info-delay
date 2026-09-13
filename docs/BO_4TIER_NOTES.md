@@ -683,3 +683,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   phantoms and tiny P0, not few-town degeneracy). Constraint set needs
   a count/urban-balance term to be complete; noted, not built (diminishing
   returns — assay covers shares).
+- H-S3 (running): 1M BASE + FULL seed set (13 skeletons incl. hand-lead,
+  dense-bourg, small-chef, combo) — first run where the seeds contain
+  every hand finding. Tests whether search with full knowledge beats the
+  seed. 3/3 searches spent.
