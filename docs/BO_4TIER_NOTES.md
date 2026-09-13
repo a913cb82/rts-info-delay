@@ -580,3 +580,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Combo-knob baselines: s64t +1.367, flat +0.691 (gap +0.68 — hierarchy
   margin widest measured). G-S1 (running): constrained reseed, seed 78.
   1/3 searches spent.
+- District combo s32 (no bourgs): +1.331 vs dense-bourg +1.430. Bourgs
+  earn +0.06–0.10 at district under every knob regime — the middle tier
+  has a clean receipt at 100k even where it garnishes at 1M.
