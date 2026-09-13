@@ -4114,3 +4114,9 @@ muster), contacts=lanes (dead), rest built/complex.
 Research-driven inversion (speed-premium): S==0 viable takes launch
 nearest free solo immediately (no pack wait; empties can't donate).
 Bar: exceed 37.0 AND takes (style).
+
+### Onesie verdict: FAIL (23.9, stale-empty hides) (2026-09-13 13:31 BST)
+Rated clean 15g (3x5) -> ord 23.9 (mu 31.6): FAIL (gate 37.0+). Solos
+walk-in sometimes (88k/254k wins) but donate into stale-empty mostly
+(deaths). Pack-only validated (speed kills thin). Reverted (main keeps
+aggressive 37.0). Parked on loop/aggr-onesie.
