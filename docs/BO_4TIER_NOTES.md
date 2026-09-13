@@ -367,3 +367,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   s64t +1.367. Four tiers lead at every knob setting where tops pay at
   all; the only regimes preferring fewer tiers are the gentle ones where
   no tops pay (documented earlier).
+- District combo (dense-bourgs@13 + 5000-chef, prem.75+starv1.6): settled
+  +1.396, urb 22% — ties lean (+1.395) with far better shares: 78/17.5/4.7
+  vs reality 72/15/5–10. Best district on rate AND shares together.
