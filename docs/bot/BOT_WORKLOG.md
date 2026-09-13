@@ -3129,3 +3129,7 @@ Buzzer +10g (750 total) -> ord 62.8 (mu 66.1, was 65.6/740g): +0.5 on
 ### Buzzer 760g (2026-09-13 02:17 BST)
 Buzzer +10g (760 total) -> ord 62.8 (mu 66.1, was 66.1/750g): flat on
 3W (239k/262k/239k) + 2 F1-deaths + mids. 760 games.
+
+### Buzzer 770g (60% batch, no deaths) (2026-09-13 02:22 BST)
+Buzzer +10g (770 total) -> ord 64.2 (mu 67.5, was 66.1/760g): +1.4 on
+60% wins (258k/358k/212k/233k/188k/358k) + ZERO deaths. 770 games.
