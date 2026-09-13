@@ -494,17 +494,19 @@ shape-for-shape.
 Profiled costs (shared 3.8 GB box, numba on; load-sensitive, ±2x).
 N=570: everything ~= 0.06 s/turn. N=3150: neighbor index ~0.3 s once
 per new town set (cached after; was 0.6 s + 76 MB for the dense dist
-matrix, now deleted), market boost ~0.02 s/turn (accumulation over
-stored in-reach pairs), migration ~2-4 s/turn in 26 MB row blocks
-(same flops — the dense in-reach coupling is inherent, only the peak
-is bounded), trade negligible (pair lists). Migration weights (exp x window,
-position-only) are cached per in-reach pair at index build and scattered
-into reused block buffers per turn; gap/weight/flow fuse into two numba
-passes — bit-exact (same scalar ops per element, same reductions),
-tripwire untouched. Migration is ~0.2 s/turn at N=3150 (was ~2.7 s),
-~2 ms at N=240 — the full turn beats master's dense crowding kernel
+matrix, now deleted), market improvement ~0.02 s/turn (accumulation
+over stored in-reach pairs), migration ~0.2 s/turn (weights cached per
+pair, gap/weight/flow fused into two numba passes over reused block
+buffers — bit-exact, tripwire untouched; was ~2.7 s), trade negligible
+(pair lists). The full turn beats master's dense crowding kernel
 (~0.3 s) at 1M with zero quantitative difference anywhere.
 Peak RSS at N=3150 is ~350 MB, down from ~900 MB.
+Founding/destroying a single town is incremental, not a rebuild:
+classify-on-miss (append-at-end founding inserts into neighbor lists,
+single death remaps once; anything else rebuilds), land recomputed only
+within 2R of the event via the verified-identical fallback loop.
+Founding at N=2260 costs ~50 ms overhead (was ~590 ms); death ~120 ms.
+Steady-state turns are untouched (early-return before any new code).
 A full 7-shape 1M sweep runs ~40 s end to end (was ~3.5 min at 10
 turns/config before the serv-lag removal). No dense N x N array exists
 anywhere now: one cached grid + 60 km neighbor lists (+ migration
@@ -524,11 +526,10 @@ village). Measured: K=8 errs up to 40% on small cells, K=16/32 a few
 %, K=64/128 ~1-2% — while growth rankings are unchanged down to K=16
 (labor-limited towns never touch their area). So 32 is the default
 (4x kernel speedup over 128 at no ranking cost). Same idea as
-combat/movement's SpatialHash grids,
-but reusing the already-cached D matrix instead of a dict (numba
-can't do dict cells, and D is needed downstream anyway).
+combat/movement's SpatialHash grids, but as numpy CSR arrays (numba
+can't do dict cells).
 Guidance: screen at N ~= 500-600; keep 1M validations rare, one at a
-time, with caches cleared between geometries (`eco._dist_cache`,
+time, with caches cleared between geometries (`eco._geo_cache`,
 `eco._land_cache`). The engine itself needs no changes for this —
 real games stay at hundreds of towns where every kernel is
 milliseconds; the N x N matrices only bite in benchmark worlds.

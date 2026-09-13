@@ -22,10 +22,14 @@ import numpy as np
 import pytest
 
 from engine.config import GameConfig
+import engine.economy as eco
 from engine.economy import (
     _geo,
+    _land_fallback,
+    _land_kernel,
     _market_improvement,
     _migration,
+    _sample_offsets,
     _step_core,
     _trade,
     apply_build,
@@ -63,7 +67,112 @@ def _geo_xs(*xs: float):
     return _geo(towns, CFG)
 
 
+def _clear_geo_land():
+    eco._geo_cache.update(key=None, geo=None, grid=None)
+    eco._land_cache.update(key=None, areas=None)
+
+
+class TestIncremental:
+    """Single founding/death must equal full rebuild, bit-for-bit."""
+
+    def test_geo_found_matches_rebuild(self) -> None:
+        towns = [_town(500, 500, 300, tid=0), _town(503, 500, 300, tid=1),
+                 _town(510, 500, 300, tid=2), _town(520, 500, 2400, tid=3)]
+        _clear_geo_land()
+        _geo(towns, CFG)
+        towns2 = towns + [_town(505, 502, 300, tid=4)]
+        g2 = _geo(towns2, CFG)  # incremental (append)
+        grid2 = {k: list(v) for k, v in eco._geo_cache["grid"].items()}
+        _clear_geo_land()
+        g3 = _geo(towns2, CFG)  # full rebuild
+        for a, b in zip(g2[:6], g3[:6]):
+            assert np.array_equal(np.asarray(a), np.asarray(b))
+        assert grid2 == eco._geo_cache["grid"]
+
+    def test_geo_found_repad_matches_rebuild(self) -> None:
+        # Newcomer degree exceeds current width: all rows repad.
+        towns = [_town(0, 0, 300, tid=0), _town(100, 0, 300, tid=1),
+                 _town(200, 0, 300, tid=2)]
+        _clear_geo_land()
+        _geo(towns, CFG)
+        towns2 = towns + [_town(50, 0, 300, tid=3)]
+        g2 = _geo(towns2, CFG)
+        _clear_geo_land()
+        g3 = _geo(towns2, CFG)
+        for a, b in zip(g2[:6], g3[:6]):
+            assert np.array_equal(np.asarray(a), np.asarray(b))
+
+    def test_geo_death_matches_rebuild(self) -> None:
+        towns = [_town(i * 5.0, 0, 300, tid=i) for i in range(5)]
+        _clear_geo_land()
+        _geo(towns, CFG)
+        towns2 = [t for t in towns if t.id != 1]  # remove middle: remap
+        g2 = _geo(towns2, CFG)
+        grid2 = {k: list(v) for k, v in eco._geo_cache["grid"].items()}
+        _clear_geo_land()
+        g3 = _geo(towns2, CFG)
+        # Valid regions must match (padded width may keep harmless slack).
+        assert np.array_equal(g2[2], g3[2])  # ndeg
+        assert np.array_equal(g2[4], g3[4])  # xs
+        assert np.array_equal(g2[5], g3[5])  # ys
+        for i in range(len(towns2)):
+            m = int(g3[2][i])
+            assert m == int(g2[2][i])
+            assert np.array_equal(g2[0][i, :m], g3[0][i, :m])
+            assert np.array_equal(g2[1][i, :m], g3[1][i, :m])
+            assert np.array_equal(g2[3][i, :m], g3[3][i, :m])
+        assert grid2 == eco._geo_cache["grid"]
+
+    def test_land_found_matches_rebuild(self) -> None:
+        towns = [_town(500, 500, 300, tid=0), _town(503, 500, 300, tid=1),
+                 _town(520, 500, 2400, tid=2)]
+        _clear_geo_land()
+        land_areas(towns, [1000, 1000], CFG)
+        towns2 = towns + [_town(505, 502, 300, tid=3)]
+        a2 = land_areas(towns2, [1000, 1000], CFG)
+        _clear_geo_land()
+        a3 = land_areas(towns2, [1000, 1000], CFG)
+        assert np.array_equal(a2, a3)
+
+    def test_land_death_matches_rebuild(self) -> None:
+        towns = [_town(i * 5.0, 0, 300, tid=i) for i in range(5)]
+        _clear_geo_land()
+        land_areas(towns, [1000, 1000], CFG)
+        towns2 = [t for t in towns if t.id != 2]
+        a2 = land_areas(towns2, [1000, 1000], CFG)
+        _clear_geo_land()
+        a3 = land_areas(towns2, [1000, 1000], CFG)
+        assert np.array_equal(a2, a3)
+
+
 class TestLand:
+
+    def test_fallback_matches_kernel(self) -> None:
+        """_land_fallback is op-for-op identical to _land_kernel (it is the
+        subset engine for incremental land updates; do not 'simplify')."""
+        towns = [_town(500, 500, 300, tid=0), _town(503, 500, 300, tid=1),
+                 _town(510, 500, 300, tid=2)]  # sharing pair + 2R twins
+        n = len(towns)
+        xs = np.array([t.x for t in towns])
+        ys = np.array([t.y for t in towns])
+        sx, sy = _sample_offsets(32)
+        nidx, ndist, ndeg = _geo(towns, CFG)[:3]
+        reach = 2.0 * CFG.farm_radius_km * (1.0 + 1e-9)
+        degs = np.zeros(n, dtype=np.int64)
+        for i in range(n):
+            degs[i] = int(np.count_nonzero(ndist[i, :ndeg[i]] <= reach))
+        nbrs = np.zeros((n, int(degs.max())), dtype=np.int64)
+        for i in range(n):
+            nbrs[i, :degs[i]] = nidx[i, :ndeg[i]][ndist[i, :ndeg[i]] <= reach]
+        a = np.zeros(n)
+        b = np.zeros(n)
+        _land_kernel(xs, ys, sx, sy, CFG.farm_radius_km, nbrs, degs, a)
+        _land_fallback(xs, ys, sx, sy, CFG.farm_radius_km, nbrs, degs, b)
+        assert np.array_equal(a, b)
+        c = a.copy()
+        _land_fallback(xs, ys, sx, sy, CFG.farm_radius_km, nbrs, degs, c,
+                        only=[0, 2])
+        assert np.array_equal(a, c)
 
     def test_lone_area_is_the_ring(self) -> None:
         w = _world(_town(500, 500, 300, tid=1))

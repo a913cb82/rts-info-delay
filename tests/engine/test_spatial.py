@@ -92,7 +92,10 @@ class TestSpatialHash:
         fitted kernel; wall-clock gate skipped on a loaded box)."""
         import os
 
-        if os.getloadavg()[0] > (os.cpu_count() or 4) * 0.4:
+        def _loaded() -> bool:
+            return os.getloadavg()[0] > (os.cpu_count() or 4) * 0.4
+
+        if _loaded():
             import pytest
 
             pytest.skip("machine under load")
@@ -116,4 +119,8 @@ class TestSpatialHash:
         for t in towns:
             crowding_net(t, towns, CFG)
         elapsed = time.perf_counter() - start
+        if _loaded():
+            import pytest
+
+            pytest.skip("machine loaded mid-run")
         assert elapsed < 0.25  # < 250ms

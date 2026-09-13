@@ -146,7 +146,7 @@ def derived(config: GameConfig):
 # whole economy is bit-identical to the matrix version (tripwire-stable).
 
 _GRID_CELL_KM = 20.0
-_geo_cache = {"key": None, "geo": None}
+_geo_cache = {"key": None, "geo": None, "grid": None}
 
 
 def _geo(towns: list[Town], config: GameConfig):
@@ -166,9 +166,16 @@ def _geo(towns: list[Town], config: GameConfig):
            float(max_km), float(scale))
     if _geo_cache["key"] == key:
         return _geo_cache["geo"]
+    inc = _geo_try_incremental(towns, config, max_km, scale, key)
+    if inc is not None:
+        _geo_cache["key"] = key
+        _geo_cache["geo"] = inc[0]
+        _geo_cache["grid"] = inc[1]
+        return inc[0]
     n = len(towns)
     xs = np.array([t.x for t in towns], dtype=np.float64)
     ys = np.array([t.y for t in towns], dtype=np.float64)
+    cells = None
     if n == 0:
         geo = (np.zeros((0, 0), np.int64), np.zeros((0, 0)),
                np.zeros(0, np.int64), np.zeros((0, 0)), xs, ys)
@@ -212,7 +219,171 @@ def _geo(towns: list[Town], config: GameConfig):
         geo = (nidx, ndist, ndeg, nweight, xs, ys)
     _geo_cache["key"] = key
     _geo_cache["geo"] = geo
+    _geo_cache["grid"] = cells
     return geo
+
+
+def _classify(old_ids, new_ids):
+    """Single founding/death vs rebuild, from key id-tuples.
+
+    Returns ("found", added) | ("death", removed) | ("rebuild",) with
+    added/removed as (id, x, y) tuples. Any moved town (same id, changed
+    position) forces rebuild. O(N) on the rare miss path only."""
+    old = {t[0]: (t[1], t[2]) for t in old_ids}
+    new = {t[0]: (t[1], t[2]) for t in new_ids}
+    for i, xy in new.items():
+        if i in old and old[i] != xy:
+            return ("rebuild",)
+    added = [t for t in new_ids if t[0] not in old]
+    removed = [t for t in old_ids if t[0] not in new]
+    if len(added) == 1 and not removed:
+        return ("found", added[0])
+    if len(removed) == 1 and not added:
+        return ("death", removed[0])
+    return ("rebuild",)
+
+
+def _query_around(cells, cell, x, y, radius):
+    """Candidate indices from cells overlapped by the reach disc.
+
+    Same discovery as the full build (duplicated so the verified build
+    path stays untouched); the exact-distance filter below is the arbiter."""
+    ix0 = math.floor((x - radius - 1e-7) / cell)
+    ix1 = math.floor((x + radius + 1e-7) / cell)
+    iy0 = math.floor((y - radius - 1e-7) / cell)
+    iy1 = math.floor((y + radius + 1e-7) / cell)
+    cand = []
+    for ax in range(ix0, ix1 + 1):
+        for ay in range(iy0, iy1 + 1):
+            cand.extend(cells.get((ax, ay), ()))
+    return np.unique(np.array(cand, dtype=np.int64))
+
+
+def _geo_try_incremental(towns, config, max_km, scale, key):
+    """Fast path for single founding (appended) / single death.
+
+    Returns (geo, grid) or None (caller falls through to full build).
+    Append-at-end founding needs no index remap; death remaps once."""
+    old_key = _geo_cache.get("key")
+    old_geo = _geo_cache.get("geo")
+    old_cells = _geo_cache.get("grid")
+    if old_key is None or old_geo is None or old_cells is None:
+        return None
+    if old_key[1:] != key[1:]:
+        return None  # reach/scale changed: every list changes
+    old_ids, new_ids = old_key[0], key[0]
+    cls = _classify(old_ids, new_ids)
+    if cls[0] == "found" and len(new_ids) == len(old_ids) + 1 \
+            and new_ids[:len(old_ids)] == old_ids:
+        return _geo_found(towns, config, max_km, scale, old_geo, old_cells)
+    if cls[0] == "death":
+        return _geo_forget(old_geo, old_cells, old_ids, new_ids, cls[1])
+    return None
+
+
+def _geo_found(towns, config, max_km, scale, old_geo, old_cells):
+    """Append-at-end founding: newcomer index is max, so mirror entries
+    append at row ends (no memmove) and no remap is needed."""
+    nidx, ndist, ndeg, nweight, xs, ys = old_geo
+    n = len(towns)
+    j = n - 1
+    xj, yj = towns[j].x, towns[j].y
+    xs2 = np.append(xs, xj)
+    ys2 = np.append(ys, yj)
+    cand = _query_around(old_cells, _GRID_CELL_KM, xj, yj, max_km)
+    dx = xj - xs[cand]
+    dy = yj - ys[cand]
+    d = np.sqrt(dx * dx + dy * dy)
+    keep = d <= max_km
+    lst = np.append(cand[keep], j)  # ascending (self idx is max)
+    dst = np.append(d[keep], 0.0)
+    with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+        wlst = np.exp(-dst / scale) * _win_np(dst, max_km)
+    md = int(nidx.shape[1])
+    full = [int(c) for c in lst if c != j and ndeg[c] >= md]
+    new_md = max(md, len(lst))
+    if full:
+        new_md = max(new_md, int(ndeg[full].max()) + 1)
+    ndeg2 = np.append(ndeg.copy(), len(lst))
+    if new_md > md:
+        nidx2 = np.zeros((n, new_md), dtype=np.int64)
+        ndist2 = np.zeros((n, new_md), dtype=np.float64)
+        nweight2 = np.zeros((n, new_md), dtype=np.float64)
+        nidx2[:n - 1, :md] = nidx
+        ndist2[:n - 1, :md] = ndist
+        nweight2[:n - 1, :md] = nweight
+        for i in range(n - 1):
+            nidx2[i, int(ndeg[i]):] = i
+            nweight2[i, int(ndeg[i]):] = 1.0
+        nidx, ndist, nweight = nidx2, ndist2, nweight2
+        md = new_md
+    else:
+        nidx = np.vstack([nidx, np.zeros((1, md), dtype=np.int64)])
+        ndist = np.vstack([ndist, np.zeros((1, md), dtype=np.float64)])
+        nweight = np.vstack([nweight, np.zeros((1, md), dtype=np.float64)])
+    nidx[j, :len(lst)] = lst
+    ndist[j, :len(lst)] = dst
+    nweight[j, :len(lst)] = wlst
+    nidx[j, len(lst):] = j
+    nweight[j, len(lst):] = 1.0
+    for pos, c in enumerate(lst):
+        c = int(c)
+        if c == j:
+            continue
+        m = int(ndeg2[c])
+        nidx[c, m] = j
+        ndist[c, m] = float(dst[pos])
+        nweight[c, m] = float(wlst[pos])
+        ndeg2[c] = m + 1
+    ck = (math.floor(xj / _GRID_CELL_KM), math.floor(yj / _GRID_CELL_KM))
+    cells2 = dict(old_cells)
+    cells2[ck] = old_cells.get(ck, []) + [j]
+    return ((nidx, ndist, ndeg2, nweight, xs2, ys2), cells2)
+
+
+def _geo_forget(old_geo, old_cells, old_ids, new_ids, removed):
+    """Single death: drop the row, remap higher indices down once."""
+    nidx, ndist, ndeg, nweight, xs, ys = old_geo
+    d = next(k for k, t in enumerate(old_ids) if t[0] == removed[0])
+    n = len(new_ids)
+    if n == 0:
+        z = (np.zeros((0, nidx.shape[1]), np.int64), np.zeros((0, nidx.shape[1])),
+             np.zeros(0, np.int64), np.zeros((0, nidx.shape[1])),
+             np.zeros(0), np.zeros(0))
+        return (z, {})
+    keep_rows = [r for r in range(n + 1) if r != d]
+    idx2 = nidx[keep_rows]
+    dis2 = ndist[keep_rows]
+    wgt2 = nweight[keep_rows]
+    deg2 = ndeg[keep_rows].copy()
+    md = int(idx2.shape[1])
+    for r in range(n):
+        row = idx2[r, :int(deg2[r])]
+        pos = int(np.searchsorted(row, d))
+        if pos < int(deg2[r]) and row[pos] == d:
+            tail_i = row[pos + 1:].copy()
+            tail_d = dis2[r, pos + 1:int(deg2[r])].copy()
+            tail_w = wgt2[r, pos + 1:int(deg2[r])].copy()
+            idx2[r, pos:int(deg2[r]) - 1] = tail_i
+            dis2[r, pos:int(deg2[r]) - 1] = tail_d
+            wgt2[r, pos:int(deg2[r]) - 1] = tail_w
+            deg2[r] -= 1
+    valid = np.arange(md)[None, :] < deg2[:, None]
+    sub = idx2 > d
+    idx2[valid & sub] -= 1
+    rows = np.arange(n)[:, None]
+    pad = np.arange(md)[None, :] >= deg2[:, None]
+    idx2[pad] = np.broadcast_to(rows, (n, md))[pad]
+    dis2[pad] = 0.0
+    wgt2[pad] = 1.0
+    xs2 = np.delete(xs, d)
+    ys2 = np.delete(ys, d)
+    cells2 = {}
+    for k, members in old_cells.items():
+        m2 = [m - 1 if m > d else m for m in members if m != d]
+        if m2:
+            cells2[k] = m2
+    return ((idx2, dis2, deg2, wgt2, xs2, ys2), cells2)
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +451,48 @@ except Exception:  # pragma: no cover
     _land_kernel = None  # type: ignore
 
 
+def _land_fallback(xs, ys, sx, sy, radius, nbrs, degs, out, only=None):
+    """Pure-python land kernel, op-for-op identical to _land_kernel.
+
+    Same per-sample winner (first-minimum over ascending candidates),
+    same sequential wt accumulation in q order — bit-identical outputs.
+    `only` restricts to a subset of town indices (incremental updates).
+    Pinned by test_fallback_matches_kernel; do not 'simplify'."""
+    n = xs.shape[0]
+    k = sx.shape[0]
+    wt = math.pi * radius * radius / k
+    idx = range(n) if only is None else only
+    for i in idx:
+        tot = 0.0
+        for q in range(k):
+            px = xs[i] + sx[q] * radius
+            py = ys[i] + sy[q] * radius
+            bd = 1e18
+            bj = -1
+            for m in range(degs[i]):
+                j = nbrs[i, m]
+                dx = xs[j] - px
+                dy = ys[j] - py
+                d2 = dx * dx + dy * dy
+                if d2 < bd:
+                    bd = d2
+                    bj = j
+            if bj == i:
+                tot += wt
+        out[i] = tot
+
+
 def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
     map_w = float(map_size[0]) if map_size else 1000.0
     map_h = float(map_size[1]) if map_size and len(map_size) > 1 else map_w
     key = (tuple((t.id, t.x, t.y) for t in towns), map_w, map_h)
     if _land_cache["key"] == key:
         return _land_cache["areas"]
+    inc = _land_try_incremental(towns, config, map_w, map_h, key)
+    if inc is not None:
+        _land_cache["key"] = key
+        _land_cache["areas"] = inc
+        return inc
     n = len(towns)
     areas = np.zeros(n, dtype=np.float64)
     if n:
@@ -311,17 +518,53 @@ def land_areas(towns: list[Town], map_size, config: GameConfig) -> np.ndarray:
         if _has_numba:
             _land_kernel(xs, ys, sx, sy, config.farm_radius_km, nbrs, degs, areas)
         else:
-            wt = math.pi * config.farm_radius_km ** 2 / len(sx)
-            for i in range(n):
-                nb = nbrs[i, :degs[i]]
-                px = xs[i] + sx * config.farm_radius_km
-                py = ys[i] + sy * config.farm_radius_km
-                d2 = (xs[nb][None, :] - px[:, None]) ** 2 + \
-                    (ys[nb][None, :] - py[:, None]) ** 2
-                win = np.argmin(d2, axis=1)
-                areas[i] = np.count_nonzero(nb[win] == i) * wt
+            _land_fallback(xs, ys, sx, sy, config.farm_radius_km, nbrs, degs, areas)
     _land_cache["key"] = key
     _land_cache["areas"] = areas
+    return areas
+
+
+def _land_try_incremental(towns, config, map_w, map_h, key):
+    """Fast path for single founding/death: recompute only towns within
+    2R of the event (triangle inequality: only their samples can change
+    hands). Unaffected towns keep cached areas by id. Else None."""
+    old_key = _land_cache.get("key")
+    old_areas = _land_cache.get("areas")
+    if old_key is None or old_areas is None:
+        return None
+    if old_key[1:] != (map_w, map_h):
+        return None
+    cls = _classify(old_key[0], key[0])
+    if cls[0] == "found":
+        ex, ey = cls[1][1], cls[1][2]
+    elif cls[0] == "death":
+        ex, ey = cls[1][1], cls[1][2]
+    else:
+        return None
+    _g = _geo(towns, config)
+    nidx, ndist, ndeg, xs, ys = _g[0], _g[1], _g[2], _g[4], _g[5]
+    n = len(towns)
+    new_by_id = {t[0]: k for k, t in enumerate(key[0])}
+    areas = np.zeros(n, dtype=np.float64)
+    for k, t in enumerate(old_key[0]):
+        if t[0] in new_by_id:
+            areas[new_by_id[t[0]]] = float(old_areas[k])
+    reach = 2.0 * config.farm_radius_km * (1.0 + 1e-9)
+    d = np.sqrt((xs - ex) ** 2 + (ys - ey) ** 2)
+    affected = sorted(int(i) for i in range(n) if d[i] <= reach)
+    degs = np.zeros(n, dtype=np.int64)
+    rows = {}
+    for i in affected:
+        m = ndist[i, :ndeg[i]] <= reach
+        rows[i] = nidx[i, :ndeg[i]][m]
+        degs[i] = len(rows[i])
+    md = max([len(r) for r in rows.values()], default=0)
+    nbrs = np.zeros((n, max(1, md)), dtype=np.int64)
+    for i in affected:
+        nbrs[i, :degs[i]] = rows[i]
+    sx, sy = _sample_offsets(_SAMPLE_K)
+    _land_fallback(xs, ys, sx, sy, config.farm_radius_km, nbrs, degs,
+                    areas, only=affected)
     return areas
 
 
