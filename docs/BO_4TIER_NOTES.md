@@ -103,3 +103,15 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   variants); loses mid (−0.005…0.016) and base (badly).
 - BO#7 (running): extend BO#6 log to 32 evals — can the search find the
   small-chef region itself and confirm the boundary win?
+
+## BO#7 verdict + small chefs take the lead everywhere they pay
+
+- BO#7 (boundary, 32 evals total): best UNCHANGED +0.726 — 16 extra evals
+  confirm the 4-tier seed, add nothing. Boundary win stands (seed-held).
+- Small-chef sweep at max-push: chefs 1000 (+0.909) and 1500 (+0.905)
+  beat the BO#2 winner (+0.885). New incumbent: bourgs-500 + 1000-chefs@80
+  + 20k regional. Tiers compress upward (300/500/1000/20000) while the
+  top stays big — mouths shrink everywhere except the regional.
+- BO#8 (running): max-push + new small-chef 4-tier seed
+  (500@18/1500@80/15000@150) — can the search confirm the small-chef
+  incumbent itself?
