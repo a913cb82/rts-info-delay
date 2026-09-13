@@ -593,3 +593,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   bigger sizes (villages 438@3.87 + 1055@20 + 4613@102 + 34k-regional,
   urb 12%, +1.299) — first search excursion toward parish-size villages
   AND big tops together. Constraints channel exploration productively.
+- District big-size hand shape (236×438 + 13×1055 + 4600): +1.372 vs
+  +1.453 dense winner. Realistic sizes cost 0.08 at district (counts and
+  sizes both land: 236/13/1 ✓✓). Sizes have a measured price everywhere.
