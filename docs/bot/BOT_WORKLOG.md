@@ -3092,3 +3092,7 @@ Buzzer +10g (650 total) -> ord 61.5 (mu 64.8, was 65.9/640g): -1.1 on
 Buzzer +10g (660 total) -> ord 62.0 (mu 65.3, was 64.8/650g): +0.5 on
 2W (345k/188k) + quality 2nds (245k/256k/239k narrow to spikes) + 2
 F1-deaths. 660 games.
+
+### Buzzer 670g (60% batch) (2026-09-13 01:57 BST)
+Buzzer +10g (670 total) -> ord 63.2 (mu 66.5, was 65.3/660g): +1.2 on
+60% wins (360k/258k/203k/258k/188k/358k) + 1 F1-death. 670 games.
