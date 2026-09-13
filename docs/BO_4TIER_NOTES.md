@@ -450,3 +450,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Decay shape (never varied): p=1 starves flat-300 villages (−0.02);
   p=3 feeds them (+0.20). Steeper decay favors villages; P0 sweep at p=3
   next (village-size knob candidate).
+- Village size at steep decay (p=3): flat optimum shifts 300→~500
+  (+0.195→+0.226, cliff at 800). In the 4-tier stack, 500-villages cost
+  0.01 (density 36 vs 23) — size nearly free, count still sets share.
+  Decay shape is a real village-size knob; p=3 keeps 4-tier winning.
