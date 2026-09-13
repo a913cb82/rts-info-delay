@@ -155,16 +155,17 @@ SHAPES = [
 
 
 def main(rmax=50.0, gamma=None, premium=None, footprint=True,
-         melt=None, starv=None, decay=None, cart=None):
+         melt=None, starv=None, decay=None, cart=None, rural=None):
     cfg = BASE_CFG
-    if gamma is not None or premium is not None or melt is not None or starv is not None or decay is not None or cart is not None:
+    if gamma is not None or premium is not None or melt is not None or starv is not None or decay is not None or cart is not None or rural is not None:
         cfg = replace(BASE_CFG,
                       market_scaling=BASE_CFG.market_scaling if gamma is None else gamma,
                       max_improvement=BASE_CFG.max_improvement if premium is None else premium,
                       melt_per_km=BASE_CFG.melt_per_km if melt is None else melt,
                       starvation_elasticity=BASE_CFG.starvation_elasticity if starv is None else starv,
                       farm_decay_at_radius=BASE_CFG.farm_decay_at_radius if decay is None else decay,
-                      cart_distance_km=BASE_CFG.cart_distance_km if cart is None else cart)
+                      cart_distance_km=BASE_CFG.cart_distance_km if cart is None else cart,
+                      rural_density=BASE_CFG.rural_density if rural is None else rural)
     print(f"{'shape':>18} {'N':>5} {'urban%':>7} {'rate':>9}")
     rows = []
     for label, s_t, T in SHAPES:
@@ -206,4 +207,5 @@ if __name__ == "__main__":
     ap.add_argument("--starv", type=float, default=None)
     ap.add_argument("--decay", type=float, default=None)
     ap.add_argument("--cart", type=float, default=None)
+    ap.add_argument("--rural", type=float, default=None)
     sys.exit(main(**vars(ap.parse_args())))

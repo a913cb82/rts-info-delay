@@ -907,6 +907,13 @@ their keep for the first time. Counts land near reality (151 bourgs vs
 ~150, 13 chefs vs ~9, regional 20k in range); villages stay small and
 non-food urban income is still unmodeled.
 
+Fertility ×2.5 (rural_density 30→75, log `bo_rural75.jsonl`): villages stay
+~300 — decay rewards near-field smallness, so extra food becomes surplus,
+not density — while tiers shift up (bourgs 600→1000, chefs 4800–8000 win,
+growth +0.57, urban ~13–19%). Density is unchanged (~24/km²): it is set by
+labour-footprint geometry, not fertility. 33/km² needs tighter spacing and
+fixed settlement costs, not richer land.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
