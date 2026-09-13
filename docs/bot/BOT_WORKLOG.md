@@ -3548,3 +3548,8 @@ luck). Riding.
 21a74a6 +15g (195 total) -> ord 69.5 (mu 73.1, was 73.0/180g): +0.1 on
 57% wins + ZERO deaths + fourth. Climb slowing (73 plateau?); wins
 continue. 195 games.
+
+### Overmatch 210g (70.4, mu 74.0!) (2026-09-13 07:17 BST)
+21a74a6 +15g (210 total) -> ord 70.4 (mu 74.0, was 73.1/195g): +0.9 on
+~10W (incl weak-diverse dominations) + 2nds + third. New high (mu 74).
+Climbing again. Riding.
