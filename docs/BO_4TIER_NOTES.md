@@ -547,3 +547,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District bourg750@16 (+1.418) sits between dense@13+2500 (+1.430) and
   lean (+1.395): size and spacing trade smoothly, no cliffs.bourg-size
   and spacing both slide toward small+dense monotonically.
+- Village count lands free (238×300 @4.5km ties lean +0.921), village size
+  costs 0.008 (430s: +0.914) — but village SHARE won't fall either way
+  (84–88%): sparser count and bigger size both add village mass faster
+  than towns absorb. Count ✓, size ~$, share ✗ without town-side income.
