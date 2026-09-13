@@ -15,7 +15,7 @@ from bots.expander.intel import BotState, silence_watch
 LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
 MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
 TRAIN_FLOOR = 200.0   # keep town >= this after a growth train
-TRAIN_MIN_POP = 500.0 # towns below never train (recover/grow)
+TRAIN_MIN_POP = 450.0 # towns below never train (recover/grow; v2: faster cadence)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 150.0   # colonies below this get boosted
 ARRIVED = 1.0         # km: close enough to count as landed (exact engine)

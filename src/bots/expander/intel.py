@@ -203,13 +203,19 @@ class BotState:
                 if a is None:
                     a = Army(id=eid, faction=int(ev.get("faction", -1)),
                              x=float(ev.get("x", 0.0)), y=float(ev.get("y", 0.0)),
-                             is_viceroy=bool(ev.get("is_viceroy", False)))
+                             is_viceroy=bool(ev.get("is_viceroy", False)),
+                             size=float(ev.get("size", 1000.0)))
                     self.world.armies.append(a)
                 else:
                     a.faction = int(ev.get("faction", a.faction))
                     a.x = float(ev.get("x", a.x))
                     a.y = float(ev.get("y", a.y))
                     a.is_viceroy = bool(ev.get("is_viceroy", a.is_viceroy))
+                    if ev.get("size") is not None:
+                        try:
+                            a.size = float(ev.get("size"))
+                        except (TypeError, ValueError):
+                            pass
                 tr = self._trails.get(eid)
                 if tr is None:
                     tr = self._trails[eid] = deque(maxlen=4)
