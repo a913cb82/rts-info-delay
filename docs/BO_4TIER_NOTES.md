@@ -440,3 +440,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   villages/regional land, only chefs short. Footprint deletes villages
   near towns (count lever); scale-up refills density (size lever). Best
   overall configuration on shares+sizes+density jointly.
+- Ratchet tuned to exact density (k=1.78): 33.1/km² at settled +1.291
+  (cost 0.006 vs 31.9). Density dials continuously via uniform scale;
+  composition frozen by footprint choice. S1 back to full speed (40/96).
