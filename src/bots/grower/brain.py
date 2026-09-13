@@ -200,7 +200,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             and not state.has_pending_build(a.id) and a.size >= MIN_ARMY]
     # site lists computed ONCE (per-army rescans killed the clock: 0.9s/turn).
     _esig = tuple(sorted((round(ex, 1), round(ey, 1)) for ex, ey in enroute))
-    _pkey = (_site_key(state, config), _esig)
+    _skey = _site_key(state, config)
+    _pkey = (_skey, _esig)
     _pcache = _SITE_CACHE.get(_pkey)
     if _pcache is None:
         _pcache = [s for s in _all_sites(state, config)
@@ -209,7 +210,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if len(_SITE_CACHE) > 12:
             _SITE_CACHE.pop(next(iter(_SITE_CACHE)))
     psites = _pcache
-    dsites = _densify_list(state, config, enroute)
+    _dkey = (_skey, _esig, "d")
+    _dcache = _SITE_CACHE.get(_dkey)
+    if _dcache is None:
+        _dcache = _densify_list(state, config, enroute)
+        _SITE_CACHE[_dkey] = _dcache
+    dsites = _dcache
     pidx = didx = 0
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):

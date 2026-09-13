@@ -4321,3 +4321,11 @@ GrowerState: towns/armies/targets/pending/growth only (~120 lines, no
 fog-reasoning; arrival cleared on update). + psites cache (16k filter/turn
 was 2-4ms). Scales: 500->682, 1k->1302, 10k->2861 (t1808 overdraft),
 50k->8920 (triage dispersal 6x idle!), 100k running. No expander dep.
+
+### v8 all-scales pass (2026-09-13, loop/grower)
+dsites-cache (sustained <10ms/turn; overdraft deaths gone). t10000:
+500->714, 1k->1342, 10k->8941, 50k->8920, 100k->13714 — all beat idle
+(608/608/1394/1410/1411) 1.1x-10x. General logic throughout (triage by
+growth-rate, mouth-accounting, 500-chunks, triage-shed, caches). No
+per-size special cases. 10k-start swings across versions (path-sensitive
+triage; noted, not chased).
