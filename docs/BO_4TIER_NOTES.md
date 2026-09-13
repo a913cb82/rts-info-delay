@@ -337,3 +337,5 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   (+1.381). Chefs earn only with BOTH neighbors absent (s64t-era). In any
   full stack the mid tier is redundant — coverage saturates from below
   (bourgs) or above (regional), never leaving a gap chefs alone fill.
+- Small regional (12k) + dense shape: +1.339 vs +1.381 (30k). Regional
+  monotonic to ~30k, then falls (40k +1.323 earlier). Asymmetry stands.
