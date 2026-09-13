@@ -705,6 +705,24 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
     )
     offer = contrib * (1.0 + last)
     nidx, ndist, ndeg = geo[0], geo[1], geo[2]
+    # Technique frontier: the best specialist crew in the daily-walk
+    # neighborhood (twice the farm radius) sets the methods available —
+    # skills need daily face-to-face (apprenticeship), goods need only a
+    # weekly cart (market decay) or a commercial trip (trade cap): three
+    # nested travel rhythms, no new scale. Isolated places cap lower;
+    # best practice (max_improvement) only where specialists cluster.
+    # Same curvature as generation (gamma-1): one agglomeration
+    # exponent. At gamma=1 the frontier is off (x**0 == 1); capped at mi.
+    mx = np.zeros(n, dtype=np.float64)
+    learn = 2.0 * config.farm_radius_km
+    for i in range(n):
+        jj = nidx[i, :ndeg[i]]
+        dd = ndist[i, :ndeg[i]]
+        near = jj[dd <= learn]
+        if near.size:
+            mx[i] = np.max(offer[near])
+    gm1 = config.market_scaling - 1.0
+    frontier = np.minimum(1.0, np.power(mx / p_market, gm1))
     mkt = np.zeros(n, dtype=np.float64)
     if _has_market_numba:
         _market_kernel(nidx, ndist, ndeg, offer,
@@ -718,7 +736,8 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
             if np.any(m):
                 mkt[i] = np.sum(np.exp(-dd[m] * ln2 / config.cart_distance_km)
                                 * offer[jj[m]])
-    return config.max_improvement * mkt / (mkt + np.maximum(pops, 1e-12))
+    return (config.max_improvement * frontier * mkt /
+            (mkt + np.maximum(pops, 1e-12)))
 
 
 # Row-block size for migration: bounds the N x N temporaries (each block

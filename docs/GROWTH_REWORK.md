@@ -698,6 +698,35 @@ services, saturated towns +5%) — it feeds the bottom, not the top.
 Reverted to committed baseline; hierarchy needs gains concentrating
 UPWARD (frontier-ceiling next candidate).
 
+## Frontier + 100k optimum (matches economic tiers)
+
+Saturation probe showed settled flat villages at mkt/P ≈ 3.6 (78% of
+ceiling) — the ceiling binds, so a technique frontier bites. Built:
+`frontier = min(1, (max nearby pool/P_market)^(gamma-1))`, max over
+the daily-walk neighborhood (2·farm_radius = 10 km: skills need daily
+face-to-face; goods weekly cart (market decay); trade commercial
+trips — three nested rhythms, zero new params/scales). At gamma=1 the
+frontier is exactly off; capped at mi (max stays max); 60 km lists
+serve it (150 km rule safe). Suite green, no tripwire rebase.
+
+Settled ranking flipped: s64/T2400 (+0.1494, 60 km frontier) led
+first; local (10 km) frontier → GOAL bourgs+chef +0.1273 wins, then
+s16 +0.1208, regional +0.1163, s64 +0.1152 (one hub de-isolates one
+patch), flat +0.1119 last. Coverage efficiency decides: many-small
+covers ground per mouth; few-big leaves capped gaps.
+
+100k optimum vs reality: villages 300@4km ✓✓; bourgs 600–1000 @
+15–18 km ✓ (reality 500–1500 @ 10–15; ours tiles efficiently, reality
+over-dense from seigneurial market competition); chef monotone
+8000→+0.1273, 5000→+0.1286, 3000→+0.1294, none→+0.1302 — the top
+melts, centers >3000 are dead weight (mouths > patch lift). Chef is a
+power-tier fact (election seat; lives in the game's power layer with
+combat/capitals/score), not a growth optimum — exogenous boundary,
+documented not hidden. BO's dense-village finding was
+mechanism-conditional (pre-frontier); post-frontier 200@3km loses
+(+0.1107 < +0.1119). Targeted shapes settle structure; BO reserved
+for reopening structure, not refining numbers.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
