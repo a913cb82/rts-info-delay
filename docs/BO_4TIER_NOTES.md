@@ -208,6 +208,17 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - both-BO#1 (running): 100k (r38), prem.75, seed 61 — district shares by
   search. 1/5 spent.
 
+## both-BO#1 verdict: dense 3-tier wins district (+1.217)
+
+- Winner: villages 300@3.5 + 500-bourgs@16 + 2500-chef@70 (third tier
+  absent at r38), N=432, tot 136k, density 29.9/km² (≈33 ✓), urb 8.8%
+  (anchor 8–12% ✓). Runner-ups: 600@18+4800@64 (+1.163), big-village
+  shape (+1.110, P0=833 but s0=4.87 — sparse giants, wrong way).
+- Villages still 90% by share (410 of them — dense lattice multiplies
+  count). Density via numbers again, not parish size. The count/size
+  trade is the same trap at both scales.
+- both-BO#2 (running): district reseed, seed 62 — robustness. 2/5 spent.
+
 ## Share-goal final (budget spent 5/5)
 
 - 4-tier optimal holds in every search that allows realistic villages
