@@ -1119,7 +1119,8 @@ def _step_core(towns: list[Town], map_size, config: GameConfig, forage=None):
         needs = np.array([f[4] for f in forage], dtype=np.float64)
         ftx = np.array([t.x for t in towns], dtype=np.float64)
         fty = np.array([t.y for t in towns], dtype=np.float64)
-        takes, _ = _forage_takes(ftx, fty, S, segs, needs, FORAGE_RADIUS_KM)
+        takes, _ = _forage_takes(ftx, fty, S, segs, needs, FORAGE_RADIUS_KM,
+                                 cell=FORAGE_CELL_KM)
         foraged = float(takes.sum())
         S -= takes
     imports, exports, melted = _trade(S, pops, geo, config)
@@ -1216,6 +1217,7 @@ def apply_growth(world: World, config: GameConfig) -> list[dict]:
 
 FORAGE_PER_MOUTH = 1.0  # soldiers eat at the civilian rate (1 food/mouth/turn)
 FORAGE_RADIUS_KM = 10.0  # stadium half-width around the traversed segment
+FORAGE_CELL_KM = 20.0  # town-grid cell (perf only: 20 beats 5/10/40 on bench)
 
 
 def _seg_dist2(px, py, x0, y0, x1, y1):
@@ -1231,7 +1233,7 @@ def _seg_dist2(px, py, x0, y0, x1, y1):
     return (px - cx) ** 2 + (py - cy) ** 2
 
 
-def _forage_takes(tx, ty, S, segs, needs, radius):
+def _forage_takes(tx, ty, S, segs, needs, radius, cell=None):
     """Forage takes per town. Pure numpy, no pairwise loops.
 
     Towns are indexed once into a uniform grid (cell = radius); each army
@@ -1248,7 +1250,8 @@ def _forage_takes(tx, ty, S, segs, needs, radius):
     eaten = np.zeros(A)
     if T == 0 or A == 0 or radius <= 0.0:
         return takes, eaten
-    cell = radius
+    if cell is None:
+        cell = radius
     ix = np.floor((tx - tx.min()) / cell).astype(np.int64)
     iy = np.floor((ty - ty.min()) / cell).astype(np.int64)
     W = int(ix.max()) + 1
@@ -1337,7 +1340,8 @@ def apply_forage(world, S, segments, config) -> dict[int, float]:
     if not segs:
         return {}
     takes, eaten = _forage_takes(tx, ty, np.asarray(S, dtype=np.float64),
-                                 segs, np.array(needs), FORAGE_RADIUS_KM)
+                                 segs, np.array(needs), FORAGE_RADIUS_KM,
+                                 cell=FORAGE_CELL_KM)
     S -= takes
     return {aid: float(e) for aid, e in zip(ids, eaten)}
 
