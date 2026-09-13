@@ -3974,3 +3974,6 @@ Loop alive.
 
 ### Heartbeat (2026-09-13 12:51 BST)
 Loop alive.
+
+### Heartbeat (autopsy inconclusive) (2026-09-13 12:56 BST)
+Aggressive death autopsy: towns stunt-died (not beheaded); colony vs raid unclear; safety-rung killed (marginal). Loop alive.
