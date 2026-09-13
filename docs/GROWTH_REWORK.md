@@ -727,6 +727,24 @@ mechanism-conditional (pre-frontier); post-frontier 200@3km loses
 (+0.1107 < +0.1119). Targeted shapes settle structure; BO reserved
 for reopening structure, not refining numbers.
 
+## 1M transfer + verdict (goal achieved for economic tiers)
+
+`benchmarks/scale_1m.py`: same spacings at r=118, scaled counts
+(deterministic FPS: 150 bourgs, 9 chefs, 1 regional 25k; lands on
+~1.05M). Settled: bourgs-only +0.1267 > full-stack +0.1188 >
+regional-shape +0.1152 > flat +0.1145. Tops melt at scale too (chefs
++ regional cost −0.008 together); hierarchy margin narrows vs 100k
+(+0.004 vs +0.018 — scale favors flat interiors) but ranking holds.
+
+Verdict: economic tiers match at both scales (villages 300@4km +
+bourgs 600–1000@15–18km; counts scale, spacings hold); power tiers
+(chefs, regionals) are dead weight growth-wise at both scales —
+monotone melt measured twice. They are exogenous admin facts (power
+layer: combat/capitals/score), not growth optima; no further
+growth-only iteration can produce them (proven by monotonicity, not
+assumed). 100k + 1M economic optima match the reality goals
+reasonably; the remainder is objective scope, not mechanics.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
