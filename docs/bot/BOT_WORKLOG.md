@@ -3121,3 +3121,7 @@ Buzzer +10g (730 total) -> ord 61.9 (mu 65.2, was 65.5/720g): -0.3 on
 ### Buzzer 740g (2026-09-13 02:07 BST)
 Buzzer +10g (740 total) -> ord 62.3 (mu 65.6, was 65.2/730g): +0.4 on
 2W + quality 2nds/3rds + fifths. 740 games.
+
+### Buzzer 750g (2026-09-13 02:12 BST)
+Buzzer +10g (750 total) -> ord 62.8 (mu 66.1, was 65.6/740g): +0.5 on
+4W (260k/188k/297k/245k) + F1-death + mids. 750 games banked.
