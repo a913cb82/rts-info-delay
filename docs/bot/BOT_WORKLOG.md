@@ -3171,3 +3171,7 @@ attractor again). 860 games.
 ### Buzzer 870g (2026-09-13 02:42 BST)
 Buzzer +10g (870 total) -> ord 62.9 (mu 66.2, was 66.2/860g): flat on
 50% wins + F1-death + fifths (wins offset by fifths). 870 games.
+
+### Buzzer 880g (2026-09-13 02:47 BST)
+Buzzer +10g (880 total) -> ord 63.0 (mu 66.3, was 66.2/870g): +0.1 on
+4W + F1-death + fifth. Flat. 880 games.
