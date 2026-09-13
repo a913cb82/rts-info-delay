@@ -200,6 +200,14 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   best (+1.197 tiny-village) stands; lesson: `ps`-verify death before
   reusing a log path. Extend runs now confirm exit first.
 
+## Both-scales share round (goal: 4-tier 1M + 3-tier 100k, shares to reality; 5-BO budget)
+
+- District prem.75 cold: lean (600@18+5000) +1.095 wins; dense-bourg@13
+  (31 bourgs, urb 22%) +1.091, @14 +1.086 — numbers lever works at 100k
+  too: ~22% urban free. Reality 100k non-parish ≈ 20–28%.
+- both-BO#1 (running): 100k (r38), prem.75, seed 61 — district shares by
+  search. 1/5 spent.
+
 ## Share-goal final (budget spent 5/5)
 
 - 4-tier optimal holds in every search that allows realistic villages
