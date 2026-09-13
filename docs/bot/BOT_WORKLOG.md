@@ -3644,3 +3644,8 @@ fresh = weak (asymmetric: wins pay ~0, mids cost). Floor ~63-65 parity.
 ### Overmatch 480g (2026-09-13 09:02 BST)
 21a74a6 +10g (480 total) -> ord 69.3 (mu 72.9, was 73.2/470g): -0.3 on
 4W + 2nds/3rds + ZERO deaths. Flat. 480 games.
+
+### Overmatch 500g MILESTONE (2026-09-13 08:27 BST)
+21a74a6 +20g (500 total) -> ord 67.9 (mu 71.5, was 72.9/480g): -1.4 on
+45% wins + F1-death + fifths. 500 games banked (definitive). Converged
+~67-70. 80 needs +12 (mu 81+; win-rate 60%->85%, luck-bound).
