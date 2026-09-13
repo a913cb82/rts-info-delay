@@ -3217,3 +3217,7 @@ Buzzer +10g (980 total) -> ord 63.2 (mu 66.5, was 65.1/970g): +1.4 on
 Buzzer +20g (1000 total) -> ord 63.2 (mu 66.6, was 66.5/980g): +0.1 on
 40% wins + fifths. 1000 GAMES BANKED (definitive; most-measured ever).
 Converged true ~61-64. 80 needs +17 (unreachable via scripted play).
+
+### Buzzer 1010g (2026-09-13 03:07 BST)
+Buzzer +10g (1010 total) -> ord 63.0 (mu 66.3, was 66.6/1000g): -0.2 on
+3W + F1-death + fifths. 1010 games.
