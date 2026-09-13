@@ -4055,3 +4055,8 @@ counts (they die). Aggressive. Queued.
 5. INFLUENCE MAPS / POTENTIAL FIELDS / HIT-LEADER (internet): heavier;
 parked (complexity).
 Full contracts in subagent records. Next: build lane-pickets.
+
+### Lane-pickets built (2026-09-13 12:51 BST)
+Research-driven (mechanics RULE2): idle surplus stations at foe-march
+midpoints (10km path-block; trade army for town). Falls through to
+garrison. Bar: exceed 47.2 AND guards (style).

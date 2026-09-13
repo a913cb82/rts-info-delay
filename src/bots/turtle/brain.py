@@ -219,6 +219,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if site:
                 out.extend(order_move(state, config, p, site[0], site[1]))
                 built = True
+        # Lane-pickets (movement-block defense): idle armies station at
+        # midpoints of foe-march lines (foe army -> nearest own town),
+        # freezing invasions via 10km path-blocking (trade army for town).
+        # Falls through to garrison if no foe march lines exist.
+        _foes = [a for a in state.world.armies if a.faction != faction]
+        if own_t and _foes and not state.army_has_target(p.id):
+            _lane = None
+            for f in _foes:
+                _nt = min(own_t, key=lambda t: math.hypot(f.x - t.x, f.y - t.y))
+                _mx, _my = (f.x + _nt.x) / 2.0, (f.y + _nt.y) / 2.0
+                if _lane is None or math.hypot(p.x - _mx, p.y - _my) < math.hypot(p.x - _lane[0], p.y - _lane[1]):
+                    _lane = (_mx, _my)
+            if _lane is not None and math.hypot(p.x - _lane[0], p.y - _lane[1]) > 20.0:
+                out.extend(order_move(state, config, p, _lane[0], _lane[1]))
+                continue
         # garrison remainder
         if not built or state.army_has_target(p.id):
             continue
