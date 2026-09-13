@@ -3823,3 +3823,7 @@ Fair mirror-gate retest (4 custom top-mirror games, combine-F0): 1W/4
 ### Overmatch 737g (2026-09-13 11:12 BST)
 21a74a6 +10g (737 total) -> ord 67.1 (mu 70.6, was 71.2/727g): -0.7 on
 3W + fifths + 2nds/3rd. 737 games.
+
+### Overmatch 747g (2026-09-13 11:17 BST)
+21a74a6 +10g (747 total) -> ord 67.6 (mu 71.1, was 70.6/737g): +0.5 on
+50% wins (390k) + fifth + 2nds/3rds. 747 games.
