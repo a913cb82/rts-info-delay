@@ -614,3 +614,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   breaks ties toward minimal-urban consistently (4th instance). Hand ties
   (+0.001) do not survive search geometry (s0=3.5 dense villages change
   the board).
+- Dense-everything @1M (vill@3.5 + bourgs@16 + 2500@70 + 10k): density
+  29.4, settled +1.291. Density via lattice (not scale) costs ~0.09 vs
+  best — lattice density is expensive, scale density is cheap (0.006).
+  Two density routes priced: tighten lattice (−0.09) vs scale mouths (−0.006).
