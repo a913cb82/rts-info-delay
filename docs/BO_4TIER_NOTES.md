@@ -151,3 +151,17 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   Dense r118: 3866×300 + 198×500 + 7×3000 + 20k, dens 29.7, urb 10.8%.
 - share-BO#2 (running): same config + dense seeds (s0=3.5 skeletons) —
   can the search confirm dense packing itself? 2/5 spent.
+
+## share-BO#2 verdict: search rejects dense (settled)
+
+- BO#2 (1M, prem.75, dense seeds present): best = 4-tier seed verbatim
+  (+1.156 settled). Dense candidate found by search: cold +0.997,
+  settled +1.108 — loses. Cold flatters dense; resell compounding favors
+  sparser. Density 22–24 stands under pure growth.
+- Maxi-dense hand shape (plateau-max sizes + 3.5km lattice + dense
+  bourgs): 30.7/km² at settled +1.130 vs +1.156 seed — the density bonus
+  costs 0.026. Shares 86/9/3/2, urban 14%.
+- Dense bourgs @14km alone: 16% urban free (cold tie); settled +1.101 vs
+  +1.156 seed — also loses settled. Sparser wins settled everywhere.
+- share-BO#3 (running): prem.75 + maxi-dense seed (500@14/5000@80/50000
+  @150, s0 3.5) — joint density+shares+rate optimum by search? 3/5 spent.
