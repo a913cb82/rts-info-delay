@@ -559,3 +559,7 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   ratio bounds cap the regional at 10k in seed form; search can push the
   ratio). First search that starts FROM the hand lead instead of chasing
   it. 3/3 pricing committed.
+- District small-lead analog (500-bourgs + 1000-chef): +0.403, loses badly
+  (mid-chef shapes +0.88–0.92). Chef size scales with region: one shed must
+  span the district (2500), while provinces cover by numbers (7×1000–3000).
+  Small-chefs are a province-only pattern.
