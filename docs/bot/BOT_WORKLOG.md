@@ -4055,3 +4055,13 @@ counts (they die). Aggressive. Queued.
 5. INFLUENCE MAPS / POTENTIAL FIELDS / HIT-LEADER (internet): heavier;
 parked (complexity).
 Full contracts in subagent records. Next: build lane-pickets.
+
+### Lane-pickets built (2026-09-13 12:51 BST)
+Research-driven (mechanics RULE2): idle surplus stations at foe-march
+midpoints (10km path-block; trade army for town). Falls through to
+garrison. Bar: exceed 47.2 AND guards (style).
+
+### Lanes verdict: FAIL (38.0, rare + overrun) (2026-09-13 13:06 BST)
+Rated clean 15g (3x5) -> ord 38.0 (mu 45.4): FAIL (gate 47.2+). Pickets
+too rare (no surplus idles) + overrun by packs (trade 1-for-0, waste).
+One 282k win (luck). Reverted (main keeps turtle 47.2). Parked.
