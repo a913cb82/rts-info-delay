@@ -3401,3 +3401,7 @@ Buzzer +10g (1480 total) -> ord 64.9 (mu 68.3, was 68.4/1470g): -0.1 on
 Buzzer +20g (1500 total) -> ord 64.7 (mu 68.0, was 68.3/1480g): -0.2 on
 60% wins + F1-death + fifths. 1500 games banked (definitive).
 Converged true ~61-65.
+
+### Buzzer 1510g (2026-09-13 05:22 BST)
+Buzzer +10g (1510 total) -> ord 63.9 (mu 67.3, was 68.0/1500g): -0.8 on
+4W + 2 F1-deaths + fourths. 1510 games.
