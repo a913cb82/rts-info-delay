@@ -3521,3 +3521,9 @@ must be mirrors (fair), not weak-diverse descents (asymmetric punishment).
 Both mirror-proven (overmatch 66.1 merged; defense 64.0/705g confirmed).
 Stacked (additive, no conflicts; suites green). Bar (ladder): exceed
 66.1, judged on mirrors + overall (fair-gate lesson).
+
+### Combine verdict: FAIL (38.2, interference) (2026-09-13 06:57 BST)
+Rated clean 15g -> ord 38.2 (mu 45.9): FAIL (bar 66.1). Stacking works
+standalone but interferes combined (recall-bleed + overmatch-wait both
+fire in weak-diverse; 40% wins vs should-win 80%+). Mechanisms that work
+alone can fail together. Reverted (main keeps overmatch 66.1). Parked.
