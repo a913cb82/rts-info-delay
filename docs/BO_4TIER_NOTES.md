@@ -349,3 +349,11 @@ villages too many/small, bourgs small (600 vs 900), chefs small
   the same saturation; headroom beyond ~0.5 premium is unused.
 - S1 nearing done (90/96, best +1.157): full-budget search confirms the
   seed corner without improving it. Sparser villages appearing (s0 4.72).
+- F-S1 verdict (96 evals, 49 model): best +1.1568 is degenerate mush
+  (duplicate 293/302 tiers + one 2400-top, urb 59%) — ties the seed
+  (+1.1561) to noise. Runner-up: dense-small 4-tier (+1.156, urb 9%).
+  Full budget confirms: unguided search games tier-count (phantoms) or
+  degenerates (tiny villages); hand shapes lead on every real axis.
+- F-S3 (running): 1M prem.75 + min_ratio 2.0 (tier sizes must double —
+  duplicate mush unrepresentable) + P0 default. Last search: can clean
+  tiers win by search alone? 3/3 spent.
