@@ -146,7 +146,8 @@ def derived(config: GameConfig):
 # whole economy is bit-identical to the matrix version (tripwire-stable).
 
 _GRID_CELL_KM = 20.0
-_geo_cache = {"key": None, "geo": None, "grid": None}
+_geo_cache = {"key": None, "geo": None, "grid": None, "prev_key": None,
+              "event": None}
 
 
 def _geo(towns: list[Town], config: GameConfig):
@@ -165,9 +166,14 @@ def _geo(towns: list[Town], config: GameConfig):
     key = (tuple((t.id, t.x, t.y) for t in towns),
            float(max_km), float(scale))
     if _geo_cache["key"] == key:
+        # No event clearing here: land_areas calls _geo mid-turn after the
+        # main call, and a hit must not wipe the event the miss just set.
+        # Staleness is impossible (a hit means the trade content key hits
+        # too, so the event is never read).
         return _geo_cache["geo"]
     inc = _geo_try_incremental(towns, config, max_km, scale, key)
     if inc is not None:
+        _geo_cache["prev_key"] = _geo_cache["key"]
         _geo_cache["key"] = key
         _geo_cache["geo"] = inc[0]
         _geo_cache["grid"] = inc[1]
@@ -217,9 +223,11 @@ def _geo(towns: list[Town], config: GameConfig):
         with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
             nweight = np.exp(-ndist / scale) * _win_np(ndist, max_km)
         geo = (nidx, ndist, ndeg, nweight, xs, ys)
+    _geo_cache["prev_key"] = _geo_cache["key"]
     _geo_cache["key"] = key
     _geo_cache["geo"] = geo
     _geo_cache["grid"] = cells
+    _geo_cache["event"] = None
     return geo
 
 
@@ -275,9 +283,14 @@ def _geo_try_incremental(towns, config, max_km, scale, key):
     cls = _classify(old_ids, new_ids)
     if cls[0] == "found" and len(new_ids) == len(old_ids) + 1 \
             and new_ids[:len(old_ids)] == old_ids:
+        _geo_cache["event"] = ("append", len(new_ids) - 1)
         return _geo_found(towns, config, max_km, scale, old_geo, old_cells)
     if cls[0] == "death":
-        return _geo_forget(old_geo, old_cells, old_ids, new_ids, cls[1])
+        removed = cls[1]
+        d = next(k for k, t in enumerate(old_ids) if t[0] == removed[0])
+        _geo_cache["event"] = ("remove", d)
+        return _geo_forget(old_geo, old_cells, old_ids, new_ids, removed)
+    _geo_cache["event"] = None
     return None
 
 
@@ -575,40 +588,17 @@ try:
     import numba as _numba
 
     @_numba.njit(cache=True)
-    def _trade_kernel(nidx, ndist, ndeg, S, pops, imports, exports):
-        # Equalize S/P across each pair, nearest-first: while the donor is
-        # better fed, move food to exact pairwise equality. Deficit-fill
-        # emerges (hungry below, sated above); overfeed too (towns above
-        # subsistence); never inverts (strictly-above only). Zero-sum:
-        # S[i] += f, S[j] -= f conserves food exactly.
-        n = nidx.shape[0]
-        m = 0
-        for i in range(n):
-            if pops[i] <= 0.0:
+    def _trade_kernel(ii, jj, S, pops, imports, exports):
+        # Equalize S/P over a cached canonical pair order (see
+        # _trade_order): while the donor is better fed, move food to exact
+        # pairwise equality. Zero-sum: S[i] += f, S[j] -= f conserves food.
+        # pops<=0 pairs are geometry-listed but skipped (no mouths moves
+        # no food; guards are exact: f would be 0/undefined otherwise).
+        for oi in range(ii.shape[0]):
+            i = ii[oi]
+            j = jj[oi]
+            if pops[i] <= 0.0 or pops[j] <= 0.0:
                 continue
-            for mm in range(ndeg[i]):
-                j = nidx[i, mm]
-                if j != i and pops[j] > 0.0:
-                    m += 1
-        ds = np.empty(m, dtype=np.float64)
-        ii = np.empty(m, dtype=np.int64)
-        jj = np.empty(m, dtype=np.int64)
-        k = 0
-        for i in range(n):
-            if pops[i] <= 0.0:
-                continue
-            for mm in range(ndeg[i]):
-                j = nidx[i, mm]
-                if j != i and pops[j] > 0.0:
-                    ds[k] = ndist[i, mm]
-                    ii[k] = i
-                    jj[k] = j
-                    k += 1
-        order = np.argsort(ds)
-        for oi in range(m):
-            idx = order[oi]
-            i = ii[idx]
-            j = jj[idx]
             spi = S[i] / pops[i]
             spj = S[j] / pops[j]
             if spj > spi:
@@ -621,10 +611,178 @@ try:
                     imports[i] += f
                     exports[j] += f
 
+    @_numba.njit(cache=True)
+    def _trade_enum(nidx, ndist, ndeg, pops, ds, ii, jj):
+        # Enumerate all in-reach (i, j), i != j, pops > 0 (unsorted).
+        k = 0
+        for i in range(nidx.shape[0]):
+            if pops[i] <= 0.0:
+                continue
+            for mm in range(ndeg[i]):
+                j = nidx[i, mm]
+                if j != i and pops[j] > 0.0:
+                    ds[k] = ndist[i, mm]
+                    ii[k] = i
+                    jj[k] = j
+                    k += 1
+        return k
+
+    @_numba.njit(cache=True)
+    def _order_merge(o_dd, o_ii, o_jj, n_dd, n_ii, n_jj, t_dd, t_ii,
+                     t_jj):
+        # Merge two lex-sorted (d, i, j) runs. Exact: same multiset +
+        # total lex order in, same array out as a fresh lexsort.
+        a = 0
+        b = 0
+        c = 0
+        na = o_ii.shape[0]
+        nb = n_ii.shape[0]
+        while a < na and b < nb:
+            if (n_dd[b] < o_dd[a] or (n_dd[b] == o_dd[a] and
+                    (n_ii[b] < o_ii[a] or (n_ii[b] == o_ii[a] and
+                     n_jj[b] < o_jj[a])))):
+                t_dd[c] = n_dd[b]
+                t_ii[c] = n_ii[b]
+                t_jj[c] = n_jj[b]
+                b += 1
+            else:
+                t_dd[c] = o_dd[a]
+                t_ii[c] = o_ii[a]
+                t_jj[c] = o_jj[a]
+                a += 1
+            c += 1
+        while a < na:
+            t_dd[c] = o_dd[a]
+            t_ii[c] = o_ii[a]
+            t_jj[c] = o_jj[a]
+            a += 1
+            c += 1
+        while b < nb:
+            t_dd[c] = n_dd[b]
+            t_ii[c] = n_ii[b]
+            t_jj[c] = n_jj[b]
+            b += 1
+            c += 1
+        return c
+
+    @_numba.njit(cache=True)
+    def _order_compact(o_dd, o_ii, o_jj, d, t_dd, t_ii, t_jj):
+        # Drop pairs touching d, remap higher indices down once. Drops
+        # preserve relative order and monotone remap preserves lex order,
+        # so the result equals a fresh lexsort of the post-removal pairs.
+        c = 0
+        for k in range(o_ii.shape[0]):
+            i = o_ii[k]
+            j = o_jj[k]
+            if i == d or j == d:
+                continue
+            t_dd[c] = o_dd[k]
+            t_ii[c] = i - 1 if i > d else i
+            t_jj[c] = j - 1 if j > d else j
+            c += 1
+        return c
+
     _has_trade_numba = True
 except Exception:  # pragma: no cover
     _has_trade_numba = False
     _trade_kernel = None  # type: ignore
+    _trade_enum = None  # type: ignore
+    _order_merge = None  # type: ignore
+    _order_compact = None  # type: ignore
+
+
+# Cached canonical trade order: all in-reach (i, j) sorted by
+# (distance, i, j), with distances kept for merging. Geometry-only (no
+# pops/S): steady turns reuse it untouched. Lexicographic = canonical:
+# every correct builder reproduces it, and tie order is provably
+# irrelevant (reversed ties give bit-identical S). Incremental events
+# (append/compact) maintain canonicity exactly — same multiset, same
+# total order as a fresh lexsort — or it falls back to full rebuild.
+_trade_cache = {"key": None, "ii": None, "jj": None, "dd": None,
+                "geokey": None}
+
+
+def _trade_build(geo, config):
+    nidx, ndist, ndeg = geo[0], geo[1], geo[2]
+    n = nidx.shape[0]
+    m = int(np.sum(ndeg))
+    ds = np.empty(m, dtype=np.float64)
+    ii = np.empty(m, dtype=np.int64)
+    jj = np.empty(m, dtype=np.int64)
+    if _has_trade_numba:
+        pops_ones = np.ones(n, dtype=np.float64)
+        k = _trade_enum(nidx, ndist, ndeg, pops_ones, ds, ii, jj)
+    else:
+        k = 0
+        for i in range(n):
+            for mm in range(ndeg[i]):
+                j = int(nidx[i, mm])
+                if j != i:
+                    ds[k] = ndist[i, mm]
+                    ii[k] = i
+                    jj[k] = j
+                    k += 1
+    ds, ii, jj = ds[:k], ii[:k], jj[:k]
+    perm = np.lexsort((jj, ii, ds))  # canonical: distance, then i, then j
+    return ii[perm], jj[perm], ds[perm]
+
+
+def _trade_order(geo, config):
+    nidx, ndist, ndeg = geo[0], geo[1], geo[2]
+    n = nidx.shape[0]
+    # Content key: coords determine pair membership (fixed reach).
+    # Never ambient cache state (tests pass foreign geos with stale keys).
+    xs, ys = geo[4], geo[5]
+    key = (n, int(np.sum(ndeg)), hash((xs.tobytes(), ys.tobytes())),
+           float(config.cart_distance_km))
+    if _trade_cache["key"] == key and _trade_cache["ii"] is not None:
+        return _trade_cache["ii"], _trade_cache["jj"]
+    ev = _geo_cache.get("event")
+    src = _trade_cache.get("geokey")
+    prev = _geo_cache.get("prev_key")
+    if (ev is not None and src is not None and src == prev
+            and _trade_cache["ii"] is not None and _has_trade_numba):
+        o_ii, o_jj, o_dd = (_trade_cache["ii"], _trade_cache["jj"],
+                            _trade_cache["dd"])
+        if ev[0] == "append":
+            # Newcomer is index n-1 (append-at-end, verified by geo).
+            # Pairs: its row plus mirrors (membership is symmetric).
+            row = nidx[n - 1, :ndeg[n - 1]]
+            dst = ndist[n - 1, :ndeg[n - 1]]
+            m = [(float(dst[t]), n - 1, int(row[t])) for t in range(len(row))
+                 if int(row[t]) != n - 1]
+            m += [(d, i, n - 1) for (d, _, i) in m]
+            if m:
+                m_arr = np.array(m, dtype=[("d", float), ("i", int),
+                                            ("j", int)])
+                m_arr.sort(order=("d", "i", "j"))
+                n_dd = m_arr["d"].astype(np.float64)
+                n_ii = m_arr["i"].astype(np.int64)
+                n_jj = m_arr["j"].astype(np.int64)
+                t_dd = np.empty(len(o_dd) + len(n_dd), dtype=np.float64)
+                t_ii = np.empty(len(o_ii) + len(n_ii), dtype=np.int64)
+                t_jj = np.empty(len(o_jj) + len(n_jj), dtype=np.int64)
+                c = _order_merge(o_dd, o_ii, o_jj, n_dd, n_ii, n_jj,
+                                 t_dd, t_ii, t_jj)
+                ii, jj, dd = t_ii[:c], t_jj[:c], t_dd[:c]
+                _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd,
+                                    geokey=_geo_cache.get("key"))
+                return ii, jj
+            ii, jj, dd = o_ii, o_jj, o_dd
+            _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd, geokey=_geo_cache.get("key"))
+            return ii, jj
+        if ev[0] == "remove":
+            d = ev[1]
+            t_dd = np.empty_like(o_dd)
+            t_ii = np.empty_like(o_ii)
+            t_jj = np.empty_like(o_jj)
+            c = _order_compact(o_dd, o_ii, o_jj, d, t_dd, t_ii, t_jj)
+            ii, jj, dd = t_ii[:c], t_jj[:c], t_dd[:c]
+            _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd, geokey=_geo_cache.get("key"))
+            return ii, jj
+    ii, jj, dd = _trade_build(geo, config)
+    _trade_cache.update(key=key, ii=ii, jj=jj, dd=dd, geokey=_geo_cache.get("key"))
+    return ii, jj
 
 
 def _trade(S: np.ndarray, pops: np.ndarray, geo,
@@ -642,20 +800,15 @@ def _trade(S: np.ndarray, pops: np.ndarray, geo,
     exports = np.zeros(n, dtype=np.float64)
     if n < 2:
         return imports, exports
-    nidx, ndist, ndeg = geo[0], geo[1], geo[2]
+    ii, jj = _trade_order(geo, config)
     if _has_trade_numba:
-        _trade_kernel(nidx, ndist, ndeg, S, pops, imports, exports)
+        _trade_kernel(ii, jj, S, pops, imports, exports)
         return imports, exports
-    pairs = []
-    for i in range(n):
-        if pops[i] <= 0.0:
+    for oi in range(ii.shape[0]):
+        i = int(ii[oi])
+        j = int(jj[oi])
+        if pops[i] <= 0.0 or pops[j] <= 0.0:
             continue
-        for mm in range(ndeg[i]):
-            j = nidx[i, mm]
-            if i != j and pops[j] > 0.0:
-                pairs.append((ndist[i, mm], i, j))
-    pairs.sort()
-    for _, i, j in pairs:
         spi = S[i] / pops[i]
         spj = S[j] / pops[j]
         if spj > spi:
@@ -688,10 +841,29 @@ try:
                     s += math.exp(-ndist[i, mm] * ln2 / cart_km) * c
             out[i] = s
 
+    @_numba2.njit(cache=True)
+    def _frontier_kernel(nidx, ndist, ndeg, offer, serv, p_market, learn,
+                         mx):
+        # Best offer in learning range per town: any crew within the
+        # daily-walk, complete crews (serv > p_market) out to the stored
+        # lists' edge. Max is order-independent: bit-exact under any walk.
+        n = nidx.shape[0]
+        for i in range(n):
+            best = 0.0
+            for mm in range(ndeg[i]):
+                j = nidx[i, mm]
+                d = ndist[i, mm]
+                if d <= learn or serv[j] > p_market:
+                    c = offer[j]
+                    if c > best:
+                        best = c
+            mx[i] = best
+
     _has_market_numba = True
 except Exception:  # pragma: no cover
     _has_market_numba = False
     _market_kernel = None  # type: ignore
+    _frontier_kernel = None  # type: ignore
 
 
 def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
@@ -727,17 +899,21 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
     # one agglomeration exponent. At gamma=1 the frontier is off (x**0==1).
     mx = np.zeros(n, dtype=np.float64)
     learn = 2.0 * config.farm_radius_km
-    for i in range(n):
-        jj = nidx[i, :ndeg[i]]
-        dd = ndist[i, :ndeg[i]]
-        near = jj[dd <= learn]
-        if near.size:
-            mx[i] = np.max(offer[near])
-        far = jj[(dd > learn) & (serv[jj] > p_market)]
-        if far.size:
-            mf = np.max(offer[far])
-            if mf > mx[i]:
-                mx[i] = mf
+    if _has_market_numba:
+        _frontier_kernel(nidx, ndist, ndeg, offer, serv, p_market, learn,
+                         mx)
+    else:
+        for i in range(n):
+            jj = nidx[i, :ndeg[i]]
+            dd = ndist[i, :ndeg[i]]
+            near = jj[dd <= learn]
+            if near.size:
+                mx[i] = np.max(offer[near])
+            far = jj[(dd > learn) & (serv[jj] > p_market)]
+            if far.size:
+                mf = np.max(offer[far])
+                if mf > mx[i]:
+                    mx[i] = mf
     gm1 = config.market_scaling - 1.0
     frontier = np.minimum(1.0, np.power(mx / p_market, gm1))
     mkt = np.zeros(n, dtype=np.float64)

@@ -538,21 +538,28 @@ Validated: its ranking matches the 1M region (N ~= 3150, ~5 s/config)
 shape-for-shape.
 
 Profiled costs (shared 3.8 GB box, numba on; load-sensitive, ±2x).
-N=570: everything ~= 0.06 s/turn. N=3150: neighbor index ~0.3 s once
-per new town set (cached after; was 0.6 s + 76 MB for the dense dist
-matrix, now deleted), market improvement ~0.02 s/turn (accumulation
-over stored in-reach pairs), migration ~0.2 s/turn (weights cached per
-pair, gap/weight/flow fused into two numba passes over reused block
-buffers — bit-exact, tripwire untouched; was ~2.7 s), trade negligible
-(pair lists). The full turn beats master's dense crowding kernel
-(~0.3 s) at 1M with zero quantitative difference anywhere.
+N=570: turns ~0.01 s (min-of-7, idle). N=2263 (60 km reach x 4 km
+lattice ~= 1.8M pairs): steady ~125 ms, founding ~154 ms, death ~180 ms
+— founding matches and death beats the incremental-era 140/206 ms;
+steady carries ~+30 ms of honest equalize-loop cost (all pairs, since
+any pair can flow; the old deficit kernel scanned ~none once settled)
+plus the untouched migration floor (~55-70 ms here). Master at the
+same N: steady 204, founding ~470-845, death ~416 ms.
+Trade pair order is canonical — all in-reach (i, j) sorted by
+(distance, i, j) — cached per geometry (steady turns never enumerate
+or sort) and maintained incrementally (merge on append-at-end
+founding, filter+remap once on death, full rebuild otherwise),
+bit-exact in all paths (incremental == rebuild `array_equal`; reversed
+ties give 0.0 diff; tables byte-identical). The frontier max fused
+into one numba walk (was two Python loops). No dense N x N array
+exists anywhere: one cached grid + 60 km neighbor lists (+ migration
+weights) serve every kernel. Memory is O(N x local pairs).
 Peak RSS at N=3150 is ~350 MB, down from ~900 MB.
 Founding/destroying a single town is incremental, not a rebuild:
 classify-on-miss (append-at-end founding inserts into neighbor lists,
 single death remaps once; anything else rebuilds), land recomputed only
 within 2R of the event via the verified-identical fallback loop.
-Founding at N=2260 costs ~50 ms overhead (was ~590 ms); death ~120 ms.
-Steady-state turns are untouched (early-return before any new code).
+Steady-state turns reuse every cache (early-return before any new code).
 A full 7-shape 1M sweep runs ~40 s end to end (was ~3.5 min at 10
 turns/config before the serv-lag removal). No dense N x N array exists
 anywhere now: one cached grid + 60 km neighbor lists (+ migration
