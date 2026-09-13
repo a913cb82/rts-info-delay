@@ -3109,3 +3109,7 @@ Buzzer +20g (700 total) -> ord 61.7 (mu 65.0, was 65.4/680g): -0.4 on
 ### Buzzer 710g (60% batch, no deaths) (2026-09-13 01:52 BST)
 Buzzer +10g (710 total) -> ord 63.2 (mu 66.5, was 65.0/700g): +1.5 on
 60% wins + ZERO deaths. 710 games.
+
+### Buzzer 720g (2026-09-13 01:57 BST)
+Buzzer +10g (720 total) -> ord 62.2 (mu 65.5, was 66.5/710g): -1.0 on
+3W (426k/281k/262k) + 3 F1-deaths + fourths. Spike-batch. 720 games.
