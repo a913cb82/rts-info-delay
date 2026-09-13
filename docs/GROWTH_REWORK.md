@@ -681,6 +681,23 @@ trade nodes) the model lacks. Open gap, not a fit failure.
 rounding (±1 town); 1M transfer untested (spacings should transfer —
 physics-set — counts scale; top size may scale).
 
+## Negative result: services-from-boosted-yields (reverted)
+
+Tried: staff farmers at expected boosted yields
+(`serv = P - Y0/(sf·(1+last))`, migration surplus reuses serv; zero new
+state/params; cold-start identical). Motivation: increasing-returns
+engine for hierarchy (proven kind-not-degree: town services exactly
+constant 136.55 across γ 0.8–2.0, mi, reach sweeps — no tuning moves
+them). Result: mechanically sound (services 137→385 city-fed, 324
+unfed, converged t3, towns stable) but the 100k optimum moved AWAY
+from reality: everything rose (flat +0.1572→+0.1725) while deep tiers
+stayed flat (hier4 +0.1357→+0.1357); flat–hier4 gap widened
+0.022→0.037; goal mimic (bourgs+chef) +0.1455 vs flat +0.1725.
+Lesson: the feedback rewards headroom (labor-tight villages 4×
+services, saturated towns +5%) — it feeds the bottom, not the top.
+Reverted to committed baseline; hierarchy needs gains concentrating
+UPWARD (frontier-ceiling next candidate).
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
