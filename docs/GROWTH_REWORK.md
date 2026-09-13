@@ -103,12 +103,16 @@ smiths together beat ten apart (division of labour). [Recalibration below picks 
 - `cart_distance_km` = 20 — a day's cart trip; trade/market reach 3× that = 60 km
 - `market_scaling` = 1.15 — big crews punch ~15% above weight
 
-**(b) Frontier (quality ceiling).** Help only matters if the *methods* exist. Your ceiling is
-set by the best crew you can learn from: anyone within daily walking distance (10 km,
-apprenticeship needs face-to-face), or a famous complete crew up to 60 km away (word travels
-farther than feet). No smith nearby → capped low, however much effort arrives.
+**(b) Frontier (quality ceiling).** Help only matters if the *methods* exist.
+Your ceiling is set by the best crew close enough to learn from — and every
+town's teaching range grows smoothly with its size: 10 km (a day's walk) at
+and below 1,000 people, ~60 km at 5,000, 150 km (sight and mail range) at
+and above 50,000. Small towns teach their patch, centers their district,
+great cities their province. No teacher in range → capped low, however much
+effort arrives.
 
-        ceiling = 0.5 · min(1, (best_near/2356)^0.15)
+        range(P) = 10 + 31·ln(P/1000) to 5k, then 60 + 39·ln(P/5000) to the 150 cap
+        ceiling = mi · min(1, (best_in_range/2356)^(γ−1))
 
 - `max_improvement` = 0.5 — best-practice methods grow ~50% more
 - 2356 = a full ring's worth of specialists (the famous-or-not line)
@@ -893,6 +897,16 @@ blows urban past any cap. Verdict: the 4th tier needs a different objective
 (score tops/urban directly) or mechanism (size-scaled fame, non-food urban
 income), not stronger knobs.
 
+Continuous fame implements the size-scaled half: range(P) as above (zero new
+parameters; the market tail runs to the same 150km sight/mail rule so
+far-fame carries real help). District optimum holds (lean 3-tier, settled
++0.39); at 1M under max-push knobs (γ1.3/prem.5/melt.005) the 4-tier
+province stack (151×600 + 13×5000 + 20000) goes from +0.08 to a tie for
+first (settled +0.79 vs +0.82 uniform-mid, flat +0.32) — upper tiers earn
+their keep for the first time. Counts land near reality (151 bourgs vs
+~150, 13 chefs vs ~9, regional 20k in range); villages stay small and
+non-food urban income is still unmodeled.
+
 ## Status / open items
 
 - Engine tests + integration are green; 9 bot-side tests still encode
@@ -915,7 +929,9 @@ income), not stronger knobs.
   (`benchmarks/bo_r12.jsonl`); every growth table predating it used the
   old births/deaths and melt-free trade — rankings where deep tiers won
   stand, close calls should be re-run (done for the 100k optimum above).
-- Open: teaching-range flag (famous crews 60km → 10km local; the one big
-  lever still untested, docs predict it favors small towns); longer BO
-  (the search's own best has tops of only ~1,500 at ~5% urban — the
-  center may shrink further); promoting melt 0.015 to the engine default.
+- Open: settlement fixed costs (villages still ~300 vs ~430 — founding is
+  free, so the model subdivides to the service floor); non-food urban income
+  (upper counts closer now, but chefs/regional still need power-layer reasons
+  at base knobs); longer BO at 1M under max-push (4-tier co-optimal on hand
+  shapes — a search may refine sizes/spacings); promoting melt 0.015 to the
+  engine default.

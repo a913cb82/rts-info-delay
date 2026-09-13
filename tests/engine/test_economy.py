@@ -40,6 +40,7 @@ from engine.economy import (
     crowding_net,
     crowding_nets_batch,
     derived,
+    fame_range_km,
     interaction_window,
     land_areas,
     nets_for,
@@ -368,11 +369,11 @@ class TestBatch:
             assert b == pytest.approx(p, abs=1e-9)
 
     def test_equal_towns_do_not_interact(self) -> None:
-        # Beyond service reach (60 km) equal towns are fully independent:
+        # Beyond sight/mail range (150 km) equal towns are fully independent:
         # no shared improvement, no trade, no migration between equals.
-        # (Within reach they share services through market improvement —
-        # that is the agglomeration mechanism, not extraction.)
-        towns = [_town(500, 500, 300, tid=0), _town(600, 500, 300, tid=1)]
+        # (Within 150 they share a thinning market tail through market
+        # improvement — that is the agglomeration mechanism, not extraction.)
+        towns = [_town(500, 500, 300, tid=0), _town(660, 500, 300, tid=1)]
         total = sum(nets_for(towns, CFG))
         lone, _ = _step_core([_town(500, 500, 300, tid=0)], [1000, 1000], CFG)
         assert total == pytest.approx(2.0 * (lone[0] - 300.0), rel=1e-9)
@@ -680,3 +681,64 @@ class TestTrainCap:
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
         apply_train(w, CFG)
         assert len(w.armies) == 2
+
+
+class TestFame:
+    """Continuous fame: teaching range grows log-smooth with population."""
+
+    def test_range_anchors(self) -> None:
+        assert fame_range_km(500.0, CFG) == 10.0
+        assert fame_range_km(1000.0, CFG) == 10.0
+        assert fame_range_km(5000.0, CFG) == pytest.approx(60.0)
+        assert fame_range_km(50000.0, CFG) == 150.0  # capped at info_speed
+        assert fame_range_km(100000.0, CFG) == 150.0
+
+    def test_range_smooth_between(self) -> None:
+        mid = fame_range_km(2400.0, CFG)
+        assert 10.0 < mid < 60.0
+        big = fame_range_km(20000.0, CFG)
+        assert 60.0 < big < 150.0
+        assert fame_range_km(2000.0, CFG) < fame_range_km(3000.0, CFG)
+
+    def _imp_at(self, teacher_pop: float, d: float) -> float:
+        _clear_geo_land()
+        towns = [_town(0.0, 0.0, teacher_pop, tid=1),
+                 _town(float(d), 0.0, 300.0, tid=2)]
+        geo = _geo(towns, CFG)
+        cfg = replace(CFG, market_scaling=1.15)
+        imp = _market_improvement(np.array([500.0, 0.0]),
+                                  np.array([teacher_pop, 300.0]),
+                                  geo, cfg, derived(cfg)[1], np.zeros(2))
+        return float(imp[1])
+
+    def test_mid_crew_teaches_at_range_only(self) -> None:
+        # 2400 town teaches ~37km: village at 30km learns, at 45km not.
+        assert fame_range_km(2400.0, CFG) == pytest.approx(37.2, abs=0.5)
+        assert self._imp_at(2400.0, 30.0) > 0.0
+        assert self._imp_at(2400.0, 45.0) == 0.0
+
+    def test_regional_reaches_past_trade(self) -> None:
+        # 20000 town teaches ~114km: past the 60km food carts, and the
+        # market tail (to info_speed) carries a nonzero bonus with it.
+        assert fame_range_km(20000.0, CFG) == pytest.approx(114.2, abs=0.5)
+        assert self._imp_at(20000.0, 100.0) > 0.0
+        assert self._imp_at(20000.0, 130.0) == 0.0
+
+    def test_paths_agree(self, monkeypatch) -> None:
+        # numba and numpy paths compute identical improvements.
+        rng = np.random.default_rng(7)
+        towns = [_town(float(x), float(y), float(p), tid=k)
+                 for k, (x, y, p) in enumerate(zip(rng.uniform(400, 600, 6),
+                                                    rng.uniform(400, 600, 6),
+                                                    [300, 600, 2400, 5000, 20000, 8000]))]
+        _clear_geo_land()
+        geo = _geo(towns, CFG)
+        cfg = replace(CFG, market_scaling=1.15)
+        serv = np.array([50.0, 120.0, 900.0, 3000.0, 15000.0, 5000.0])
+        pops = np.array([300.0, 600.0, 2400.0, 5000.0, 20000.0, 8000.0])
+        last = np.array([0.0, 0.1, 0.0, 0.2, 0.0, 0.05])
+        pm = derived(cfg)[1]
+        a = _market_improvement(serv, pops, geo, cfg, pm, last)
+        monkeypatch.setattr(eco, "_has_market_numba", False)
+        b = _market_improvement(serv, pops, geo, cfg, pm, last)
+        assert np.array_equal(a, b)

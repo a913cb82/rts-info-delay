@@ -173,6 +173,8 @@ def main(rmax=50.0, gamma=None, premium=None, footprint=True,
             spec = build_regional(rmax, footprint)
         elif label.startswith("+province"):
             spec = build_province(rmax, footprint)
+        elif label.startswith("+goal lean"):
+            spec = build_goal_lean(rmax, footprint)
         elif label.startswith("+goal"):
             spec = build_goal(rmax, footprint)
         else:

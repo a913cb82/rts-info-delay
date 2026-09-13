@@ -844,37 +844,47 @@ try:
     import numba as _numba2
 
     @_numba2.njit(cache=True)
-    def _market_kernel(nidx, ndist, ndeg, offer, cart_km, ln2, out):
-        """Market accumulation over stored in-reach pairs (ascending).
+    def _market_kernel(xs, ys, offer, cart_km, ln2, rcut, out):
+        """Market accumulation over coordinates (ascending j per town).
 
-        Same pairs in the same order with the same distances as the old
-        matrix scan — bit-identical sums for identical input."""
-        n = nidx.shape[0]
+        Same pairs in the same order with the same distances as the stored
+        lists below the old reach edge — bit-identical sums there — plus
+        the thin tail out to rcut (one rule: nothing economic travels
+        beyond sight/mail range)."""
+        n = xs.shape[0]
+        r2cut = rcut * rcut
         for i in range(n):
             s = 0.0
-            for mm in range(ndeg[i]):
-                j = nidx[i, mm]
+            xi = xs[i]
+            yi = ys[i]
+            for j in range(n):
                 c = offer[j]
                 if c != 0.0:
-                    s += math.exp(-ndist[i, mm] * ln2 / cart_km) * c
+                    dx = xi - xs[j]
+                    dy = yi - ys[j]
+                    d2 = dx * dx + dy * dy
+                    if d2 <= r2cut:
+                        s += math.exp(-math.sqrt(d2) * ln2 / cart_km) * c
             out[i] = s
 
     @_numba2.njit(cache=True)
-    def _frontier_kernel(nidx, ndist, ndeg, offer, serv, p_market, learn,
-                         mx):
-        # Best offer in learning range per town: any crew within the
-        # daily-walk, complete crews (serv > p_market) out to the stored
-        # lists' edge. Max is order-independent: bit-exact under any walk.
-        n = nidx.shape[0]
+    def _frontier_kernel(xs, ys, offer, frange, mx):
+        # Best offer within teaching range per town: j teaches i iff
+        # d(i,j) <= range(pop_j) (continuous fame; self always qualifies).
+        # Pure max: order-independent, bit-exact under any walk.
+        n = xs.shape[0]
         for i in range(n):
             best = 0.0
-            for mm in range(ndeg[i]):
-                j = nidx[i, mm]
-                d = ndist[i, mm]
-                if d <= learn or serv[j] > p_market:
-                    c = offer[j]
-                    if c > best:
-                        best = c
+            xi = xs[i]
+            yi = ys[i]
+            for j in range(n):
+                oj = offer[j]
+                if oj > best:
+                    dx = xs[j] - xi
+                    dy = ys[j] - yi
+                    r = frange[j]
+                    if dx * dx + dy * dy <= r * r:
+                        best = oj
             mx[i] = best
 
     _has_market_numba = True
@@ -882,6 +892,27 @@ except Exception:  # pragma: no cover
     _has_market_numba = False
     _market_kernel = None  # type: ignore
     _frontier_kernel = None  # type: ignore
+
+
+# Fame range: how far a town's methods travel, continuous in population.
+# Anchors (1k -> daily-walk 10km, 5k -> commercial 60km, 50k -> 150km max):
+# log curve through the lower pair, steeper log past 5k (word spreads faster
+# once truly famous), capped at sight/mail range. Floor is the daily walk
+# (2R), so small towns teach exactly as before; zero new parameters.
+_FAME_K1 = 50.0 / math.log(5.0)    # 10 + K1*ln(P/1000): 5k -> 60
+_FAME_K2 = 90.0 / math.log(10.0)   # 60 + K2*ln(P/5000): 50k -> 150
+
+
+def fame_range_km(pop: float, config: GameConfig) -> float:
+    """Teaching range of one town: 10km at/below 1k, ~60km at 5k,
+    150km (info_speed) at/above 50k, log-smooth between."""
+    learn = 2.0 * config.farm_radius_km
+    if pop <= 1000.0:
+        return learn
+    if pop <= 5000.0:
+        return learn + _FAME_K1 * math.log(pop / 1000.0)
+    return min(float(config.info_speed),
+               learn + 50.0 + _FAME_K2 * math.log(pop / 5000.0))
 
 
 def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
@@ -894,7 +925,8 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
     remote, -> max_improvement where services are abundant). Each town
     offers its services scaled by what it received last turn, so market
     richness propagates one hop per turn (cold start = plain pairwise).
-    geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo."""
+    geo is the (nidx, ndist, ndeg, xs, ys) tuple from _geo (frontier and
+    market read coordinates directly; trade/migration keep the lists)."""
     n = len(serv)
     if n == 0:
         return np.zeros(0)
@@ -906,47 +938,48 @@ def _market_improvement(serv: np.ndarray, pops: np.ndarray, geo,
         0.0,
     )
     offer = contrib * (1.0 + last)
-    nidx, ndist, ndeg = geo[0], geo[1], geo[2]
-    # Technique frontier: the best specialist crew you can learn from sets
-    # the methods available. Small crews teach only the daily-walk
-    # neighborhood (twice the farm radius: apprenticeship needs
-    # face-to-face); complete crews (services past P_market) are FAMOUS —
-    # word of their methods travels the commercial range (3 cart doublings).
-    # Isolated places cap lower; best practice (max_improvement) only
-    # where specialists cluster. Same curvature as generation (gamma-1):
-    # one agglomeration exponent. At gamma=1 the frontier is off (x**0==1).
-    mx = np.zeros(n, dtype=np.float64)
+    # Technique frontier: the best methods in teaching range set what is
+    # available. Range is continuous in the teacher's population
+    # (fame_range_km: daily-walk 10km at/below 1k, ~60km at 5k, 150km max),
+    # so each tier owns its own shed; the value curve is unchanged
+    # (gamma-1): one agglomeration exponent. At gamma=1 the frontier is
+    # off (x**0==1). Uses town coordinates directly (not the 60km trade
+    # lists), so far-famous pairs need no extra neighbor storage.
+    xs, ys = geo[4], geo[5]
     learn = 2.0 * config.farm_radius_km
+    frange = np.where(
+        pops <= 1000.0, learn,
+        np.minimum(float(config.info_speed),
+                   np.where(pops <= 5000.0,
+                            learn + _FAME_K1 * np.log(np.maximum(pops, 1000.0) / 1000.0),
+                            learn + 50.0 + _FAME_K2 * np.log(np.maximum(pops, 5000.0) / 5000.0))))
+    mx = np.zeros(n, dtype=np.float64)
     if _has_market_numba:
-        _frontier_kernel(nidx, ndist, ndeg, offer, serv, p_market, learn,
-                         mx)
+        _frontier_kernel(xs, ys, offer, frange, mx)
     else:
-        for i in range(n):
-            jj = nidx[i, :ndeg[i]]
-            dd = ndist[i, :ndeg[i]]
-            near = jj[dd <= learn]
-            if near.size:
-                mx[i] = np.max(offer[near])
-            far = jj[(dd > learn) & (serv[jj] > p_market)]
-            if far.size:
-                mf = np.max(offer[far])
-                if mf > mx[i]:
-                    mx[i] = mf
+        for j in range(n):
+            oj = float(offer[j])
+            if oj <= 0.0:
+                continue
+            r = float(frange[j])
+            d2 = (xs - xs[j]) ** 2 + (ys - ys[j]) ** 2
+            m = d2 <= r * r
+            mx[m] = np.maximum(mx[m], oj)
     gm1 = config.market_scaling - 1.0
     frontier = np.minimum(1.0, np.power(mx / p_market, gm1))
     mkt = np.zeros(n, dtype=np.float64)
+    rcut = float(config.info_speed)
     if _has_market_numba:
-        _market_kernel(nidx, ndist, ndeg, offer,
-                       config.cart_distance_km, ln2, mkt)
+        _market_kernel(xs, ys, offer,
+                       config.cart_distance_km, ln2, rcut, mkt)
     else:
         for i in range(n):
-            deg = ndeg[i]
-            jj = nidx[i, :deg]
-            dd = ndist[i, :deg]
-            m = offer[jj] != 0.0
+            d2 = (xs - xs[i]) ** 2 + (ys - ys[i]) ** 2
+            m = (d2 <= rcut * rcut) & (offer != 0.0)
             if np.any(m):
-                mkt[i] = np.sum(np.exp(-dd[m] * ln2 / config.cart_distance_km)
-                                * offer[jj[m]])
+                dd = np.sqrt(d2[m])
+                mkt[i] = np.sum(np.exp(-dd * ln2 / config.cart_distance_km)
+                                * offer[m])
     return (config.max_improvement * frontier * mkt /
             (mkt + np.maximum(pops, 1e-12)))
 
