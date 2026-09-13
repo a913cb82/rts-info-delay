@@ -4041,3 +4041,17 @@ Rated clean 15g (3x5) -> ord 41.4 (mu 48.7): FAIL (gate 44.2+). Settlers
 survive more (2W) but doglegs delay foundings (slow sprawl, fewer
 engines). Delay costs more than survival gains. Reverted (main keeps
 expander 44.2). Parked on loop/exp-evade.
+
+### Research wave synthesis (2026-09-13 12:56 BST)
+3 parallel tracks landed. STANDOUTS (fresh + falsifiable):
+1. LANE-PICKETS (mechanics RULE2): armies/towns BLOCK enemy movement —
+park pickets in invasion lanes to FREEZE marches (defense without
+fighting). Turtle fortress style. QUEUED FIRST.
+2. TIE-SPOILER (RULE1): capture ties = no capture; park spoiler to
+freeze takeovers. Queued.
+3. BUILD-FEED (RULE5): +500 instantly saves stunt-dying towns. Queued.
+4. WEAKNESS-DECOY (brainstorm): trail sacrificial to inflate foe weakness
+counts (they die). Aggressive. Queued.
+5. INFLUENCE MAPS / POTENTIAL FIELDS / HIT-LEADER (internet): heavier;
+parked (complexity).
+Full contracts in subagent records. Next: build lane-pickets.
