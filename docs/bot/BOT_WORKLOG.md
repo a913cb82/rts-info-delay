@@ -3192,3 +3192,7 @@ Buzzer +10g (920 total) -> ord 61.8 (mu 65.1, was 65.9/910g): -0.7 on
 ### Buzzer 930g (2026-09-13 02:52 BST)
 Buzzer +10g (930 total) -> ord 61.0 (mu 64.3, was 65.1/920g): -0.8 on
 3W + 2 F1-deaths + fifths. Declining edge (61.0). 930 games.
+
+### Buzzer 940g (2026-09-13 02:57 BST)
+Buzzer +10g (940 total) -> ord 60.9 (mu 64.2, was 64.3/930g): -0.1 on
+3W + 2 F1-deaths + fifths. Flat ~61. 940 games.
