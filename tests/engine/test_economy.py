@@ -461,7 +461,7 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
         apply_train(w, CFG)
-        assert t.population == pytest.approx(1000)
+        assert t.population == pytest.approx(1800)  # capped 10%: 2000 - 200
 
     def test_train_spawns_at_town(self) -> None:
         w = World()
@@ -478,7 +478,7 @@ class TestEconomyCommands:
         assert spawn_events[0]["x"] == 300
         assert spawn_events[0]["y"] == 400
 
-    def test_train_insufficient_pop(self) -> None:
+    def test_train_small_town_trains_small_army(self) -> None:
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -488,7 +488,9 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
         events = apply_train(w, CFG)
-        assert not [e for e in events if e.get("kind") == "army_spawn"]
+        spawns = [e for e in events if e.get("kind") == "army_spawn"]
+        assert len(spawns) == 1 and spawns[0]["size"] == pytest.approx(40)
+        assert t.population == pytest.approx(360)
 
     def test_train_standing_order(self) -> None:
         w = World()
@@ -529,8 +531,8 @@ class TestEconomyCommands:
         if town_events:
             assert town_events[0]["faction"] == 1
 
-    def test_train_pop_800_dies(self) -> None:
-        """TRAIN when pop=800 → pop goes to -200, town dies."""
+    def test_train_pop_800_capped(self) -> None:
+        """TRAIN when pop=800 → capped 80, town survives at 720."""
         w = World()
         w.map_size = [1000, 1000]
         tid = w.allocate_id()
@@ -540,7 +542,8 @@ class TestEconomyCommands:
             StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town")
         )
         apply_train(w, CFG)
-        assert all(town.id != tid for town in w.towns)
+        assert any(town.id == tid for town in w.towns)
+        assert t.population == pytest.approx(720)
 
     def test_build_on_enemy_town(self) -> None:
         w = World()
@@ -603,7 +606,7 @@ class TestStandingOrderCleanup:
 
 
 class TestBuildBlocked:
-    """BUILD onto an enemy town blocks (army waits, order retained)."""
+    """BUILD onto an enemy town lapses (single-turn orders don't wait)."""
 
     def _world(self):
         w = World()
@@ -614,7 +617,7 @@ class TestBuildBlocked:
         w.standing_orders.append(
             StandingOrder(command=CommandType.BUILD, target_id=aid, target_type="army", args=[x, y]))
 
-    def test_build_on_enemy_town_blocked(self) -> None:
+    def test_build_on_enemy_town_lapses(self) -> None:
         w = self._world()
         w.towns.append(Town(id=w.allocate_id(), faction=1, x=100, y=200, population=2000))
         a = Army(id=w.allocate_id(), faction=0, x=100, y=200)
@@ -624,9 +627,9 @@ class TestBuildBlocked:
         assert not [e for e in events if e.get("kind") == "town_spawn"]
         assert w.get_army(a.id) is not None
         assert w.get_town(0).population == 2000
-        assert any(so.command == CommandType.BUILD for so in w.standing_orders)
+        assert not any(so.command == CommandType.BUILD for so in w.standing_orders)
 
-    def test_blocked_build_fires_after_capture(self) -> None:
+    def test_lapsed_build_does_not_fire_after_capture(self) -> None:
         w = self._world()
         t = Town(id=w.allocate_id(), faction=1, x=100, y=200, population=2000)
         w.towns.append(t)
@@ -634,12 +637,13 @@ class TestBuildBlocked:
         w.armies.append(a)
         self._order(w, a.id, 100, 200)
         apply_build(w, CFG)
-        t.faction = 0  # captured by us
+        t.faction = 0  # captured by us — too late, the order already lapsed
         apply_build(w, CFG)
-        assert t.population == pytest.approx(2900)
-        assert w.get_army(a.id) is None
+        assert t.population == pytest.approx(2000)
+        assert w.get_army(a.id) is not None
 
-    def test_blocked_build_founds_after_town_gone(self) -> None:
+    def test_fresh_build_after_blocker_gone(self) -> None:
+        # A NEW order after the blocker is gone still works.
         w = self._world()
         t = Town(id=w.allocate_id(), faction=1, x=100, y=200, population=2000)
         w.towns.append(t)
@@ -647,8 +651,8 @@ class TestBuildBlocked:
         w.armies.append(a)
         self._order(w, a.id, 100, 200)
         apply_build(w, CFG)
-        assert w.get_town(t.id) is not None
         w.remove_town(t.id)  # starved/destroyed
+        self._order(w, a.id, 100, 200)
         events = apply_build(w, CFG)
         assert any(e.get("kind") == "town_spawn" for e in events)
         assert w.get_army(a.id) is None
@@ -671,7 +675,7 @@ class TestTrainCap:
                 StandingOrder(command=CommandType.TRAIN, target_id=tid, target_type="town"))
         events = apply_train(w, CFG)
         assert len([e for e in events if e.get("kind") == "army_spawn"]) == 1
-        assert w.get_town(tid).population == pytest.approx(4000)
+        assert w.get_town(tid).population == pytest.approx(4500)
         assert not [so for so in w.standing_orders if so.command == CommandType.TRAIN]
 
     def test_cap_is_per_town(self) -> None:
@@ -683,8 +687,8 @@ class TestTrainCap:
                 StandingOrder(command=CommandType.TRAIN, target_id=t, target_type="town"))
         apply_train(w, CFG)
         assert len(w.armies) == 2
-        assert w.get_town(tid).population == pytest.approx(4000)
-        assert w.get_town(tid2).population == pytest.approx(4000)
+        assert w.get_town(tid).population == pytest.approx(4500)
+        assert w.get_town(tid2).population == pytest.approx(4500)
 
     def test_cap_resets_next_turn(self) -> None:
         w, tid = self._world()

@@ -56,7 +56,7 @@ class TestShapes:
         got = {u["id"]: u for u in _build(lg, 0, 0, (0.0, 0.0), 6.0)
                if u["kind"] == "army_update"}
         assert got[7] == {"kind": "army_update", "id": 7, "x": 10.0, "y": 0.0,
-                          "faction": 0, "alive": True, "is_viceroy": True}
+                          "faction": 0, "alive": True, "size": 1000.0, "is_viceroy": True}
 
     def test_no_intent_fields(self) -> None:
         # D1 decided: destinations never go over the wire.

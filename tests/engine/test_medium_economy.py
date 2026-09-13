@@ -72,7 +72,7 @@ class TestEconomyMedium:
             StandingOrder(command=CommandType.TRAIN, target_id=1, target_type="town")
         )
         apply_train(w, CFG)
-        assert t.population == 2000
+        assert t.population == 2700  # capped 10%: 3000 - 300
         for _ in range(10):
             apply_growth(w, CFG)
         # Training cost is spent, town stabilizes near capacity instead
@@ -90,7 +90,7 @@ class TestEconomyMedium:
             apply_train(w, CFG)
         # TRAIN is one-shot: only 1 army spawned
         assert len(w.armies) == 1
-        assert t.population == 4000
+        assert t.population == 4500  # capped 10%: 5000 - 500
         assert len(w.standing_orders) == 0
 
     def test_E41_build_extends_life(self) -> None:

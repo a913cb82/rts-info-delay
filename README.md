@@ -47,8 +47,9 @@ Turn-based. Each turn consists of phases:
 
 #### Combat
 - Armies fight each other
-- Weakness = #enemies within 10km
+- Weakness = total enemy army size within 10km
 - An army dies if any enemy in range has weakness <= its own
+- Same-faction idle armies on the same spot merge (lower id survives; viceroys and marching armies never merge)
 - Towns are taken by the lowest-weakness nearby army's faction
     - Tie across factions leads to no capture
     - Population and market know-how halve on capture and capitals demoted to normal towns
@@ -64,21 +65,22 @@ Turn-based. Each turn consists of phases:
 
 ### Details
 
-- Score = Σ town population + 1000 per army. Highest score at end wins.
+- Score = Σ town population + Σ army sizes. Highest score at end wins.
 - Food per turn: `(1 + market services) · min(30·farm_km², 1.3·population)` (near land yields best; skilled neighbours improve output up to +75%); fixed surviving births (`24/1000/yr`) vs deaths (`31/1000/yr`, ~3× at half rations)
 - Within carting range (~60km): hungry towns are fed first, big receivers lose less in transit; services and methods travel up to 150km; people migrate toward larger, fed settlements; food is conserved except cart losses
 - Eliminated when no capital and no viceroy in flight.
 - Armies and towns have 150km line of sight, mail travels 150km/turn to/from the capital.
-- `MOVE_TO`/`BUILD` are discarded unless the army is within 10km of the target on arrival.
+- `MOVE_TO`/`BUILD` are discarded unless the army stands exactly on the target (no 10km tolerance).
+- `TRAIN` draws at most 10% of the town (`max_train_frac`); `BUILD` spends at most the army's size.
 - Towns can only `TRAIN` one army per turn (additional `TRAIN` commands are discarded)
 - Viceroy in flight receives no information during flight, and only information on events which happened after new capital was founded.
 
 | Order          | Syntax                               | Effect                                                  |
 |----------------|--------------------------------------|---------------------------------------------------------|
-| `TRAIN`        | `TRAIN <town>`                       | −1000 pop, spawn an army                                |
-| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty>` | march to `(tx, ty)`                                     |
-| `BUILD`        | `BUILD <army> <x> <y>`               | consumes army: found pop-900 town, or +900 pop          |
-| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y>`               | viceroy marches out, founds new capital on arrival      |
+| `TRAIN`        | `TRAIN <town> [<size>]`                | −size pop (capped 10% of town), spawn an army of that size |
+| `MOVE_TO`      | `MOVE_TO <army> <fx> <fy> <tx> <ty> [<amount>]` | march to `(tx, ty)`; amount splits the army (0 = all) |
+| `BUILD`        | `BUILD <army> <x> <y> [<size>]`        | spends size: found pop-size×0.9 town, or +size×0.9 pop |
+| `MOVE_CAPITAL` | `MOVE_CAPITAL <x> <y> [<size>]`        | viceroy marches out at size, founds new capital on arrival |
 
 ## Bots
 
@@ -104,7 +106,7 @@ go
 
 Events sent for every entity visible, delayed by `info_speed`
 - `town_update` (`id,x,y,faction,population,is_capital`, pop 0 = dead)
-- `army_update` (`id,x,y,faction,alive,is_viceroy`).
+- `army_update` (`id,x,y,faction,alive,size,is_viceroy`).
 - `end` instead of a block means the game is over (or you are muted mid-flight: no block at all).
 
 ### Output Format

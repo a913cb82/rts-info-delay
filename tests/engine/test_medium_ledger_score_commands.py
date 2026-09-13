@@ -159,8 +159,8 @@ class TestCommandsMedium:
         orders = [{"command": "TRAIN", "town_id": 1}]
         step(w, CFG, orders)
         assert len(w.armies) >= 1
-        # Population after TRAIN (2000-1000) plus small growth for 1 turn, so approx 1000
-        assert t.population == 1000 or abs(t.population - 1000) < 2
+        # Population after TRAIN (2000-200 capped) plus small growth for 1 turn, so approx 1800
+        assert abs(t.population - 1800) < 5
 
     def test_O17_multiple_commands(self) -> None:
         """O17: Multiple commands in one step."""

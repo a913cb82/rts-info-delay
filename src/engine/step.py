@@ -632,7 +632,8 @@ def _phase_combat(world: World, config: GameConfig) -> tuple[list[dict], dict]:
     2) kill armies where an enemy in range has weakness <= its own,
     3) capture each town by its lowest-weakness nearby army's faction
     unless another faction matches it (standoff) or it owns the town."""
-    from engine.combat import resolve_combat, resolve_captures
+    from engine.combat import resolve_combat, resolve_captures, resolve_merges
+    resolve_merges(world, config)
     combat_evts, weaknesses = resolve_combat(world, config)
     pre_capture_factions = {t.id: t.faction for t in world.towns}
     capture_evts = resolve_captures(world, config, weaknesses)

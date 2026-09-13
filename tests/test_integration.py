@@ -163,11 +163,12 @@ def test_record_tripwire():
             events = step(w, CFG, ledger, turn=t, orders={})
             write_turn_line(t, w, events, path)
         h = hashlib.sha256(path.read_bytes()).hexdigest()
-        # Re-based 2026-09-13 for promoted calibration (gamma 1.15->1.3,
-        # premium 0.25->0.75, melt 0->0.005, hunger 1.3->1.6).
+        # Re-based 2026-09-13 for army sizes (Army.size, max_train_frac;
+        # the scenario has no armies so trajectories are byte-identical —
+        # only the config line grew a field).
         # Verified: symmetric towns stay symmetric (both 4995.85->4965.16,
-        # monotone gentle decline), trajectories sane. Was 3faf313e...
-        # (Malthusian swap).
-        assert h == "d0988167d545ea737c6f2f6e29a41fb076659de1354eba50b07f6fc7eda0c980"
+        # monotone gentle decline), trajectories sane. Was d0988167...
+        # (calibration promotion).
+        assert h == "136481afb9ff0d24b131bd1f094095ebb00e996908021849f879787836544cc8"
     finally:
         path.unlink(missing_ok=True)
