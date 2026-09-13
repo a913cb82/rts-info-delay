@@ -3553,3 +3553,7 @@ continue. 195 games.
 21a74a6 +15g (210 total) -> ord 70.4 (mu 74.0, was 73.1/195g): +0.9 on
 ~10W (incl weak-diverse dominations) + 2nds + third. New high (mu 74).
 Climbing again. Riding.
+
+### Overmatch 225g (70.9, mu 74.6) (2026-09-13 07:22 BST)
+21a74a6 +15g (225 total) -> ord 70.9 (mu 74.6, was 74.0/210g): +0.5 on
+~10W (incl 388k) + 2nds/3rds + ZERO deaths. Climbing (mu 74+). Riding.
