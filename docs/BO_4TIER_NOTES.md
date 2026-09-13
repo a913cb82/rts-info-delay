@@ -640,3 +640,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - Pricing#1 (running): BASE re-confirmation (seed 94) — regression check
   that 4-tier seed still wins at the adopted standard after all edits.
   1/3 pricing spent.
+- District BASE flat baseline: +0.272 vs tiered +0.88–0.93. Hierarchy
+  margin +0.6 at the adopted standard — towns earn enormously, composition
+  is all that varies.
