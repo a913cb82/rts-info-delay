@@ -3516,3 +3516,8 @@ dd9782a 64.0/705g; buzzer 5th at 60.7). Grind-confirmed 21a74a6 66.1/135g
 in mirrors). Merged overmatch to main (1-line port, suites+liveness green;
 gate: best-ordinal-for-personality + pro style intact). LESSON: gate fields
 must be mirrors (fair), not weak-diverse descents (asymmetric punishment).
+
+### Combine rung built (overmatch + defense) (2026-09-13 06:47 BST)
+Both mirror-proven (overmatch 66.1 merged; defense 64.0/705g confirmed).
+Stacked (additive, no conflicts; suites green). Bar (ladder): exceed
+66.1, judged on mirrors + overall (fair-gate lesson).
