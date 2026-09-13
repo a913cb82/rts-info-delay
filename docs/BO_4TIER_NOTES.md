@@ -637,3 +637,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District 12k-chef + dense bourgs: +1.267 vs +1.396 (5k-chef). Bigger
   chef loses 0.13 — district chef ceiling ~5k, hard. Chef ceilings at
   both scales (3k province, 5k district) scale slower than region size.
+- Pricing#1 (running): BASE re-confirmation (seed 94) — regression check
+  that 4-tier seed still wins at the adopted standard after all edits.
+  1/3 pricing spent.
