@@ -277,3 +277,9 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District sparse-bourgs@25 (7 bourgs, urb 6.8%): settled +1.217 — ties
   the BO district winner (+1.2170). Minimal-urban principle holds at both
   scales: fewer towns, same rate; extra towns are free riders, never drivers.
+- Bourg-density sweep (prem.75, settled): @9 → urb 34% +1.157; @10 →
+  urb 27% +1.157 (villages 73% ✓); @11 → urb 24% +1.161; @13 → urb 19%
+  +1.164 (77/14/2/2). Free-rider band covers urb 12–34% within 0.01 of
+  max — reality's 23% sits inside it. Villages land via displacement
+  (dense bourgs replace villages: 2742→2310). Only the urban MIX
+  (bourgs vs chefs) resists: mouths pool at the cheapest tier.
