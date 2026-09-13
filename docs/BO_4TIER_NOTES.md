@@ -643,3 +643,6 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - District BASE flat baseline: +0.272 vs tiered +0.88–0.93. Hierarchy
   margin +0.6 at the adopted standard — towns earn enormously, composition
   is all that varies.
+- District BASE bourgs-only (no chef): +0.384 vs +0.922 with a 2,500
+  chef. The single chef earns +0.54 — the biggest single-tier receipt
+  measured anywhere. District centers are load-bearing, not garnish.
