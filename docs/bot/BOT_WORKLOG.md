@@ -4177,3 +4177,6 @@ Loop alive.
 
 ### Heartbeat (2026-09-13 14:06 BST)
 Loop alive.
+
+### Heartbeat (positioning marginal) (2026-09-13 14:11 BST)
+Center-void/edge-flank positioning: marginal (long marches). Loop alive.
