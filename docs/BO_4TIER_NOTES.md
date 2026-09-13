@@ -293,3 +293,8 @@ villages too many/small, bourgs small (600 vs 900), chefs small
 - r3-BO#1 verdict: seed wins 4th time (+1.156, 12 model evals). Added
   district dense-bourg seed (600@13/2400@70); r3-BO#2 (district, prem.75)
   tests whether the search finds the dense-bourg corner itself. 2/5 spent.
+- r3-BO#2 verdict: incumbent wins 3rd time (+1.217). Dense-bourg seed
+  competitive 3rd (+1.194, urb 20%) — the search priced dense shares at
+  0.023. Sparse-top variant 2nd (+1.211, urb 3.5%). Minimal-urban wins,
+  dense-shares cost little, tiny-village degeneracy excluded by P0 floor
+  era being over (back to default bounds here; P0 stayed 300 anyway).
