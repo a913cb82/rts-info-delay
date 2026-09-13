@@ -22,8 +22,8 @@ DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
 DENSE_HOLE_R = 30.0  # no densify near 800+ towns (feeds black holes -> crash)
 DENSE_HOLE_POP = 800.0
 TRAIN_SIZE = 30.0     # v3: small-fast trains beat big-slow (CAD 718)
-TRAIN_FLOOR = 420.0   # normal trains iff pop >= this (burst-cap + recovery)
-TRAIN_COOLDOWN = 300    # per-town normal-train spacing (recovery; triage exempt)
+TRAIN_FLOOR = 350.0   # normal floor (v9-trickle dynamics, honest cadence)
+TRAIN_COOLDOWN = 50     # per-town trickle spacing (matches accidental-50 that scored)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 210.0   # colonies below this get boosted (T2 track)
 FOUND_SIZE = 450.0    # legacy founding target (superseded by tier spends)
@@ -66,6 +66,8 @@ def _all_sites(state, config) -> list[tuple[float, float]]:
     own = state.own_towns()
     foes = [t for t in state.world.towns
             if t.faction != state.faction and t.faction is not None]
+    _og = _grid([(t.x, t.y, 1) for t in own], 16.0)
+    _fg = _grid([(t.x, t.y, 1) for t in foes], 32.0)
     for R in (int(SCAN_R / LATTICE) + 2, int(max(mw, mh) / LATTICE) + 2):
         pts = []
         for j in range(-R, R + 1):
@@ -77,9 +79,9 @@ def _all_sites(state, config) -> list[tuple[float, float]]:
                 x = ax + off + i * LATTICE
                 if x < 5 or x > mw - 5:
                     continue
-                if any(math.hypot(x - t.x, y - t.y) < MIN_DIST for t in own):
+                if _near(_og, 16.0, x, y, MIN_DIST):
                     continue
-                if any(math.hypot(x - t.x, y - t.y) < 30.0 for t in foes):
+                if _near(_fg, 32.0, x, y, 30.0):
                     continue
                 pts.append((math.hypot(x - ax, y - ay), (x, y)))
         if pts:
@@ -141,6 +143,28 @@ def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
     return lst[0] if lst else None
 
 
+def _grid(pts, cell):
+    """cell-size spatial index: dict cell -> list of (x, y, payload)."""
+    g = {}
+    for x, y, p in pts:
+        g.setdefault((int(x // cell), int(y // cell)), []).append((x, y, p))
+    return g
+
+
+def _near(g, cell, x, y, r):
+    """Any indexed point within r of (x, y) (checks 3x3 cells)."""
+    cx, cy = int(x // cell), int(y // cell)
+    r2 = r * r
+    cr = int(r // cell) + 1
+    for ix in range(cx - cr, cx + cr + 1):
+        for iy in range(cy - cr, cy + cr + 1):
+            for px, py, p in g.get((ix, iy), ()):
+                dx, dy = px - x, py - y
+                if dx * dx + dy * dy < r2:
+                    return True
+    return False
+
+
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     turn = state.turn
@@ -149,6 +173,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         return out
     cap = state.world.faction_capital(state.faction)
     cap_id = cap.id if cap is not None else None
+
+    def _triage(t) -> bool:
+        try:
+            g = state.get_growth(t.id)
+        except Exception:
+            return False
+        return g is not None and g < TRIAGE_GROWTH * max(1.0, t.population)
 
     def cooled(t) -> bool:
         # pending (delivery) gates re-train; floor+cooldown gate normal;
@@ -192,19 +223,19 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         tgt = state.army_target(a.id)
         if tgt is not None:
             enroute.append(tgt)
+    egrid = _grid([(ex, ey, 1) for ex, ey in enroute], 10.0)
+    ogrid = _grid([(t.x, t.y, 1) for t in own_t], 16.0)
     needy = [t for t in sorted(
         (t for t in own_t if t.population < BOOST_BELOW),
         key=lambda t: t.population)
-        if not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)]
-    pioneer_busy = any(not any(math.hypot(ex - t.x, ey - t.y) < MIN_DIST for t in own_t)
-                        for ex, ey in enroute)
+        if not _near(egrid, 10.0, t.x, t.y, 5.0)]
+    pioneer_busy = any(not _near(ogrid, 16.0, ex, ey, MIN_DIST) for ex, ey in enroute)
     # densify openings (4km around <=300 towns), excluding en-route/used
     def _dense_open(excl):
         s = _densify_site(state, config, excl)
         return s
-    dense_busy = any(any(math.hypot(ex - t.x, ey - t.y) < DENSE_DIST * 2 for t in own_t
-                          if t.population <= DENSE_MAX_POP)
-                     for ex, ey in enroute)
+    sgrid = _grid([(t.x, t.y, 1) for t in own_t if t.population <= DENSE_MAX_POP], 16.0)
+    dense_busy = any(_near(sgrid, 16.0, ex, ey, DENSE_DIST * 2) for ex, ey in enroute)
     idle = [a for a in state.own_armies()
             if not a.is_viceroy and not state.army_has_target(a.id)
             and not state.has_pending_build(a.id) and a.size >= MIN_ARMY]
@@ -264,9 +295,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # 3. growth trains, mouth-accounted (general across scales: train what's
     # needed; big towns make exact-size armies, no flood, no starvation).
-    want = sum(max(0.0, min(BOOST_BELOW - t.population, CHUNK))
-               for t in own_t if t.population < BOOST_BELOW
-               and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute))
+    want = sum(max(0.0, min(BOOST_BELOW - t.population, CHUNK)) for t in needy)
     if not pioneer_busy and pidx < len(psites):
         want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
@@ -275,12 +304,25 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if short >= MIN_TRAIN:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
                        key=lambda t: t.population, reverse=True)
-        # ONE growth train per turn (CAD one-at-a-time; parallel floods pin the mother)
-        t = cands[0] if cands else None
-        if t is not None and not state.should_yield():
-            size = min(_train_size(t, config), max(MIN_TRAIN, short))
-            if not (t.population - size < TRAIN_FLOOR and t.population < 700.0 and cooled(t) and t.population >= TRAIN_FLOOR):
-                out.append(f"TRAIN {t.id} {size:.1f}")
-                state.note_train(t.id)
-                _LAST_TRAIN[t.id] = turn
+        # triage towns ALL shed (parallel ark); normal: ONE per turn (sequencing)
+        fired_normal = False
+        for t in cands:
+            if state.should_yield():
+                break
+            is_tri = _triage(t)
+            if not is_tri:
+                if fired_normal:
+                    continue
+            # triage sheds 10% (uncapped); normal trains exactly what's needed
+            size = _train_size(t, config) if is_tri else min(_train_size(t, config), max(MIN_TRAIN, short))
+            if not is_tri and t.population - size < TRAIN_FLOOR and t.population < 700.0:
+                continue
+            out.append(f"TRAIN {t.id} {size:.1f}")
+            state.note_train(t.id)
+            _LAST_TRAIN[t.id] = turn
+            if not is_tri:
+                fired_normal = True
+            short -= size
+            if short < MIN_TRAIN and fired_normal:
+                break
     return out
