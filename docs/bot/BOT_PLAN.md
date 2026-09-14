@@ -319,3 +319,11 @@ provocation-check + revenge-pricing. P2 — aggressive retaliation-
 pricing + colony guards-or-abandon + expansion-floor; greedy cheap
 stay-behind (guard the winning formula otherwise). REMAIN filed-
 futures (see Steps + GTO s12 + worklog). (Exam 23/23 all green.)
+
+## New-era loop (sized-agrarian engine, 2026-09-14)
+Goal: one 60-ordinal bot (any line). Gate: merge iff ordinal > best.
+Population: all committed branch bots (matchmaker selects from these).
+Rules: (1) bot game history (elos.json + elo_games.jsonl) committed after
+every rating run, no exceptions; (2) all bots must be committed to be tested
+(uncommitted code never rates); (3) old-engine ratings archived
+(benchmarks/archive/logistic-era/), void on the new engine.

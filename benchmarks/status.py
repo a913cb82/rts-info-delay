@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PERSONALITIES = ["pro", "aggressive", "expander", "turtle"]
+PERSONALITIES = ["pro", "aggressive", "expander", "turtle", "grower"]
 MIN_GAMES = 10
 
 

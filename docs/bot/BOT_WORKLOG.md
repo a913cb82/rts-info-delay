@@ -4180,3 +4180,191 @@ Loop alive.
 
 ### Heartbeat (positioning marginal) (2026-09-13 14:11 BST)
 Center-void/edge-flank positioning: marginal (long marches). Loop alive.
+
+### Guard-lock built (coherent fortress v1) (2026-09-13 13:51 BST)
+Clean-sheet rewrite step 1 (interference-proof by construction): 2 home
+guards per town NEVER march (locked set; surplus dispatches; guards sit
+as 2v1 cleaners). Foundation for ghost-hunt + compound-untaxed phases.
+Bar: exceed 47.2 AND guards (style).
+### New-engine inspection (2026-09-13, loop/turtle-v2r)
+Main landed: sized armies (phases 1-7: size field, sized TRAIN/BUILD/
+MOVE_TO-split, exact landing, same-spot merges, size-weighted weakness,
+score by size), agrarian economy (farms 5km, forage+hunger, trade ~60km,
+fixed births, min town 10), capture halves pop+know-how (capture_loss),
+bot compat (prize math, landing waits, sized trains).
+FINDING: all 5 bots FROZEN on new engine (600t smoke: 0 orders, 0 armies,
+towns 500->507; bars calibrated for logistic 100k-scale, unreachable at
+agrarian equilibrium ~500s, capacity ~2.3k). Old-engine ratings VOID
+(different game). Guard-lock rebased clean (suites+liveness green) but
+unrated new-engine. NEXT: archive old DB, fresh re-baseline, recalibrate
+all bars to agrarian scale (loop v3 engine-reset), re-prove binds.
+### Early-growth experiments (2026-09-13, loop/turtle-v2r)
+Lab: benchmarks/exp_growth.py (structured orders, no fog). From 500:
+E1 idle 500->536@3k (->608@10k); E2 one 45-colony@20km: 540 total
+(+4 vs idle; colony bleeds 45->35 via migration<50km); E3 dist sweep:
+all colonies decline (~35) except 60km holds 47 (beyond migration
+range; longer march forages mother); E5 size sweep MOOT (TRAIN capped
+10%: 500-town max army 50); E8 4x500: linear (4x536, no superlinearity
+at 500-scale); E9 2000->1552@3k (->1114@10k: overshoot starves to ~600
+equilibrium); F3 crowding 6km vs 200km: identical (land doesn't bind at
+500-scale; workers cap harvest). Frame: mouths conserved (births-deaths
+only); founding redistributes at 10% BUILD tax. THEN READ THE ENGINE
+DOCS: optimal = 4-tier hierarchy (villages 300@4km, markets 500@13-18km,
+centers 3-5k@50-80km, regional 30k; +1.38-1.40/yr vs flat +0.69).
+Bot strategy = BUILD THE HIERARCHY (tools: hierarchy_opt.py).
+### Boot experiments G1/G3/G4 (2026-09-13, loop/turtle-v2r)
+G3 (500 student + 30k teacher@100km): student 606 (=lone, NO teaching
+effect without own services); teacher 30k->2102 (giants collapse without
+networks). G1 (5000 center + 6x500 ring): center 2976, villages ->13
+(hungry-first trade DRAINS villages; 6:1 ratio 60x too thin; total -60%).
+G4 CONVEYOR (600 mother + 6x47@20km): mother ->793, colonies ->32,
+total +12%/5k turns (2x lone rate). Mechanism: migration uphill (size
+gradient) + mother converts absorbed workers (disc underfarmed @600).
+Rules: ABSORB > SPRAWL; GRADIENT beats UNIFORM; ratios matter (province
+needs ~400 villages/center). Boot paradox: 600-cap vs hierarchy tiers
+(300-villages need 6.6x births ~1900yrs; nothing boots alone).
+### Growth fan-in: optimal play sketch (2026-09-13, loop/turtle-v2r)
+T0 honest conveyor (6x45 ring, all costs): +66@8k (+11/colony); colonies
+die (one-shot batteries, no stabilization). T2 BOOST beats founding ~5x
+(+8-12/boost, optimal ~750t period; colony holds+grows 47->210; 500t
+over-drains mother). T3 NO isolated ignition (growth falls monotonically
+600->3000); ring hierarchy ignites CENTER only (1000->2009, feeders drain;
+fades with size). T4 CONQUEST dominates: 60-army steals 287 (+243 net,
+4.8x return; min-size wins, big garrisons starve prize); founding +8;
+conquest privately optimal, globally destructive. T5 40:1 BOOTS center
+4.6x (2000->9303) but parasitic-transient (villages->22, total -50% vs
+ctrl); threshold between 6:1 and 40:1.
+OPTIMAL SKETCH: raid early (steal grown stocks, min-size armies) ->
+boost captives (hold+grow) -> feeder ratios (boot center) -> ride spike
+(time it; base dies). Personalities: aggressive=raider, expander=breeder,
+pro=ratio-timing, turtle=fed-fortress.
+### T6 conquest-vs-muster: user right, T4 was vs-idle (2026-09-13)
+Harness fix: structured orders are faction-0-only; string orders work
+both factions. Raid-60 vs mustering 600-town: attacker 60 DIES on
+defender's merged 162 (3 turns x 10%/turn); attacker net -65, defender
+-6 (muster is score-neutral pop->army conversion!). Conquest pays ONLY
+vs unprepared/depleted. Redesign: INTEL-GATED raids (scout muster-state;
+attack the drained/post-spam); candidate T7 siege-by-forage (camp on
+their farmland, eat harvest first). Turtle muster-response validated.
+### T8 scout price tags (2026-09-13)
+600t horizon (idle 507): farmland-posted scout 50->35, total -30 (forage
+tax on home + upkeep); wilderness scout 50->3 (2.4%/turn attrition),
+total -47 (mother clean -50 = train only). Scout-window math: scout
+(30) pays iff victim-idle-p in (0.14, 0.68) — below: stay home; above:
+raid blind. Free alternative: passive pop-watch (600->540 dips = muster
+detected, 150km sight, 1-2t lag). Intel hierarchy: pop-watch (always) >
+forward pickets (coverage) > wilderness probes (high-value only).
+Every mechanism has a price (conquest->muster, scouts->attrition).
+### Early-game playbook (2026-09-13)
+t0-500: pop-watch only (free); train NOTHING (50-train costs ~30 net @3k
+unless priced). First 50 ranked: raid-if-idle (+243) > found-one-breeder
+(boost-750 track -> 210) > idle (safe). Then: boosted breeder + mother ->
+800-scale -> 80-trains -> 2nd breeder/bigger raids -> conveyor (break
+600-cap) -> feeder ratios (late-early). NEVER: parasite cities, big
+armies, wilderness scouts, 500t-boosts, uniform sprawl. Per-personality:
+aggr = gated raider; exp = breeder-booster; pro = opportunist (hole:
+ratios need scale); turtle = compound + muster-response + absorb.
+### Grower v1 built + smoke PASS (2026-09-13, loop/grower)
+Peaceful max-growth, clean-sheet (pioneer-16km-hex + boost<150/750t +
+JIT-muster; no standing armies/scouts). Compat fixes: silence_watch call
+(stale notes), arrival-release (engine keeps has_target), site cache
+(16k scan killed clock). Smoke 500t all-grower: 5x (TRAIN+M march+BUILD),
+5 colonies 44-pop, scores 501 (founding cost, payback over 1000s of t).
+Branch renamed (guard-lock parked on loop/turtle-v2).
+### Grower 10k: 655 vs 608 idle (+8%) (2026-09-13, loop/grower)
+Boost loop fires but recovery-bound (~2000t cadence: mother 450->500
+recovery gates, not the 750 cooldown). Colony held ~45 (never 210-track;
+T2 assumed 600-mother). Tracker gap: mirror Army.size never parsed (BUILD
+sends 1000, engine clamps; harmless but wrong). v2 levers: TRAIN_MIN_POP
+500->450 (faster cadence), size parsing (compat), colony trains (scale).
+Peaceful game is slow; competition changes payoffs (T4 raids).
+### t10000-max fan-in (2026-09-13, loop/grower)
+Grower v2 679 (+71 idle). S1 raid snowball vs idle 2784 (+2108, 4.1x;
+5 raids->7 towns; increments accelerate); vs mustering 455 (-220).
+Defender over-muster -> foraged-bare starvation spiral (3719->375:
+mutual ruin; sustained THREAT starves). S2 spike UNTIMABLE (peaks
+@1-1.4k always; converge ~2300 @10k; villages-only 3350 > hierarchy:
+centers eat deadline value). S4 raid+cashout 1120 > combo 974 > grow
+795 > idle ("conquest is the game, rest garnish"; BUILD raiders INTO
+captive fix). RANK: raid2784 >> raid1120 > combo974 > grow795 > idle.
+Maximal = raid-unready + cash-out + boost, gated by intel (pop-watch).
+### v3 725 + peaceful ceiling ~730 (2026-09-13, loop/grower)
+v3 (30-trains/350-floor + densify-4km): 725 (mother 349 + 139/137/100).
+Trade-sharing makes the SYSTEM the unit (distribution irrelevant).
+N-sweep flat (N=4 663 best, mother healthiest); CAD (30,350) 718.
+P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
+T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
+Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
+Fast paths all steal grown stocks (shelved: user wants peaceful first).
+### v6 one-train + scale retest (2026-09-13, loop/grower)
+Flood autopsy: want-mouths trained 5x in 7 turns (mother pinned 350) +
+0.0-BUILD spam (sub-10 armies). Fixes: ONE growth train/turn, MIN_ARMY
+10, MIN_TRAIN 20, SCAN_R 400 (t1 clock). Scales: 500->714, 1k->1342,
+10k->3418 (t1435 marginal death), 50k->2071 (t149 death), 100k running.
+Remaining: silence_watch cost at 50-100 armies (~44ms) — throttle when big.
+### v7 minimal intel (2026-09-13, loop/grower)
+Tracker update() cost ~10ms/turn at 100 entities (bank overdraft deaths).
+GrowerState: towns/armies/targets/pending/growth only (~120 lines, no
+fog-reasoning; arrival cleared on update). + psites cache (16k filter/turn
+was 2-4ms). Scales: 500->682, 1k->1302, 10k->2861 (t1808 overdraft),
+50k->8920 (triage dispersal 6x idle!), 100k running. No expander dep.
+### v8 all-scales pass (2026-09-13, loop/grower)
+dsites-cache (sustained <10ms/turn; overdraft deaths gone). t10000:
+500->714, 1k->1342, 10k->8941, 50k->8920, 100k->13714 — all beat idle
+(608/608/1394/1410/1411) 1.1x-10x. General logic throughout (triage by
+growth-rate, mouth-accounting, 500-chunks, triage-shed, caches). No
+per-size special cases. 10k-start swings across versions (path-sensitive
+triage; noted, not chased).
+### v9 splits + B2 black holes (2026-09-13, loop/grower)
+B1: 1 split/army/turn max (chain-splits merge back); binary 5 turns->32.
+B2 SHOCKER: flat 200x300@4km -> migration BLACK HOLE (one town 8928 by
+t2500, eats lattice) -> overshoot -> crash (2587@10k). No tiers emerge.
+Settled-optimal != dynamic-optimal (runaway!): sparse-stable wins
+(S2 villages-only 3350 > hierarchy 2300). v9: split-to-mission (mover
+marches, remainder missions next; no return-trips) + tier spends (market
+667/village 333) + densify-gate (no feeding 800+ holes <30km). Scales:
+10k->9358, 500->671, clocks clean. Shrink-vs-start structural (1-train
+cap vs -12%/turn deaths); vs idle 6.7x.
+### v9 full scoreboard (2026-09-13, loop/grower)
+t10000 (grower vs idle): 500->671/608, 1k->1251/608, 10k->9358/1394,
+50k->9612/1410, 100k->9760/1411. Big starts converge ~9.6k (shed-rate
+ceiling: 1-train/turn caps savings; rest is starvation waste).
+### Solo board green (2026-09-14, loop/grower)
+t10000 true-solo, no deaths: 500->671, 1k->1240, 10k->9200, 50k->9709,
+100k->10470 (idles 608/608/1394/1410/1411). Lessons: throttle-stale was
+the 850-stall (fresh scans only); founding-turn spikes need small scans
+(SCAN_R-250) + grid-densify; v9 train-block verbatim (global-1 + floor
+guard); pool-spiral comes from unbounded shed (matched only).
+### 90%-loss ledger + board green (2026-09-14, loop/grower)
+Ledger (100k): 89 trains (14.5k shed; t1 capped 667 by mission-need!),
+312 builds (160k churned through boost-incinerator!), 34 foundings
+(6.6k), mother 100k->665. Losses: shed-throttled-18:1 + boost-churn
+(feeding dying traps) + pool forage-spiral (d5: mother dead t5). Fixes:
+triage-shed-don't-feed (fast-death only), forage-aware marching (never
+eat home), pool matched to deployment. Board (solo, no deaths): 500->671,
+1k->1237, 10k->10541, 50k->9524, 100k->9647. Remaining gap is deployment
+bandwidth (missions complete ~5t-cycle), not shedding.
+### Fission verdict + throttle-stall resolved (2026-09-14, loop/grower)
+User fission (64-in-6): TRAIN clamps at 10%/turn (50k-req->8.8k), so
+chunks are ~250s not 1000s; binary splits 1/army/turn (chain-splits
+remerge); 60-army parallelism in ~6 turns IS achievable. v12 fissions
+slowly (pending-50 paces shed; slow-shed wins: town lives, sheds MORE
+total). NOTHROTTLE+NOSKIP probes (fixed tree): 11.2k/11.3k each; both-on
+850 (stale+infrequent pool stall). Locked: fresh scans + skip-turn.
+Board (solo, clean): 500->671, 1k->1237, 10k->10541, 50k->9524, 100k->9647.
+Next rung (proposed): triage pending-bypass (true 64-in-6 fission speed;
+pool-spiral risk retired by forage-aware) — unbuilt.
+### empty_10000 canonical: 10k starts (2026-09-14, loop/grower)
+Regenerated all-grower 5x10k starts, 10k turns (2x clock for 5-bot
+dispersal scale). First attempt: f0 clock-dead t1651 (16ms overdraft),
+f2 middle-child stall (30km foe-halo sandwiches; ->1860). Fixes: halo
+12km + turn_time 200/increment 20. Clean: 11318/10956/10395/10573/11346,
+no deaths. md5-verified recordings->viewer/public.
+### Round-robin launched (new-era goal: 60 ordinal)
+Population: grower-base + 4 variants (fission/villages/markets/top500),
+5g each, fresh DB. Gate: merge iff ordinal > best.
+### Round-robin results (new-era DB seed)
+Base 30.3 (5-0), fission 30.3 (5-0, H2H beats base 672-671!), villages
+26.4, markets 25.5, top500 -15.1 (want-unsatisfiable: 500-target unreachable
+-> trains forever -> flood -> 377 crash; PARKED). Fission vs base tied on
+ordinal (gate needs >); grinding both to 15g for tiebreak.
