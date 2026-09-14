@@ -288,8 +288,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     _unmet = [(_u, _nd) for _u, _nd in _raids if _nd > _pool / max(1, len(_raids))]
     if _unmet and not state.should_yield():
         _rt, _rn = max(_unmet, key=lambda z: z[1])
-        _rich = sorted((t for t in own_t if t.population >= 500.0 and t.id not in mustered
-                        and t.id not in state._pending_trains),
+        # PREEMPT: no pending-guard (growth occupies mothers 24/7; assembly
+        # runs first in out-list so it wins the engine's standing-order dedup;
+        # growth-cands below excludes _PACK_TOWN so nothing doubles).
+        _rich = sorted((t for t in own_t if t.population >= 500.0 and t.id not in mustered),
                        key=lambda t: t.population, reverse=True)
         if _rich:
             out.append(f"TRAIN {_rich[0].id} {_train_size(_rich[0], config):.1f}")
