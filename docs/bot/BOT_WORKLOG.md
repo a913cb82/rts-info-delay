@@ -4390,3 +4390,7 @@ Base 30.3 (5-0), fission 30.3 (5-0, H2H beats base 672-671!), villages
 26.4, markets 25.5, top500 -15.1 (want-unsatisfiable: 500-target unreachable
 -> trains forever -> flood -> 377 crash; PARKED). Fission vs base tied on
 ordinal (gate needs >); grinding both to 15g for tiebreak.
+
+### Predator eats growers 691-22 (2026-09-14, loop/grower)
+H2H (100km, mustering): intel-gated single raid captures/ravages
+(grower 22, near-eliminated). Gating validated vs real muster.
