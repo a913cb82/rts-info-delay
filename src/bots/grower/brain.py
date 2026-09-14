@@ -234,13 +234,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             idle = [a for a in idle if a.id != _pack.id]
             _pool = sum(a.size for a in idle)
         else:
-            # v3: hold ONLY while a rich-town pack-train is in flight
-            # (bounded 2-3 turns; pioneers resume after).
-            _rich_pending = any(t.population >= 700.0 for t in own_t
-                                if t.id in state._pending_trains)
-            _raid_hold = _rich_pending
-            if not _rich_pending:
-                _raid = None  # no assembly coming: reassess later
+            # v3: hold ONLY while a rich-town pack-train is in flight.
+            # Keep the lock (assembly-block below trains rich towns);
+            # afford-check at select already drops the truly unmakable.
+            _raid_hold = any(t.population >= 700.0 for t in own_t
+                             if t.id in state._pending_trains)
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
