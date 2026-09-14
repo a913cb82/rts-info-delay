@@ -372,6 +372,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += 1
     if not dense_busy and _densify_site(state, config, used_sites + enroute) is not None:
         want += 1
+    # EARLY-SURGE (compound-longest): double pioneer-trains t1-100 while
+    # mothers healthy (>500) and bank full. Young mouths compound longest.
+    if turn <= 100 and not state.should_yield():
+        _healthy = [t for t in own_t if t.population > 500.0 and t.id not in mustered and cooled(t)]
+        for t in _healthy[:2]:
+            if state.should_yield():
+                break
+            out.append(f"TRAIN {t.id} {_train_size(t, config):.1f}")
+            state.note_train(t.id)
+            _LAST_TRAIN[t.id] = turn
     short = want - len(idle)
     if short > 0:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
