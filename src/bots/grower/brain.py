@@ -26,6 +26,8 @@ SIGHT = 150.0         # vision/muster-trigger range
 _LAST_TRAIN: dict[int, int] = {}
 _FOE_MAX: dict[int, float] = {}
 _PACK_TOWN: int | None = None  # town currently training the raid pack
+_FOUNDINGS = 0  # lifetime founding-BUILDs (feeder-cap: colonies feed capital)
+FEEDER_CAP = 3
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
 
@@ -256,6 +258,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             else:
                 out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {tgt.x:.1f} {tgt.y:.1f}")
             continue
+        global _FOUNDINGS
+        if _FOUNDINGS >= FEEDER_CAP:
+            continue  # feeder-cap: capital compounds, colonies feed (no new mouths)
         site = _densify_site(state, config, used_sites + enroute)
         if site is None:
             site = _lattice_site(state, config, used_sites + enroute)
@@ -263,6 +268,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
             out.append(f"BUILD {a.id} {site[0]:.1f} {site[1]:.1f} {a.size:.1f}")
+            _FOUNDINGS += 1
         else:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
