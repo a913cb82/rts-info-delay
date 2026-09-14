@@ -4307,3 +4307,9 @@ P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
 T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
 Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
 Fast paths all steal grown stocks (shelved: user wants peaceful first).
+
+### 2P-corridor artifact (2026-09-14, loop/grower-v3raid)
+Close-2P H2Hs LIE: all traffic funnels past corridor colonies; own
+marchers forage-starve them (refound-die loop at (417,486), 17 foundings).
+FFA-ring diffuses traffic. 2P retired as instrument (FFA-league + rate only).
+v6 (purpose-tagged hold) -> FFA parity check. v3fix grind: 62.4/25g.
