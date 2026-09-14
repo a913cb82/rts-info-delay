@@ -234,8 +234,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             idle = [a for a in idle if a.id != _pack.id]
             _pool = sum(a.size for a in idle)
         else:
-            _raid_hold = False  # v2: never hold (peace first; steal surplus only)
-            _raid = None  # drop: reassess when surplus exists
+            # v3: hold ONLY while a rich-town pack-train is in flight
+            # (bounded 2-3 turns; pioneers resume after).
+            _rich_pending = any(t.population >= 700.0 for t in own_t
+                                if t.id in state._pending_trains)
+            _raid_hold = _rich_pending
+            if not _rich_pending:
+                _raid = None  # no assembly coming: reassess later
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
@@ -260,8 +265,18 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
 
-    # 2b. NO raid assembly (v2: packs form from surplus only; every
-    # forced train is a peace-tax. Assembly was the 12.5-war donation).
+    # 2b. rich-town assembly (v3: only 700+ towns feed packs. Their
+    # 10%-trains (70+) form packs in 2-3 turns; poor towns never taxed.
+    # Pack marches at need; pool merges otherwise (bird-in-hand).
+    if _raid is not None and _pool < _raid[1] and not state.should_yield():
+        _rt, _rn = _raid
+        _rich = sorted((t for t in own_t if t.population >= 700.0 and t.id not in mustered
+                        and t.id not in state._pending_trains),
+                       key=lambda t: t.population, reverse=True)
+        if _rich:
+            out.append(f"TRAIN {_rich[0].id} {_train_size(_rich[0], config):.1f}")
+            state.note_train(_rich[0].id)
+            _LAST_TRAIN[_rich[0].id] = turn
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
