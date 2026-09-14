@@ -10,7 +10,7 @@ Playbook (all numbers experimental, BOT_WORKLOG early-game series):
 from __future__ import annotations
 import math
 from engine.config import GameConfig
-from .intel import GrowerState as BotState
+from bots.grower.intel import GrowerState as BotState
 
 LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
 MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
