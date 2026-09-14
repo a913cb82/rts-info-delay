@@ -4373,3 +4373,10 @@ total). NOTHROTTLE+NOSKIP probes (fixed tree): 11.2k/11.3k each; both-on
 Board (solo, clean): 500->671, 1k->1237, 10k->10541, 50k->9524, 100k->9647.
 Next rung (proposed): triage pending-bypass (true 64-in-6 fission speed;
 pool-spiral risk retired by forage-aware) — unbuilt.
+
+### empty_10000 canonical: 10k starts (2026-09-14, loop/grower)
+Regenerated all-grower 5x10k starts, 10k turns (2x clock for 5-bot
+dispersal scale). First attempt: f0 clock-dead t1651 (16ms overdraft),
+f2 middle-child stall (30km foe-halo sandwiches; ->1860). Fixes: halo
+12km + turn_time 200/increment 20. Clean: 11318/10956/10395/10573/11346,
+no deaths. md5-verified recordings->viewer/public.
