@@ -4307,3 +4307,8 @@ P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
 T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
 Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
 Fast paths all steal grown stocks (shelved: user wants peaceful first).
+
+### Boost-timing built (2026-09-14, loop/grower-boosttime)
+Age-aware boosts (200-1500t window; newborns solo, ancients feed).
+Site-tracked ages (engine assigns ids). Micro-edge hunt for margin.
+Validates quiet (loaded ties everything).
