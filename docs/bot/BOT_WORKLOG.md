@@ -4438,3 +4438,8 @@ Ranks 22.6/10g with all-725/726s (placements 1-4 on tiebreaks). In
 tie-pack-world ordinal = positional lottery; mu converges to pack-mean.
 70 needs MARGIN (non-tie wins): +1-edges (presend), captures (+300), or
 quiet-box true-scores. Grinding ties is motive without motion.
+
+### Breakthrough battery loaded (2026-09-14, loop/grower)
+8 shots queued on quiet compute: teacher, meta, boosttime, surge, sniper,
+eater/fan, presend-true-scores (sleeper 3am), ranks-modes. Thesis each in
+docs/bot/*.md. 70 needs margin (non-tie wins); ties are noise.
