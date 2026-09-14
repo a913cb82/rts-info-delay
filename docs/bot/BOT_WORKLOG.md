@@ -4394,3 +4394,8 @@ ordinal (gate needs >); grinding both to 15g for tiebreak.
 ### Predator eats growers 691-22 (2026-09-14, loop/grower)
 H2H (100km, mustering): intel-gated single raid captures/ravages
 (grower 22, near-eliminated). Gating validated vs real muster.
+
+### DB union-home (2026-09-14, loop/grower)
+Branches had diverged DBs (rating on feature branches). New rule: union
+(exact-line dedupe, ts-sort, replay) to loop/grower after every rating.
+Rescued warden-5 from log (fake early-ts; approximate order). Home: 55g.
