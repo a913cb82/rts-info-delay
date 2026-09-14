@@ -64,7 +64,8 @@ class GrowerState:
         return max(0.0, (self.deadline - time.time()) * 1000) < 5.0
 
     def note_train(self, tid: int) -> None:
-        self._pending_trains[tid] = self.turn + 50
+        # fission: 2-turn pending (cadence via cooldown-50; triage sheds every 2t)
+        self._pending_trains[tid] = self.turn + 2
 
     def cached_or_decide(self, decide_fn, cfg, events=None):
         return decide_fn(self, cfg)
