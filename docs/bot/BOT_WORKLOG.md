@@ -4307,3 +4307,8 @@ P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
 T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
 Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
 Fast paths all steal grown stocks (shelved: user wants peaceful first).
+
+### Teacher-1 queued (2026-09-14, loop/grower-teacher)
+Technique frontier: 5k-teacher uplifts 60km (+75%). Phase-2 concentration
+(t3000+: pile into capital, sacrifice feeders). Validates on quiet box.
+Know-how mechanics read exactly; T5-parasite warns it may fail. Bold.
