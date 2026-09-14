@@ -177,7 +177,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # big-state skip-turn (missions are multi-turn idempotent; halves average
     # cost so the bank pins at cap (spike-proof). Muster still runs every turn.
     _big = len(state.world.towns) + len(state.world.armies) > 30
-    _quiet = not any(a.faction != state.faction and a.alive for a in state.world.armies)
+    _quiet = not any(a.faction != state.faction for a in state.world.armies)
     _last_light = getattr(state, "_light_at", -10 ** 9)
     if _big and getattr(state, "_changed", False) and state.turn - _last_light >= 5:
         state._changed = False
@@ -210,7 +210,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # 1. JIT muster (T6: muster beats raids; defense is score-neutral).
     foe_armies = [a for a in state.world.armies
-                  if a.faction != state.faction and a.alive]
+                  if a.faction != state.faction]
     mustered: set[int] = set()
     if foe_armies:
         for t in own_t:
