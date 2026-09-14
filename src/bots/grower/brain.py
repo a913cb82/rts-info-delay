@@ -237,7 +237,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # v3: hold ONLY while a rich-town pack-train is in flight.
             # Keep the lock (assembly-block below trains rich towns);
             # afford-check at select already drops the truly unmakable.
-            _raid_hold = any(t.population >= 700.0 for t in own_t
+            _raid_hold = any(t.population >= 500.0 for t in own_t
                              if t.id in state._pending_trains)
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
@@ -263,12 +263,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
 
-    # 2b. rich-town assembly (v3: only 700+ towns feed packs. Their
-    # 10%-trains (70+) form packs in 2-3 turns; poor towns never taxed.
-    # Pack marches at need; pool merges otherwise (bird-in-hand).
+    # 2b. rich-town assembly (v4: 500+ towns feed packs (mothers stall
+    # ~570; 700-gate never fires -- traced). 10%-trains form packs;
+    # cooled() keeps floors so growth is never taxed. Bounded: pack only.
     if _raid is not None and _pool < _raid[1] and not state.should_yield():
         _rt, _rn = _raid
-        _rich = sorted((t for t in own_t if t.population >= 700.0 and t.id not in mustered
+        _rich = sorted((t for t in own_t if t.population >= 500.0 and t.id not in mustered
                         and t.id not in state._pending_trains),
                        key=lambda t: t.population, reverse=True)
         if _rich:
