@@ -217,7 +217,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # muster-aware need, affordable-lock). v3 peace + predator steal.
     _pool = sum(a.size for a in idle)
     _raid = None
-    _foe_towns = [t for t in state.world.towns
+    _foe_towns = [] if _RANK_MODE == 1 else [t for t in state.world.towns
                   if t.faction != state.faction and t.faction is not None
                   and t.population >= 400]
     if _foe_towns and not state.should_yield():
@@ -236,8 +236,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             _mustering = _u.population < _FOE_MAX[_u.id] - 30.0
             _need = _garr + (_u.population * 0.15 * _march_t if _mustering else 15.0) + 30.0
             _prize = _u.population * 0.5
-            if _prize < 200:
-                continue
+            if _prize < (100.0 if _RANK_MODE == 2 else 200.0):
+                continue  # trail gambles
             _biggest = max([t.population * (getattr(config, "max_train_frac", 0.1) or 0.1) for t in own_t] or [0])
             if _need > _pool + 8 * max(30.0, _biggest):
                 continue
@@ -292,7 +292,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # cooled() keeps floors so growth is never taxed. Bounded: pack only.
     if _raid is not None and _pool < _raid[1] and not state.should_yield():
         _rt, _rn = _raid
-        _rich = sorted((t for t in own_t if t.population >= 500.0 and t.id not in mustered
+        _rich = sorted((t for t in own_t if t.population >= (400.0 if _RANK_MODE == 2 else 500.0) and t.id not in mustered
                         and t.id not in state._pending_trains),
                        key=lambda t: t.population, reverse=True)
         if _rich:
