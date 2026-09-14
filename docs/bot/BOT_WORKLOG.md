@@ -4380,3 +4380,7 @@ dispersal scale). First attempt: f0 clock-dead t1651 (16ms overdraft),
 f2 middle-child stall (30km foe-halo sandwiches; ->1860). Fixes: halo
 12km + turn_time 200/increment 20. Clean: 11318/10956/10395/10573/11346,
 no deaths. md5-verified recordings->viewer/public.
+
+### Round-robin launched (new-era goal: 60 ordinal)
+Population: grower-base + 4 variants (fission/villages/markets/top500),
+5g each, fresh DB. Gate: merge iff ordinal > best.
