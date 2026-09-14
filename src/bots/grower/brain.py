@@ -119,10 +119,11 @@ def _densify_list(state, config, exclude=None) -> list[tuple[float, float]]:
     own = state.own_towns()
     excl = list(exclude) if exclude else []
     small = [t for t in own if t.population <= DENSE_MAX_POP]
-    bigs = [(t.x, t.y) for t in own if t.population >= DENSE_HOLE_POP]
+    _og2 = _grid([(t.x, t.y, 1) for t in own], 8.0)
+    _bg2 = _grid([(t.x, t.y, 1) for t in own if t.population >= DENSE_HOLE_POP], 32.0)
     out = []
     for t in small:
-        if any(math.hypot(t.x - bx, t.y - by) < DENSE_HOLE_R for bx, by in bigs):
+        if _near(_bg2, 32.0, t.x, t.y, DENSE_HOLE_R):
             continue  # hole brewing nearby: spread (pioneer) instead of feeding it
         for ring_r in (DENSE_DIST, DENSE_DIST * 2):
             for k in range(6):
@@ -130,7 +131,7 @@ def _densify_list(state, config, exclude=None) -> list[tuple[float, float]]:
                 x, y = t.x + ring_r * math.cos(ang), t.y + ring_r * math.sin(ang)
                 if x < 5 or x > mw - 5 or y < 5 or y > mh - 5:
                     continue
-                if any(math.hypot(x - u.x, y - u.y) < DENSE_DIST for u in own):
+                if _near(_og2, 8.0, x, y, DENSE_DIST):
                     continue
                 if any(math.hypot(x - ex, y - ey) < DENSE_DIST for ex, ey in excl):
                     continue
