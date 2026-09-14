@@ -63,14 +63,6 @@ def _all_sites(state, config) -> list[tuple[float, float]]:
     hit = _SITE_CACHE.get(key)
     if hit is not None:
         return hit
-    # scan-throttle: a rescan right after every founding spikes the clock
-    # (town-change misses); tolerate <=5-turn-stale sites (harmless: a second
-    # pioneer to a just-founded spot becomes a boost).
-    last = _LAST_SCAN.get("sites", -10 ** 9)
-    if state.turn - last < 5:
-        for k, v in list(_SITE_CACHE.items()):
-            if len(k) == 5 and isinstance(k[4], tuple) and isinstance(v, list):
-                return v
     _LAST_SCAN["sites"] = state.turn
     ax, ay, mw, mh, _ = key
     own = state.own_towns()
@@ -196,18 +188,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         return g is not None and g < TRIAGE_GROWTH * max(1.0, t.population)
 
     def cooled(t) -> bool:
-        # pending (delivery) gates re-train; floor+cooldown gate normal;
-        # triage bypasses floor/cooldown (shed-max: 10%/turn every turn)
+        # pending (delivery) paces; floor-350 + trickle-50 govern (v9 dynamics)
         if t.id in state._pending_trains:
             return False
-        if t.population >= TRAIN_FLOOR \
-                and _LAST_TRAIN.get(t.id, -10 ** 9) + TRAIN_COOLDOWN <= turn:
-            return True
-        try:
-            g = state.get_growth(t.id)
-        except Exception:
-            g = None
-        return g is not None and g < TRIAGE_GROWTH * max(1.0, t.population)
+        return t.population >= TRAIN_FLOOR or _triage(t)
 
     # 1. JIT muster (T6: muster beats raids; defense is score-neutral).
     foe_armies = [a for a in state.world.armies
@@ -321,14 +305,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # 3. growth trains, mouth-accounted (general across scales: train what's
     # needed; big towns make exact-size armies, no flood, no starvation).
     want = sum(max(0.0, min(BOOST_BELOW - t.population, CHUNK)) for t in needy)
-    # triage sheds regardless of missions (ark: 10% out every turn beats -12% death)
-    for t in own_t:
-        if t.id not in mustered and _triage(t):
-            try:
-                frac = getattr(config, "max_train_frac", 0.1) or 0.1
-                want += max(MIN_TRAIN, t.population * frac)
-            except Exception:
-                pass
     if not pioneer_busy and pidx < len(psites):
         want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
@@ -337,25 +313,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if short >= MIN_TRAIN:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
                        key=lambda t: t.population, reverse=True)
-        # triage towns ALL shed (parallel ark); normal: ONE per turn (sequencing)
-        fired_normal = False
-        for t in cands:
-            if state.should_yield():
-                break
-            is_tri = _triage(t)
-            if not is_tri:
-                if fired_normal:
-                    continue
-            # triage sheds 10% (uncapped); normal trains exactly what's needed
-            size = _train_size(t, config) if is_tri else min(_train_size(t, config), max(MIN_TRAIN, short))
-            if not is_tri and t.population - size < TRAIN_FLOOR and t.population < 700.0:
-                continue
-            out.append(f"TRAIN {t.id} {size:.1f}")
-            state.note_train(t.id)
-            _LAST_TRAIN[t.id] = turn
-            if not is_tri:
-                fired_normal = True
-            short -= size
-            if short < MIN_TRAIN and fired_normal:
-                break
+        # ONE growth train per turn (CAD one-at-a-time; parallel floods pin the mother)
+        t = cands[0] if cands else None
+        if t is not None and not state.should_yield():
+            size = min(_train_size(t, config), max(MIN_TRAIN, short))
+            if not (t.population - size < TRAIN_FLOOR and t.population < 700.0 and cooled(t) and t.population >= TRAIN_FLOOR):
+                out.append(f"TRAIN {t.id} {size:.1f}")
+                state.note_train(t.id)
+                _LAST_TRAIN[t.id] = turn
     return out
