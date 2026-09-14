@@ -24,6 +24,7 @@ ARRIVED = 1.0         # km: close enough to count as landed (exact engine)
 SIGHT = 150.0         # vision/muster-trigger range
 
 _LAST_TRAIN: dict[int, int] = {}
+_FOE_MAX: dict[int, float] = {}
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
 
@@ -175,10 +176,56 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     idle = [a for a in state.own_armies()
             if not a.is_viceroy and not state.army_has_target(a.id)
             and not state.has_pending_build(a.id)]
+    # RAID STAGE (v3raid): intel-gated min-size raids (T4 prize>=200,
+    # muster-aware need, affordable-lock). v3 peace + predator steal.
+    _pool = sum(a.size for a in idle)
+    _raid = None
+    _foe_towns = [t for t in state.world.towns
+                  if t.faction != state.faction and t.faction is not None
+                  and t.population >= 400]
+    if _foe_towns and not state.should_yield():
+        _spd = max(1.0, getattr(config, "army_speed", 50.0) or 50.0)
+        _home = own_t[0] if own_t else None
+        _best = None
+        for _u in _foe_towns:
+            _d = min([math.hypot(a.x - _u.x, a.y - _u.y) for a in idle] or [1e9])
+            if _home is not None:
+                _d = min(_d, math.hypot(_home.x - _u.x, _home.y - _u.y))
+            _march_t = _d / _spd + 2.0
+            _garr = sum(a.size for a in state.world.armies
+                        if a.faction == _u.faction
+                        and math.hypot(a.x - _u.x, a.y - _u.y) <= 20.0)
+            _FOE_MAX[_u.id] = max(_FOE_MAX.get(_u.id, 0.0), _u.population)
+            _mustering = _u.population < _FOE_MAX[_u.id] - 30.0
+            _need = _garr + (_u.population * 0.15 * _march_t if _mustering else 15.0) + 30.0
+            _prize = _u.population * 0.5
+            if _prize < 200:
+                continue
+            _biggest = max([t.population * (getattr(config, "max_train_frac", 0.1) or 0.1) for t in own_t] or [0])
+            if _need > _pool + 8 * max(30.0, _biggest):
+                continue
+            _score = _prize - _need * 1.5 - _d * 0.1
+            if _best is None or _score > _best[0]:
+                _best = (_score, _u, _need)
+        if _best is not None:
+            _raid = (_best[1], _best[2])
+    # raid marches FIRST (pack before pioneers spend it)
+    _raid_hold = False
+    if _raid is not None and not state.should_yield() and idle:
+        _rt, _rn = _raid
+        _pack = max(idle, key=lambda a: a.size)
+        if _pack.size >= _rn:
+            out.append(f"MOVE_TO {_pack.id} {_pack.x:.1f} {_pack.y:.1f} {_rt.x:.1f} {_rt.y:.1f}")
+            idle = [a for a in idle if a.id != _pack.id]
+            _pool = sum(a.size for a in idle)
+        else:
+            _raid_hold = True
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
+        if _raid_hold:
+            continue  # assembling raid: pioneers pause (boosts above still run)
         if needy:
             tgt = needy.pop(0)
             if math.hypot(a.x - tgt.x, a.y - tgt.y) <= ARRIVED:
@@ -197,6 +244,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
 
+    # 2b. raid assembly (mouth-pipeline: biggest cooled town feeds the pack;
+    # v3 cooled() keeps the floor, pending-guard keeps 1-train/town).
+    if _raid is not None and _pool < _raid[1] and not state.should_yield():
+        _rt, _rn = _raid
+        _rc = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
+                     key=lambda t: t.population, reverse=True)
+        if _rc:
+            out.append(f"TRAIN {_rc[0].id} {_train_size(_rc[0], config):.1f}")
+            state.note_train(_rc[0].id)
+            _LAST_TRAIN[_rc[0].id] = turn
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
@@ -204,6 +261,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += 1
     if not dense_busy and _densify_site(state, config, used_sites + enroute) is not None:
         want += 1
+    if _raid is not None and _pool < _raid[1]:
+        want += 1  # pack-train: one extra mouth-pipeline slot for assembly
     short = want - len(idle)
     if short > 0:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
