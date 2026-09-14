@@ -315,7 +315,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         site = None
         spend_target = VILLAGE_SPEND
-        _dj = _take(dsites, didx, a)
+        _dj = -1  # markets-only: never densify
         if _dj >= 0:
             site = dsites[_dj]
             didx = _dj + 1
@@ -342,7 +342,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     want = sum(max(0.0, min(BOOST_BELOW - t.population, CHUNK)) for t in needy)
     if not pioneer_busy and pidx < len(psites):
         want += MARKET_SPEND
-    if not dense_busy and didx < len(dsites):
+    # markets-only: densify disabled (16km-667 pioneers only)
+    if False and not dense_busy and didx < len(dsites):
         want += VILLAGE_SPEND
     short = want - sum(a.size for a in idle)
     _tri_here = [t for t in own_t if t.id not in mustered and cooled(t) and _triage(t)]
