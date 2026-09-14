@@ -16,7 +16,7 @@ LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
 MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
 DENSE_DIST = 4.0      # densify ring radius around small towns (P2/P2b)
 DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
-TRAIN_SIZE = 30.0     # v3: small-fast trains beat big-slow (CAD 718)
+TRAIN_SIZE = 40.0     # bigcol: crowd-tough colonies (FFA-meta)
 TRAIN_FLOOR = 350.0   # train iff pop >= this (CAD winner)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 150.0   # colonies below this get boosted
