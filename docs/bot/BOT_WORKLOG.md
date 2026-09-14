@@ -4399,3 +4399,11 @@ H2H (100km, mustering): intel-gated single raid captures/ravages
 Branches had diverged DBs (rating on feature branches). New rule: union
 (exact-line dedupe, ts-sort, replay) to loop/grower after every rating.
 Rescued warden-5 from log (fake early-ts; approximate order). Home: 55g.
+
+### Alive-crash saga (2026-09-14, loop/grower)
+H2H bots crashed t2 on contact: `.alive` never fixed on fission-line
+(base-only fix 6a052e6; fission forked before it). Rated games survived
+only via blindness (empty mirror => short-circuit). Fixed on cadence
+(2220427), fission (20c24c8); main-merge pending (/tmp/rl_realism holds
+main worktree dirty). Rated fission games had no captures => stand.
+Cadence beats fission H2H 289-249 (war). Home DB: 70g.
