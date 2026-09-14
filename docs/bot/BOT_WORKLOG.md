@@ -4427,3 +4427,8 @@ Mechanism: count-based trains + floor-governed (no cooldown) + 30-size
 crowd-proof colonies. Solo-optimum (20,250) does NOT transfer to FFA.
 Merge loop/main-v3fixed verified (suites+smoke), ref-update queued
 behind /tmp/rl_realism main hold. FFA tuning must happen in leagues.
+
+### Bank-starvation meta (2026-09-14, loop/grower)
+Loaded boxes pin banks empty (round-trip deduction, not compute). v6 726
+on 20 missions. Features must front-load or starve-proof. Sleeper armed:
+presend-30g at 3am (quiet-box true scores). Load-gate validations (uptime).
