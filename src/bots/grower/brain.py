@@ -259,6 +259,29 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         site = _densify_site(state, config, used_sites + enroute)
         if site is None:
             site = _lattice_site(state, config, used_sites + enroute)
+        # CONTACT-BIAS (v7): among near sites prefer foe/center-ward ones.
+        # Mild (w=0.2): lattice cadence first, contact second. Re-examine a
+        # couple cached candidates; take the most contact-ward within 40km.
+        if site is not None and not state.should_yield():
+            _foes = [t for t in state.world.towns
+                     if t.faction != state.faction and t.faction is not None]
+            mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+            if _foes:
+                _tgt = min(_foes, key=lambda t: math.hypot(a.x - t.x, a.y - t.y))
+                _tx, _ty = _tgt.x, _tgt.y
+            else:
+                _tx, _ty = mw / 2, mh / 2
+            _alt = None
+            for _cs in _all_sites(state, config)[:40]:
+                if any(math.hypot(_cs[0] - ex, _cs[1] - ey) < MIN_DIST for ex, ey in used_sites + enroute):
+                    continue
+                if math.hypot(_cs[0] - a.x, _cs[1] - a.y) > 60.0:
+                    continue
+                _score = math.hypot(_cs[0] - _tx, _cs[1] - _ty) - 0.2 * math.hypot(_cs[0] - a.x, _cs[1] - a.y)
+                if _alt is None or _score < _alt[0]:
+                    _alt = (_score, _cs)
+            if _alt is not None and math.hypot(_alt[1][0] - _tx, _alt[1][1] - _ty) < math.hypot(site[0] - _tx, site[1] - _ty) - 5.0:
+                site = _alt[1]
         if site is None:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
