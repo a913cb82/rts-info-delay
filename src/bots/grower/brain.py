@@ -16,7 +16,7 @@ LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
 MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
 MIN_ARMY = 10.0      # armies below this get no missions (starve/merge; don't spam 0.0)
 MIN_TRAIN = 20.0      # never train below this (9-towns die; skip until want>=20)
-SCAN_R = 400.0        # pioneer scan radius (cached; full-map fallback when empty)
+SCAN_R = 250.0        # pioneer scan radius (cheap; full-map fallback when empty)
 DENSE_DIST = 4.0      # densify ring radius around small towns (P2/P2b)
 DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
 DENSE_HOLE_R = 30.0  # no densify near 800+ towns (feeds black holes -> crash)
@@ -170,6 +170,12 @@ def _near(g, cell, x, y, r):
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
+    if state.turn % 50 == 0:
+        try:
+            import gc as _gc
+            _gc.collect()
+        except Exception:
+            pass
     # big-state skip-turn (missions are multi-turn idempotent; halves average
     # cost so the bank pins at cap (spike-proof). Muster still runs every turn.
     _big = len(state.world.towns) + len(state.world.armies) > 30
@@ -323,3 +329,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 state.note_train(t.id)
                 _LAST_TRAIN[t.id] = turn
     return out
+
+try:
+    import gc as _gc0
+    _gc0.disable()
+except Exception:
+    pass
