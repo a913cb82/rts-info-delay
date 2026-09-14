@@ -25,6 +25,7 @@ SIGHT = 150.0         # vision/muster-trigger range
 
 _LAST_TRAIN: dict[int, int] = {}
 _FOE_MAX: dict[int, float] = {}
+_PACK_TOWN: int | None = None  # town currently training the raid pack
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
 
@@ -224,6 +225,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 _best = (_score, _u, _need)
         if _best is not None:
             _raid = (_best[1], _best[2])
+        else:
+            _PACK_TOWN = None  # no lock: stale pack-tag must not hold pioneers
     # raid marches FIRST (pack before pioneers spend it)
     _raid_hold = False
     if _raid is not None and not state.should_yield() and idle:
@@ -233,12 +236,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"MOVE_TO {_pack.id} {_pack.x:.1f} {_pack.y:.1f} {_rt.x:.1f} {_rt.y:.1f}")
             idle = [a for a in idle if a.id != _pack.id]
             _pool = sum(a.size for a in idle)
+            _PACK_TOWN = None
         else:
-            # v3: hold ONLY while a rich-town pack-train is in flight.
-            # Keep the lock (assembly-block below trains rich towns);
-            # afford-check at select already drops the truly unmakable.
-            _raid_hold = any(t.population >= 500.0 for t in own_t
-                             if t.id in state._pending_trains)
+            # v4: hold ONLY while OUR pack-train is in flight (purpose-tagged;
+            # growth-trains must never hold pioneers -- that was the 700-stall).
+            global _PACK_TOWN
+            _raid_hold = (_PACK_TOWN is not None
+                          and _PACK_TOWN in state._pending_trains)
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
@@ -275,6 +279,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"TRAIN {_rich[0].id} {_train_size(_rich[0], config):.1f}")
             state.note_train(_rich[0].id)
             _LAST_TRAIN[_rich[0].id] = turn
+            _PACK_TOWN = _rich[0].id
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
