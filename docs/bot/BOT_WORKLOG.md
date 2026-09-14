@@ -4448,3 +4448,7 @@ docs/bot/*.md. 70 needs margin (non-tie wins); ties are noise.
 t9500+: no missions/trains/raids (nothing matures; hold winnings). +2-5,
 zero risk. Battery: 9 shots (teacher/meta/boosttime/surge/sniper/eater/
 endgame/presend-true/ranks). Validates quiet.
+
+### Combo built (2026-09-14, loop/grower-combo)
+presend+endgame+boosttime+surge on v6 (orthogonal phases; surge/assembly
+temporally separated). Sum-of-edges? Interference? Validates quiet.
