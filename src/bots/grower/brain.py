@@ -295,36 +295,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             state.note_train(_rich[0].id)
             _LAST_TRAIN[_rich[0].id] = turn
             _PACK_TOWN = _rich[0].id
-    # 2c. PRE-SEND (order-latency exploit, see docs/bot/PRESEND.md): busy
-    # pioneers within (msg_eta+1) march-turns of their site get their BUILD
-    # now, so the messenger lands with them (saves observe+roundtrip ~2t/leg).
-    # Dropped sends are free (army not yet landed; retry next turn).
-    if not state.should_yield():
-        _cap = state.world.faction_capital(state.faction)
-        if _cap is not None:
-            _spd = max(1.0, getattr(config, "army_speed", 50.0) or 50.0)
-            _idle_ids = {x.id for x in idle}
-            for a in state.own_armies():
-                if state.should_yield():
-                    break
-                if a.is_viceroy or a.id in _idle_ids:
-                    continue
-                tgt = state.army_target(a.id)
-                if tgt is None:
-                    continue
-                # intended site: a planned found/boost point near the target
-                _site = None
-                for _cand in list(needy) + used_sites:
-                    _cx, _cy = (_cand.x, _cand.y) if hasattr(_cand, "x") else (_cand[0], _cand[1])
-                    if math.hypot(tgt[0] - _cx, tgt[1] - _cy) <= 10.0:
-                        _site = (_cx, _cy)
-                        break
-                if _site is None:
-                    continue
-                _army_eta = math.hypot(a.x - _site[0], a.y - _site[1]) / _spd
-                _msg_eta = math.hypot(_cap.x - a.x, _cap.y - a.y) / 150.0
-                if _army_eta <= _msg_eta + 1.0:
-                    out.append(f"BUILD {a.id} {_site[0]:.1f} {_site[1]:.1f} {a.size:.1f}")
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and 200.0 <= _town_age(t) <= 1500.0
