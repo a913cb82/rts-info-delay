@@ -228,8 +228,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         tgt = state.army_target(a.id)
         if tgt is not None and math.hypot(a.x - tgt[0], a.y - tgt[1]) <= ARRIVED:
             state._army_targets.pop(a.id, None)
-    if _big and _quiet and turn % 2 == 1:
-        return out  # skip-turn: missions/trains wait a turn (muster above already ran)
+    if _big and _quiet and (turn + state.faction) % 2 == 1:
+        return out  # skip-turn (faction-phased: desyncs 5-bot heavy turns; muster ran)
     # en-route coverage: armies already marching count toward missions.
     enroute: list[tuple[float, float]] = []
     for a in state.own_armies():
