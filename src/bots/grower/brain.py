@@ -27,6 +27,8 @@ _LAST_TRAIN: dict[int, int] = {}
 _FOUNDED_SITES: list = []  # (x, y, turn) of our founding-BUILDs (boost-timing)
 _FOE_MAX: dict[int, float] = {}
 _PACK_TOWN: int | None = None  # town currently training the raid pack
+_RANK_MODE = 0  # 0=race, 3=siege, 4=feast (meta composition-modes)
+_RANK_AT = -10 ** 9
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
 
@@ -151,6 +153,25 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # 1. JIT muster (T6: muster beats raids; defense is score-neutral).
     foe_armies = [a for a in state.world.armies
                   if a.faction != state.faction]
+    # META-1 composition reader (field archetypes; hysteresis via _RANK_AT).
+    # raiders: foe armies with targets (marching!); growers: foe towns>4 any;
+    # stagnants: foe factions at <=2 towns (post-t2000).
+    global _RANK_MODE, _RANK_AT
+    _raiders_inbound = any(state.army_has_target(a.id) for a in foe_armies)
+    _foe_town_counts: dict = {}
+    for t in state.world.towns:
+        if t.faction != state.faction and t.faction is not None:
+            _foe_town_counts[t.faction] = _foe_town_counts.get(t.faction, 0) + 1
+    _any_grower = any(n > 4 for n in _foe_town_counts.values())
+    _any_stagnant = any(n <= 2 for n in _foe_town_counts.values()) and turn >= 2000
+    if turn - _RANK_AT >= 500:
+        _RANK_AT = turn
+        if _raiders_inbound:
+            _RANK_MODE = 3  # siege: full-muster+turtle (deny snowball)
+        elif _any_stagnant:
+            _RANK_MODE = 4  # feast: eater-invade (free captures)
+        else:
+            _RANK_MODE = 0  # race: compound-max (zero raid-tax)
     mustered: set[int] = set()
     if foe_armies:
         for t in own_t:
@@ -201,9 +222,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # muster-aware need, affordable-lock). v3 peace + predator steal.
     _pool = sum(a.size for a in idle)
     _raid = None
+    _stag = {f for f, n in _foe_town_counts.items() if n <= 2} if _RANK_MODE == 4 else set()
     _foe_towns = [t for t in state.world.towns
                   if t.faction != state.faction and t.faction is not None
-                  and t.population >= 400]
+                  and (t.population >= 400
+                       or (t.faction in _stag and t.population >= 100.0))]
+    if _RANK_MODE == 3:
+        _foe_towns = []  # siege: no raids (turtle denies snowball)
     if _foe_towns and not state.should_yield():
         _spd = max(1.0, getattr(config, "army_speed", 50.0) or 50.0)
         _home = own_t[0] if own_t else None
