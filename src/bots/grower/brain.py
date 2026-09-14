@@ -132,6 +132,7 @@ def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
+    global _PACK_TOWN
     out: list[str] = []
     silence_watch(state, config)  # release stale march notes (else armies look busy forever)
     turn = state.turn
@@ -240,7 +241,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         else:
             # v4: hold ONLY while OUR pack-train is in flight (purpose-tagged;
             # growth-trains must never hold pioneers -- that was the 700-stall).
-            global _PACK_TOWN
             _raid_hold = (_PACK_TOWN is not None
                           and _PACK_TOWN in state._pending_trains)
     used_sites: list[tuple[float, float]] = []
