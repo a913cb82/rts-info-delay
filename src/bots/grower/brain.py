@@ -24,6 +24,7 @@ ARRIVED = 1.0         # km: close enough to count as landed (exact engine)
 SIGHT = 150.0         # vision/muster-trigger range
 
 _LAST_TRAIN: dict[int, int] = {}
+_FOUNDED_SITES: list = []  # (x, y, turn) of our founding-BUILDs (boost-timing)
 _FOE_MAX: dict[int, float] = {}
 _PACK_TOWN: int | None = None  # town currently training the raid pack
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
@@ -177,8 +178,11 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         tgt = state.army_target(a.id)
         if tgt is not None:
             enroute.append(tgt)
+    # BOOST-TIMING: in-window (200-1500t) colonies only; newborns solo-fast,
+    # ancients are feeders. Unknown-age boosts (safe default).
     needy = [t for t in sorted(
-        (t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW),
+        (t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
+         and 200.0 <= _town_age(t) <= 1500.0),
         key=lambda t: t.population)
         if not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)]
     pioneer_busy = any(not any(math.hypot(ex - t.x, ey - t.y) < MIN_DIST for t in own_t)
@@ -243,7 +247,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # growth-trains must never hold pioneers -- that was the 700-stall).
             _raid_hold = (_PACK_TOWN is not None
                           and _PACK_TOWN in state._pending_trains)
+    global _FOUNDED_SITES
     used_sites: list[tuple[float, float]] = []
+    def _town_age(t) -> float:
+        _best = None
+        for _sx, _sy, _st in _FOUNDED_SITES:
+            if math.hypot(t.x - _sx, t.y - _sy) <= 10.0:
+                _age = turn - _st
+                if _best is None or _age < _best:
+                    _best = _age
+        return _best if _best is not None else 10 ** 9  # unknown: boost (safe)
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
@@ -263,6 +276,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
             out.append(f"BUILD {a.id} {site[0]:.1f} {site[1]:.1f} {a.size:.1f}")
+            _FOUNDED_SITES.append((site[0], site[1], turn))
         else:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
@@ -312,6 +326,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                     out.append(f"BUILD {a.id} {_site[0]:.1f} {_site[1]:.1f} {a.size:.1f}")
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
+                 and 200.0 <= _town_age(t) <= 1500.0
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
     if not pioneer_busy and _lattice_site(state, config, used_sites + enroute) is not None:
         want += 1
