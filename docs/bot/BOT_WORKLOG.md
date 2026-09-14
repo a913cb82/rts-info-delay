@@ -4307,3 +4307,8 @@ P2b mild-gradient densify confirmed (+31%/5k @210-scale). CEILING PROOF:
 T2-210 needs 600-mother (8k idle!) + 6x750t boosts = 12.5k > game.
 Honest peaceful caps ~730 (one system-doubling per game, not hierarchy).
 Fast paths all steal grown stocks (shelved: user wants peaceful first).
+
+### Wave fails 567 (2026-09-14, loop/grower-wave)
+Deadline-timing wrong: colonies are the all-game trade network, not
+snapshot mass. Solo capital stalls ~570; 3 late colonies add ~0.
+Early colonies pay via 8000t of uphill trade. Parked.
