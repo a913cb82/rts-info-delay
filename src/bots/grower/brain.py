@@ -234,7 +234,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             idle = [a for a in idle if a.id != _pack.id]
             _pool = sum(a.size for a in idle)
         else:
-            _raid_hold = True
+            _raid_hold = False  # v2: never hold (peace first; steal surplus only)
+            _raid = None  # drop: reassess when surplus exists
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
@@ -259,16 +260,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {site[0]:.1f} {site[1]:.1f}")
         used_sites.append(site)
 
-    # 2b. raid assembly (mouth-pipeline: biggest cooled town feeds the pack;
-    # v3 cooled() keeps the floor, pending-guard keeps 1-train/town).
-    if _raid is not None and _pool < _raid[1] and not state.should_yield():
-        _rt, _rn = _raid
-        _rc = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
-                     key=lambda t: t.population, reverse=True)
-        if _rc:
-            out.append(f"TRAIN {_rc[0].id} {_train_size(_rc[0], config):.1f}")
-            state.note_train(_rc[0].id)
-            _LAST_TRAIN[_rc[0].id] = turn
+    # 2b. NO raid assembly (v2: packs form from surplus only; every
+    # forced train is a peace-tax. Assembly was the 12.5-war donation).
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
@@ -276,8 +269,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += 1
     if not dense_busy and _densify_site(state, config, used_sites + enroute) is not None:
         want += 1
-    if _raid is not None and _pool < _raid[1]:
-        want += 1  # pack-train: one extra mouth-pipeline slot for assembly
     short = want - len(idle)
     if short > 0:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
