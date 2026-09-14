@@ -310,7 +310,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 _dirs = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
                 _di = _sent % 4
                 _dx, _dy = _dirs[_di]
-                if _cap.id not in state._pending_trains:
+                # PREEMPT (pending-guard starves: capital trains 24/7; fan
+                # order runs before growth-trains so it wins dedup).
+                if _sent < 4:
                     out.append(f"TRAIN {_cap.id} 5.0")
                     state.note_train(_cap.id)
                 # march the smallest untargeted to the fan point
