@@ -327,3 +327,8 @@ Rules: (1) bot game history (elos.json + elo_games.jsonl) committed after
 every rating run, no exceptions; (2) all bots must be committed to be tested
 (uncommitted code never rates); (3) old-engine ratings archived
 (benchmarks/archive/logistic-era/), void on the new engine.
+
+### Methodology-sync rule (2026-09-14)
+Always launch ratings from loop/grower (methodology-home). Feature
+branches carry stale benchmarks/*.py (era-filter leak wasted v3-10 on
+frozen fields). rate_brain/matchmake/elo_field/status sync before rating.
