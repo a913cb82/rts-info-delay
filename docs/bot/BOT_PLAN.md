@@ -337,3 +337,8 @@ frozen fields). rate_brain/matchmake/elo_field/status sync before rating.
 Union only games with ts >= 1789300000 (new-era floor). Old branches
 carry thousands of stale logistic-era games that poison replays
 (5047-smuggle caught and repaired).
+
+### No-switch-mid-run rule (2026-09-14)
+Never switch branches while a rating runs: the open jsonl handle follows
+the inode, writes land in the wrong worktree (v3fix-20 lost, rescued).
+Freeze the worktree for the whole grind.
