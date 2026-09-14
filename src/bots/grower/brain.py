@@ -136,6 +136,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
     silence_watch(state, config)  # release stale march notes (else armies look busy forever)
     turn = state.turn
+    _endgame = turn >= 9500  # ENDGAME BOOK: hold winnings (nothing matures)
     own_t = state.own_towns()
     if not own_t:
         return out
@@ -197,7 +198,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # muster-aware need, affordable-lock). v3 peace + predator steal.
     _pool = sum(a.size for a in idle)
     _raid = None
-    _foe_towns = [t for t in state.world.towns
+    _foe_towns = [] if turn >= 9500 else [t for t in state.world.towns
                   if t.faction != state.faction and t.faction is not None
                   and t.population >= 400]
     if _foe_towns and not state.should_yield():
@@ -247,6 +248,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
+        if _endgame:
+            continue  # no missions (pioneers can't mature; armies hold)
         if _raid_hold:
             continue  # assembling raid: pioneers pause (boosts above still run)
         if needy:
@@ -287,6 +290,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += 1
     if not dense_busy and _densify_site(state, config, used_sites + enroute) is not None:
         want += 1
+    if _endgame:
+        want = 0  # no growth-trains (neutral-at-best, forage-risk at worst)
     short = want - len(idle)
     if short > 0:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
