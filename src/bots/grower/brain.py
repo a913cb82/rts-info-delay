@@ -91,13 +91,17 @@ def _train_size(t, config) -> float:
     return min(TRAIN_SIZE, max(10.0, t.population * frac))
 
 
-def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
-    """Nearest 4km-ring point around a <=300 town (mild-gradient infill)."""
-    mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+def _densify_list(state, config) -> list[tuple[float, float]]:
+    """All 4km-ring points around <=MAX towns, sorted (pop, dist), cached
+    by town signature (per-army rescans killed the clock on contact)."""
     own = state.own_towns()
-    excl = list(exclude) if exclude else []
+    key = ("dense", tuple(sorted((t.id, round(t.x, 1), round(t.y, 1)) for t in own)))
+    hit = _SITE_CACHE.get(key)
+    if hit is not None:
+        return hit
+    mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
     small = [t for t in own if t.population <= DENSE_MAX_POP]
-    best = None
+    cands = []
     for t in small:
         for ring_r in (DENSE_DIST, DENSE_DIST * 2):
             for k in range(6):
@@ -107,12 +111,23 @@ def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
                     continue
                 if any(math.hypot(x - u.x, y - u.y) < DENSE_DIST for u in own):
                     continue
-                if any(math.hypot(x - ex, y - ey) < DENSE_DIST for ex, ey in excl):
-                    continue
-                d = math.hypot(x - t.x, y - t.y)
-                if best is None or (t.population, d) < (best[0], best[1]):
-                    best = (t.population, d, (x, y))
-    return best[2] if best else None
+                cands.append((t.population, math.hypot(x - t.x, y - t.y), (x, y)))
+    cands.sort(key=lambda c: (c[0], c[1]))
+    out = [c[2] for c in cands]
+    _SITE_CACHE[key] = out
+    if len(_SITE_CACHE) > 8:
+        _SITE_CACHE.pop(next(iter(_SITE_CACHE)))
+    return out
+
+
+def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
+    """Nearest 4km-ring point around a <=300 town (mild-gradient infill)."""
+    excl = list(exclude) if exclude else []
+    for site in _densify_list(state, config):
+        if any(math.hypot(site[0] - ex, site[1] - ey) < DENSE_DIST for ex, ey in excl):
+            continue
+        return site
+    return None
 
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
