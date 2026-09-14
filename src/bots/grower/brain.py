@@ -298,9 +298,10 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             state.note_train(_rich[0].id)
             _LAST_TRAIN[_rich[0].id] = turn
             _PACK_TOWN = _rich[0].id
-    # 2d. SCOUT-FAN (fan-1): t100, 4x5-size diagonals, 300km. Below MIN_ARMY
+    # 2d. SCOUT-FAN (fan-1): t10, 4x5-size diagonals, 300km. Below MIN_ARMY
     # (unclaimable); hold on arrival; reports ride mail. Survival lottery.
-    if turn >= 100 and turn < 110 and not state.should_yield():
+    # Fires t10 (bank full; t100 is yield-locked by scan costs).
+    if 10 <= turn < 20 and not state.should_yield():
         _cap = state.world.faction_capital(state.faction)
         if _cap is not None:
             mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
