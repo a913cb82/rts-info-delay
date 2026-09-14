@@ -181,6 +181,12 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         (t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW),
         key=lambda t: t.population)
         if not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)]
+    # TEACHER-1 (phase 2, t3000+): all surplus piles into the capital
+    # (directed boosts + migration drain = 2000+ teacher, ~30km frontier).
+    # Feeders sacrificed for range. See docs/bot/TEACHER.md.
+    _teacher_mode = turn >= 3000 and cap is not None and cap.population >= 500.0
+    if _teacher_mode:
+        needy = []  # no colony boosts; capital eats everything
     pioneer_busy = any(not any(math.hypot(ex - t.x, ey - t.y) < MIN_DIST for t in own_t)
                         for ex, ey in enroute)
     # densify openings (4km around <=300 towns), excluding en-route/used
@@ -255,6 +261,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 out.append(f"BUILD {a.id} {tgt.x:.1f} {tgt.y:.1f} {a.size:.1f}")
             else:
                 out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {tgt.x:.1f} {tgt.y:.1f}")
+            continue
+        if _teacher_mode and cap is not None:
+            # pile into the capital (directed boost; migration follows uphill)
+            if math.hypot(a.x - cap.x, a.y - cap.y) <= ARRIVED:
+                out.append(f"BUILD {a.id} {cap.x:.1f} {cap.y:.1f} {a.size:.1f}")
+            else:
+                out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {cap.x:.1f} {cap.y:.1f}")
             continue
         site = _densify_site(state, config, used_sites + enroute)
         if site is None:
