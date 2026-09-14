@@ -4407,3 +4407,8 @@ only via blindness (empty mirror => short-circuit). Fixed on cadence
 (2220427), fission (20c24c8); main-merge pending (/tmp/rl_realism holds
 main worktree dirty). Rated fission games had no captures => stand.
 Cadence beats fission H2H 289-249 (war). Home DB: 70g.
+
+### League verdict (2026-09-14, loop/grower)
+Top-5 slot-rotated FFA: cadence-fixed 690 avg, all others 670-672 (5/5).
+(20,250) is +2.7% compound. League-5 appended to DB (ints, documented).
+Cadence-fixed mu 65.7 leads pool; grinding to gate weight.
