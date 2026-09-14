@@ -12,10 +12,10 @@ import math
 from engine.config import GameConfig
 from bots.expander.intel import BotState, silence_watch
 
-LATTICE = 10.0        # scatter: farm-disc packing (5km radius, full coverage)
-MIN_DIST = 6.0        # scatter denser (farm coverage over spacing)
+LATTICE = 16.0        # pioneer hex spacing (market band 13-18km)
+MIN_DIST = 8.0        # min founding distance from any own town (P1: 4km spirals)
 DENSE_DIST = 4.0      # densify ring radius around small towns (P2/P2b)
-DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
+DENSE_MAX_POP = 600.0 # scatter: densify around everything (farm coverage)
 TRAIN_SIZE = 50.0     # scatter: 45-farms (crowd-tough, farm the disc)
 TRAIN_FLOOR = 350.0   # train iff pop >= this (CAD winner)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
