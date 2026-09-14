@@ -4312,3 +4312,7 @@ Fast paths all steal grown stocks (shelved: user wants peaceful first).
 Composition-modes (siege/feast/race) on v6+boosttime. First bot that reads
 the FIELD (raiders/growers/stagnants) instead of its position. No vampire
 here (v6-line); siege = muster + no-raid-locks. Validates quiet/mixed.
+
+### Early-surge built (2026-09-14, loop/grower-surge)
+t1-100 healthy-mother overtraining (bank-full window; young mouths compound
+longest). Bounded by floor-guards. Validates quiet.
