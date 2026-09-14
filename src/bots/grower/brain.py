@@ -81,7 +81,7 @@ def _all_sites(state, config) -> list[tuple[float, float]]:
                     continue
                 if _near(_og, 16.0, x, y, MIN_DIST):
                     continue
-                if _near(_fg, 32.0, x, y, 30.0):
+                if _near(_fg, 32.0, x, y, 12.0):
                     continue
                 pts.append((math.hypot(x - ax, y - ay), (x, y)))
         if pts:
