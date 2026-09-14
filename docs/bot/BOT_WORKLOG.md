@@ -4345,3 +4345,10 @@ cap vs -12%/turn deaths); vs idle 6.7x.
 t10000 (grower vs idle): 500->671/608, 1k->1251/608, 10k->9358/1394,
 50k->9612/1410, 100k->9760/1411. Big starts converge ~9.6k (shed-rate
 ceiling: 1-train/turn caps savings; rest is starvation waste).
+
+### Solo board green (2026-09-14, loop/grower)
+t10000 true-solo, no deaths: 500->671, 1k->1240, 10k->9200, 50k->9709,
+100k->10470 (idles 608/608/1394/1410/1411). Lessons: throttle-stale was
+the 850-stall (fresh scans only); founding-turn spikes need small scans
+(SCAN_R-250) + grid-densify; v9 train-block verbatim (global-1 + floor
+guard); pool-spiral comes from unbounded shed (matched only).
