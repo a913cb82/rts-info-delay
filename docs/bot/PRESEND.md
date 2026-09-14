@@ -30,3 +30,9 @@
 ## Risks
 - Stale positions mis-time sends (free drops, retry; bounded waste = zero).
 - `should_yield` cost (one dist-check per busy army; trivial).
+
+## Forward-capital (ASSESSED 2026-09-14, skipped)
+MOVE_CAPITAL: size capped 10% (600->60 viceroy), old capital demoted AT
+LAUNCH (capital-less flight = elimination risk if viceroy dies), founds
+54-town on arrival. Net -6 mouths + risk for -1 turn/leg latency. MARGINAL.
+Verdict: skip (peace-meta doesn't pay for latency; wars are rare).
