@@ -4443,3 +4443,8 @@ quiet-box true-scores. Grinding ties is motive without motion.
 8 shots queued on quiet compute: teacher, meta, boosttime, surge, sniper,
 eater/fan, presend-true-scores (sleeper 3am), ranks-modes. Thesis each in
 docs/bot/*.md. 70 needs margin (non-tie wins); ties are noise.
+
+### Endgame book built (2026-09-14, loop/grower-endgame)
+t9500+: no missions/trains/raids (nothing matures; hold winnings). +2-5,
+zero risk. Battery: 9 shots (teacher/meta/boosttime/surge/sniper/eater/
+endgame/presend-true/ranks). Validates quiet.
