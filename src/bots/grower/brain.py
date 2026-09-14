@@ -243,6 +243,33 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # growth-trains must never hold pioneers -- that was the 700-stall).
             _raid_hold = (_PACK_TOWN is not None
                           and _PACK_TOWN in state._pending_trains)
+    # VAMPIRE-v2 (surplus-seeded drains): big seed 15-25km from foe smalls
+    # drains them uphill with NO battle (victim can't muster vs migration).
+    # Surplus-only: missions below spend leftover idle; zero peace-tax.
+    _vampires: list[tuple[float, float]] = []
+    _small_foes = [t for t in state.world.towns
+                   if t.faction != state.faction and t.faction is not None
+                   and t.population < 400]
+    if _small_foes and own_t and not state.should_yield():
+        _big = max(own_t, key=lambda t: t.population)
+        for _vf in sorted(_small_foes, key=lambda t: math.hypot(t.x - _big.x, t.y - _big.y))[:3]:
+            for _ang in range(6):
+                _a = _ang * math.pi / 3
+                for _rr in (15.0, 20.0, 25.0):
+                    _vx, _vy = _vf.x + _rr * math.cos(_a), _vf.y + _rr * math.sin(_a)
+                    mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+                    if not (5 < _vx < mw - 5 and 5 < _vy < mh - 5):
+                        continue
+                    if any(math.hypot(_vx - t.x, _vy - t.y) < MIN_DIST for t in own_t):
+                        continue
+                    if any(math.hypot(_vx - ex, _vy - ey) < MIN_DIST for ex, ey in enroute):
+                        continue
+                    _vampires.append((_vx, _vy))
+                    break
+                else:
+                    continue
+                break
+    vidx = 0
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
@@ -260,6 +287,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         if site is None:
             site = _lattice_site(state, config, used_sites + enroute)
         if site is None:
+            # surplus-only vampire: no peace mission left; drain foes instead
+            if vidx < len(_vampires):
+                _vs = _vampires[vidx]
+                vidx += 1
+                if math.hypot(a.x - _vs[0], a.y - _vs[1]) <= ARRIVED:
+                    out.append(f"BUILD {a.id} {_vs[0]:.1f} {_vs[1]:.1f} {a.size:.1f}")
+                else:
+                    out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {_vs[0]:.1f} {_vs[1]:.1f}")
+                used_sites.append(_vs)
+                continue
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
             out.append(f"BUILD {a.id} {site[0]:.1f} {site[1]:.1f} {a.size:.1f}")
