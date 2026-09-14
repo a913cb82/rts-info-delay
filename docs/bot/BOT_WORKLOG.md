@@ -4362,3 +4362,14 @@ triage-shed-don't-feed (fast-death only), forage-aware marching (never
 eat home), pool matched to deployment. Board (solo, no deaths): 500->671,
 1k->1237, 10k->10541, 50k->9524, 100k->9647. Remaining gap is deployment
 bandwidth (missions complete ~5t-cycle), not shedding.
+
+### Fission verdict + throttle-stall resolved (2026-09-14, loop/grower)
+User fission (64-in-6): TRAIN clamps at 10%/turn (50k-req->8.8k), so
+chunks are ~250s not 1000s; binary splits 1/army/turn (chain-splits
+remerge); 60-army parallelism in ~6 turns IS achievable. v12 fissions
+slowly (pending-50 paces shed; slow-shed wins: town lives, sheds MORE
+total). NOTHROTTLE+NOSKIP probes (fixed tree): 11.2k/11.3k each; both-on
+850 (stale+infrequent pool stall). Locked: fresh scans + skip-turn.
+Board (solo, clean): 500->671, 1k->1237, 10k->10541, 50k->9524, 100k->9647.
+Next rung (proposed): triage pending-bypass (true 64-in-6 fission speed;
+pool-spiral risk retired by forage-aware) — unbuilt.
