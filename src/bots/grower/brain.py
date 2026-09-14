@@ -131,7 +131,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
 
     # 1. JIT muster (T6: muster beats raids; defense is score-neutral).
     foe_armies = [a for a in state.world.armies
-                  if a.faction != state.faction and a.alive]
+                  if a.faction != state.faction]
     mustered: set[int] = set()
     if foe_armies:
         for t in own_t:
