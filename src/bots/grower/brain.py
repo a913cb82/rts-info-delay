@@ -26,6 +26,8 @@ SIGHT = 150.0         # vision/muster-trigger range
 _LAST_TRAIN: dict[int, int] = {}
 _FOE_MAX: dict[int, float] = {}
 _PACK_TOWN: int | None = None  # town currently training the raid pack
+_RANK_MODE = 0  # 0=peer, 1=lead, 2=trail (tournament modes)
+_RANK_AT = -10 ** 9
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
 
@@ -139,6 +141,24 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     own_t = state.own_towns()
     if not own_t:
         return out
+    # RANK-AWARE (tournament modes; hysteresis 500t). Scores from mirror.
+    global _RANK_MODE, _RANK_AT
+    if turn - _RANK_AT >= 500:
+        _scores: dict = {}
+        for t in state.world.towns:
+            if t.faction is not None:
+                _scores[t.faction] = _scores.get(t.faction, 0.0) + t.population
+        for a in state.world.armies:
+            _scores[a.faction] = _scores.get(a.faction, 0.0) + a.size
+        _mine = _scores.get(state.faction, 0.0)
+        _others = sorted((v for f, v in _scores.items() if f != state.faction), reverse=True)
+        _RANK_AT = turn
+        if _others and _mine > _others[0] + 50.0:
+            _RANK_MODE = 1  # lead: variance is the enemy
+        elif _others and _mine < _others[0] - 100.0:
+            _RANK_MODE = 2  # trail: variance is the friend
+        else:
+            _RANK_MODE = 0
     cap = state.world.faction_capital(state.faction)
     cap_id = cap.id if cap is not None else None
 
