@@ -228,8 +228,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 continue
             _seen_towns.add(_u.id)
             _raids.append((_u, _nd))
-            if len(_raids) >= 3:
-                break
+            if len(_raids) >= 1:
+                break  # SNIPER: one surgical lock (min-cost demolition)
     if not _raids:
         _PACK_TOWN = None  # no locks: stale pack-tag must not hold pioneers
     _raid = _raids[0] if _raids else None  # compat for assembly/want below
