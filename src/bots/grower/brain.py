@@ -364,6 +364,31 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 idle = [a for a in idle if a.id != _pack.id]
             else:
                 _raid_hold = True  # assembling this lock: pioneers pause
+    # VAMPIRE (migration offense): big seed 15-25km from foe smalls drains them uphill.
+    _vampires: list[tuple[float, float]] = []
+    _small_foes = [t for t in state.world.towns
+                   if t.faction != state.faction and t.faction is not None
+                   and t.population < 400]
+    if _small_foes and own_t and not state.should_yield():
+        _big = max(own_t, key=lambda t: t.population)
+        for _vf in sorted(_small_foes, key=lambda t: math.hypot(t.x - _big.x, t.y - _big.y))[:3]:
+            for _ang in range(6):
+                _a = _ang * math.pi / 3
+                for _rr in (15.0, 20.0, 25.0):
+                    _vx, _vy = _vf.x + _rr * math.cos(_a), _vf.y + _rr * math.sin(_a)
+                    mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+                    if not (5 < _vx < mw - 5 and 5 < _vy < mh - 5):
+                        continue
+                    if any(math.hypot(_vx - t.x, _vy - t.y) < MIN_DIST for t in own_t):
+                        continue
+                    if any(math.hypot(_vx - ex, _vy - ey) < MIN_DIST for ex, ey in enroute):
+                        continue
+                    _vampires.append((_vx, _vy))
+                    break
+                else:
+                    continue
+                break
+    vidx = 0
     used_sites: list[tuple[float, float]] = []
     _tgrid = _grid([(t.x, t.y, 1) for t in own_t], 16.0)
     def _crosses(ax, ay, sx, sy):
@@ -386,6 +411,15 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
+        if vidx < len(_vampires):
+            _vs = _vampires[vidx]
+            vidx += 1
+            if math.hypot(a.x - _vs[0], a.y - _vs[1]) <= ARRIVED:
+                out.append(f"BUILD {a.id} {_vs[0]:.1f} {_vs[1]:.1f} {a.size:.1f}")
+            else:
+                out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {_vs[0]:.1f} {_vs[1]:.1f}")
+            used_sites.append(_vs)
+            continue
         if needy:
             tgt = needy.pop(0)
             spend = min(a.size, max(10.0, BOOST_BELOW - tgt.population), CHUNK)
@@ -430,6 +464,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
         want += VILLAGE_SPEND
+    if _vampires:
+        want += 300.0
     for _rt, _rn in _raids:
         want += max(0.0, _rn - _pool / max(1, len(_raids)))
     if _raid is not None and _pool < _raid[1] and not state.should_yield():
