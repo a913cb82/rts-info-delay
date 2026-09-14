@@ -271,9 +271,21 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 break
     vidx = 0
     used_sites: list[tuple[float, float]] = []
+    _mid = 0
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
+        _mid += 1
+        if _vampires and _mid % 4 == 0 and vidx < len(_vampires):
+            # conditional drain-tax (contact only; blind games unaffected)
+            _vs = _vampires[vidx]
+            vidx += 1
+            if math.hypot(a.x - _vs[0], a.y - _vs[1]) <= ARRIVED:
+                out.append(f"BUILD {a.id} {_vs[0]:.1f} {_vs[1]:.1f} {a.size:.1f}")
+            else:
+                out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {_vs[0]:.1f} {_vs[1]:.1f}")
+            used_sites.append(_vs)
+            continue
         if _raid_hold:
             continue  # assembling raid: pioneers pause (boosts above still run)
         if needy:
