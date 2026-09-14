@@ -44,14 +44,23 @@ def bots_at(commit: str) -> list[str]:
     out = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "-r",
                           "--name-only", commit, "--", "src/bots/"],
                          capture_output=True, text=True).stdout
-    names = set()
-    for line in out.splitlines():
-        if not line.endswith(".py"):
-            continue
+    files = [l for l in out.splitlines() if l.endswith(".py")]
+    pkgs: dict[str, set[str]] = {}
+    for line in files:
         parts = line.split("/")
         if len(parts) >= 4:  # src/bots/<pkg>/<file>.py
-            names.add(parts[2])
-        else:
+            pkgs.setdefault(parts[2], set()).add(parts[3])
+    names = set()
+    for pkg, fs in pkgs.items():
+        # runnable iff package init or brain present (stray-file dirs like
+        # the hybrid commit's predator/brain.py-only copy are unrunnable:
+        # bot_cmd self-test needs __init__.py).
+        if "__init__.py" in fs or "brain.py" in fs or "__main__.py" in fs:
+            if "__init__.py" in fs:
+                names.add(pkg)
+    for line in files:
+        parts = line.split("/")
+        if len(parts) == 3:
             n = parts[-1][:-3]
             if n not in ("common", "stub", "__init__"):
                 names.add(n)
