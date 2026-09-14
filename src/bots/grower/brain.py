@@ -131,10 +131,28 @@ def _densify_site(state, config, exclude=None) -> tuple[float, float] | None:
     return None
 
 
+_SKIP_SIG = None
+_SKIP_AT = -10 ** 9
+
+
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
-    global _PACK_TOWN
+    global _PACK_TOWN, _SKIP_SIG, _SKIP_AT
     out: list[str] = []
     silence_watch(state, config)  # release stale march notes (else armies look busy forever)
+    # skip-turn (yield-locked FFA: 20 missions/10k turns starves; light turns
+    # cost ~nothing so the bank survives for real missions. Muster kept.)
+    _sig = (tuple(sorted((t.id, round(t.x), round(t.y), round(t.population, -1)) for t in state.own_towns())),
+            len(state.world.armies))
+    _big = len(state.world.towns) + len(state.world.armies) > 30
+    _quiet = not any(a.faction != state.faction for a in state.world.armies)
+    if _big and _quiet and _sig == _SKIP_SIG and state.turn - _SKIP_AT >= 2:
+        _SKIP_AT = state.turn
+        for a in state.own_armies():
+            tgt = state.army_target(a.id)
+            if tgt is not None and math.hypot(a.x - tgt[0], a.y - tgt[1]) <= ARRIVED:
+                state._army_targets.pop(a.id, None)
+        return out
+    _SKIP_SIG = _sig
     turn = state.turn
     own_t = state.own_towns()
     if not own_t:
