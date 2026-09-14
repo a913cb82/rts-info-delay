@@ -321,6 +321,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # 3. growth trains, mouth-accounted (general across scales: train what's
     # needed; big towns make exact-size armies, no flood, no starvation).
     want = sum(max(0.0, min(BOOST_BELOW - t.population, CHUNK)) for t in needy)
+    # triage sheds regardless of missions (ark: 10% out every turn beats -12% death)
+    for t in own_t:
+        if t.id not in mustered and _triage(t):
+            try:
+                frac = getattr(config, "max_train_frac", 0.1) or 0.1
+                want += max(MIN_TRAIN, t.population * frac)
+            except Exception:
+                pass
     if not pioneer_busy and pidx < len(psites):
         want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
