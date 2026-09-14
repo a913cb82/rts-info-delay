@@ -37,6 +37,7 @@ SIGHT = 150.0         # vision/muster-trigger range
 _LAST_TRAIN: dict[int, int] = {}
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
+_LAST_SCAN: dict = {}  # cache-key-kind -> turn of last full rescan
 
 
 def _anchor(state) -> tuple[float, float]:
@@ -62,6 +63,15 @@ def _all_sites(state, config) -> list[tuple[float, float]]:
     hit = _SITE_CACHE.get(key)
     if hit is not None:
         return hit
+    # scan-throttle: a rescan right after every founding spikes the clock
+    # (town-change misses); tolerate <=5-turn-stale sites (harmless: a second
+    # pioneer to a just-founded spot becomes a boost).
+    last = _LAST_SCAN.get("sites", -10 ** 9)
+    if state.turn - last < 5:
+        for k, v in list(_SITE_CACHE.items()):
+            if len(k) == 5 and isinstance(k[4], tuple) and isinstance(v, list):
+                return v
+    _LAST_SCAN["sites"] = state.turn
     ax, ay, mw, mh, _ = key
     own = state.own_towns()
     foes = [t for t in state.world.towns
@@ -167,6 +177,10 @@ def _near(g, cell, x, y, r):
 
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
+    # big-state skip-turn (missions are multi-turn idempotent; halves average
+    # cost so the bank pins at cap (spike-proof). Muster still runs every turn.
+    _big = len(state.world.towns) + len(state.world.armies) > 30
+    _quiet = not any(a.faction != state.faction and a.alive for a in state.world.armies)
     turn = state.turn
     own_t = state.own_towns()
     if not own_t:
@@ -215,6 +229,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         tgt = state.army_target(a.id)
         if tgt is not None and math.hypot(a.x - tgt[0], a.y - tgt[1]) <= ARRIVED:
             state._army_targets.pop(a.id, None)
+    if _big and _quiet and turn % 2 == 1:
+        return out  # skip-turn: missions/trains wait a turn (muster above already ran)
     # en-route coverage: armies already marching count toward missions.
     enroute: list[tuple[float, float]] = []
     for a in state.own_armies():
@@ -240,23 +256,32 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if not a.is_viceroy and not state.army_has_target(a.id)
             and not state.has_pending_build(a.id) and a.size >= MIN_ARMY]
     # site lists computed ONCE (per-army rescans killed the clock: 0.9s/turn).
-    _esig = tuple(sorted((round(ex, 1), round(ey, 1)) for ex, ey in enroute))
+    # site exclusion via grid (enroute churns; keyed caches never hit).
     _skey = _site_key(state, config)
-    _pkey = (_skey, _esig)
-    _pcache = _SITE_CACHE.get(_pkey)
-    if _pcache is None:
-        _pcache = [s for s in _all_sites(state, config)
-                   if not any(math.hypot(s[0] - ex, s[1] - ey) < MIN_DIST for ex, ey in enroute)]
-        _SITE_CACHE[_pkey] = _pcache
+    _sg = _SITE_CACHE.get((_skey, "grid"))
+    if _sg is None:
+        _full = _all_sites(state, config)
+        _sg = (_full, _grid([(x, y, i) for i, (x, y) in enumerate(_full)], 16.0))
+        _SITE_CACHE[(_skey, "grid")] = _sg
         if len(_SITE_CACHE) > 12:
             _SITE_CACHE.pop(next(iter(_SITE_CACHE)))
-    psites = _pcache
-    _dkey = (_skey, _esig, "d")
+    _full, _sgrid = _sg
+    _excl_idx: set[int] = set()
+    for ex, ey in enroute:
+        cx, cy = int(ex // 16.0), int(ey // 16.0)
+        for ix in range(cx - 1, cx + 2):
+            for iy in range(cy - 1, cy + 2):
+                for px, py, pi in _sgrid.get((ix, iy), ()):
+                    if (px - ex) ** 2 + (py - ey) ** 2 < MIN_DIST * MIN_DIST:
+                        _excl_idx.add(pi)
+    psites = [s for i, s in enumerate(_full) if i not in _excl_idx]
+    _dkey = (_skey, "dense")
     _dcache = _SITE_CACHE.get(_dkey)
     if _dcache is None:
-        _dcache = _densify_list(state, config, enroute)
+        _dcache = _densify_list(state, config, [])
         _SITE_CACHE[_dkey] = _dcache
-    dsites = _dcache
+    dsites = [s for s in _dcache
+              if not any(math.hypot(s[0] - ex, s[1] - ey) < DENSE_DIST for ex, ey in enroute)]
     pidx = didx = 0
     used_sites: list[tuple[float, float]] = []
     for a in sorted(idle, key=lambda x: x.id):
