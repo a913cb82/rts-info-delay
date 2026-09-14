@@ -4397,3 +4397,8 @@ affordable-lock, reserve-hold, pack-first, assembly-bypass). Debug saga:
 pool-vs-missions ordering (missions ate the pool), pack-size gate (no
 suicide singles), reserve starving assembly (boosts exempt). Validated:
 predator 924 vs idle-stub 0 (eliminated; +311 ≈ T4 +243).
+
+### Multi-axis validated (2026-09-14, loop/predator-multiaxis)
+Two-lock simultaneous raids (different factions; split the muster):
+944 vs 22 vs ELIMINATED (v1 single-axis: 911/22/22 ravaged-but-alive).
+Simultaneity kills; sequential ravages.
