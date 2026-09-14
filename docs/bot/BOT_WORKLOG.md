@@ -4412,3 +4412,10 @@ Cadence beats fission H2H 289-249 (war). Home DB: 70g.
 Top-5 slot-rotated FFA: cadence-fixed 690 avg, all others 670-672 (5/5).
 (20,250) is +2.7% compound. League-5 appended to DB (ints, documented).
 Cadence-fixed mu 65.7 leads pool; grinding to gate weight.
+
+### Cadence MERGE-QUEUED (2026-09-14, loop/grower)
+Cadence-fixed 53.3/15g > fission peak 52.2: gate passes. Merge prepared
+as loop/main-cadence (2 cherry-picks onto main-tip, suites green) but
+main ref update blocked (/tmp/rl_realism holds main worktree, dirty).
+Queued until worktree cleanup. Apex-1c03063 (logistic pro on new engine,
+979-spikes, t3008-crash) under study: next rung or next victim.
