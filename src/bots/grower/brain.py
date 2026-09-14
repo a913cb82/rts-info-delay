@@ -261,6 +261,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         global _FOUNDINGS
         if _FOUNDINGS >= FEEDER_CAP:
             continue  # feeder-cap: capital compounds, colonies feed (no new mouths)
+        if turn < 7500:
+            continue  # timed-wave: foundings mature at deadline (peak snapshot)
         site = _densify_site(state, config, used_sites + enroute)
         if site is None:
             site = _lattice_site(state, config, used_sites + enroute)
