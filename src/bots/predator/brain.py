@@ -290,6 +290,34 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                 _best = (_score, _u, _need)
         if _best is not None:
             _raid = (_best[1], _best[2])
+    # multi-axis: second lock splits the muster (1 train/town/turn can't cover both)
+    _raids = [(_raid[0], _raid[1])] if _raid is not None else []
+    if _raid is not None and not state.should_yield():
+        _pool2 = _pool / 2.0
+        _second = None
+        for _u in _foe_towns:
+            if _u.id == _raid[0].id:
+                continue
+            _d = min([math.hypot(a.x - _u.x, a.y - _u.y) for a in idle] or [1e9])
+            _march_t = _d / _spd + 2.0
+            _garr = sum(a.size for a in state.world.armies
+                        if a.faction == _u.faction
+                        and math.hypot(a.x - _u.x, a.y - _u.y) <= 20.0)
+            _FOE_MAX[_u.id] = max(_FOE_MAX.get(_u.id, 0.0), _u.population)
+            _mustering = _u.population < _FOE_MAX[_u.id] - 30.0
+            _need = _garr + (_u.population * 0.15 * _march_t if _mustering else 15.0) + 30.0
+            _prize = _u.population * 0.5
+            if _prize < 200:
+                continue
+            _biggest = max([t.population * (getattr(config, "max_train_frac", 0.1) or 0.1) for t in own_t] or [0])
+            if _need > _pool2 + 4 * max(30.0, _biggest):
+                continue
+            _score = _prize - _need * 1.5 - _d * 0.1
+            if _second is None or _score > _second[0]:
+                _second = (_score, _u, _need)
+        if _second is not None and _second[1].faction != _raid[0].faction:
+            # different-faction second axis only (same-faction double-hit wastes; muster is per-town)
+            _raids.append((_second[1], _second[2]))
     # site lists computed ONCE (per-army rescans killed the clock: 0.9s/turn).
     # site exclusion via grid (enroute churns; keyed caches never hit).
     _skey = _site_key(state, config)
@@ -318,14 +346,20 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     dsites = [s for s in _dcache
               if not any(math.hypot(s[0] - ex, s[1] - ey) < DENSE_DIST for ex, ey in enroute)]
     pidx = didx = 0
-    if _raid is not None and _pool >= _raid[1] and not state.should_yield() and idle:
-        _rt, _rn = _raid
-        _pack = max(idle, key=lambda a: a.size)
-        if _pack.size >= _rn:
-            # pack marches FIRST (mission loop must not spend the pool on pioneers)
-            out.append(f"MOVE_TO {_pack.id} {_pack.x:.1f} {_pack.y:.1f} {_rt.x:.1f} {_rt.y:.1f}")
-            idle = [a for a in idle if a.id != _pack.id]
-            _pool = sum(a.size for a in idle)
+    _raid_hold = False
+    if _raids and not state.should_yield() and idle:
+        for _rt, _rn in list(_raids):
+            _sent = any((tgt := state.army_target(a.id)) is not None
+                        and math.hypot(tgt[0] - _rt.x, tgt[1] - _rt.y) <= 10.0
+                        for a in state.own_armies())
+            if _sent:
+                continue  # marcher already en route to this lock
+            _pack = max(idle, key=lambda a: a.size)
+            if _pack.size >= _rn:
+                out.append(f"MOVE_TO {_pack.id} {_pack.x:.1f} {_pack.y:.1f} {_rt.x:.1f} {_rt.y:.1f}")
+                idle = [a for a in idle if a.id != _pack.id]
+            else:
+                _raid_hold = True  # assembling this lock: pioneers pause
     used_sites: list[tuple[float, float]] = []
     _tgrid = _grid([(t.x, t.y, 1) for t in own_t], 16.0)
     def _crosses(ax, ay, sx, sy):
@@ -344,7 +378,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             if not _crosses(a.x, a.y, lst[j][0], lst[j][1]):
                 return j
         return idx if idx < len(lst) else -1
-    _raid_hold = _raid is not None  # locked: pioneers pause, pool merges for pack
+    _raid_hold = _raid_hold or (_raid is not None and _pool < _raid[1])
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
@@ -392,8 +426,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
         want += VILLAGE_SPEND
-    if _raid is not None:
-        want += max(0.0, _raid[1] - _pool)
+    for _rt, _rn in _raids:
+        want += max(0.0, _rn - _pool / max(1, len(_raids)))
     if _raid is not None and _pool < _raid[1] and not state.should_yield():
         _rt, _rn = _raid
         _rc = sorted((t for t in own_t if t.id not in mustered
