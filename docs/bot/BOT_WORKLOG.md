@@ -4419,3 +4419,11 @@ as loop/main-cadence (2 cherry-picks onto main-tip, suites green) but
 main ref update blocked (/tmp/rl_realism holds main worktree, dirty).
 Queued until worktree cleanup. Apex-1c03063 (logistic pro on new engine,
 979-spikes, t3008-crash) under study: next rung or next victim.
+
+### GOAL: 60 ordinal bot ACHIEVED (2026-09-14, loop/grower)
+grower-7cff4d1 (v3): ord 62.3 mu 75.0 g 24. Ten straight 725 1sts in
+modern pool. v3fixed (777439b, contact-fix): 5x725, rating carries.
+Mechanism: count-based trains + floor-governed (no cooldown) + 30-size
+crowd-proof colonies. Solo-optimum (20,250) does NOT transfer to FFA.
+Merge loop/main-v3fixed verified (suites+smoke), ref-update queued
+behind /tmp/rl_realism main hold. FFA tuning must happen in leagues.
