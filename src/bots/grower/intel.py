@@ -29,6 +29,7 @@ class GrowerState:
         self._prev_pop: dict[int, float] = {}
         self._growth: dict[int, float] = {}
         self.evac_ordered: bool = False
+        self._changed: bool = False
 
     def init(self, config: GameConfig, faction: int):
         self.config = config
@@ -74,6 +75,10 @@ class GrowerState:
     # -- update --
     def update(self, turn: int, events: list[dict]) -> None:
         self.turn = turn
+        for ev in events:
+            if ev.get("kind") in ("town_spawn", "town_death"):
+                self._changed = True
+                break
         for tid in list(self._pending_trains):
             if turn > self._pending_trains[tid]:
                 self._pending_trains.pop(tid, None)

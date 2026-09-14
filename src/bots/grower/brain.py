@@ -30,7 +30,7 @@ FOUND_SIZE = 450.0    # legacy founding target (superseded by tier spends)
 MARKET_SPEND = 667.0   # 16km-site spend -> 600-town (E1 self-sufficient grower)
 VILLAGE_SPEND = 333.0  # 4km-site spend -> 300-town (T3 grows +0.2%/yr)
 CHUNK = 500.0         # max single BUILD spend (big armies chain-spend; E9: no overshoot)
-TRIAGE_GROWTH = -0.01   # town shrinking faster than 1%/turn is dying: shed (no floor)
+TRIAGE_GROWTH = -0.05   # fast death only (starvation; slow decay gets fed, not shed)
 ARRIVED = 1.0         # km: close enough to count as landed (exact engine)
 SIGHT = 150.0         # vision/muster-trigger range
 
@@ -180,6 +180,16 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # cost so the bank pins at cap (spike-proof). Muster still runs every turn.
     _big = len(state.world.towns) + len(state.world.armies) > 30
     _quiet = not any(a.faction != state.faction and a.alive for a in state.world.armies)
+    _last_light = getattr(state, "_light_at", -10 ** 9)
+    if _big and getattr(state, "_changed", False) and state.turn - _last_light >= 5:
+        state._changed = False
+        state._light_at = state.turn
+        # light turn (defer heavy missions/trains/scan one turn)
+        for a in state.own_armies():
+            tgt = state.army_target(a.id)
+            if tgt is not None and math.hypot(a.x - tgt[0], a.y - tgt[1]) <= ARRIVED:
+                state._army_targets.pop(a.id, None)
+        return out  # light turn ends here (muster waits one turn; 3-turn warnings tolerate it)
     turn = state.turn
     own_t = state.own_towns()
     if not own_t:
