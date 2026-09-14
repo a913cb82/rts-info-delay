@@ -4312,3 +4312,8 @@ Fast paths all steal grown stocks (shelved: user wants peaceful first).
 Composition-modes (siege/feast/race) on v6+boosttime. First bot that reads
 the FIELD (raiders/growers/stagnants) instead of its position. No vampire
 here (v6-line); siege = muster + no-raid-locks. Validates quiet/mixed.
+
+### Meta audit fix (2026-09-14, loop/grower-meta)
+_raiders_inbound read OUR notes for FOE armies (always False; dead mode).
+Fixed with delta-tracking (_FOE_POS, >5km = marching, 50t prune).
+Audit-everything reading code beats guessing; no games needed.
