@@ -37,7 +37,6 @@ SIGHT = 150.0         # vision/muster-trigger range
 _LAST_TRAIN: dict[int, int] = {}
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
-_LAST_SCAN: dict = {}  # cache-key-kind -> turn of last full rescan
 
 
 def _anchor(state) -> tuple[float, float]:
@@ -63,7 +62,6 @@ def _all_sites(state, config) -> list[tuple[float, float]]:
     hit = _SITE_CACHE.get(key)
     if hit is not None:
         return hit
-    _LAST_SCAN["sites"] = state.turn
     ax, ay, mw, mh, _ = key
     own = state.own_towns()
     foes = [t for t in state.world.towns
