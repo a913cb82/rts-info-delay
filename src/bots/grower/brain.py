@@ -169,8 +169,12 @@ def _near(g, cell, x, y, r):
 _FOE_MAX: dict[int, float] = {}
 
 
+_RANGER_SENT = False
+
+
 def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     out: list[str] = []
+    global _RANGER_SENT
     if state.turn % 50 == 0:
         try:
             import gc as _gc
@@ -437,6 +441,33 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             # assembly bypasses pending/cooldown (pool marches at need, never sits)
             out.append(f"TRAIN {_rc[0].id} {_train_size(_rc[0], config):.1f}")
             state.note_train(_rc[0].id)
+    # RANGER (contact-enabler): t100 deep probe center-ward (finds victims for raids)
+    if not _RANGER_SENT and turn >= 100 and not state.should_yield():
+        _cap = state.world.faction_capital(state.faction)
+        if _cap is not None:
+            mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+            _dx, _dy = mw / 2 - _cap.x, mh / 2 - _cap.y
+            _dd = max(1.0, math.hypot(_dx, _dy))
+            _rx, _ry = _cap.x + _dx / _dd * 200.0, _cap.y + _dy / _dd * 200.0
+            _rx = min(max(_rx, 5.0), mw - 5)
+            _ry = min(max(_ry, 5.0), mh - 5)
+            _sc = sorted((t for t in own_t if t.id not in mustered
+                          and t.id not in state._pending_trains
+                          and t.population - 50.0 >= TRAIN_FLOOR),
+                         key=lambda t: t.population, reverse=True)
+            if _sc:
+                out.append(f"TRAIN {_sc[0].id} 50.0")
+                state.note_train(_sc[0].id)
+                # march order follows next turn (army must exist); remember target
+                _RANGER_SENT = (_rx, _ry)
+    if isinstance(_RANGER_SENT, tuple) and not state.should_yield():
+        _rx, _ry = _RANGER_SENT
+        for a in sorted(idle, key=lambda x: x.id):
+            # ranger is the newest small army near capital heading out
+            if a.size <= 60.0 and not state.army_has_target(a.id):
+                out.append(f"MOVE_TO {a.id} {a.x:.1f} {a.y:.1f} {_rx:.1f} {_ry:.1f}")
+                _RANGER_SENT = True
+                break
     short = want - sum(a.size for a in idle)
     _tri_here = [t for t in own_t if t.id not in mustered and cooled(t) and _triage(t)]
     if short >= MIN_TRAIN or _tri_here:
