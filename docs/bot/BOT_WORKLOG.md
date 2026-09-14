@@ -4390,3 +4390,10 @@ Base 30.3 (5-0), fission 30.3 (5-0, H2H beats base 672-671!), villages
 26.4, markets 25.5, top500 -15.1 (want-unsatisfiable: 500-target unreachable
 -> trains forever -> flood -> 377 crash; PARKED). Fission vs base tied on
 ordinal (gate needs >); grinding both to 15g for tiebreak.
+
+### Predator v1 raids (2026-09-14, loop/predator)
+Fork grower + raid stage (muster-aware need via foe-max pop-watch,
+affordable-lock, reserve-hold, pack-first, assembly-bypass). Debug saga:
+pool-vs-missions ordering (missions ate the pool), pack-size gate (no
+suicide singles), reserve starving assembly (boosts exempt). Validated:
+predator 924 vs idle-stub 0 (eliminated; +311 ≈ T4 +243).
