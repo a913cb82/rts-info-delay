@@ -199,9 +199,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # BLITZ-1 (demolition): 3 simultaneous colony-hits. Colonies (100-300)
     # defend alone (1 train/town/turn); mothers muster but can't cover them.
     _raids: list = []
+    # EATER-1: stagnants (<=2 towns at t2000+) get full-invaded (mothers too:
+    # no muster vs weak). Peers keep colony-only blitz rules.
+    _town_counts: dict = {}
+    for t in state.world.towns:
+        if t.faction != state.faction and t.faction is not None:
+            _town_counts[t.faction] = _town_counts.get(t.faction, 0) + 1
+    _stagnant_factions = {f for f, n in _town_counts.items() if n <= 2} if turn >= 2000 else set()
     _foe_towns = [t for t in state.world.towns
                   if t.faction != state.faction and t.faction is not None
-                  and 100.0 <= t.population <= 300.0]
+                  and ((100.0 <= t.population <= 300.0)
+                       or (t.faction in _stagnant_factions and t.population >= 100.0))]
     if _foe_towns and not state.should_yield():
         _spd = max(1.0, getattr(config, "army_speed", 50.0) or 50.0)
         _home = own_t[0] if own_t else None
