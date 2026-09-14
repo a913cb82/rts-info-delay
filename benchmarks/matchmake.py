@@ -149,6 +149,13 @@ def pool() -> list[str]:
         _g = elo.get(_nm, {}).get("games", 0)
         if _g >= 2 and _best.get(_nm, 0.0) <= 0.0:
             continue  # crashed bye: never scored
+        # Era filter: logistic-era old-package brains (pre bot-compat) speak
+        # a dead protocol and die on the wire; they are bye-fields, not
+        # information. Rated-with-games evidence overrides (it runs).
+        _era_cut = order.get("0723db6", -1)
+        if (b in ("pro", "aggressive", "expander", "turtle", "greedy", "apex")
+                and order.get(sha, 10 ** 9) < _era_cut and _g < 5):
+            continue
         picks.add(_nm)
     return sorted(picks)
 
