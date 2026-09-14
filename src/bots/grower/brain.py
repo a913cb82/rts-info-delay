@@ -321,11 +321,13 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             didx = _dj + 1
             spend_target = VILLAGE_SPEND
         else:
-            _pj = _take(psites, pidx, a)
-            if _pj >= 0:
-                site = psites[_pj]
-                pidx = _pj + 1
-                spend_target = MARKET_SPEND
+            _seeded_m = any(t.id != cap_id for t in own_t)
+            if not _seeded_m:
+                _pj = _take(psites, pidx, a)
+                if _pj >= 0:
+                    site = psites[_pj]
+                    pidx = _pj + 1
+                    spend_target = MARKET_SPEND
         if site is None:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
@@ -340,7 +342,9 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # 3. growth trains, mouth-accounted (general across scales: train what's
     # needed; big towns make exact-size armies, no flood, no starvation).
     want = sum(max(0.0, min(BOOST_BELOW - t.population, CHUNK)) for t in needy)
-    if not pioneer_busy and pidx < len(psites):
+    # villages-only: ONE seed pioneer, then densify-4km only (S2-honest)
+    _seeded = any(t.id != cap_id for t in own_t)
+    if not _seeded and not pioneer_busy and pidx < len(psites):
         want += MARKET_SPEND
     if not dense_busy and didx < len(dsites):
         want += VILLAGE_SPEND
