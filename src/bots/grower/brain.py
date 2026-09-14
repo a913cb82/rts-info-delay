@@ -21,8 +21,8 @@ DENSE_DIST = 4.0      # densify ring radius around small towns (P2/P2b)
 DENSE_MAX_POP = 300.0 # densify only around towns <= this (mild gradient)
 DENSE_HOLE_R = 30.0  # no densify near 800+ towns (feeds black holes -> crash)
 DENSE_HOLE_POP = 800.0
-TRAIN_SIZE = 30.0     # v3: small-fast trains beat big-slow (CAD 718)
-TRAIN_FLOOR = 350.0   # normal floor (v9-trickle dynamics, honest cadence)
+TRAIN_SIZE = 20.0     # CAD2: (20,250)=749 keeps winning smaller-faster
+TRAIN_FLOOR = 250.0   # CAD2 winner floor (faster cadence, smaller colonies)
 TRAIN_COOLDOWN = 50     # per-town trickle spacing (matches accidental-50 that scored)
 COOLDOWN = 750        # growth-train cooldown per town (T2 cadence)
 BOOST_BELOW = 210.0   # colonies below this get boosted (T2 track)
