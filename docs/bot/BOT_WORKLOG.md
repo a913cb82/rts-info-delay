@@ -4432,3 +4432,9 @@ behind /tmp/rl_realism main hold. FFA tuning must happen in leagues.
 Loaded boxes pin banks empty (round-trip deduction, not compute). v6 726
 on 20 missions. Features must front-load or starve-proof. Sleeper armed:
 presend-30g at 3am (quiet-box true scores). Load-gate validations (uptime).
+
+### Ties are ordinal noise (2026-09-14, loop/grower)
+Ranks 22.6/10g with all-725/726s (placements 1-4 on tiebreaks). In
+tie-pack-world ordinal = positional lottery; mu converges to pack-mean.
+70 needs MARGIN (non-tie wins): +1-edges (presend), captures (+300), or
+quiet-box true-scores. Grinding ties is motive without motion.
