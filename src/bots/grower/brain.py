@@ -138,6 +138,14 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     silence_watch(state, config)  # release stale march notes (else armies look busy forever)
     turn = state.turn
     _endgame = turn >= 9500  # ENDGAME BOOK
+    def _town_age(t) -> float:
+        _best = None
+        for _sx, _sy, _st in _FOUNDED_SITES:
+            if math.hypot(t.x - _sx, t.y - _sy) <= 10.0:
+                _age = turn - _st
+                if _best is None or _age < _best:
+                    _best = _age
+        return _best if _best is not None else 10 ** 9
     own_t = state.own_towns()
     if not own_t:
         return out
@@ -248,14 +256,6 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
                           and _PACK_TOWN in state._pending_trains)
     global _FOUNDED_SITES
     used_sites: list[tuple[float, float]] = []
-    def _town_age(t) -> float:
-        _best = None
-        for _sx, _sy, _st in _FOUNDED_SITES:
-            if math.hypot(t.x - _sx, t.y - _sy) <= 10.0:
-                _age = turn - _st
-                if _best is None or _age < _best:
-                    _best = _age
-        return _best if _best is not None else 10 ** 9
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
