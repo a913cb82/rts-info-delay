@@ -119,6 +119,23 @@ def pool() -> list[str]:
         except Exception:
             continue
         by_hash.setdefault(f"{b}@{h}", []).append((b, sha))
+    # Bye-filter (hygiene): brains that only ever score <=0 crashed on the
+    # wire (logistic-era protocol) and are free byes + room-bonus distortions
+    # (apex-979s). Drop entries with >=2 games and no positive score.
+    _best: dict[str, float] = {}
+    try:
+        import json as _json
+        for _ln in (ROOT / "benchmarks" / "elo_games.jsonl").read_text().splitlines():
+            try:
+                _g = _json.loads(_ln)
+            except Exception:
+                continue
+            for _slot, _nm in _g.get("field", {}).items():
+                _sc = float(_g.get("scores", {}).get(_slot, 0) or 0)
+                if _sc > _best.get(_nm, 0.0):
+                    _best[_nm] = _sc
+    except Exception:
+        pass
     picks = set()
     for key, specs in by_hash.items():
         # Rated name wins (most games). Unrated/content ties -> OLDEST commit
@@ -128,7 +145,11 @@ def pool() -> list[str]:
         specs.sort(key=lambda bs: (-elo.get(f"{bs[0]}-{bs[1]}", {}).get("games", 0),
                                    order.get(bs[1], 10 ** 9)))
         b, sha = specs[0]
-        picks.add(f"{b}-{sha}")
+        _nm = f"{b}-{sha}"
+        _g = elo.get(_nm, {}).get("games", 0)
+        if _g >= 2 and _best.get(_nm, 0.0) <= 0.0:
+            continue  # crashed bye: never scored
+        picks.add(_nm)
     return sorted(picks)
 
 
