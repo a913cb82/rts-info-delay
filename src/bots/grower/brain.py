@@ -29,6 +29,7 @@ _FOE_MAX: dict[int, float] = {}
 _PACK_TOWN: int | None = None  # town currently training the raid pack
 _RANK_MODE = 0  # 0=race, 3=siege, 4=feast (meta composition-modes)
 _RANK_AT = -10 ** 9
+_FOE_POS: dict = {}  # foe army id -> (x, y, turn) (march detection)
 _ANCHOR: list | None = None  # lattice anchor (capital pos, first turn)
 _SITE_CACHE: dict = {}  # town-signature -> sorted free-site list
 
@@ -156,8 +157,22 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     # META-1 composition reader (field archetypes; hysteresis via _RANK_AT).
     # raiders: foe armies with targets (marching!); growers: foe towns>4 any;
     # stagnants: foe factions at <=2 towns (post-t2000).
-    global _RANK_MODE, _RANK_AT
-    _raiders_inbound = any(state.army_has_target(a.id) for a in foe_armies)
+    global _RANK_MODE, _RANK_AT, _FOE_POS
+    # foe-movement tracking (our notes only cover OWN armies; detect marches
+    # via position deltas vs last-seen (>5km = marching). Prune stale >50t.
+    _raiders_inbound = False
+    for _oid in list(_FOE_POS):
+        if turn - _FOE_POS[_oid][2] > 50:
+            del _FOE_POS[_oid]
+    for a in foe_armies:
+        _prev = _FOE_POS.get(a.id)
+        if _prev is not None and turn - _prev[2] >= 1:
+            if math.hypot(a.x - _prev[0], a.y - _prev[1]) > 5.0:
+                if any(math.hypot(a.x - t.x, a.y - t.y) <= SIGHT for t in own_t):
+                    _raiders_inbound = True
+                    break
+    for a in foe_armies:
+        _FOE_POS[a.id] = (a.x, a.y, turn)
     _foe_town_counts: dict = {}
     for t in state.world.towns:
         if t.faction != state.faction and t.faction is not None:
