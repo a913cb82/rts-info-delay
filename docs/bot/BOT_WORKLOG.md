@@ -4384,3 +4384,9 @@ no deaths. md5-verified recordings->viewer/public.
 ### Round-robin launched (new-era goal: 60 ordinal)
 Population: grower-base + 4 variants (fission/villages/markets/top500),
 5g each, fresh DB. Gate: merge iff ordinal > best.
+
+### Round-robin results (new-era DB seed)
+Base 30.3 (5-0), fission 30.3 (5-0, H2H beats base 672-671!), villages
+26.4, markets 25.5, top500 -15.1 (want-unsatisfiable: 500-target unreachable
+-> trains forever -> flood -> 377 crash; PARKED). Fission vs base tied on
+ordinal (gate needs >); grinding both to 15g for tiebreak.
