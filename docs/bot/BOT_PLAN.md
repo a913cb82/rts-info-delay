@@ -332,3 +332,8 @@ every rating run, no exceptions; (2) all bots must be committed to be tested
 Always launch ratings from loop/grower (methodology-home). Feature
 branches carry stale benchmarks/*.py (era-filter leak wasted v3-10 on
 frozen fields). rate_brain/matchmake/elo_field/status sync before rating.
+
+### Union ts-floor rule (2026-09-14)
+Union only games with ts >= 1789300000 (new-era floor). Old branches
+carry thousands of stale logistic-era games that poison replays
+(5047-smuggle caught and repaired).
