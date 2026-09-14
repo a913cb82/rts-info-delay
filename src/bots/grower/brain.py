@@ -298,6 +298,30 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             state.note_train(_rich[0].id)
             _LAST_TRAIN[_rich[0].id] = turn
             _PACK_TOWN = _rich[0].id
+    # 2d. SCOUT-FAN (fan-1): t100, 4x5-size diagonals, 300km. Below MIN_ARMY
+    # (unclaimable); hold on arrival; reports ride mail. Survival lottery.
+    if turn >= 100 and turn < 110 and not state.should_yield():
+        _cap = state.world.faction_capital(state.faction)
+        if _cap is not None:
+            mw, mh = config.map_size if getattr(config, "map_size", None) else (1000, 1000)
+            _sent = sum(1 for a in state.own_armies()
+                        if a.size <= 8.0 and state.army_has_target(a.id))
+            if _sent < 4 and _cap.population >= 400.0:
+                _dirs = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+                _di = _sent % 4
+                _dx, _dy = _dirs[_di]
+                if _cap.id not in state._pending_trains:
+                    out.append(f"TRAIN {_cap.id} 5.0")
+                    state.note_train(_cap.id)
+                # march the smallest untargeted to the fan point
+                _cands = sorted((a for a in idle if a.size <= 8.0 and not state.army_has_target(a.id)),
+                                key=lambda a: a.size)
+                if _cands:
+                    _sc = _cands[0]
+                    _fx = min(max(_cap.x + _dx * 300.0, 5.0), mw - 5)
+                    _fy = min(max(_cap.y + _dy * 300.0, 5.0), mh - 5)
+                    out.append(f"MOVE_TO {_sc.id} {_sc.x:.1f} {_sc.y:.1f} {_fx:.1f} {_fy:.1f}")
+                    idle = [a for a in idle if a.id != _sc.id]
     # 3. growth trains (JIT: only when missions outnumber idle armies).
     want = len([t for t in own_t if t.id != cap_id and t.population < BOOST_BELOW
                  and not any(math.hypot(t.x - ex, t.y - ey) < 5.0 for ex, ey in enroute)])
