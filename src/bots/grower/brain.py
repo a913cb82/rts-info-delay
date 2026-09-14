@@ -233,7 +233,7 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     egrid = _grid([(ex, ey, 1) for ex, ey in enroute], 10.0)
     ogrid = _grid([(t.x, t.y, 1) for t in own_t], 16.0)
     needy = [t for t in sorted(
-        (t for t in own_t if t.population < BOOST_BELOW),
+        (t for t in own_t if t.population < BOOST_BELOW and not _triage(t)),
         key=lambda t: t.population)
         if not _near(egrid, 10.0, t.x, t.y, 5.0)]
     pioneer_busy = any(not _near(ogrid, 16.0, ex, ey, MIN_DIST) for ex, ey in enroute)
@@ -275,6 +275,23 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
               if not any(math.hypot(s[0] - ex, s[1] - ey) < DENSE_DIST for ex, ey in enroute)]
     pidx = didx = 0
     used_sites: list[tuple[float, float]] = []
+    _tgrid = _grid([(t.x, t.y, 1) for t in own_t], 16.0)
+    def _crosses(ax, ay, sx, sy):
+        # march segment passes within forage band (10km) of an own town that
+        # isn't the destination shed (don't eat home/friends en route: T8)
+        for f in (0.25, 0.5, 0.75):
+            mx, my = ax + (sx - ax) * f, ay + (sy - ay) * f
+            if math.hypot(mx - sx, my - sy) < 12.0:
+                continue
+            if _near(_tgrid, 16.0, mx, my, 10.0):
+                return True
+        return False
+    def _take(lst, idx, a):
+        # first non-home-crossing site at/after idx (fallback: nearest)
+        for j in range(idx, len(lst)):
+            if not _crosses(a.x, a.y, lst[j][0], lst[j][1]):
+                return j
+        return idx if idx < len(lst) else -1
     for a in sorted(idle, key=lambda x: x.id):
         if state.should_yield():
             break
@@ -290,14 +307,17 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
             continue
         site = None
         spend_target = VILLAGE_SPEND
-        if didx < len(dsites):
-            site = dsites[didx]
-            didx += 1
+        _dj = _take(dsites, didx, a)
+        if _dj >= 0:
+            site = dsites[_dj]
+            didx = _dj + 1
             spend_target = VILLAGE_SPEND
-        elif pidx < len(psites):
-            site = psites[pidx]
-            pidx += 1
-            spend_target = MARKET_SPEND
+        else:
+            _pj = _take(psites, pidx, a)
+            if _pj >= 0:
+                site = psites[_pj]
+                pidx = _pj + 1
+                spend_target = MARKET_SPEND
         if site is None:
             break
         if math.hypot(a.x - site[0], a.y - site[1]) <= ARRIVED:
@@ -317,21 +337,22 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
     if not dense_busy and didx < len(dsites):
         want += VILLAGE_SPEND
     short = want - sum(a.size for a in idle)
-    if short >= MIN_TRAIN:
+    _tri_here = [t for t in own_t if t.id not in mustered and cooled(t) and _triage(t)]
+    if short >= MIN_TRAIN or _tri_here:
         cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
                        key=lambda t: t.population, reverse=True)
         # ONE growth train per turn (CAD one-at-a-time; parallel floods pin the mother)
-        t = cands[0] if cands else None
+        t = None
+        for _c in cands:
+            if _triage(_c):
+                t = _c  # triage sheds first (full 10%, uncapped by mission-need)
+                break
+        if t is None:
+            t = cands[0] if cands else None
         if t is not None and not state.should_yield():
-            size = min(_train_size(t, config), max(MIN_TRAIN, short))
-            if not (t.population - size < TRAIN_FLOOR and t.population < 700.0 and cooled(t) and t.population >= TRAIN_FLOOR):
+            is_tri = _triage(t)
+            size = _train_size(t, config) if is_tri else min(_train_size(t, config), max(MIN_TRAIN, short))
+            if not (not is_tri and t.population - size < TRAIN_FLOOR and t.population < 700.0):
                 out.append(f"TRAIN {t.id} {size:.1f}")
                 state.note_train(t.id)
-                _LAST_TRAIN[t.id] = turn
     return out
-
-try:
-    import gc as _gc0
-    _gc0.disable()
-except Exception:
-    pass
