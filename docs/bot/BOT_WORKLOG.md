@@ -4352,3 +4352,13 @@ t10000 true-solo, no deaths: 500->671, 1k->1240, 10k->9200, 50k->9709,
 the 850-stall (fresh scans only); founding-turn spikes need small scans
 (SCAN_R-250) + grid-densify; v9 train-block verbatim (global-1 + floor
 guard); pool-spiral comes from unbounded shed (matched only).
+
+### 90%-loss ledger + board green (2026-09-14, loop/grower)
+Ledger (100k): 89 trains (14.5k shed; t1 capped 667 by mission-need!),
+312 builds (160k churned through boost-incinerator!), 34 foundings
+(6.6k), mother 100k->665. Losses: shed-throttled-18:1 + boost-churn
+(feeding dying traps) + pool forage-spiral (d5: mother dead t5). Fixes:
+triage-shed-don't-feed (fast-death only), forage-aware marching (never
+eat home), pool matched to deployment. Board (solo, no deaths): 500->671,
+1k->1237, 10k->10541, 50k->9524, 100k->9647. Remaining gap is deployment
+bandwidth (missions complete ~5t-cycle), not shedding.
