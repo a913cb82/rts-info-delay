@@ -305,7 +305,8 @@ def decide_orders(state: BotState, config: GameConfig) -> list[str]:
         want += 1
     short = want - len(idle)
     if short > 0:
-        cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)),
+        cands = sorted((t for t in own_t if t.id not in mustered and cooled(t)
+                        and t.id != _PACK_TOWN),  # RESERVE: pack-town feeds packs, not pioneers
                        key=lambda t: t.population, reverse=True)
         for t in cands:
             if short <= 0 or state.should_yield():
