@@ -88,6 +88,9 @@ def bot_rundir(sha: str) -> Path:
             if f.is_file() and f.suffix == ".py" and f.name != "__init__.py":
                 _sh.copy2(f, bd / f.name)
         marker.touch()
+    else:
+        d.touch()  # LRU refresh
+    _prune_old("botrun_")
     return d
 
 
@@ -99,12 +102,33 @@ def sha_of(commit: str) -> str:
     return out.stdout.strip()
 
 
+def _prune_old(prefix: str, keep: int = 8) -> None:
+    """LRU cap on /tmp per-sha dirs (disk hygiene: batches run <=8 concurrent).
+    Sorts by mtime (recently used = recent games), removes oldest beyond keep,
+    prunes the worktree registry. Never touches the just-created dir."""
+    import time as _t
+    try:
+        ds = sorted(Path("/tmp").glob(prefix + "*"),
+                    key=lambda p: p.stat().st_mtime)
+    except OSError:
+        return
+    for old in ds[:-keep] if len(ds) > keep else []:
+        if _t.time() - old.stat().st_mtime < 600:
+            continue  # younger than 10min: possibly a live game, spare it
+        import shutil as _sh
+        _sh.rmtree(old, ignore_errors=True)
+    subprocess.run(["git", "-C", str(ROOT), "worktree", "prune"],
+                     capture_output=True)
+
+
 def ensure_worktree(sha: str) -> Path:
     d = Path(f"/tmp/botwork_{sha}")
     if (d / "src" / "bots").exists():
+        d.touch()  # LRU refresh (in-use checkouts survive pruning)
         return d
     subprocess.run(["git", "-C", str(ROOT), "worktree", "add", "--detach",
                     str(d), sha], check=True, capture_output=True)
+    _prune_old("botwork_")
     return d
 
 
