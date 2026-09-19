@@ -1,9 +1,12 @@
+
+# Game replays: regenerate via run_game, copy recordings/*.jsonl to viewer/public/
+*.egg-info/
+*.pyc
 .venv/
 __pycache__/
-*.pyc
-*.egg-info/
-dist/
 build/
-node_modules/
 debug.log
+dist/
+node_modules/
 recordings/
+viewer/public/*.jsonl
