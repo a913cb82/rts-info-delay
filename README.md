@@ -1,4 +1,4 @@
-# rl_game_min
+# rts-info-delay
 
 Strategy game with fog of war and information delay.
 
